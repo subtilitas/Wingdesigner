@@ -21,8 +21,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
   mirror: true,
 });
 
+// minChord: smallest chord (profile depth) in mm, also the floor of a pointed tip. Below 1 mm the
+// profile shape falls under the resolution of meshes, STEP modelling tolerances and manufacturing.
 export const LIMITS = Object.freeze({
-  minChord: 0.01,
+  minChord: 1,
   tipRatio: [0.001, 0.01],
   chordSamples: [16, 200],
   panelStations: [3, 40],

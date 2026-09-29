@@ -2,6 +2,7 @@
 
 import { insertSection, removeSection, sortedSections, syncGuidesToSpan, resetDisabledGuides } from '../model/edit.js';
 import { clear, h, numberInput } from './dom.js';
+import { LIMITS } from '../model/project.js';
 
 const FIELDS = [
   { key: 'y', label: 'y', unit: 'mm', title: 'Span position of the section plane', step: 5 },
@@ -80,7 +81,11 @@ export class SectionsPanel {
             { dataset: { label: `${f.label} (${f.unit})` } },
             numberInput({ value: s[f.key], step: f.step, min: f.min, title: f.title, onCommit: commit(f.key), focusKey: `sec:${s.id}:${f.key}` }),
             tipChord !== null
-              ? h('div', { class: 'muted small', title: 'Pointed tip: chord scaled from the previous section' }, `tip: ${tipChord.toFixed(2)}`)
+              ? h(
+                  'div',
+                  { class: 'muted small', title: `Pointed tip: chord scaled from the previous section, at least ${LIMITS.minChord} mm` },
+                  `tip: ${tipChord.toFixed(2)}${build.tipChordLimited ? ' (min.)' : ''}`,
+                )
               : eff !== null && Math.abs(eff - s[f.key]) > 0.05
                 ? h('div', { class: 'muted small', title: 'Value set by the guide curve' }, `guide: ${eff.toFixed(1)}`)
                 : null,

@@ -154,7 +154,9 @@ describe('wizard tips', () => {
     expect(validateProject(p).ok).toBe(true);
     const b = buildWing(p);
     expect(b.errors).toEqual([]);
-    expect(b.stations[b.stations.length - 1].chord).toBeLessThan(1);
+    // 1/200 of the previous chord (173 mm) is 0.87 mm; the tip keeps the 1 mm minimum.
+    expect(b.stations[b.stations.length - 1].chord).toBeCloseTo(1, 9);
+    expect(b.tipChordLimited).toBe(true);
     for (const { mesh } of exportMeshes(b, 'merged')) expect(edgeCheck(mesh).closed).toBe(true);
     // Elliptic chord with a pointed tip reaches zero at the tip before scaling.
     expect(chordAt(params, 1)).toBe(0);
@@ -166,7 +168,8 @@ describe('wizard tips', () => {
     const p = wizardProject({ ...PRESETS.sport.params, sections: 3, tip: 'pointed' });
     const b = buildWing(p);
     expect(b.errors).toEqual([]);
-    expect(b.tipChord).toBeCloseTo(0.005 * p.sections[1].chord, 9);
+    expect(b.tipChord).toBeCloseTo(Math.max(0.005 * p.sections[1].chord, 1), 9);
+    expect(p.sections[2].chord).toBeGreaterThanOrEqual(1);
   });
 });
 

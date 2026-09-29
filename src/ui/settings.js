@@ -83,7 +83,7 @@ export class SettingsPanel {
           ? h(
               'label',
               { class: 'field' },
-              `Tip profile scale 1 : N of the previous section chord (N = ${Math.round(1 / LIMITS.tipRatio[1])} to ${Math.round(1 / LIMITS.tipRatio[0])})`,
+              `Tip profile scale 1 : N of the previous section chord (N = ${Math.round(1 / LIMITS.tipRatio[1])} to ${Math.round(1 / LIMITS.tipRatio[0])}; tip chord at least ${LIMITS.minChord} mm)`,
               numberInput({
                 focusKey: 'set:tip',
                 value: Math.round(1 / s.tip.ratio),

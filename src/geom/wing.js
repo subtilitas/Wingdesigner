@@ -225,8 +225,10 @@ export function buildWing(project) {
     return out;
   };
   if (pointed) {
-    // The tip profile is scaled to tip.ratio of the chord at the previous section.
-    tipChord = Math.max(settings.tip.ratio * placement(yPrev).chord, LIMITS.minChord);
+    // The tip profile is scaled to tip.ratio of the chord at the previous section, at least minChord.
+    const scaled = settings.tip.ratio * placement(yPrev).chord;
+    tipChord = Math.max(scaled, LIMITS.minChord);
+    result.tipChordLimited = scaled < LIMITS.minChord;
     C[C.length - 1] = tipChord;
     placed.clear();
     if (guideOn.nose && guideOn.end) {

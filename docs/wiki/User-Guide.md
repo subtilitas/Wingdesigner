@@ -71,7 +71,7 @@ round handles set the chord.
 Each guide has a mode (**Through points**: the curve passes through the points; **Control points**:
 the points form the control polygon) and a degree from 1 to 5. The first and last points stay at the
 root and tip span positions; interior points stay at least 0.5 mm apart in y. A guide that doubles
-back in y or makes the chord smaller than 0.01 mm is reported as an error. With the wing tip set to Pointed, guides may meet at the tip; the tip then ends in the profile scaled to 1/100 to 1/1000 (default 1/200) of the previous section chord.
+back in y or makes the chord smaller than 1 mm is reported as an error. With the wing tip set to Pointed, guides may meet at the tip; the tip then ends in the profile scaled to 1/100 to 1/1000 (default 1/200) of the previous section chord, at least 1 mm. The Sections table shows the resulting tip chord, marked (min.) when the 1 mm minimum applies.
 
 ## Airfoils
 

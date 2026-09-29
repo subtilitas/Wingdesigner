@@ -356,7 +356,7 @@ describe('guide crossing between stations', () => {
 
 describe('pointed wing tip', () => {
   const pointedProject = (settings = {}) => {
-    const p = sampleProject({ settings: { tip: { mode: 'pointed', ratio: 0.002 }, ...settings } });
+    const p = sampleProject({ settings: { tip: { mode: 'pointed', ratio: 0.01 }, ...settings } });
     return p;
   };
 
@@ -364,8 +364,9 @@ describe('pointed wing tip', () => {
     const b = buildWing(pointedProject());
     expect(b.errors).toEqual([]);
     const tip = b.stations[b.stations.length - 1];
-    expect(tip.chord).toBeCloseTo(0.002 * 170, 12);
-    expect(b.tipChord).toBeCloseTo(0.34, 12);
+    expect(tip.chord).toBeCloseTo(0.01 * 170, 12);
+    expect(b.tipChord).toBeCloseTo(1.7, 12);
+    expect(b.tipChordLimited).toBe(false);
     // Leading edge stays at the tip section position; the tip is a scaled copy of the profile.
     expect(tip.xLE).toBeCloseTo(60, 9);
     const half = halfWingMesh(tessellateHalf(b));
@@ -373,6 +374,15 @@ describe('pointed wing tip', () => {
     expect(meshVolume(half)).toBeGreaterThan(0);
     // The trailing-edge gap scales with the chord near the tip (at most 5 % of the chord).
     for (const st of b.stations) expect(st.shape[0][1] - st.shape[st.shape.length - 1][1]).toBeLessThanOrEqual(0.05 + 1e-12);
+  });
+
+  it('keeps the tip chord at the 1 mm minimum', () => {
+    const b = buildWing(pointedProject({ tip: { mode: 'pointed', ratio: 0.002 } }));
+    expect(b.errors).toEqual([]);
+    expect(0.002 * 170).toBeLessThan(1);
+    expect(b.tipChord).toBe(1);
+    expect(b.tipChordLimited).toBe(true);
+    expect(b.stations[b.stations.length - 1].chord).toBeCloseTo(1, 12);
   });
 
   it('accepts guide curves that meet at the tip', () => {

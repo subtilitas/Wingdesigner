@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Changed
+
+- Minimum chord (profile depth) 1 mm instead of 0.01 mm, for every section, span position and pointed
+  tip; the Sections table marks a tip chord held at the minimum with (min.).
+
 ### Fixed
 
 - STEP faces of symmetric airfoils: the leading-edge split parameter snaps to an existing knot

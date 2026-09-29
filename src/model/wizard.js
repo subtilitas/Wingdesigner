@@ -10,12 +10,13 @@
 //   sections   number of sections (2 .. 8), evenly spaced along the half span
 //   planform   'straight' (linear taper) or 'elliptic' (nose and end guide curves)
 //   tip        'flat' (cut at the tip section) or 'pointed' (tip profile scaled to 1/200 of the
-//              previous section; an elliptic planform then converges to the 25 % line at the tip)
+//              previous section, at least 1 mm; an elliptic planform then converges to the 25 % line
+//              at the tip)
 //   rootAirfoil, tipAirfoil  NACA designations
 
 import { parseNacaCode } from '../airfoil/naca.js';
 import { nacaEntry } from '../airfoil/library.js';
-import { createProject } from './project.js';
+import { LIMITS, createProject } from './project.js';
 
 export const PRESETS = {
   trainer: {
@@ -109,8 +110,8 @@ export function wizardProject(params, name) {
   for (let i = 0; i < n; i++) {
     const eta = i / (n - 1);
     const y = eta * b;
-    // A pointed tip section carries the scaled chord (1/200 of the previous section).
-    const chord = i === n - 1 && params.tip === 'pointed' ? chordAt(params, (n - 2) / (n - 1)) * 0.005 : chordAt(params, eta);
+    // A pointed tip section carries the scaled chord (1/200 of the previous section, at least 1 mm).
+    const chord = i === n - 1 && params.tip === 'pointed' ? Math.max(chordAt(params, (n - 2) / (n - 1)) * 0.005, LIMITS.minChord) : chordAt(params, eta);
     sections.push({
       id: `s${i + 1}`,
       airfoil: i === n - 1 ? tipId : rootId,

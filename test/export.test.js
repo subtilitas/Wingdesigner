@@ -226,6 +226,7 @@ describe('project JSON', () => {
       (p) => (p.settings.tip = { mode: 'pointed', ratio: 0.5 }),
       (p) => (p.settings.mirror = 'false'),
       (p) => (p.version = 0),
+      (p) => (p.sections[2].chord = 0.99),
     ];
     for (const mutate of cases) {
       const p = base();
@@ -234,6 +235,8 @@ describe('project JSON', () => {
     }
     const p = base();
     delete p.guides.end;
+    expect(validateProject(p).ok).toBe(true);
+    p.sections[2].chord = 1;
     expect(validateProject(p).ok).toBe(true);
   });
 

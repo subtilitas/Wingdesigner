@@ -41,14 +41,16 @@ proportional to y, so y(t) is linear and x(y) is a spline function. x at span y 
 y(t) = y on the curve (y(t) checked for monotony at 401 samples).
 
 The chord is checked at 257 evenly spaced span positions, every station and every guide control point
-and knot: below 0.01 mm the build stops with an error (nose line and end line touch or cross).
+and knot: below 1 mm the build stops with an error (nose line and end line touch or cross). 1 mm is
+the minimum chord of every section; below it the profile shape falls under the resolution of meshes,
+STEP modelling tolerances and manufacturing.
 
 Wing tip:
 
 | Mode | Tip station |
 | --- | --- |
 | Flat | the tip section as placed; the tip cap is a plane |
-| Pointed | chord = ratio × chord at the previous section (ratio 1/100 to 1/1000, default 1/200, at least 0.01 mm); in the last panel the chord does not fall below this value, so guides that meet at the tip end in the scaled profile |
+| Pointed | chord = ratio × chord at the previous section (ratio 1/100 to 1/1000, default 1/200, at least 1 mm); in the last panel the chord does not fall below this value, so guides that meet at the tip end in the scaled profile |
 
 Trailing edge per station: as in the files, closed (gap 0, both end points merged), or a fixed
 thickness t in mm (gap t / chord, at most 5 % of the chord). The gap change is added with weight
