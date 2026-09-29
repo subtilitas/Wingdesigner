@@ -205,9 +205,12 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | **Smooth (natural cubic spline through sections)** | cardinal functions of a natural cubic spline through the section positions y_i (second derivative 0 at root and tip) | 3 or more sections; with 2 sections the hat functions apply |
 
 - y outside [y_root, y_tip] is clamped to the range.
-- **Smooth**: the second derivatives of all cardinal functions come from one tridiagonal
-  factorization (Thomas algorithm, no pivoting; the system is diagonally dominant), size sections − 2.
-  n sections: O(n²) operations.
+- **Smooth**: the build evaluates the spline of every blended value directly. One tridiagonal
+  system of size sections − 2 (Thomas algorithm, no pivoting; the system is diagonally dominant)
+  gives the second derivatives of all values at the sections, one right-hand side per value.
+  n sections of m values: O(n · m) operations once, then O(m) per span position from the two
+  neighbouring sections. The result equals the weighted sum with the cardinal functions up to
+  round-off.
 - **Smooth**: the cardinal functions leave [0, 1] between sections (3 evenly spaced sections: minimum
   weight −0.096). Large thickness or chord changes and uneven spacing increase the overshoot.
 - **Smooth**, build errors (section 3.6): an interpolated value more than 2 × the range of its section

@@ -213,9 +213,12 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | **Smooth (natural cubic spline through sections)** (glatt) | Kardinalfunktionen eines natürlichen kubischen Splines durch die Schnittpositionen y_i (zweite Ableitung 0 an Wurzel und Rand) | 3 oder mehr Profilschnitte; bei 2 Profilschnitten gelten die Hutfunktionen |
 
 - y außerhalb von [y_root, y_tip] wird auf den Bereich begrenzt.
-- **Smooth**: Die zweiten Ableitungen aller Kardinalfunktionen stammen aus einer einzigen
-  Tridiagonalzerlegung (Thomas-Algorithmus, ohne Pivotsuche; das System ist diagonaldominant), Größe
-  Profilschnitte − 2. n Profilschnitte: O(n²) Rechenschritte.
+- **Smooth**: Die Berechnung wertet den Spline jedes überblendeten Werts direkt aus. Ein
+  Tridiagonalsystem der Größe Profilschnitte − 2 (Thomas-Algorithmus, ohne Pivotsuche; das System
+  ist diagonaldominant) liefert die zweiten Ableitungen aller Werte an den Profilschnitten, eine
+  rechte Seite je Wert. n Profilschnitte mit m Werten: einmal O(n · m) Rechenschritte, dann O(m) je
+  Spannweitenposition aus den beiden benachbarten Profilschnitten. Das Ergebnis gleicht der
+  gewichteten Summe mit den Kardinalfunktionen bis auf Rundungsfehler.
 - **Smooth**: Die Kardinalfunktionen verlassen zwischen den Profilschnitten den Bereich [0, 1]
   (3 gleich verteilte Profilschnitte: kleinstes Gewicht −0,096). Große Dicken- oder Tiefenänderungen
   und ungleiche Abstände verstärken das Überschwingen.

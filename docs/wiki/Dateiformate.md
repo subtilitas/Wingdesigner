@@ -280,7 +280,7 @@ Von der App erzeugte IDs:
 
 - Gleicher Name und identische Punkte wie ein Profil im Projekt: Die vorhandene ID wird verwendet; kein neuer Eintrag.
 - Assistent und Beispielflügel: `naca<code>`.
-- Erzeugtes NACA-Profil (`source.code` gesetzt) mit derselben Kennung und demselben `source.closedTE` wie ein Profil im Projekt: Die vorhandene ID wird verwendet, unabhängig vom Namen; kein neuer Eintrag.
+- Erzeugtes NACA-Profil (`source.code` gesetzt) mit derselben Kennung und demselben `source.closedTE` wie ein Profil im Projekt, dessen gespeicherte Punkte dieses Profil sind (Punkte des Generators auf 1e-9 genau, oder dieselben Punkte wie beim hinzugefügten Profil): Die vorhandene ID wird verwendet, unabhängig vom Namen; kein neuer Eintrag. Gespeicherte Punkte, die von beiden abweichen (z. B. in einer geöffneten Datei bearbeitet): neuer Eintrag.
 - Projekt mit 10 000 Profilen (`LIMITS.maxAirfoils`): kein neuer Eintrag. Die Registerkarte **Airfoils** lehnt das nächste Profil vor der Vorschau ab, mit der Meldung `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.`
 - Profil, mit dem die Punkte aller Profile 1 000 000 überschreiten würden (`LIMITS.maxAirfoilPoints`): kein neuer Eintrag. Meldung: `With this airfoil the project airfoils hold <n> points; the limit is 1,000,000. "Remove unused" frees points.`
 

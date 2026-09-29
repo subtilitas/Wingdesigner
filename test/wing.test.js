@@ -698,6 +698,16 @@ describe('smooth spanwise overshoot', () => {
     expect(b.errors[0]).toMatch(/overshoots at y = [\d.]+ mm: chord is 1[34]\d\d\.\d\d mm, while the sections range from 20\.00 to 200\.00 mm/);
   });
 
+  it('stops on non-finite placement values (User Guide example: sections 1e-300 mm apart)', () => {
+    // The spline of the twist through 0, 90 and 0 degrees overflows between sections 1e-300 mm apart.
+    const p = symmetric(['0012', '0012', '0012'], [0, 1e-300, 2e-300]);
+    p.sections[1].twist = 90;
+    expect(validateProject(p).ok).toBe(true);
+    const b = buildWing(p);
+    expect(b.errors[0]).toMatch(/^Section values give non-finite coordinates at y = 0\.0 mm; /);
+    expect(b.surface).toBeNull();
+  });
+
   it('keeps curved smooth planforms within OVERSHOOT_LIMIT section ranges', () => {
     // Chord 100/500/100 mm at y = 0/100/1000 mm reaches 1036 mm: 1.34 ranges beyond the sections.
     const chords = [100, 500, 100];

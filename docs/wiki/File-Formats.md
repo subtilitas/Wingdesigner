@@ -280,7 +280,7 @@ Ids made by the app:
 
 - Same name and identical points as an airfoil in the project: the existing id is used; no new entry.
 - Wizard and sample wing: `naca<code>`.
-- Generated NACA section (`source.code` set) with the same code and the same `source.closedTE` as a project airfoil: the existing id is used, whatever the name; no new entry.
+- Generated NACA section (`source.code` set) with the same code and the same `source.closedTE` as a project airfoil whose stored points are that section (generator points within 1e-9, or points identical to the added ones): the existing id is used, whatever the name; no new entry. Stored points that differ from both (e.g. edited in an opened file): new entry.
 - Project with 10,000 airfoils (`LIMITS.maxAirfoils`): no new entry. The **Airfoils** tab refuses the next airfoil before the preview with the message `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.`
 - Airfoil that would take the points of all airfoils above 1,000,000 (`LIMITS.maxAirfoilPoints`): no new entry. Message: `With this airfoil the project airfoils hold <n> points; the limit is 1,000,000. "Remove unused" frees points.`
 
