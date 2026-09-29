@@ -411,6 +411,34 @@ describe('parser robustness', () => {
     expect(codes(checkAirfoil(dense).issues)).toContain('too-many-points');
   });
 
+  it('finds the same crossings as the pairwise test', () => {
+    let seed = 5;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const brute = (P) => {
+      const h = [];
+      for (let i = 0; i < P.length - 1; i++) for (let j = i + 2; j < P.length - 1; j++) if (segmentsCross(P[i], P[i + 1], P[j], P[j + 1])) h.push([i, j]);
+      return h;
+    };
+    for (let t = 0; t < 400; t++) {
+      const P = Array.from({ length: 4 + Math.floor(rnd() * 30) }, () => [rnd() * (rnd() < 0.2 ? 0 : 1), rnd() * (rnd() < 0.2 ? 0.001 : 1)]);
+      if (rnd() < 0.3) P.push(P[0].slice());
+      expect(selfIntersections(P, 1000)).toEqual(brute(P));
+    }
+  });
+
+  it('rejects surfaces that touch inside the chord', () => {
+    const touch = [
+      [1, 0.002], [0.9, 0.02], [0.75, 0.03], [0.6, 0.015], [0.5, 0], [0.4, 0.03], [0.25, 0.05], [0.1, 0.04], [0, 0],
+      [0.1, -0.03], [0.25, -0.04], [0.4, -0.02], [0.5, 0], [0.6, -0.015], [0.75, -0.03], [0.9, -0.02], [1, -0.002],
+    ];
+    const r = checkAirfoil(touch);
+    expect(r.ok).toBe(false);
+    expect(codes(r.issues)).toContain('surfaces-touch');
+    expect(r.stats.minCoreThicknessX).toBeCloseTo(0.5, 12);
+    // Closed and cusped trailing edges are not contacts.
+    for (const code of ['0006', '0012', '2412']) expect(checkAirfoil(nacaAirfoil(code, { closedTE: true }).points).ok).toBe(true);
+  });
+
   it('removes a drawn trailing-edge base in both point orders', () => {
     const blunt = nacaAirfoil('2412', { pointsPerSide: 31 }).points;
     const gap = blunt[0][1] - blunt[blunt.length - 1][1];

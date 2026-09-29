@@ -30,6 +30,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   sections at y < 0 are rejected; dragging a section keeps it strictly between its neighbours.
 - 3MF export: the model XML is written in 1 MB chunks, so meshes beyond the JavaScript string limit
   export; characters outside XML 1.0 are removed from names; export failures show a message.
+- Airfoils whose NURBS curve crosses itself between the file points (coarse files) and wings
+  whose section rows cross are errors; surfaces that touch inside the chord are errors
+  (`surfaces-touch`).
+- B-spline interpolation uses a band LU solver: 5000-point airfoils interpolate in 13 ms instead of
+  building a 5000 x 5000 dense matrix.
+- Save writes the derived NURBS data of the current project, not of the last rendered build.
 - Project import: `guides.*.enabled` must be a boolean; a guide point between neighbours closer than
   1 mm keeps its span position when edited.
 - CI: runs on `main` queue instead of cancelling a running Pages deployment; 3MF files are validated

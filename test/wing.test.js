@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildWing, joinCurves, placeSection } from '../src/geom/wing.js';
+import { buildWing, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nurbs.js';
-import { cosineStations, profileCurve, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
+import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
 import { blendPoints, blendScalar, spanwiseWeights } from '../src/geom/spanwise.js';
 import { clampedUniformKnots, defaultGuides, guideCurve, guideProblems, guideXAt, isMonotonicInY } from '../src/geom/guide.js';
 import { edgeCheck, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume, tessellateHalf } from '../src/geom/mesh.js';
 import { earClip, polygonArea } from '../src/geom/triangulate.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
+import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { naca, sampleProject } from './helpers.js';
 
 describe('profile curves', () => {
@@ -488,5 +489,37 @@ describe('trailing-edge setting and span range', () => {
     const p = sampleProject();
     p.sections[0].y = -5;
     expect(buildWing(p).errors[0]).toMatch(/y = -5 mm lies on the mirrored side/);
+  });
+});
+
+describe('fitted curve and surface row crossings', () => {
+  // Nine points that pass the point checks; the cubic curve through them loops past the trailing edge.
+  const coarse = [[1, 0.002], [0.9422, 0.0062], [0.4103, 0.1048], [0.3764, 0.0957], [0, 0], [0.2163, -0.0488], [0.4749, -0.0296], [0.9349, -0.0728], [1, -0.002]];
+
+  it('rejects an airfoil whose NURBS curve crosses itself', () => {
+    expect(checkAirfoil(coarse).ok).toBe(true);
+    const { curve } = profileCurve(checkAirfoil(coarse).points);
+    const cross = curveCrossing(curve, { tolerance: CROSSING_TOLERANCE });
+    expect(cross.size).toBeGreaterThan(10 * CROSSING_TOLERANCE);
+    expect(curveCrossing(curve, { tolerance: 1 })).toBeNull();
+    const p = sampleProject();
+    p.airfoils = [{ id: 'c', name: 'coarse', points: coarse }];
+    for (const s of p.sections) s.airfoil = 'c';
+    const b = buildWing(p);
+    expect(b.errors[0]).toMatch(/NURBS curve through the points crosses itself near x = 10\d\.\d % chord/);
+    expect(b.surface).toBeNull();
+  });
+
+  it('accepts fine airfoils and finds a crossing surface row', () => {
+    const b = buildWing(sampleProject());
+    expect(b.errors).toEqual([]);
+    expect(surfaceRowCrossing(b.surface, 0, CROSSING_TOLERANCE * 200)).toBeNull();
+    // Swap the z of two opposite control columns in the middle: the row folds over itself.
+    const s = structuredClone(b.surface);
+    const M = s.points.length - 1;
+    const i = Math.round(M * 0.3);
+    const j = M - i;
+    for (let k = 0; k < s.points[i].length; k++) [s.points[i][k][2], s.points[j][k][2]] = [s.points[j][k][2], s.points[i][k][2]];
+    expect(surfaceRowCrossing(s, 0, CROSSING_TOLERANCE * 200)).not.toBeNull();
   });
 });

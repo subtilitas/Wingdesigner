@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   averagingKnots,
   basisFuns,
+  collocationFactor,
+  collocationMatrix,
+  collocationSolve,
   curveDerivatives,
   curvePoint,
   dersBasisFuns,
@@ -21,7 +24,7 @@ import {
   surfaceDerivatives1,
   surfacePoint,
 } from '../src/geom/nurbs.js';
-import { solve } from '../src/geom/linalg.js';
+import { bandFactor, luFactor, luSolve, solve } from '../src/geom/linalg.js';
 
 const U = [0, 0, 0, 0, 0.2, 0.45, 0.7, 1, 1, 1, 1];
 const n = U.length - 3 - 2; // 6 control points -> n = 5
@@ -335,5 +338,34 @@ describe('split at a knot within round-off', () => {
     expect(lm.mults[lm.mults.length - 1]).toBe(4);
     expect(rm.mults[0]).toBe(4);
     expect(dist(curvePoint(l, 1), curvePoint(r, 0))).toBeLessThan(1e-12);
+  });
+});
+
+describe('band collocation solver', () => {
+  it('matches the dense LU solution for degrees 1 to 5', () => {
+    let seed = 11;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let p = 1; p <= 5; p++) {
+      const n = 40;
+      const pts = Array.from({ length: n }, (_, i) => [i + rnd(), Math.sin(i / 3) + rnd() * 0.1]);
+      const t = parametrize(pts, 'centripetal');
+      const U = averagingKnots(t, p);
+      const b = pts.map((q) => q[1]);
+      const dense = luSolve(luFactor(collocationMatrix(t, p, U)), b);
+      const band = collocationSolve(collocationFactor(t, p, U), b);
+      for (let i = 0; i < n; i++) expect(band[i]).toBeCloseTo(dense[i], 10);
+    }
+  });
+
+  it('solves a 5000-point interpolation in linear time', () => {
+    const pts = Array.from({ length: 5000 }, (_, i) => [Math.cos((2 * Math.PI * i) / 5000), Math.sin((2 * Math.PI * i) / 5000)]);
+    const t0 = performance.now();
+    const c = interpolateCurve(pts, 3, { parametrization: 'centripetal' });
+    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(dist(curvePoint(c, c.params[1234]), pts[1234])).toBeLessThan(1e-9);
+  });
+
+  it('reports a zero pivot', () => {
+    expect(() => bandFactor([{ start: 0, values: [0] }])).toThrow(/zero pivot/);
   });
 });

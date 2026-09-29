@@ -34,8 +34,12 @@ Last updated: 2026-09-29
 | Smooth spanwise blending reports negative blended thickness as an error | The cubic cardinal functions overshoot between sections with large chord or thickness changes; the upper surface then passes below the lower one. |
 | Guide curves stretched to root-to-tip span | Guides follow span edits without manual correction. |
 | Pointed tip: tip profile scaled to 1/100 to 1/1000 (default 1/200) of the previous section chord, at least 1 mm | A zero chord has no profile and no valid B-rep face; a scaled profile keeps the tip closed, profile-shaped and exportable. Converging guide curves end in this profile. |
-| Airfoil files limited to 2,000,000 characters and 5000 points | The self-intersection check compares every segment pair: 1000 points take 16 ms, 5000 points 188 ms, 10000 points 1042 ms (Node.js 24, sandbox CPU). |
+| Airfoil files limited to 2,000,000 characters and 5000 points | Bounds import time. Checks at 5000 points take 41 ms (grid-binned self-intersection test, sorted thickness sweep), the NURBS interpolation 13 ms (band LU); Node.js 24, sandbox CPU. |
+| Band LU without pivoting for B-spline interpolation | Collocation matrices are banded and totally positive (de Boor and Pinkus, 1977); dense LU needed about 200 MB and O(n^3) time at 5000 points. Band and dense solutions agree to 0 on 41 to 401 NACA points. |
+| Fitted profile curves and section rows tested for self-crossing, loops up to 0.05 % chord ignored | Cubic interpolation of coarse files can loop past the trailing edge while the points pass every check (6 of 6314 random 9-point outlines). Cusped closed trailing edges leave slivers of 1.1e-4 to 1.4e-4 chord (MH 83, MH 50), coarse-file loops measure about 9e-3 chord. Rows between sections are not tested. |
+| Profile stage cached per airfoil (32 entries) | The crossing test costs 10 to 60 ms per airfoil; cached rebuilds: sport preset 16 ms, glider 20 ms at 60 chord samples, 70 ms at 200. |
 | Profile thickness checked before and after the trailing-edge setting | The linear taper of the closed and fixed-thickness modes pulls the surfaces through each other where an airfoil is thinner inside than its trailing-edge gap. |
+| Interior contact (thickness at most 1e-5 chord between 1 % and 99 % chord) is an error | Touching surfaces give a zero-thickness solid. Thickness between polylines is smallest at a vertex, so every file point is checked. 247 real files: no new rejection. |
 | Minimum chord 1 mm for every section and span position, also the floor of a pointed tip | Owner requirement: below 1 mm the profile falls under the resolution of meshes, STEP modelling tolerances and manufacturing. With the default 1/200 ratio the tip chord reaches the floor for previous chords below 200 mm (4 of 6 wizard presets with a pointed tip). |
 | Trailing-edge thickness limited to 5 % of the local chord | Keeps small tip profiles free of self-intersection with a fixed thickness in mm. |
 | Through-point guide curves parametrized by span position | y(t) is exactly linear, so a guide cannot double back in span; x(y) is a spline function. |
@@ -52,12 +56,13 @@ Node.js 24.21, sandbox x86-64 CPU, 2026-09-29 (`buildWing`, `exportMeshes(..., '
 
 | Case | Chord stations | Build | Mesh | STEP write | STEP size |
 | --- | --- | --- | --- | --- | --- |
-| Sport preset, 2 sections | 60 | 9 ms | 1 ms | 1 ms | 99 KB |
-| Sport preset, 2 sections | 200 | 20 ms | 2 ms | 3 ms | 303 KB |
-| Glider preset, elliptic guides, 17 stations | 60 | 21 ms | 11 ms | 5 ms | 441 KB |
-| Glider preset, elliptic guides, 17 stations | 200 | 55 ms | 37 ms | 18 ms | 1393 KB |
+| Sport preset, 2 sections | 60 | 14 ms | 1 ms | 1 ms | 99 KB |
+| Sport preset, 2 sections | 200 | 44 ms | 2 ms | 3 ms | 303 KB |
+| Glider preset, elliptic guides, 17 stations | 60 | 24 ms | 11 ms | 5 ms | 441 KB |
+| Glider preset, elliptic guides, 17 stations | 200 | 72 ms | 37 ms | 18 ms | 1393 KB |
 
-Mean of 10 runs after 2 warm-up runs (STEP: 3 runs). Cap triangulation pairs upper and lower points per chord station (linear time); ear clipping
+Mean of 10 runs after 2 warm-up runs (STEP: 3 runs). Build times include the section-row crossing test;
+the profile stage is cached after the warm-up runs (first build of a new airfoil: 35 to 100 ms more). Cap triangulation pairs upper and lower points per chord station (linear time); ear clipping
 (cubic time) is the fallback.
 
 ## Open items

@@ -11,6 +11,13 @@ All lengths are in mm. Algorithm numbers refer to Piegl and Tiller, *The NURBS B
    (u = 0) over the leading edge to the lower trailing edge (u = 1).
 3. The leading edge is the minimum-x point of the curve, found with Newton steps on x'(u) = 0 from the
    minimum-x file point.
+4. The interpolation systems are solved with a band LU factorization without pivoting (B-spline
+   collocation matrices are totally positive), in time linear in the number of points: 5000 points
+   take 13 ms.
+5. The curve is sampled with 8 to 256 points per knot span (about 4000 in total) and tested for
+   self-crossing. Cubic interpolation of a coarse file can loop past the trailing edge although the
+   file points pass every check; such an airfoil is an error. Crossing loops up to 0.05 % of the
+   chord are ignored: cusped closed trailing edges (e.g. MH 83) leave slivers of 0.014 % chord.
 
 ## 2. Common chord stations
 
@@ -79,6 +86,9 @@ Global surface interpolation (A9.4) through the station grid Q[j][k] (j chordwis
 - The root and tip control rows are set to exactly y_root and y_tip.
 
 The surface passes through every station point; the leading edge lies on the iso-curve u = u_LE.
+The surface row at every section (a plane y = const) is sampled with 8 points per knot span and
+tested for self-crossing with the same 0.05 % chord tolerance; between sections the thickness check
+on the blended points applies. Not checked: self-crossing of rows between sections.
 
 ## 5. Meshes
 

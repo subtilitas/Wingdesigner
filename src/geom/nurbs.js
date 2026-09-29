@@ -4,7 +4,7 @@
 // Surface: { degreeU, degreeV, knotsU, knotsV, points: number[][][] (points[i][j], i along u, j along v), weights?: number[][] }
 // Points are arrays of any dimension (2D or 3D). Missing weights mean a non-rational B-spline.
 
-import { luFactor, luSolve } from './linalg.js';
+import { bandFactor, bandSolve } from './linalg.js';
 
 /** A2.1: knot span index for parameter u. n = number of control points - 1. */
 export function findSpan(n, p, u, U) {
@@ -263,6 +263,22 @@ export function averagingKnots(params, p) {
 }
 
 /** Collocation matrix N_j(t_k) (square, size params.length). */
+/** Band rows of the collocation matrix: row k has basis values in columns span - p .. span. */
+export function collocationRows(params, p, U) {
+  const n = params.length - 1;
+  return params.map((t) => {
+    const span = findSpan(n, p, t, U);
+    return { start: span - p, values: basisFuns(span, t, p, U) };
+  });
+}
+
+/** Band LU factorization of the collocation matrix (one factorization, many right-hand sides). */
+export function collocationFactor(params, p, U) {
+  return bandFactor(collocationRows(params, p, U));
+}
+
+export { bandSolve as collocationSolve };
+
 export function collocationMatrix(params, p, U) {
   const n = params.length - 1;
   const A = Array.from({ length: n + 1 }, () => new Float64Array(n + 1));
@@ -285,11 +301,11 @@ export function interpolateCurve(points, p = 3, options = {}) {
   const deg = Math.min(p, n);
   const params = options.params ?? parametrize(points, options.parametrization ?? 'chord');
   const U = options.knots ?? averagingKnots(params, deg);
-  const lu = luFactor(collocationMatrix(params, deg, U));
+  const lu = collocationFactor(params, deg, U);
   const dim = points[0].length;
   const P = points.map(() => new Array(dim).fill(0));
   for (let c = 0; c < dim; c++) {
-    const x = luSolve(lu, points.map((pt) => pt[c]));
+    const x = bandSolve(lu, points.map((pt) => pt[c]));
     for (let i = 0; i <= n; i++) P[i][c] = x[i];
   }
   return { degree: deg, knots: U, points: P, params };
@@ -308,13 +324,13 @@ export function interpolateSurface(Q, p, q, paramsU, paramsV, options = {}) {
   const U = options.knotsU ?? averagingKnots(paramsU, degU);
   const V = options.knotsV ?? averagingKnots(paramsV, degV);
   const dim = Q[0][0].length;
-  const luU = luFactor(collocationMatrix(paramsU, degU, U));
-  const luV = luFactor(collocationMatrix(paramsV, degV, V));
+  const luU = collocationFactor(paramsU, degU, U);
+  const luV = collocationFactor(paramsV, degV, V);
   // R[k][j]: interpolate along v for each u-row first.
   const R = Q.map((row) => {
     const out = row.map(() => new Array(dim).fill(0));
     for (let c = 0; c < dim; c++) {
-      const x = luSolve(luV, row.map((pt) => pt[c]));
+      const x = bandSolve(luV, row.map((pt) => pt[c]));
       for (let j = 0; j <= m; j++) out[j][c] = x[j];
     }
     return out;
@@ -322,7 +338,7 @@ export function interpolateSurface(Q, p, q, paramsU, paramsV, options = {}) {
   const P = Array.from({ length: n + 1 }, () => Array.from({ length: m + 1 }, () => new Array(dim).fill(0)));
   for (let j = 0; j <= m; j++) {
     for (let c = 0; c < dim; c++) {
-      const x = luSolve(luU, R.map((row) => row[j][c]));
+      const x = bandSolve(luU, R.map((row) => row[j][c]));
       for (let i = 0; i <= n; i++) P[i][j][c] = x[i];
     }
   }

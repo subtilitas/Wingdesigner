@@ -13,6 +13,8 @@ export const LIMITS = {
   thinWarn: 0.01,
   thickWarn: 0.3,
   spikeDeg: 90,
+  // Interior thickness (1 % to 99 % chord) at or below this fraction of the chord is a contact.
+  touchThickness: 1e-5,
   spacingRatio: 25,
   rotationDeg: 0.5,
 };
@@ -123,6 +125,14 @@ export function checkAirfoil(rawPointsIn) {
   const stats = airfoilStats(points);
   if (stats.minInteriorThickness < -1e-4) {
     issues.push(issue('error', 'crossed-surfaces', 'The upper surface lies below the lower surface at some chord position.'));
+  } else if (stats.minCoreThickness <= LIMITS.touchThickness) {
+    issues.push(
+      issue(
+        'error',
+        'surfaces-touch',
+        `Upper and lower surface touch at x = ${(stats.minCoreThicknessX * 100).toFixed(1)} % chord (thickness ${(stats.minCoreThickness * 100).toFixed(4)} % chord); the wing would have zero thickness there.`,
+      ),
+    );
   }
   if (stats.teGap < -1e-4) {
     issues.push(issue('error', 'te-crossed', `Trailing edge is crossed (gap ${(stats.teGap * 100).toFixed(3)} % chord).`));

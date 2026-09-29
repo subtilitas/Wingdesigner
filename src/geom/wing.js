@@ -6,9 +6,8 @@
 
 import { checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
-import { averagingKnots, collocationMatrix, curvePoint, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
-import { luFactor, luSolve } from './linalg.js';
-import { cosineStations, profileCurve, resampleProfile } from './profile.js';
+import { averagingKnots, collocationFactor, collocationSolve, curvePoint, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
+import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, resampleProfile } from './profile.js';
 import { blendPoints, blendScalar, spanwiseWeights } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, resolveSettings } from '../model/project.js';
@@ -107,6 +106,51 @@ function interpolateAlongV(values, scheme) {
   return { degree: cols[0].degree, knots: cols[0].knots, columns: cols.map((c) => c.points) };
 }
 
+// Profile stage per airfoil (checks, NURBS curve, crossing test, resampling), keyed by the point
+// list and the settings it depends on. Airfoils rarely change between edits.
+const PROFILE_CACHE = new Map();
+const PROFILE_CACHE_SIZE = 32;
+
+function profileStage(a, parametrization, chordStations, N) {
+  const key = `${parametrization}|${N}|${JSON.stringify(a.points)}`;
+  const hit = PROFILE_CACHE.get(key);
+  if (hit) return hit;
+  let out;
+  const check = checkAirfoil(a.points);
+  if (!check.ok) {
+    out = { error: check.issues.filter((i) => i.severity === 'error').map((i) => i.message).join(' ') };
+  } else {
+    try {
+      const prof = profileCurve(check.points, { parametrization });
+      const cross = curveCrossing(prof.curve, { tolerance: CROSSING_TOLERANCE });
+      out = cross
+        ? {
+            error:
+              `the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
+              'the file has too few points there. Use a file with more points or finer spacing near that position.',
+          }
+        : { prof, points: check.points, compat: unitChord(resampleProfile(prof, chordStations), N) };
+    } catch (e) {
+      out = { error: `the NURBS interpolation failed (${e.message}).` };
+    }
+  }
+  PROFILE_CACHE.set(key, out);
+  if (PROFILE_CACHE.size > PROFILE_CACHE_SIZE) PROFILE_CACHE.delete(PROFILE_CACHE.keys().next().value);
+  return out;
+}
+
+/**
+ * Crossing of the surface row at parameter v. Rows lie in planes y = const (every station lies in
+ * one), so the row is tested in the x-z plane. Returns { x, size } in mm or null.
+ */
+export function surfaceRowCrossing(surface, v, tolerance) {
+  const ctrl = surface.points.map((col) => {
+    const q = curvePoint({ degree: surface.degreeV, knots: surface.knotsV, points: col }, v);
+    return [q[0], q[2]];
+  });
+  return curveCrossing({ degree: surface.degreeU, knots: surface.knotsU, points: ctrl }, { tolerance, samplesPerSpan: 8 });
+}
+
 /**
  * Build the half wing.
  * @param {object} project see src/model/project.js
@@ -143,17 +187,12 @@ export function buildWing(project) {
       errors.push(`Section at y = ${s.y} mm uses unknown airfoil "${s.airfoil}".`);
       continue;
     }
-    const check = checkAirfoil(a.points);
-    if (!check.ok) {
-      errors.push(`Airfoil "${a.name ?? a.id}": ${check.issues.filter((i) => i.severity === 'error').map((i) => i.message).join(' ')}`);
+    const stage = profileStage(a, settings.parametrization, chordStations, N);
+    if (stage.error) {
+      errors.push(`Airfoil "${a.name ?? a.id}": ${stage.error}`);
       continue;
     }
-    try {
-      const prof = profileCurve(check.points, { parametrization: settings.parametrization });
-      result.profiles.set(s.airfoil, { ...prof, id: a.id, name: a.name, points: check.points, compat: unitChord(resampleProfile(prof, chordStations), N) });
-    } catch (e) {
-      errors.push(`Airfoil "${a.name ?? a.id}": the NURBS interpolation failed (${e.message}).`);
-    }
+    result.profiles.set(s.airfoil, { ...stage.prof, id: a.id, name: a.name, points: stage.points, compat: stage.compat });
   }
   if (errors.length) return result;
 
@@ -356,11 +395,11 @@ export function buildWing(project) {
     paramsU[M - 1] = 1;
     const degU = 3;
     const knotsU = averagingKnots(paramsU, degU);
-    const luU = luFactor(collocationMatrix(paramsU, degU, knotsU));
+    const luU = collocationFactor(paramsU, degU, knotsU);
     const rowCtrl = rows.map((row) => {
       const out = row.map(() => [0, 0, 0]);
       for (let c = 0; c < 3; c++) {
-        const x = luSolve(
+        const x = collocationSolve(
           luU,
           row.map((q) => q[c]),
         );
@@ -416,6 +455,21 @@ export function buildWing(project) {
   }
   const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs } = fitted;
   result.stations = stations;
+  // Surface rows (planes y = const) at the sections: a cubic row can overshoot between the
+  // resampled points and cross, which the point checks above do not see. Between sections the
+  // thickness check on the blended points applies.
+  const rowV = ys.map((y) => (y1 > y0 ? (y - y0) / (y1 - y0) : 0));
+  const chordAtV = (v) => placement(y0 + v * (y1 - y0)).chord;
+  for (const v of rowV) {
+    const cross = surfaceRowCrossing(surface, v, CROSSING_TOLERANCE * chordAtV(v));
+    if (cross) {
+      errors.push(
+        `The loft surface crosses itself at y = ${(y0 + v * (y1 - y0)).toFixed(1)} mm near x = ${cross.x.toFixed(1)} mm: ` +
+          'the surface rows overshoot between the resampled points. Increase Settings > Chord samples or use airfoil files with more points.',
+      );
+      return result;
+    }
+  }
   result.surface = surface;
   result.extraStations = extra;
   if (limited) {

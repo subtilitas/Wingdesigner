@@ -31,6 +31,7 @@ above 2,000,000 characters or 5000 points is rejected.
 | self-intersection | error | two non-adjacent outline segments cross |
 | one-surface | error | upper or lower surface has fewer than 3 points |
 | crossed-surfaces | error | upper below lower by more than 0.01 % chord |
+| surfaces-touch | error | thickness at most 0.001 % chord between 1 % and 99 % chord, checked at every file point and 201 cosine-spaced positions |
 | te-crossed | error | trailing-edge gap below −0.01 % chord |
 | te-missing | error | first and last point are not at the trailing edge (5 % chord tolerance) |
 | coarse | warning | fewer than 20 points |
