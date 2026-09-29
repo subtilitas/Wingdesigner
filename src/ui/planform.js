@@ -247,8 +247,12 @@ export class PlanformEditor {
   onDrag(hnd, wy, wmx, phase) {
     if (phase === 'cancel') return;
     const x = Math.round(-wmx * 10) / 10;
-    const y = Math.round(wy * 10) / 10;
+    let y = Math.round(wy * 10) / 10;
     if (phase === 'start') {
+      // The point's own y, which need not lie on the 0.1 mm grid of the pointer.
+      const p = this.store.project;
+      const origY = hnd.type === 'guide' ? p.guides[hnd.key].points[hnd.index][1] : p.sections.find((q) => q.id === hnd.id)?.y;
+      this.dragStart = { y, origY };
       if (hnd.type === 'guide') {
         this.selectedGuide = { key: hnd.key, index: hnd.index };
         this.renderForm();
@@ -262,6 +266,8 @@ export class PlanformEditor {
       this.store.lastKey = null;
       return;
     }
+    // Without spanwise pointer movement the point keeps its y.
+    if (this.dragStart && y === this.dragStart.y && this.dragStart.origY !== undefined) y = this.dragStart.origY;
     const key = `drag-${hnd.type}-${hnd.id ?? hnd.key}-${hnd.index ?? ''}`;
     if (hnd.type === 'guide') {
       this.store.update((p) => moveGuidePoint(p, hnd.key, hnd.index, x, y), { key });

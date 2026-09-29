@@ -67,7 +67,11 @@ export function syncGuidesToSpan(project) {
     const a = g.points[0][1];
     const b = g.points[g.points.length - 1][1];
     if (a === y0 && b === y1) continue;
-    g.points = g.points.map(([x, y]) => [x, b > a ? y0 + ((y - a) / (b - a)) * (y1 - y0) : y0]);
+    const mapped = g.points.map(([x, y]) => [x, b > a ? y0 + ((y - a) / (b - a)) * (y1 - y0) : y0]);
+    // A span too narrow for distinct numbers would merge points; the guide then keeps its y values
+    // (the build stretches them onto the span anyway).
+    const ordered = (pts) => pts.every((q, i) => i === 0 || q[1] > pts[i - 1][1]);
+    if (ordered(mapped) || !ordered(g.points)) g.points = mapped;
   }
   return project;
 }

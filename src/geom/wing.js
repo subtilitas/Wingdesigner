@@ -120,7 +120,7 @@ export function joinCurves(curves) {
  * values: array over stations of equally sized point arrays.
  * Returns { degree, knots, points: [station-independent index][i] }.
  */
-function interpolateAlongV(values, scheme) {
+export function interpolateAlongV(values, scheme) {
   const nCols = values[0].length;
   const cols = [];
   for (let i = 0; i < nCols; i++) {
@@ -128,6 +128,8 @@ function interpolateAlongV(values, scheme) {
     if (scheme.kind === 'global') {
       cols.push(interpolateCurve(series, scheme.degree, { params: scheme.params }));
     } else {
+      // One degree for every panel (joinCurves needs it): the fewest stations of a panel bound it.
+      const q = scheme.panels.reduce((m, [a, b]) => Math.min(m, b - a), scheme.degree);
       const parts = scheme.panels.map(([a, b]) => {
         const f0 = scheme.params[a];
         const f1 = scheme.params[b];
@@ -135,7 +137,7 @@ function interpolateAlongV(values, scheme) {
         // knots 0, 0, 1, 1), as interpolateCurve returns it, without the solve.
         if (b - a === 1) return { degree: 1, knots: [0, 0, 1, 1].map((t) => f0 + t * (f1 - f0)), points: [series[a].slice(), series[b].slice()] };
         const local = scheme.params.slice(a, b + 1).map((f) => (f - f0) / (f1 - f0));
-        const c = interpolateCurve(series.slice(a, b + 1), scheme.degree, { params: local });
+        const c = interpolateCurve(series.slice(a, b + 1), q, { params: local });
         return { degree: c.degree, knots: c.knots.map((t) => f0 + t * (f1 - f0)), points: c.points };
       });
       cols.push(joinCurves(parts));

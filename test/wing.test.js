@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { OVERSHOOT_LIMIT, buildWing, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
+import { OVERSHOOT_LIMIT, buildWing, interpolateAlongV, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
+import { syncGuidesToSpan } from '../src/model/edit.js';
 import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nurbs.js';
 import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
@@ -774,6 +775,28 @@ describe('smooth spanwise overshoot', () => {
       `The loft grid needs ${(n * 401).toLocaleString('en')} points with one station per panel (${n.toLocaleString('en')} sections, 200 chord samples); the limit is ${LIMITS.maxGridPoints.toLocaleString('en')}. Reduce the chord samples or the sections.`,
     );
     expect(b.surface).toBeNull();
+  });
+
+  it('joins panel curves of one degree when panels hold different station counts', () => {
+    // Panels of 1 and 3 intervals: degree 3 is not possible in the first, so both use degree 1.
+    const values = [0, 1, 2, 3, 4].map((y) => [[0, y, y * y]]);
+    const r = interpolateAlongV(values, { kind: 'panels', params: [0, 0.25, 0.5, 0.75, 1], panels: [[0, 1], [1, 4]], degree: 3 });
+    expect(r.degree).toBe(1);
+    expect(r.knots.length).toBe(r.columns[0].length + r.degree + 1);
+    expect(r.columns[0].map((p) => p[1])).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('keeps guide y values when the span leaves no room for distinct numbers', () => {
+    const p = sampleProject();
+    p.sections = p.sections.slice(0, 2);
+    [1, 1.0000000000000002].forEach((y, i) => (p.sections[i].y = y));
+    p.guides.end.points = [[200, 0], [190, 0.5], [150, 1]];
+    syncGuidesToSpan(p);
+    expect(p.guides.end.points.map((q) => q[1])).toEqual([0, 0.5, 1]);
+    // A span with room keeps the stretch.
+    p.sections[1].y = 600;
+    syncGuidesToSpan(p);
+    expect(p.guides.end.points.map((q) => q[1])).toEqual([1, 300.5, 600]);
   });
 
   it('builds sections at adjacent doubles in smooth mode without repeated stations', () => {
