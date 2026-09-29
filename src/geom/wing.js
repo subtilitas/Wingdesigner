@@ -6,12 +6,18 @@
 
 import { checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
-import { averagingKnots, collocationMatrix, interpolateCurve, parametrize } from './nurbs.js';
+import { averagingKnots, collocationMatrix, curvePoint, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
 import { luFactor, luSolve } from './linalg.js';
 import { cosineStations, profileCurve, resampleProfile } from './profile.js';
 import { blendPoints, blendScalar, spanwiseWeights } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, resolveSettings } from '../model/project.js';
+
+/** Planform deviation (mm) between loft and intended edges above which a warning is issued. */
+export const PLANFORM_TOLERANCE = 0.5;
+
+/** Span samples for the chord check (in addition to stations and guide breakpoints). */
+const CHORD_CHECK_SAMPLES = 256;
 
 /** Smallest trailing-edge gap in mm for an open trailing edge. */
 export const MIN_OPEN_GAP = 0.01;
@@ -178,15 +184,13 @@ export function buildWing(project) {
   const T = vals('twist');
   const pivot = settings.twistPivot;
   const te = settings.trailingEdge;
-  let minChord = Infinity;
-  let minChordY = y0;
-
-  for (const y of stationYs) {
+  const placed = new Map();
+  const placement = (y) => {
+    const hit = placed.get(y);
+    if (hit) return hit;
     const w = weights(y);
     let xLE = blendScalar(w, X);
     let chord = blendScalar(w, C);
-    const z = blendScalar(w, Z);
-    const twist = blendScalar(w, T);
     if (guideOn.nose && guideOn.end) {
       xLE = guideXAt(result.guides.nose, y, y0, y1);
       chord = guideXAt(result.guides.end, y, y0, y1) - xLE;
@@ -195,17 +199,44 @@ export function buildWing(project) {
     } else if (guideOn.end) {
       xLE = guideXAt(result.guides.end, y, y0, y1) - chord;
     }
+    const out = { w, xLE, chord, z: blendScalar(w, Z), twist: blendScalar(w, T) };
+    placed.set(y, out);
+    return out;
+  };
+
+  // Chord check on a dense span sampling plus every guide breakpoint (control points and knots),
+  // so a crossing between two loft stations is reported too.
+  const checkYs = new Set(stationYs);
+  for (let k = 0; k <= CHORD_CHECK_SAMPLES; k++) checkYs.add(y0 + ((y1 - y0) * k) / CHORD_CHECK_SAMPLES);
+  for (const key of ['nose', 'end']) {
+    const c = result.guides[key];
+    if (!c) continue;
+    const gy0 = c.points[0][1];
+    const gy1 = c.points[c.points.length - 1][1];
+    const toWing = (gy) => y0 + ((gy - gy0) / (gy1 - gy0)) * (y1 - y0);
+    for (const P of c.points) checkYs.add(toWing(P[1]));
+    for (const u of c.knots) checkYs.add(toWing(curvePoint(c, u)[1]));
+  }
+  let minChord = Infinity;
+  let minChordY = y0;
+  for (const y of checkYs) {
+    if (!(y >= y0 && y <= y1)) continue;
+    const { chord } = placement(y);
     if (chord < minChord) {
       minChord = chord;
       minChordY = y;
     }
-    const shape = applyTrailingEdge(blendPoints(w, compat), te.mode, te.thickness / Math.max(chord, LIMITS.minChord), N);
-    const place = { xLE, y, z, chord: Math.max(chord, LIMITS.minChord), twist };
-    result.stations.push({ ...place, v: y1 > y0 ? (y - y0) / (y1 - y0) : 0, shape });
   }
   if (minChord < LIMITS.minChord) {
     errors.push(`Chord drops to ${minChord.toFixed(2)} mm at y = ${minChordY.toFixed(1)} mm; nose line and end line must not touch or cross.`);
     return result;
+  }
+
+  for (const y of stationYs) {
+    const { w, xLE, chord, z, twist } = placement(y);
+    const shape = applyTrailingEdge(blendPoints(w, compat), te.mode, te.thickness / chord, N);
+    const place = { xLE, y, z, chord, twist };
+    result.stations.push({ ...place, v: y1 > y0 ? (y - y0) / (y1 - y0) : 0, shape });
   }
   if (te.mode === 'thickness') {
     const maxGap = Math.max(...result.stations.map((s) => te.thickness / s.chord));
@@ -273,6 +304,30 @@ export function buildWing(project) {
     knotsV: along.knots,
     points: ctrl,
   };
+  // Planform deviation: the loft passes through the stations only. Compare its leading and
+  // trailing edge with the intended placement between stations (guide detail finer than the
+  // station spacing shows up here).
+  const teShapes = compat.map((c) => [c[0]]);
+  let dev = 0;
+  let devY = y0;
+  for (const y of checkYs) {
+    if (!(y >= y0 && y <= y1) || !(y1 > y0)) continue;
+    const pl = placement(y);
+    const [le, teU] = placeSection([[0, 0], blendPoints(pl.w, teShapes)[0]], { ...pl, y }, pivot);
+    const v = (y - y0) / (y1 - y0);
+    const d = Math.max(Math.abs(surfacePoint(result.surface, paramsU[N], v)[0] - le[0]), Math.abs(surfacePoint(result.surface, 0, v)[0] - teU[0]));
+    if (d > dev) {
+      dev = d;
+      devY = y;
+    }
+  }
+  result.planformDeviation = dev;
+  if (dev > PLANFORM_TOLERANCE) {
+    warnings.push(
+      `The loft deviates up to ${dev.toFixed(2)} mm from the intended leading or trailing edge at y = ${devY.toFixed(1)} mm; ` +
+        `guide-curve detail is finer than the spanwise stations (${K} per panel).`,
+    );
+  }
   result.paramsU = paramsU;
   result.paramsV = paramsV;
   result.uLE = paramsU[N];

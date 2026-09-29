@@ -318,3 +318,36 @@ describe('strip triangulation', () => {
     expect(meshVolume(hm)).toBeGreaterThan(0);
   });
 });
+
+describe('guide crossing between stations', () => {
+  it('reports a crossing narrower than the station spacing', () => {
+    const p = sampleProject();
+    p.guides.end.enabled = true;
+    p.guides.end.mode = 'control';
+    p.guides.end.degree = 1;
+    p.guides.end.points = [[200, 0], [195, 300], [200, 329], [-10, 330], [200, 331], [170, 600]];
+    p.guides.nose.enabled = true;
+    const b = buildWing(p);
+    expect(b.errors[0]).toMatch(/Chord drops to -\d+\.\d+ mm at y = 330\.0 mm/);
+  });
+
+  it('warns when guide detail is finer than the station spacing', () => {
+    const p = sampleProject();
+    p.guides.end.enabled = true;
+    p.guides.end.mode = 'control';
+    p.guides.end.degree = 1;
+    p.guides.end.points = [[200, 0], [195, 300], [200, 329], [-10, 330], [200, 331], [170, 600]];
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.warnings.some((w) => /deviates up to \d+\.\d+ mm/.test(w))).toBe(true);
+  });
+
+  it('accepts guides that stay apart', () => {
+    const p = sampleProject();
+    p.guides.end.enabled = true;
+    p.guides.end.mode = 'control';
+    p.guides.end.degree = 1;
+    p.guides.end.points = [[200, 0], [195, 300], [180, 330], [170, 600]];
+    expect(buildWing(p).errors).toEqual([]);
+  });
+});

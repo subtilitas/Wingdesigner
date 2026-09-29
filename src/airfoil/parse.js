@@ -16,6 +16,8 @@ import { signedArea } from './geometry.js';
 
 const NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?$/;
 const DECIMAL_COMMA = /^[-+]?\d*,\d+$/;
+// Column header lines such as "x y", "X Yo Yu", "x/c y/c", "X Y_upper Y_lower".
+const COLUMN_HEADER = /^(?:[xyz](?:\/c)?[a-z_]*\s*){2,3}$/i;
 
 function issue(severity, code, message) {
   return { severity, code, message };
@@ -136,7 +138,7 @@ export function parseDat(text, options = {}) {
       rows.push({ values: parsed.values, line: i + 1 });
     } else if (!name && rows.length === 0) {
       name = raw.trim();
-    } else {
+    } else if (!COLUMN_HEADER.test(line)) {
       ignored++;
     }
   }

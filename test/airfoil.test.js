@@ -345,3 +345,13 @@ describe('parser hardening', () => {
     expect(importAirfoilText('<coordinates>', 'x.xml').ok).toBe(false);
   });
 });
+
+describe('column headers', () => {
+  it('skips column header lines without a warning', () => {
+    const r = parseDat('Foil\n  X      Yo       Yu\n0 0 0\n50 6 -4\n100 0 0\n');
+    expect(r.format).toBe('table');
+    expect(codes(r.issues)).not.toContain('ignored-lines');
+    expect(codes(parseDat('Foil\nx/c y/c\n1 0\n0 0\n1 -0.01\n').issues)).not.toContain('ignored-lines');
+    expect(codes(parseDat('Foil\nfree text\n1 0\n0 0\n1 -0.01\n').issues)).toContain('ignored-lines');
+  });
+});

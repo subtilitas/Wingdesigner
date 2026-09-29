@@ -146,6 +146,15 @@ textarea {
 
 input.num {
   width: 4.6em;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Spin buttons take a third of the field width; arrow keys and the mouse wheel still step values. */
+input.num::-webkit-inner-spin-button,
+input.num::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 :focus-visible {
@@ -187,7 +196,7 @@ input.num {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 560px);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 600px);
 }
 
 .view-wrap {
@@ -382,7 +391,17 @@ legend {
 }
 
 .grid-table.sections select {
-  max-width: 7.6em;
+  width: 8.4em;
+  padding-right: 2px;
+}
+
+.grid-table.sections .sec-word {
+  display: none;
+}
+
+.grid-table.sections button.icon {
+  min-width: 28px;
+  padding: 2px 6px;
 }
 
 .grid-table.sections .sec-num {
@@ -619,8 +638,7 @@ dialog::backdrop {
   }
 
   .brand {
-    font-size: 0;
-    gap: 0;
+    display: none;
   }
 
   .actions {
@@ -673,6 +691,10 @@ dialog::backdrop {
   .grid-table.sections .sec-num {
     grid-column: 1 / 2;
     align-self: center;
+  }
+
+  .grid-table.sections .sec-word {
+    display: inline;
   }
 
   .grid-table.sections .sec-airfoil {

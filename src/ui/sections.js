@@ -49,7 +49,7 @@ export class SectionsPanel {
       return h(
         'tr',
         { class: s.id === sel ? 'selected' : '', onclick: (e) => (e.target.tagName === 'TD' || e.target.tagName === 'TH' ? this.store.select(s.id) : null) },
-        h('th', { scope: 'row', class: 'sec-num' }, `Section ${i + 1}`),
+        h('th', { scope: 'row', class: 'sec-num' }, h('span', { class: 'sec-word' }, 'Section '), String(i + 1)),
         h(
           'td',
           { class: 'sec-airfoil', dataset: { label: 'Airfoil' } },
