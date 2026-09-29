@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Added
+
+- Bundled airfoil library: Clark Y, USA 35B, NACA M-6 and NACA 8-H-12 from NACA report tables, RAF 34
+  from a Royal Aircraft Establishment table reprinted by NACA, and S9104 (CC BY 4.0, Michael Selig).
+  `public/airfoils/NOTICE.md` gives source, legal basis, conditions and attribution per file; the
+  status outside the United States of the public-domain tables is not established.
+
 ### Changed
 
 - Minimum chord (profile depth) 1 mm instead of 0.01 mm, for every section, span position and pointed

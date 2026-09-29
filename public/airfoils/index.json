@@ -1,1 +1,82 @@
-{ "airfoils": [] }
+{
+  "airfoils": [
+    {
+      "id": "clark-y",
+      "name": "Clark Y",
+      "file": "clark-y.dat",
+      "category": "Cambered",
+      "use": "Model aircraft from free-flight gliders to radio-controlled scale models. Thickness 11.7 % of chord; lower surface flat from 30 % of chord to the trailing edge. Ordinates from the published base line: the leading edge is 3.50 % of chord above the x axis.",
+      "source": {
+        "author": "Abe Silverstein, National Advisory Committee for Aeronautics (NACA) Report No. 502, Table I; section by Virginius E. Clark",
+        "url": "https://ntrs.nasa.gov/citations/19930091575",
+        "license": "public-domain",
+        "terms": "https://sti.nasa.gov/disclaimers/"
+      }
+    },
+    {
+      "id": "naca-8h12",
+      "name": "NACA 8-H-12",
+      "file": "naca-8h12.dat",
+      "category": "Reflex",
+      "use": "Section for helicopter rotor blades with a pitching moment near zero about the aerodynamic centre; reflexed mean line; used on the full-size tailless gliders Kasper Bekas and Brochocki BKB-1. Thickness 12.0 % of chord. Use on models: not documented in the sources checked.",
+      "source": {
+        "author": "Raymond F. Schaefer and Hamilton A. Smith, National Advisory Committee for Aeronautics (NACA) Technical Note 1998, Table I",
+        "url": "https://ntrs.nasa.gov/citations/19930082712",
+        "license": "public-domain",
+        "terms": "https://sti.nasa.gov/disclaimers/"
+      }
+    },
+    {
+      "id": "naca-m6",
+      "name": "NACA M-6",
+      "file": "naca-m6.dat",
+      "category": "Reflex",
+      "use": "Reflexed, pitch-stable section with small centre-of-pressure travel; candidate section for flying wings; used on the full-size Gee Bee Z Super Sportster (thinned to 8 % of chord on the Gee Bee R-1). Thickness 12.0 % of chord; trailing edge 0.52 % of chord thick.",
+      "source": {
+        "author": "Max M. Munk and Elton W. Miller, National Advisory Committee for Aeronautics (NACA) Report No. 221, Table XXIX",
+        "url": "https://ntrs.nasa.gov/citations/19930091288",
+        "license": "public-domain",
+        "terms": "https://sti.nasa.gov/disclaimers/"
+      }
+    },
+    {
+      "id": "raf-34",
+      "name": "RAF 34",
+      "file": "raf-34.dat",
+      "category": "Cambered",
+      "use": "Wing section of full-size aircraft such as the Comper Streak and, in modified form, the de Havilland DH-98 Mosquito; for scale models of such aircraft. Thickness 12.6 % of chord. Seven values of the source scan are uncertain by up to 0.20 % of chord (listed in NOTICE.md).",
+      "source": {
+        "author": "Royal Aircraft Establishment (RAE), United Kingdom; table in National Advisory Committee for Aeronautics (NACA) Report No. 286, Reference No. 639",
+        "url": "https://ntrs.nasa.gov/citations/19930091355",
+        "license": "public-domain",
+        "terms": "https://sti.nasa.gov/disclaimers/"
+      }
+    },
+    {
+      "id": "s9104",
+      "name": "S9104",
+      "file": "s9104.dat",
+      "category": "Cambered",
+      "use": "Heavy-lift and high-lift section. XFOIL (airfoil analysis program) predicts a maximum lift coefficient of 2.59 at 11° angle of attack and a Reynolds number of 200,000. Thickness 12.1 % of chord, camber 14.7 % of chord; thinnest point 0.26 % of chord at 91 % of chord.",
+      "source": {
+        "author": "Michael Selig, University of Illinois Urbana-Champaign",
+        "url": "https://m-selig.ae.illinois.edu/uiuc_lsat/s9104/s9104.html",
+        "license": "CC-BY-4.0",
+        "terms": "https://creativecommons.org/licenses/by/4.0/"
+      }
+    },
+    {
+      "id": "usa-35b",
+      "name": "USA 35B",
+      "file": "usa-35b.dat",
+      "category": "Cambered",
+      "use": "Wing section of the full-size Piper J-3 Cub and PA-18 Super Cub; for scale models of these aircraft. Thickness 11.6 % of chord. Ordinates from the published base line: the leading edge is 2.76 % of chord above the x axis.",
+      "source": {
+        "author": "Max M. Munk and Elton W. Miller, National Advisory Committee for Aeronautics (NACA) Report No. 233, Table XXXVI",
+        "url": "https://ntrs.nasa.gov/citations/19930091301",
+        "license": "public-domain",
+        "terms": "https://sti.nasa.gov/disclaimers/"
+      }
+    }
+  ]
+}

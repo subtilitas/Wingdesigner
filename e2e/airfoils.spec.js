@@ -514,6 +514,29 @@ test.describe('Airfoils tab', () => {
     await expect.poll(async () => (await savedIds(page)).airfoils).toEqual(['naca2412', 'naca2410', 'naca-4412']);
   });
 
+  test('bundled library files list their source and license and add with their attribution', async ({ page }) => {
+    await startSport(page);
+    const bundled = sectionOf(page, 'Library')
+      .locator('.airfoil-list > li')
+      .filter({ hasNot: page.locator('.grow > .small', { hasText: /· generated$/ }) });
+    // The six free-licensed files of public/airfoils/index.json, in index order.
+    expect(await itemNames(bundled)).toEqual(['Clark Y', 'NACA 8-H-12', 'NACA M-6', 'RAF 34', 'S9104', 'USA 35B']);
+    await expect(bundled.filter({ hasText: 'S9104' }).locator('.grow > .small')).toContainText('Michael Selig, University of Illinois Urbana-Champaign · CC-BY-4.0');
+    await expect(bundled.filter({ hasText: 'Clark Y' }).locator('.grow > .small')).toContainText('public-domain');
+    await bundled.filter({ hasText: 'S9104' }).getByRole('button', { name: 'Preview' }).click();
+    await expect(dialogOf(page).getByRole('heading', { name: 'S9104' })).toBeVisible();
+    await addFromPreview(page, 'S9104');
+    expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410', 'S9104']);
+    await expect.poll(async () => (await savedProject(page)).airfoils[2]?.source).toMatchObject({
+      kind: 'library',
+      id: 's9104',
+      license: 'CC-BY-4.0',
+      url: 'https://m-selig.ae.illinois.edu/uiuc_lsat/s9104/s9104.html',
+      terms: 'https://creativecommons.org/licenses/by/4.0/',
+    });
+    expect((await savedProject(page)).airfoils[2].points).toHaveLength(81);
+  });
+
   test('adding a library preset that the wizard already put in the project does not create a duplicate', async ({ page }) => {
     await startSport(page);
     await sectionOf(page, 'Library').getByLabel('Filter library').fill('2412');

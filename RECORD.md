@@ -18,7 +18,7 @@ Last updated: 2026-09-29
 | STL, 3MF, project JSON | Implemented; 3MF model XML is written and deflated in 1 MB chunks (zip entries with data descriptors) | `test/export.test.js`; `scripts/validate_3mf.py` with lib3mf 2.5.0 in strict mode: 8 cases, no reader warnings, every object manifold and oriented. Other 3MF readers (slicers) not tested. |
 | UI (`src/ui/`, `src/main.js`) | 3D viewer, planform editor, sections, airfoils, settings, checks, wizard, export | Playwright: 123 tests in 9 spec files on desktop (1280 x 720) and Pixel 7 (246 runs, 216 pass, 30 viewport-specific skips), every test fails on a page or console error; run against a fresh build (`reuseExistingServer: false`) |
 | CI | `ci.yml` (lint, unit tests, coverage check, STEP and 3MF validation, e2e, Pages deploy; runs on `main` queue, other refs cancel older runs), `docs.yml` (wiki), `release.yml` (tags) | All jobs green on pull request #1; Pages deployment and wiki push run on `main` only and are not yet observed |
-| Bundled airfoil library | Empty index; NACA presets are generated | `npm run airfoils:check` (in CI): free license per entry, restricted hosts rejected, every file indexed and listed in `public/airfoils/NOTICE.md` |
+| Bundled airfoil library | 6 files: Clark Y, USA 35B, NACA M-6, NACA 8-H-12 (NACA report tables, United States public domain), RAF 34 (Royal Aircraft Establishment table reprinted by NACA, United States term expired), S9104 (CC BY 4.0 from the designer); NACA presets are generated | Each file read value by value against the page image of its primary source by two independent passes (research, then verification) and checked by a critic; licence quotes retrieved from the sources; `npm run airfoils:check` (in CI): free license per entry, restricted hosts rejected, every file indexed and listed in `public/airfoils/NOTICE.md`; e2e test adds S9104 with its source |
 
 ## Decisions
 
@@ -65,6 +65,7 @@ Last updated: 2026-09-29
 | Chord and planform checks on 257 span samples plus every guide breakpoint | The loft passes through the stations only; a guide crossing or guide detail between stations is reported (error below 1 mm chord, stations added above 0.5 mm edge deviation, warning if still above after 32 added stations). |
 | aerodesign.de and mh-aerotools.de coordinates not bundled | Their terms grant personal use and restrict redistribution (quotes in the wiki page Airfoil-Sources). The app links to them and fills in attribution on upload. |
 | MIT license for the code | Chosen by the owner. Airfoil data keeps its own terms. |
+| Bundled airfoils: share-alike and copyleft data excluded; United States public-domain tables bundled with "status outside the United States is not established"; RAF 34 shipped with its 7 uncertain cells listed; PROFOIL test sections not bundled | Owner decisions of 2026-09-29. The only designer-licensed RC families found are share-alike (JX library, CC BY-SA 4.0) or copyleft (Drela DAE and HT, GPL-2.0-or-later). The PROFOIL test sections (MIT) are generic designs without polars or flight history. |
 | Bundled airfoils only under a free license: public domain (by law, expired copyright or dedication) or CC0-1.0, Unlicense, CC-BY-4.0, CC-BY-3.0, MIT, BSD-2-Clause, BSD-3-Clause | Owner requirement: bundled airfoils are free to use. Personal-use, non-commercial, no-derivatives, share-alike, "ask first" and inferred permissions are excluded. `scripts/check-airfoils.mjs` enforces the list. |
 | GitHub Actions: checkout v7, setup-node v7, setup-python v7, cache v6, upload-artifact v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5 | Latest majors on 2026-09-29; all `runs.using: node24` (upload-pages-artifact is composite on upload-artifact v7), checked in each `action.yml`. |
 
@@ -88,8 +89,11 @@ the profile stage is cached after the warm-up runs (first build of a new airfoil
 
 ## Open items
 
-- Bundled library: research on free-licensed and public-domain airfoil sources (NACA/NASA/NREL
-  reports, Drela, databases, historical series, open releases) is in progress.
+- Bundled library: RAF 34 has 7 cells that the 1-bit NTRS scan does not settle (largest possible
+  difference 0.20 % of chord at the lower surface at 60 % of chord); an independent scan of NACA
+  Report No. 286 or the original RAE report would settle them. Not bundled for lack of a written
+  grant, with the designers named in the research: Gerald Taylor (DLG, F3J/F5J sections), Michael
+  Selig (SD7037, SD7003, S5010, S1223), Mark Drela (HT, AG, DAE41), Peter Wick (PW planks).
 - Written permission from Hartmut Siegmann (postal only, per his site) or Martin Hepperle
   (e-mail in his page footer) would allow bundling HS or MH airfoils.
 - First run on `main`: confirm Pages deployment and the wiki push with `GITHUB_TOKEN`.
