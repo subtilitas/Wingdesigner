@@ -16,6 +16,10 @@ export class PlanformEditor {
     this.store = store;
     this.getBuild = getBuild;
     this.selectedGuide = null; // { key, index }
+    // Undo, redo and loading replace the guide points: a kept index would point at another point.
+    store.subscribe((project, reason) => {
+      if (reason === 'undo' || reason === 'redo' || reason === 'load') this.selectedGuide = null;
+    });
     this.readout = h('div', { class: 'readout', 'aria-live': 'polite' }, 'Drag points to edit. Pinch or scroll to zoom, drag the background to pan, double-click to fit.');
     this.canvas = h('canvas', { class: 'planform-canvas', 'aria-label': 'Planform editor' });
     const tools = h(

@@ -37,8 +37,12 @@ function loadSaved() {
   }
 }
 
-/** Autosave only projects that load again; an invalid edit keeps the last valid save. */
+/**
+ * Autosave only projects that load again; an invalid edit keeps the last valid save. Nothing is
+ * saved while the first-run wizard is open, so a reload then shows the wizard again.
+ */
 function save(project) {
+  if (firstRunOpen) return;
   try {
     if (!validateProject(project).ok) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
@@ -56,6 +60,7 @@ function safeBuild(project) {
 }
 
 const saved = loadSaved();
+let firstRunOpen = !saved;
 const store = new Store(saved ?? defaultProject());
 let build = safeBuild(store.project);
 const getBuild = () => build;
@@ -253,6 +258,11 @@ function message(text, isError = false) {
 
 async function newDesign(firstRun) {
   const p = await openWizard({ firstRun });
+  if (firstRun) {
+    firstRunOpen = false;
+    // Skip keeps the sample wing: save it now that the user has chosen.
+    if (!p) save(store.project);
+  }
   if (p) {
     store.replace(p);
     viewer.hasFitted = false;

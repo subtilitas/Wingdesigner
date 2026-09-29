@@ -49,6 +49,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   resamples by chord position).
 - Small chords add stations at 10 % chord deviation; a fitted chord below 0.9 mm is an error.
 - Three-column tables ordered from the trailing edge to the leading edge are read.
+- Airfoil camber is measured from the chord line instead of a horizontal line through the leading
+  edge.
+- UI: the first-run wizard returns after a reload until a choice is made; the NACA generator titles
+  its preview with the parsed designation; a library preset the wizard already added is not added
+  twice; the View preview of a project airfoil offers only Close; undo or redo after "Add point"
+  clears the guide-point selection; on phones up to 420 px the top bar stays on one row and the
+  Settings pane no longer scrolls sideways.
+- Tests: 121 Playwright tests on desktop and phone replace the single smoke test in CI.
 - Airfoil uploads above 8 MB and project files above 50 MB are rejected before they are read.
 - XML airfoils are read in one pass and reading stops one point past the 5000-point limit.
 - Dragging a leading edge with only the end line enabled evaluates the end line at the new span

@@ -1,7 +1,7 @@
 // Built-in airfoil library: NACA sections generated in the browser plus bundled coordinate files
 // listed in public/airfoils/index.json, and external sources the user can download from.
 
-import { nacaAirfoil } from './naca.js';
+import { nacaAirfoil, parseNacaCode } from './naca.js';
 
 export const NACA_PRESETS = [
   { code: '0006', category: 'Symmetric', use: 'Thin tail surfaces' },
@@ -31,7 +31,8 @@ export const NACA_SOURCE = {
 
 export function nacaEntry(code, options) {
   const a = nacaAirfoil(code, options);
-  return { name: a.name, points: a.points, source: { ...NACA_SOURCE } };
+  // The designation and trailing-edge option identify a generated section (addAirfoil deduplicates by them).
+  return { name: a.name, points: a.points, source: { ...NACA_SOURCE, code: parseNacaCode(code).code, closedTE: options?.closedTE === true } };
 }
 
 /**

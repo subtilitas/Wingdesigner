@@ -163,9 +163,14 @@ export function pruneAirfoils(project) {
 }
 
 /** Add an airfoil unless an identical one (same name and points) exists; returns its id. */
+/** Add an airfoil unless the project holds the same one (same points, or the same generated NACA section). Returns its id. */
 export function addAirfoil(project, airfoil) {
+  const sameNaca = (a) =>
+    a.source?.kind === 'naca' && airfoil.source?.kind === 'naca' && a.source.code !== undefined && a.source.code === airfoil.source.code && a.source.closedTE === airfoil.source.closedTE;
   const same = project.airfoils.find(
-    (a) => a.name === airfoil.name && a.points.length === airfoil.points.length && a.points.every((p, i) => p[0] === airfoil.points[i][0] && p[1] === airfoil.points[i][1]),
+    (a) =>
+      sameNaca(a) ||
+      (a.name === airfoil.name && a.points.length === airfoil.points.length && a.points.every((p, i) => p[0] === airfoil.points[i][0] && p[1] === airfoil.points[i][1])),
   );
   if (same) return same.id;
   const base = slug(airfoil.name) || 'airfoil';

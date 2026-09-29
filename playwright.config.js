@@ -14,5 +14,5 @@ export default defineConfig({
     { name: 'desktop', use: { ...devices['Desktop Chrome'], launchOptions } },
     { name: 'mobile', use: { ...devices['Pixel 7'], launchOptions } },
   ],
-  webServer: { command: 'npm run preview -- --port 4173 --strictPort', url: 'http://localhost:4173', reuseExistingServer: true, timeout: 60000 },
+  webServer: { command: 'npm run preview -- --port 4173 --strictPort', url: 'http://localhost:4173', reuseExistingServer: false, timeout: 60000 },
 });

@@ -313,6 +313,12 @@ fieldset {
   border-radius: var(--radius);
   margin: 0 0 12px;
   padding: 8px 12px 12px;
+  /* The default min-content width lets a long select option widen the pane on phones. */
+  min-inline-size: 0;
+}
+
+select {
+  max-width: 100%;
 }
 
 legend {
@@ -728,5 +734,19 @@ dialog::backdrop {
   input[type='text'],
   input[type='number'] {
     min-height: var(--touch);
+  }
+}
+
+/* Narrow phones (360 px): the seven top-bar buttons stay on one row and scroll sideways if needed. */
+@media (max-width: 420px) {
+  .actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .actions button {
+    flex: none;
+    padding: 2px 6px;
   }
 }

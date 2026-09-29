@@ -104,8 +104,9 @@ export function previewAirfoil(candidate, { title = 'Airfoil preview', allowEdit
         h(
           'div',
           { class: 'row end' },
-          h('button', { type: 'button', onclick: () => dialog.close('cancel') }, 'Cancel'),
-          h('button', { value: 'add', type: 'submit', class: 'primary', disabled: !ok }, ok ? 'Add to project' : 'Cannot add (errors)'),
+          // A view of a project airfoil (allowEdit false) has nothing to add: only Close.
+          h('button', { type: 'button', onclick: () => dialog.close('cancel') }, allowEdit ? 'Cancel' : 'Close'),
+          allowEdit ? h('button', { value: 'add', type: 'submit', class: 'primary', disabled: !ok }, ok ? 'Add to project' : 'Cannot add (errors)') : null,
         ),
       ),
     );
@@ -272,7 +273,7 @@ export class AirfoilsPanel {
         return;
       }
       nacaMsg.textContent = '';
-      await this.addCandidate(nacaEntry(code, { closedTE: closedTE.checked }), `NACA ${code}`);
+      await this.addCandidate(nacaEntry(code, { closedTE: closedTE.checked }), `NACA ${parseNacaCode(code).code}`);
     };
 
     const fileInput = h('input', {

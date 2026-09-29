@@ -74,10 +74,17 @@ function yAtAll(poly, xs) {
 
 /**
  * Thickness and camber statistics of a normalized airfoil (chord 0..1).
- * Returns fractions of chord.
+ * Returns fractions of chord. Camber is the mean of upper and lower surface at a chord position,
+ * measured from the chord line (leading edge to trailing-edge midpoint). For NACA sections this is
+ * below the designated camber (4415: 3.74 % instead of 4 %): the designated camber line starts
+ * behind the geometric leading edge and the thickness is applied normal to it.
  */
 export function airfoilStats(points, samples = 201) {
   const { upper, lower } = splitSurfaces(points);
+  const nP = points.length;
+  const teX = (points[0][0] + points[nP - 1][0]) / 2;
+  const teY = (points[0][1] + points[nP - 1][1]) / 2;
+  const chordY = (x) => (teX > 0 ? (teY * x) / teX : 0);
   let maxT = -Infinity;
   let maxTx = 0;
   let maxC = 0;
@@ -90,7 +97,7 @@ export function airfoilStats(points, samples = 201) {
     const yu = yAt(upper, x);
     const yl = yAt(lower, x);
     const t = yu - yl;
-    const c = (yu + yl) / 2;
+    const c = (yu + yl) / 2 - chordY(x);
     if (t > maxT) {
       maxT = t;
       maxTx = x;

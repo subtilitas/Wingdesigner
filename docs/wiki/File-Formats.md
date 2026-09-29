@@ -48,7 +48,7 @@ NURBS curve crosses itself or runs back in x ([[Geometry|Geometry]], section 1).
 | te-base | warning | closed trailing edge reached over a vertical segment within 1 % chord of the trailing edge: the base is probably read as surface points |
 | duplicates | info | consecutive duplicate points removed |
 | uneven-spacing | info | adjacent segment lengths differ by more than a factor of 25 |
-| stats | info | point count, thickness, camber and their positions, trailing-edge gap |
+| stats | info | point count, thickness, camber and their positions, trailing-edge gap. Camber: mean of the surfaces, measured from the chord line (leading edge to trailing-edge midpoint); for NACA sections below the designated value (4415: 3.74 % at 42 %) |
 
 ## Project JSON
 
