@@ -4,7 +4,7 @@
 // Surface parametrization: u runs around the profile from the upper trailing edge (u = 0) over the
 // leading edge (u = uLE) to the lower trailing edge (u = 1); v is the span fraction (0 root, 1 tip).
 
-import { checkAirfoil } from '../airfoil/sanity.js';
+import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
 import { averagingKnots, collocationFactor, collocationSolve, curvePoint, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, resampleProfile } from './profile.js';
@@ -301,10 +301,25 @@ export function buildWing(project) {
   let minThickY = y0;
   let minTeThick = Infinity;
   let minTeThickY = y0;
+  let minTeCore = Infinity;
+  let minTeCoreY = y0;
+  let minTeCoreX = 0;
+  // Thinnest point of a resampled shape; `core` covers chord stations from 1 % to 99 %, where
+  // thickness at or below the airfoil contact tolerance means the surfaces touch.
   const thinnest = (shape) => {
     let t = Infinity;
-    for (let k = 1; k < N; k++) t = Math.min(t, shape[N - k][1] - shape[N + k][1]);
-    return t;
+    let core = Infinity;
+    let coreX = 0;
+    for (let k = 1; k < N; k++) {
+      const d = shape[N - k][1] - shape[N + k][1];
+      t = Math.min(t, d);
+      const x = chordStations[k];
+      if (x >= 0.01 && x <= 0.99 && d < core) {
+        core = d;
+        coreX = x;
+      }
+    }
+    return { t, core, coreX };
   };
   for (const y of [...checkYs].sort((a, b) => a - b)) {
     if (!(y >= y0 && y <= y1)) continue;
@@ -318,16 +333,21 @@ export function buildWing(project) {
     // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendPoints(w, compat);
     // Round-off level differences do not move the reported position.
-    const t = thinnest(shape);
+    const { t } = thinnest(shape);
     if (t < minThick - 1e-12) {
       minThick = t;
       minThickY = y;
     }
     if (chord >= LIMITS.minChord) {
-      const tTe = thinnest(applyTrailingEdge(shape, te.mode, teGap(chord), N));
+      const { t: tTe, core, coreX } = thinnest(applyTrailingEdge(shape, te.mode, teGap(chord), N));
       if (tTe < minTeThick - 1e-12) {
         minTeThick = tTe;
         minTeThickY = y;
+      }
+      if (core < minTeCore - 1e-12) {
+        minTeCore = core;
+        minTeCoreY = y;
+        minTeCoreX = coreX;
       }
     }
   }
@@ -343,6 +363,15 @@ export function buildWing(project) {
       `The trailing-edge setting pulls the upper surface below the lower surface at y = ${minTeThickY.toFixed(1)} mm ` +
         `(${(minTeThick * 100).toFixed(2)} % chord); the airfoil is thinner inside than its trailing-edge gap. ` +
         'Use "as in file" or a larger trailing-edge thickness.',
+    );
+    return result;
+  }
+  if (minTeCore <= AIRFOIL_LIMITS.touchThickness) {
+    const where = `at y = ${minTeCoreY.toFixed(1)} mm, x = ${(minTeCoreX * 100).toFixed(1)} % chord (thickness ${(minTeCore * 100).toFixed(4)} % chord)`;
+    errors.push(
+      te.mode === 'asis'
+        ? `Upper and lower surface of the blended profile touch ${where}; the wing would have zero thickness there. Use linear interpolation or add sections.`
+        : `The trailing-edge setting makes upper and lower surface touch ${where}; the wing would have zero thickness there. Use "as in file" or a larger trailing-edge thickness.`,
     );
     return result;
   }
@@ -500,5 +529,10 @@ export function buildWing(project) {
   result.closedTE = closedTE;
   result.rootY = y0;
   result.tipY = y1;
+  // Intended planform (leading edge and chord) at any span position, for exact statistics.
+  result.planformAt = (y) => {
+    const q = placement(Math.min(Math.max(y, y0), y1));
+    return { xLE: q.xLE, chord: q.chord };
+  };
   return result;
 }

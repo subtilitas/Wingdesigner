@@ -1,7 +1,7 @@
 // Pure project edit operations used by the UI (kept free of DOM code so they are testable).
 
-import { defaultGuides } from '../geom/guide.js';
-import { newId } from './project.js';
+import { defaultGuides, guideXAt } from '../geom/guide.js';
+import { LIMITS, newId } from './project.js';
 
 export function sortedSections(project) {
   return project.sections.slice().sort((a, b) => a.y - b.y);
@@ -21,6 +21,27 @@ export function clampSectionY(sorted, i, y) {
   const next = i < sorted.length - 1 ? sorted[i + 1].y : Infinity;
   const m = Math.min(1, (next - prev) / 4);
   return Math.min(Math.max(y, prev + m), next - m);
+}
+
+/**
+ * Leading-edge handle drag of section `id` to (x, y): the section moves to the clamped y first; with
+ * the end line enabled (`endCurve`: its built NURBS curve), the chord runs from x to the end line at
+ * the new y, so the rebuilt leading edge lands at x. The guide spans root to tip, so moving the root
+ * or tip section moves that range.
+ */
+export function dragLeadingEdge(project, id, x, y, endCurve = null) {
+  const s = project.sections.find((q) => q.id === id);
+  if (!s) return;
+  const sorted = sortedSections(project);
+  const newY = clampSectionY(sorted, sorted.indexOf(s), y);
+  let te = s.x + s.chord;
+  if (project.guides?.end?.enabled && endCurve) {
+    const ys = sorted.map((q) => (q === s ? newY : q.y));
+    te = guideXAt(endCurve, newY, Math.min(...ys), Math.max(...ys));
+  }
+  s.x = Math.min(x, te - LIMITS.minChord);
+  s.chord = te - s.x;
+  s.y = newY;
 }
 
 export function syncGuidesToSpan(project) {

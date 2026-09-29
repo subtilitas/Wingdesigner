@@ -63,7 +63,9 @@ Trailing edge per station: as in the files, closed (gap 0, both end points merge
 thickness t in mm (gap t / chord, at most 5 % of the chord). The gap change is added with weight
 rising linearly from 0 at the leading edge to 1 at the trailing edge (XFOIL TGAP style). When all
 stations are closed, the trailing edge is closed; otherwise every station gets a gap of at least
-0.01 mm (at most 5 % of the chord).
+0.01 mm (at most 5 % of the chord). The linear taper can pull the surfaces of an airfoil that is
+thinner inside than its gap through each other or make them touch; both are errors (negative
+thickness, or at most 0.001 % chord between 1 % and 99 % chord, checked at 257 span positions).
 
 Placement of a normalized point (p_x, p_z) with twist θ about the pivot c_p:
 
@@ -118,8 +120,11 @@ plane axes are mirrored as vectors and stay outward.
 
 ## 7. Planform statistics
 
-Area, mean aerodynamic chord (MAC) and its position integrate the station values exactly for linear
-chord variation between stations:
+Area, mean aerodynamic chord (MAC) and its position integrate the intended planform (leading edge
+and chord at every span position, from sections, spanwise interpolation and guide curves) with
+5-point Gauss-Legendre quadrature per station interval. The rule is exact for polynomials up to
+degree 9, so linear panels, cubic spanwise splines and their products give values independent of the
+station count:
 
 ```
 S_half = ∫ c dy,  MAC = ∫ c² dy / S_half,  y_MAC = ∫ c y dy / S_half,  x_LE,MAC = ∫ c x_LE dy / S_half

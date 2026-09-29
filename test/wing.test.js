@@ -485,6 +485,17 @@ describe('trailing-edge setting and span range', () => {
     }
   });
 
+  it('reports surfaces made to touch by the closed mode', () => {
+    // Thickness 0.03 x + 0.1 sqrt(x) (1 - x) (x - 0.5)^2: closing the 3 % gap leaves zero at 50 %.
+    const t2 = (x) => 0.03 * x + 0.1 * Math.sqrt(x) * (1 - x) * (x - 0.5) ** 2;
+    const pts = [...xs.slice().reverse().map((x) => [x, t2(x) / 2]), ...xs.slice(1).map((x) => [x, -t2(x) / 2])];
+    const p = project('closed');
+    p.airfoils = [{ id: 'w', name: 'touch', points: pts }];
+    expect(buildWing(p).errors[0]).toMatch(/trailing-edge setting makes upper and lower surface touch at y = 0\.0 mm, x = 50\.0 % chord/);
+    p.settings.trailingEdge = { mode: 'asis', thickness: 0.3 };
+    expect(buildWing(p).errors).toEqual([]);
+  });
+
   it('rejects a section on the mirrored side of y = 0', () => {
     const p = sampleProject();
     p.sections[0].y = -5;

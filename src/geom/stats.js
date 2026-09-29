@@ -1,5 +1,15 @@
-// Planform statistics of the full wing from a build result (trapezoidal integration over the
-// spanwise stations, which is exact for linear panels).
+// Planform statistics of the full wing from a build result. The planform (chord and leading edge
+// over span) is integrated with 5-point Gauss-Legendre quadrature per station interval, exact for
+// polynomials up to degree 9: linear panels, cubic spanwise splines and their products. Builds
+// without a planform function fall back to trapezoids over the stations.
+
+const GL = [
+  [-0.906179845938664, 0.236926885056189],
+  [-0.538469310105683, 0.478628670499366],
+  [0, 0.568888888888889],
+  [0.538469310105683, 0.478628670499366],
+  [0.906179845938664, 0.236926885056189],
+];
 
 /**
  * @returns {{span: number, area: number, aspectRatio: number, mac: number, macY: number, macXLE: number, rootChord: number, tipChord: number}}
@@ -16,6 +26,18 @@ export function wingStats(build) {
     const a = st[i - 1];
     const b = st[i];
     const dy = b.y - a.y;
+    if (build.planformAt) {
+      for (const [t, w] of GL) {
+        const y = a.y + ((t + 1) * dy) / 2;
+        const { xLE, chord } = build.planformAt(y);
+        const wy = (w * dy) / 2;
+        A += wy * chord;
+        C2 += wy * chord * chord;
+        CY += wy * chord * y;
+        CX += wy * chord * xLE;
+      }
+      continue;
+    }
     // Exact integrals of products of linear functions over the interval.
     const lin = (f0, f1, g0, g1) => (dy * (2 * f0 * g0 + f0 * g1 + f1 * g0 + 2 * f1 * g1)) / 6;
     A += (dy * (a.chord + b.chord)) / 2;

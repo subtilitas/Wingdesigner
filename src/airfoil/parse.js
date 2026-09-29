@@ -74,8 +74,8 @@ function decodeEntities(s) {
 }
 
 /** Content between the first <tag> and its closing tag (case-insensitive), or null. */
-function between(text, open, close, from = 0) {
-  const lower = text.toLowerCase();
+/** Content between `open` and `close` from `from` on; `lower` is text.toLowerCase(), computed once by callers that search repeatedly. */
+function between(text, open, close, from = 0, lower = text.toLowerCase()) {
   const a = lower.indexOf(open, from);
   if (a < 0) return null;
   const b = lower.indexOf(close, a + open.length);
@@ -90,18 +90,22 @@ function xmlNumber(block, tag) {
 }
 
 function parseXml(text) {
-  const name = decodeEntities((between(text, '<name>', '</name>')?.content ?? '').trim());
-  const first = between(text, '<coordinates>', '</coordinates>');
+  const lower = text.toLowerCase();
+  const name = decodeEntities((between(text, '<name>', '</name>', 0, lower)?.content ?? '').trim());
+  const first = between(text, '<coordinates>', '</coordinates>', 0, lower);
   if (!first || first.content === null) return null;
   let blocks = 1;
   for (let at = first.end; ; blocks++) {
-    const next = between(text, '<coordinates>', '</coordinates>', at);
+    const next = between(text, '<coordinates>', '</coordinates>', at, lower);
     if (!next || next.content === null) break;
     at = next.end;
   }
+  // One pass over the block; reading stops one point past the limit (finish() rejects the file).
+  const block = first.content;
+  const blockLower = block.toLowerCase();
   const points = [];
-  for (let at = 0; ; ) {
-    const pt = between(first.content, '<point>', '</point>', at);
+  for (let at = 0; points.length <= MAX_POINTS; ) {
+    const pt = between(block, '<point>', '</point>', at, blockLower);
     if (!pt || pt.content === null) break;
     points.push([xmlNumber(pt.content, 'x'), xmlNumber(pt.content, 'y')]);
     at = pt.end;
@@ -289,7 +293,8 @@ function finish(name, format, pointsIn, issuesIn) {
   }
   if (points.length === 0) return { name, format, points, issues: [...issues, issue('error', 'no-points', 'No coordinate points found.')] };
   if (points.length > MAX_POINTS) {
-    return { name, format, points: [], issues: [...issues, issue('error', 'too-many-points', `${points.length} points; the limit is ${MAX_POINTS}.`)] };
+    const n = `${points.length}${format === 'xml' && points.length === MAX_POINTS + 1 ? ' or more' : ''}`;
+    return { name, format, points: [], issues: [...issues, issue('error', 'too-many-points', `${n} points; the limit is ${MAX_POINTS}.`)] };
   }
 
   // A blunt trailing edge drawn as a closed outline (CAD polylines) repeats the first point after a

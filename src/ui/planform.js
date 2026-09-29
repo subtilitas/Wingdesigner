@@ -3,7 +3,7 @@
 
 import { curvePoint, surfacePoint } from '../geom/nurbs.js';
 import { guideCurve } from '../geom/guide.js';
-import { addGuidePoint, clampSectionY, moveGuidePoint, removeGuidePoint, resetGuide, sortedSections, syncGuidesToSpan } from '../model/edit.js';
+import { addGuidePoint, dragLeadingEdge, moveGuidePoint, removeGuidePoint, resetGuide, sortedSections, syncGuidesToSpan } from '../model/edit.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, formatNum, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
@@ -243,14 +243,10 @@ export class PlanformEditor {
           const s = p.sections.find((q) => q.id === hnd.id);
           if (!s) return;
           // Effective edges come from the build: with one guide on, the other edge follows the chord.
-          const st = this.getBuild()?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
+          const b = this.getBuild();
+          const st = b?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
           if (hnd.type === 'le') {
-            const te = p.guides?.end?.enabled && st ? st.xLE + st.chord : s.x + s.chord;
-            s.x = Math.min(x, te - LIMITS.minChord);
-            s.chord = te - s.x;
-            const sorted = sortedSections(p);
-            const i = sorted.indexOf(s);
-            s.y = clampSectionY(sorted, i, y);
+            dragLeadingEdge(p, s.id, x, y, b?.guides?.end ?? null);
           } else {
             const le = p.guides?.nose?.enabled && st ? st.xLE : s.x;
             s.chord = Math.max(LIMITS.minChord, x - le);

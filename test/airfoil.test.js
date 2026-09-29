@@ -400,6 +400,21 @@ describe('parser robustness', () => {
     expect(s.points.length).toBe(sharp.length);
   });
 
+  it('reads large XML files in one pass and stops past the point limit', () => {
+    const xml = (n) =>
+      '<airfoil><name>T</name><coordinates>' +
+      nacaAirfoil('2412', { pointsPerSide: Math.ceil((n + 1) / 2) })
+        .points.slice(0, n)
+        .map(([x, y]) => `<point><x>${x}</x><y>${y}</y></point>`)
+        .join('\n') +
+      '</coordinates></airfoil>';
+    const t0 = performance.now();
+    expect(parseDat(xml(4999)).points.length).toBe(4999);
+    const big = parseDat(xml(20000));
+    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(big.issues.find((i) => i.code === 'too-many-points').message).toMatch(/5001 or more points/);
+  });
+
   it('rejects more points than the limit without throwing', () => {
     let text = 'Many\n';
     for (let i = 0; i < 150000; i++) text += `${(i / 150000).toFixed(5)} 0\n`;

@@ -8,6 +8,7 @@ import {
   addAirfoil,
   addGuidePoint,
   clampSectionY,
+  dragLeadingEdge,
   insertSection,
   moveGuidePoint,
   pruneAirfoils,
@@ -64,6 +65,27 @@ describe('wizard', () => {
     expect(wizardProblems(bad).length).toBe(4);
     expect(wizardProblems({ ...PRESETS.glider.params, taper: 1 })).toContain('An elliptic planform needs taper < 1.');
     expect(() => wizardProject(bad)).toThrow();
+  });
+});
+
+describe('wing statistics with curved planforms', () => {
+  it('does not depend on the station count in smooth mode', () => {
+    const areas = [3, 8, 40].map((K) => {
+      const p = sampleProject({ settings: { spanwise: 'smooth', panelStations: K } });
+      p.sections = [
+        { id: 'a', airfoil: 'root', x: 0, y: 0, z: 0, chord: 100, twist: 0 },
+        { id: 'b', airfoil: 'root', x: 0, y: 100, z: 0, chord: 500, twist: 0 },
+        { id: 'c', airfoil: 'root', x: 0, y: 1000, z: 0, chord: 100, twist: 0 },
+      ];
+      const b = buildWing(p);
+      // Reference: fine midpoint rule over the planform.
+      let ref = 0;
+      for (let i = 0; i < 20000; i++) ref += (2 * 1000 * b.planformAt(((i + 0.5) / 20000) * 1000).chord) / 20000;
+      const s = wingStats(b);
+      expect(s.area / ref).toBeCloseTo(1, 7);
+      return s.area;
+    });
+    expect(areas[0] / areas[2]).toBeCloseTo(1, 9);
   });
 });
 
@@ -170,6 +192,26 @@ describe('wizard tips', () => {
     expect(b.errors).toEqual([]);
     expect(b.tipChord).toBeCloseTo(Math.max(0.005 * p.sections[1].chord, 1), 9);
     expect(p.sections[2].chord).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('leading-edge drag with an end line', () => {
+  it('puts the rebuilt leading edge under the pointer after a diagonal drag', () => {
+    const p = sampleProject();
+    p.guides.end.enabled = true;
+    p.guides.end.points = [[200, 0], [260, 300], [360, 600]];
+    const before = buildWing(p);
+    dragLeadingEdge(p, p.sections[1].id, 80, 420, before.guides.end);
+    const after = buildWing(p);
+    expect(after.errors).toEqual([]);
+    const st = after.stations.find((q) => Math.abs(q.y - 420) < 1e-9);
+    expect(st.xLE).toBeCloseTo(80, 6);
+    // Without the end line the trailing edge stays where it was.
+    const q = sampleProject();
+    const te = q.sections[1].x + q.sections[1].chord;
+    dragLeadingEdge(q, q.sections[1].id, 5, 250, null);
+    expect(q.sections[1]).toMatchObject({ x: 5, y: 250 });
+    expect(q.sections[1].x + q.sections[1].chord).toBeCloseTo(te, 12);
   });
 });
 

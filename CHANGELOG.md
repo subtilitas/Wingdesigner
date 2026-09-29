@@ -36,6 +36,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - B-spline interpolation uses a band LU solver: 5000-point airfoils interpolate in 13 ms instead of
   building a 5000 x 5000 dense matrix.
 - Save writes the derived NURBS data of the current project, not of the last rendered build.
+- The closed and fixed-thickness trailing-edge modes report surfaces made to touch (thickness at most
+  0.001 % chord between 1 % and 99 % chord).
+- XML airfoils are read in one pass and reading stops one point past the 5000-point limit.
+- Dragging a leading edge with only the end line enabled evaluates the end line at the new span
+  position, so the leading edge lands under the pointer.
+- Area, aspect ratio and MAC integrate the planform with Gauss-Legendre quadrature and no longer
+  depend on the station count in smooth mode or with guide curves (up to 2 % before).
 - Project import: `guides.*.enabled` must be a boolean; a guide point between neighbours closer than
   1 mm keeps its span position when edited.
 - CI: runs on `main` queue instead of cancelling a running Pages deployment; 3MF files are validated
