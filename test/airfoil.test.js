@@ -1,0 +1,329 @@
+import { describe, expect, it } from 'vitest';
+import { decodeText, parseDat, parseNumbers, toSeligDat } from '../src/airfoil/parse.js';
+import { checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
+import { nacaAirfoil, parseNacaCode } from '../src/airfoil/naca.js';
+import {
+  airfoilStats,
+  leadingEdgeIndex,
+  normalize,
+  segmentsCross,
+  selfIntersections,
+  setTrailingEdgeGap,
+  signedArea,
+  splitSurfaces,
+  yAt,
+} from '../src/airfoil/geometry.js';
+
+const codes = (issues) => issues.map((i) => i.code);
+
+describe('NACA generator', () => {
+  it('parses designations', () => {
+    expect(parseNacaCode('NACA 2412')).toMatchObject({ series: 4, camber: 0.02, pos: 0.4, t: 0.12 });
+    expect(parseNacaCode('naca0012')).toMatchObject({ series: 4, camber: 0, t: 0.12 });
+    expect(parseNacaCode('23012')).toMatchObject({ series: 5, L: 2, P: 3, reflex: false, t: 0.12 });
+    expect(parseNacaCode('23112')).toMatchObject({ reflex: true });
+    expect(parseNacaCode('2400')).toBeNull();
+    expect(parseNacaCode('2012')).toBeNull();
+    expect(parseNacaCode('0412')).toBeNull();
+    expect(parseNacaCode('03012')).toBeNull();
+    expect(parseNacaCode('22212')).toBeNull();
+    expect(parseNacaCode('21112')).toBeNull();
+    expect(parseNacaCode('MH 45')).toBeNull();
+    expect(() => nacaAirfoil('abc')).toThrow();
+  });
+
+  it('produces a symmetric 12 % section for NACA 0012', () => {
+    const { points, name } = nacaAirfoil('0012', { pointsPerSide: 101 });
+    expect(name).toBe('NACA 0012');
+    expect(points.length).toBe(201);
+    const s = airfoilStats(points);
+    expect(s.maxThickness).toBeCloseTo(0.12, 3);
+    expect(s.maxThicknessX).toBeGreaterThan(0.28);
+    expect(s.maxThicknessX).toBeLessThan(0.32);
+    expect(Math.abs(s.maxCamber)).toBeLessThan(1e-12);
+    expect(s.teGap).toBeCloseTo(2 * 0.00126, 4);
+    const closed = nacaAirfoil('0012', { closedTE: true });
+    expect(airfoilStats(closed.points).teGap).toBeLessThan(1e-9);
+  });
+
+  it('places camber of NACA 2412 at 40 % chord', () => {
+    const s = airfoilStats(nacaAirfoil('2412').points);
+    expect(s.maxCamber).toBeCloseTo(0.02, 3);
+    expect(s.maxCamberX).toBeGreaterThan(0.37);
+    expect(s.maxCamberX).toBeLessThan(0.43);
+  });
+
+  it('builds 5-digit standard and reflex camber lines', () => {
+    const s = airfoilStats(nacaAirfoil('23012').points);
+    expect(s.maxCamber).toBeGreaterThan(0.017);
+    expect(s.maxCamber).toBeLessThan(0.02);
+    expect(s.maxCamberX).toBeGreaterThan(0.12);
+    expect(s.maxCamberX).toBeLessThan(0.18);
+    const r = nacaAirfoil('23112').points;
+    const { upper, lower } = splitSurfaces(r);
+    // Reflex: camber line close to zero near the trailing edge.
+    const c95 = (yAt(upper, 0.95) + yAt(lower, 0.95)) / 2;
+    expect(Math.abs(c95)).toBeLessThan(0.002);
+    expect(checkAirfoil(r).ok).toBe(true);
+  });
+});
+
+describe('.dat parser', () => {
+  const selig = `NACA 0012 test\n1.0 0.00126\n0.5 0.05\n0.0 0.0\n0.5 -0.05\n1.0 -0.00126\n`;
+
+  it('reads Selig files', () => {
+    const r = parseDat(selig);
+    expect(r.name).toBe('NACA 0012 test');
+    expect(r.format).toBe('selig');
+    expect(r.points).toEqual([
+      [1, 0.00126],
+      [0.5, 0.05],
+      [0, 0],
+      [0.5, -0.05],
+      [1, -0.00126],
+    ]);
+  });
+
+  it('reads Lednicer files and merges the shared leading edge', () => {
+    const txt = `CLARK Y-ish\n 3.  3.\n\n0.0 0.0\n0.5 0.08\n1.0 0.001\n\n0.0 0.0\n0.5 -0.03\n1.0 -0.001\n`;
+    const r = parseDat(txt);
+    expect(r.format).toBe('lednicer');
+    expect(r.points).toEqual([
+      [1, 0.001],
+      [0.5, 0.08],
+      [0, 0],
+      [0.5, -0.03],
+      [1, -0.001],
+    ]);
+  });
+
+  it('splits Lednicer data when counts disagree', () => {
+    const txt = `X\n 4. 4.\n0 0\n0.5 0.08\n1 0\n0 0\n0.5 -0.03\n1 0\n`;
+    const r = parseDat(txt);
+    expect(codes(r.issues)).toContain('lednicer-count');
+    expect(r.points.length).toBe(5);
+  });
+
+  it('handles CRLF, commas, tabs, comments, BOM and Fortran exponents', () => {
+    const txt = `\uFEFF# comment\r\nMy Foil\r\n1.0,\t0.0\r\n0.5; 0.06 7\r\n0.0 0.0D0\r\n0.5 -0.04\r\n1.0 0.0\r\nend of data\r\n`;
+    const r = parseDat(txt);
+    expect(r.name).toBe('My Foil');
+    expect(r.points[2]).toEqual([0, 0]);
+    expect(codes(r.issues)).toEqual(expect.arrayContaining(['extra-columns', 'ignored-lines']));
+  });
+
+  it('uses the file name for headerless files and scales percent coordinates', () => {
+    const txt = `100 0\n50 6\n0 0\n50 -4\n100 0\n`;
+    const r = parseDat(txt, { fileName: 'myfoil.dat' });
+    expect(r.name).toBe('myfoil');
+    expect(r.points[1]).toEqual([0.5, 0.06]);
+    expect(codes(r.issues)).toEqual(expect.arrayContaining(['no-name', 'percent']));
+  });
+
+  it('reverses clockwise files and removes duplicates', () => {
+    const txt = `rev\n1 0\n0.5 -0.04\n0.5 -0.04\n0 0\n0.5 0.06\n1 0\n`;
+    const r = parseDat(txt);
+    expect(r.points[1]).toEqual([0.5, 0.06]);
+    expect(codes(r.issues)).toEqual(expect.arrayContaining(['reversed', 'duplicates']));
+  });
+
+  it('reports empty input', () => {
+    expect(codes(parseDat('').issues)).toContain('no-points');
+    expect(codes(parseDat(null).issues)).toContain('no-points');
+    expect(codes(parseDat('just a name\nand text').issues)).toContain('no-points');
+  });
+
+  it('round-trips through Selig text', () => {
+    const a = nacaAirfoil('4415', { pointsPerSide: 31 });
+    const r = parseDat(toSeligDat(a.name, a.points, 7));
+    expect(r.name).toBe('NACA 4415');
+    r.points.forEach((p, i) => {
+      expect(p[0]).toBeCloseTo(a.points[i][0], 6);
+      expect(p[1]).toBeCloseTo(a.points[i][1], 6);
+    });
+  });
+});
+
+describe('geometry helpers', () => {
+  it('computes orientation and leading edge', () => {
+    const pts = nacaAirfoil('2412').points;
+    expect(signedArea(pts)).toBeGreaterThan(0);
+    const le = leadingEdgeIndex(pts);
+    expect(pts[le][0]).toBeLessThan(1e-3);
+    const { upper, lower } = splitSurfaces(pts);
+    expect(upper[0]).toEqual(lower[0]);
+  });
+
+  it('normalizes scaled and rotated data', () => {
+    const base = nacaAirfoil('0012', { closedTE: true }).points;
+    const scaled = base.map(([x, y]) => [200 * x + 10, 200 * y + 5]);
+    const n = normalize(scaled);
+    n.forEach((p, i) => {
+      expect(p[0]).toBeCloseTo(base[i][0], 9);
+      expect(p[1]).toBeCloseTo(base[i][1], 9);
+    });
+    const a = 0.1;
+    const rot = base.map(([x, y]) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)]);
+    const d = normalize(rot, { derotate: true });
+    d.forEach((p, i) => {
+      expect(p[0]).toBeCloseTo(base[i][0], 9);
+      expect(p[1]).toBeCloseTo(base[i][1], 9);
+    });
+  });
+
+  it('adjusts the trailing-edge gap without moving the leading edge', () => {
+    const base = nacaAirfoil('2412').points;
+    const g = setTrailingEdgeGap(base, 0.01);
+    expect(airfoilStats(g).teGap).toBeCloseTo(0.01, 12);
+    const le = leadingEdgeIndex(base);
+    expect(g[le]).toEqual(base[le]);
+    const c = setTrailingEdgeGap(base, 0);
+    expect(Math.abs(airfoilStats(c).teGap)).toBeLessThan(1e-12);
+  });
+
+  it('detects crossings', () => {
+    expect(segmentsCross([0, 0], [1, 1], [0, 1], [1, 0])).toBe(true);
+    expect(segmentsCross([0, 0], [1, 0], [1, 0], [2, 1])).toBe(false);
+    const bow = [
+      [1, 0],
+      [0.5, 0.05],
+      [0, 0],
+      [0.5, -0.05],
+      [0.7, 0.06],
+      [1, 0],
+    ];
+    expect(selfIntersections(bow).length).toBeGreaterThan(0);
+    expect(yAt([[0, 1], [1, 3]], -1)).toBe(1);
+    expect(yAt([[0, 1], [1, 3]], 2)).toBe(3);
+    expect(yAt([[0, 1], [0, 3], [1, 5]], 0)).toBe(1);
+  });
+});
+
+describe('sanity checks', () => {
+  it('accepts a clean airfoil', () => {
+    const r = checkAirfoil(nacaAirfoil('2412').points);
+    expect(r.ok).toBe(true);
+    expect(r.issues.filter((i) => i.severity !== 'info')).toEqual([]);
+    expect(r.stats.maxThickness).toBeCloseTo(0.12, 2);
+  });
+
+  it('rejects too few points and zero chord', () => {
+    expect(checkAirfoil([[0, 0]]).ok).toBe(false);
+    expect(checkAirfoil(null).ok).toBe(false);
+    const flat = Array.from({ length: 6 }, (_, i) => [0.5, i]);
+    expect(codes(checkAirfoil(flat).issues)).toContain('zero-chord');
+  });
+
+  it('flags coarse, unnormalized, rotated and gapped data', () => {
+    const base = nacaAirfoil('0012', { pointsPerSide: 8 }).points;
+    const r = checkAirfoil(base.map(([x, y]) => [x * 150, y * 150]));
+    expect(codes(r.issues)).toEqual(expect.arrayContaining(['coarse', 'not-normalized']));
+    const a = 0.2;
+    const rot = nacaAirfoil('0012').points.map(([x, y]) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)]);
+    expect(codes(checkAirfoil(rot).issues)).toContain('rotated');
+    const gap = setTrailingEdgeGap(nacaAirfoil('0012').points, 0.05);
+    expect(codes(checkAirfoil(gap).issues)).toContain('te-gap');
+    const crossed = setTrailingEdgeGap(nacaAirfoil('0012').points, -0.01);
+    expect(codes(checkAirfoil(crossed).issues)).toContain('te-crossed');
+  });
+
+  it('flags thin, thick, spiky and truncated outlines', () => {
+    expect(codes(checkAirfoil(nacaAirfoil('0005').points.map(([x, y]) => [x, y / 10])).issues)).toContain('thin');
+    expect(codes(checkAirfoil(nacaAirfoil('0035').points).issues)).toContain('thick');
+    const spiky = nacaAirfoil('2412').points.map((p) => p.slice());
+    spiky[20][1] += 0.05;
+    const res = checkAirfoil(spiky);
+    expect(codes(res.issues)).toContain('spike');
+    const pts = nacaAirfoil('0012').points;
+    const rolled = pts.slice(40).concat(pts.slice(0, 40));
+    expect(codes(checkAirfoil(rolled).issues)).toContain('te-missing');
+  });
+
+  it('flags self intersection and crossed surfaces', () => {
+    const pts = nacaAirfoil('0012').points.map((p) => p.slice());
+    // Push a lower-surface point far above the upper surface.
+    const le = leadingEdgeIndex(pts);
+    pts[le + 40][1] = 0.2;
+    const r = checkAirfoil(pts);
+    expect(r.ok).toBe(false);
+    expect(codes(r.issues)).toEqual(expect.arrayContaining(['self-intersection']));
+  });
+
+  it('flags non-monotonic surfaces and single-surface data', () => {
+    const pts = nacaAirfoil('0012').points.map((p) => p.slice());
+    const le = leadingEdgeIndex(pts);
+    const t = pts[le + 30];
+    pts[le + 30] = pts[le + 31];
+    pts[le + 31] = t;
+    expect(codes(checkAirfoil(pts).issues)).toContain('non-monotonic');
+    const line = Array.from({ length: 10 }, (_, i) => [i / 9, 0.01 * Math.sin(i)]);
+    expect(checkAirfoil(line).ok).toBe(false);
+  });
+
+  it('imports text end to end', () => {
+    const a = nacaAirfoil('2412');
+    const ok = importAirfoilText(toSeligDat(a.name, a.points), 'x.dat');
+    expect(ok.ok).toBe(true);
+    expect(ok.format).toBe('selig');
+    const bad = importAirfoilText('', 'empty.dat');
+    expect(bad.ok).toBe(false);
+  });
+});
+
+describe('parser variants', () => {
+  it('reads decimal-comma X/Yo/Yu percent tables', () => {
+    const txt = 'HS 3,4/12,0\r\n\r\nWoelbung:  3,40%\r\n  X      Yo       Yu\r\n  0      0,000    0,000\r\n  2,5    3,448   -1,770\r\n  30     8,0     -2,0\r\n  60     6,0     -1,0\r\n  100    0,100   -0,100\r\n';
+    const r = parseDat(txt);
+    expect(r.name).toBe('HS 3,4/12,0');
+    expect(r.format).toBe('table');
+    expect(r.points[0]).toEqual([1, 0.001]);
+    expect(r.points[4]).toEqual([0, 0]);
+    expect(r.points[r.points.length - 1]).toEqual([1, -0.001]);
+    expect(codes(r.issues)).toEqual(expect.arrayContaining(['decimal-comma', 'table', 'percent', 'ignored-lines']));
+  });
+
+  it('keeps a three-column x y z file as Selig', () => {
+    const txt = 'xyz\n1 0 0\n0.5 0.06 0\n0 0 0\n0.5 -0.04 0\n1 0 0\n';
+    const r = parseDat(txt);
+    expect(r.format).toBe('selig');
+    expect(codes(r.issues)).toContain('extra-columns');
+  });
+
+  it('reads XML airfoil geometry', () => {
+    const xml = `<?xml version="1.0"?><airfoil><name>Test &amp; Co</name><elements><element><coordinates>
+      <point><x>1.0</x><y>0.0</y><z>0</z></point><point><x>0.5</x><y>0.06</y><z>0</z></point>
+      <point><x>0.0</x><y>0.0</y><z>0</z></point><point><x>0.5</x><y>-0.04</y><z>0</z></point>
+      <point><x>1.0</x><y>0.0</y><z>0</z></point></coordinates></element>
+      <element><coordinates><point><x>1</x><y>0</y></point></coordinates></element></elements></airfoil>`;
+    const r = parseDat(xml);
+    expect(r.format).toBe('xml');
+    expect(r.name).toBe('Test & Co');
+    expect(r.points.length).toBe(5);
+    expect(codes(r.issues)).toContain('multi-element');
+    const unnamed = parseDat('<coordinates><point><x>1</x><y>0</y></point></coordinates>', { fileName: 'q.xml' });
+    expect(unnamed.name).toBe('q');
+    const empty = parseDat('<coordinates></coordinates>');
+    expect(codes(empty.issues)).toContain('no-points');
+    const nan = parseDat('<coordinates><point><x>a</x><y>0</y></point></coordinates>');
+    expect(codes(nan.issues)).toContain('non-finite');
+  });
+
+  it('reads coordinates from HTML pre blocks', () => {
+    const html = '<html><head><title>MH 99 Coordinates</title></head><body><pre><strong>   x   y</strong>\n1.0 0.0\n0.5 0.06\n0.0 0.0\n0.5 -0.04\n1.0 0.0\n</pre></body></html>';
+    const r = parseDat(html);
+    expect(r.name).toBe('MH 99 Coordinates');
+    expect(r.points.length).toBe(5);
+    expect(codes(r.issues)).toContain('html');
+    const noPre = parseDat('<html><title>T &lt;1&gt; &#65;</title><body>1 0<br>0 0<br>1 -0.01</body></html>');
+    expect(noPre.name).toBe('T <1> A');
+    expect(noPre.points.length).toBe(3);
+  });
+
+  it('decodes UTF-8 and Windows-1252 bytes', () => {
+    expect(decodeText(new Uint8Array([0xef, 0xbb, 0xbf, 0x41]))).toBe('A');
+    expect(decodeText(new Uint8Array([0x57, 0xf6, 0x6c, 0x62]).buffer)).toBe('Wölb');
+    expect(parseNumbers('1,5 2,25')).toEqual({ values: [1.5, 2.25], decimalComma: true });
+    expect(parseNumbers('1.0,2.0')).toEqual({ values: [1, 2], decimalComma: false });
+    expect(parseNumbers('x 1')).toBeNull();
+  });
+});

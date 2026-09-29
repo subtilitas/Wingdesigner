@@ -1,0 +1,243 @@
+// Airfoil coordinate file parser.
+//
+// Accepted inputs:
+//   Selig      name line, then x y from the trailing edge (TE) over the upper surface to the
+//              leading edge (LE) and back along the lower surface to the TE
+//   Lednicer   name line, counts line ("61. 61."), upper surface LE->TE, lower surface LE->TE
+//   Table      three columns x, y_upper, y_lower (e.g. "X Yo Yu" tables in percent of chord)
+//   XML        <airfoil><name>..</name> ... <coordinates><point><x/><y/>..</point>..</coordinates>
+//   HTML       coordinate tables inside <pre> blocks (the page <title> becomes the name)
+// Tolerated: comments (#), BOM, CRLF/CR/LF, tabs, comma or semicolon separators, decimal commas,
+// Fortran D exponents, percent coordinates, clockwise point order, duplicate points.
+//
+// Output points are in Selig order with the chord along +x.
+
+import { signedArea } from './geometry.js';
+
+const NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?$/;
+const DECIMAL_COMMA = /^[-+]?\d*,\d+$/;
+
+function issue(severity, code, message) {
+  return { severity, code, message };
+}
+
+/** Parse the numbers of one line, or null when the line is not purely numeric. */
+export function parseNumbers(line) {
+  const ws = line.trim().split(/\s+/).filter(Boolean);
+  let tokens;
+  let decimalComma = false;
+  if (ws.length >= 2 && ws.every((t) => DECIMAL_COMMA.test(t) || /^[-+]?\d+$/.test(t)) && ws.some((t) => t.includes(','))) {
+    tokens = ws.map((t) => t.replace(',', '.'));
+    decimalComma = true;
+  } else {
+    tokens = line
+      .trim()
+      .split(/[\s,;]+/)
+      .filter(Boolean);
+  }
+  if (tokens.length < 2) return null;
+  const values = [];
+  for (const t of tokens) {
+    if (!NUMBER.test(t)) return null;
+    values.push(Number(t.replace(/[dD]/, 'e')));
+  }
+  return { values, decimalComma };
+}
+
+/**
+ * Decode file bytes: UTF-8 when valid, otherwise Windows-1252 (Latin-1 superset).
+ * @param {Uint8Array|ArrayBuffer} bytes
+ */
+export function decodeText(bytes) {
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(u8).replace(/^\uFEFF/, '');
+  } catch {
+    return new TextDecoder('windows-1252').decode(u8);
+  }
+}
+
+function decodeEntities(s) {
+  return s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
+    .replace(/&amp;/g, '&');
+}
+
+function parseXml(text) {
+  const name = decodeEntities((text.match(/<name>([\s\S]*?)<\/name>/i)?.[1] ?? '').trim());
+  const blocks = [...text.matchAll(/<coordinates>([\s\S]*?)<\/coordinates>/gi)];
+  if (!blocks.length) return null;
+  const points = [];
+  for (const m of blocks[0][1].matchAll(/<point>([\s\S]*?)<\/point>/gi)) {
+    const x = Number(m[1].match(/<x>([^<]*)<\/x>/i)?.[1]);
+    const y = Number(m[1].match(/<y>([^<]*)<\/y>/i)?.[1]);
+    points.push([x, y]);
+  }
+  const issues = [issue('info', 'xml', 'Read as XML airfoil geometry.')];
+  if (blocks.length > 1) issues.push(issue('warning', 'multi-element', `${blocks.length} elements found; only the first one is used.`));
+  return { name, points, issues };
+}
+
+function htmlToText(text) {
+  const title = decodeEntities((text.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? '').trim());
+  const pres = [...text.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/gi)].map((m) => decodeEntities(m[1].replace(/<[^>]+>/g, '')));
+  const body = pres.length ? pres.join('\n') : decodeEntities(text.replace(/<[^>]+>/g, '\n'));
+  return { title, body };
+}
+
+/**
+ * Parse the text of an airfoil file.
+ * @param {string} text
+ * @param {{fileName?: string}} [options]
+ * @returns {{name: string, format: 'selig'|'lednicer'|'table'|'xml', points: number[][], issues: object[]}}
+ */
+export function parseDat(text, options = {}) {
+  let src = String(text ?? '').replace(/^\uFEFF/, '');
+  const issues = [];
+  const fallbackName = (options.fileName ?? 'airfoil').replace(/\.[^.]+$/, '');
+
+  if (/<coordinates>/i.test(src)) {
+    const xml = parseXml(src);
+    return finish(xml.name || fallbackName, 'xml', xml.points, [...xml.issues, ...(xml.name ? [] : [issue('info', 'no-name', 'No name found; the file name is used.')])]);
+  }
+  let htmlTitle = '';
+  if (/<(html|pre|body)[\s>]/i.test(src)) {
+    const h = htmlToText(src);
+    src = h.body;
+    htmlTitle = h.title;
+    issues.push(issue('info', 'html', 'Read coordinates from an HTML page.'));
+  }
+
+  const lines = src.split(/\r\n|\r|\n/);
+  let name = htmlTitle;
+  const rows = [];
+  let extraColumns = false;
+  let decimalComma = false;
+  let ignored = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.replace(/#.*$/, '').trim();
+    if (!line) continue;
+    const parsed = parseNumbers(line);
+    if (parsed) {
+      if (parsed.decimalComma) decimalComma = true;
+      rows.push({ values: parsed.values, line: i + 1 });
+    } else if (!name && rows.length === 0) {
+      name = raw.trim();
+    } else {
+      ignored++;
+    }
+  }
+  if (!name) {
+    name = fallbackName;
+    issues.push(issue('info', 'no-name', 'No name line found; the file name is used as the airfoil name.'));
+  }
+  if (decimalComma) issues.push(issue('info', 'decimal-comma', 'Decimal commas were read as decimal points.'));
+  if (ignored > 0) issues.push(issue('warning', 'ignored-lines', `${ignored} non-numeric line(s) after the name line were ignored.`));
+  if (rows.length === 0) {
+    return { name, format: 'selig', points: [], issues: [...issues, issue('error', 'no-points', 'No coordinate lines found.')] };
+  }
+
+  // Three-column table: x increasing, y_upper >= y_lower on (nearly) every row.
+  const three = rows.every((r) => r.values.length === 3);
+  if (three && rows.length >= 3) {
+    let inc = true;
+    let above = 0;
+    for (let k = 0; k < rows.length; k++) {
+      if (k > 0 && !(rows[k].values[0] > rows[k - 1].values[0])) inc = false;
+      if (rows[k].values[1] >= rows[k].values[2]) above++;
+    }
+    if (inc && above >= 0.9 * rows.length) {
+      const upper = rows.map((r) => [r.values[0], r.values[1]]);
+      const lower = rows.map((r) => [r.values[0], r.values[2]]);
+      const points = upper.reverse().concat(samePoint(lower[0], upper[upper.length - 1]) ? lower.slice(1) : lower);
+      issues.push(issue('info', 'table', 'Read as a three-column table (x, upper y, lower y).'));
+      return finish(name, 'table', points, issues);
+    }
+  }
+  if (rows.some((r) => r.values.length > 2)) extraColumns = true;
+  if (extraColumns) {
+    issues.push(issue('warning', 'extra-columns', 'Lines with more than two values found; only the first two columns are used.'));
+  }
+
+  const first = rows[0].values;
+  const isCount = (v) => v >= 2 && Math.abs(v - Math.round(v)) < 1e-9;
+  if (isCount(first[0]) && isCount(first[1]) && rows.length > 1) {
+    const nu = Math.round(first[0]);
+    const nl = Math.round(first[1]);
+    const data = rows.slice(1).map((r) => [r.values[0], r.values[1]]);
+    let upper;
+    let lower;
+    if (data.length === nu + nl) {
+      upper = data.slice(0, nu);
+      lower = data.slice(nu);
+    } else {
+      issues.push(
+        issue('warning', 'lednicer-count', `Header announces ${nu}+${nl} points but ${data.length} were found; surfaces split at the x reset.`),
+      );
+      let split = data.length;
+      for (let k = 1; k < data.length; k++) {
+        if (data[k][0] < data[k - 1][0] - 0.25 * (Math.abs(data[k - 1][0]) + 1e-12)) {
+          split = k;
+          break;
+        }
+      }
+      upper = data.slice(0, split);
+      lower = data.slice(split);
+    }
+    const up = upper.slice().reverse();
+    const points = up.concat(lower.length && up.length && samePoint(lower[0], up[up.length - 1]) ? lower.slice(1) : lower);
+    return finish(name, 'lednicer', points, issues);
+  }
+  return finish(
+    name,
+    'selig',
+    rows.map((r) => [r.values[0], r.values[1]]),
+    issues,
+  );
+}
+
+function finish(name, format, pointsIn, issuesIn) {
+  const issues = issuesIn.slice();
+  let points = pointsIn;
+  if (points.some((p) => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) {
+    return { name, format, points: [], issues: [...issues, issue('error', 'non-finite', 'Coordinates contain non-finite values.')] };
+  }
+  if (points.length === 0) return { name, format, points, issues: [...issues, issue('error', 'no-points', 'No coordinate points found.')] };
+
+  const dedup = [];
+  let dups = 0;
+  for (const p of points) {
+    if (dedup.length && samePoint(p, dedup[dedup.length - 1])) dups++;
+    else dedup.push(p);
+  }
+  if (dups > 0) issues.push(issue('info', 'duplicates', `${dups} duplicate consecutive point(s) removed.`));
+  points = dedup;
+
+  let xmax = -Infinity;
+  for (const p of points) if (p[0] > xmax) xmax = p[0];
+  if (xmax > 5 && xmax <= 110) {
+    points = points.map(([x, y]) => [x / 100, y / 100]);
+    issues.push(issue('warning', 'percent', 'Coordinates look like percent of chord and were divided by 100.'));
+  }
+
+  if (points.length >= 3 && signedArea(points) < 0) {
+    points = points.slice().reverse();
+    issues.push(issue('warning', 'reversed', 'Points run clockwise (lower surface first); order reversed to Selig order.'));
+  }
+  return { name, format, points, issues };
+}
+
+function samePoint(a, b) {
+  return Math.abs(a[0] - b[0]) < 1e-12 && Math.abs(a[1] - b[1]) < 1e-12;
+}
+
+/** Serialize points to Selig .dat text. */
+export function toSeligDat(name, points, digits = 6) {
+  const lines = [name];
+  for (const [x, y] of points) lines.push(`${x.toFixed(digits).padStart(digits + 3)} ${y.toFixed(digits).padStart(digits + 3)}`);
+  return lines.join('\n') + '\n';
+}
