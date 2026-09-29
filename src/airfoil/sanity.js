@@ -116,8 +116,17 @@ export function checkAirfoil(rawPointsIn) {
       ),
     );
   }
-  if (Math.max(rawPoints[0][0], rawPoints[n0 - 1][0]) < b.xmax - 0.05 * chord) {
-    issues.push(issue('error', 'te-missing', 'The first and last points are not at the trailing edge; the point order is probably not Selig.'));
+  // Both ends of the outline lie at the trailing edge (within 5 % of the chord of the largest x):
+  // a surface that stops short would give a trailing-edge face across the chord.
+  const endX = Math.min(rawPoints[0][0], rawPoints[n0 - 1][0]);
+  if (endX < b.xmax - 0.05 * chord) {
+    issues.push(
+      issue(
+        'error',
+        'te-missing',
+        `The ${rawPoints[0][0] <= rawPoints[n0 - 1][0] ? 'first' : 'last'} point lies at ${(((endX - b.xmin) / chord) * 100).toFixed(1)} % chord, not at the trailing edge; the point order is probably not Selig, or a surface is incomplete.`,
+      ),
+    );
   }
   const points = normalize(rawPoints);
 

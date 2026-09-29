@@ -1,7 +1,8 @@
 // Export dialog: STEP, STL, 3MF and the project JSON.
 
 import { wingToStep } from '../export/step.js';
-import { StlPrecisionError, meshToStl } from '../export/stl.js';
+import { MeshPrecisionError } from '../export/precision.js';
+import { meshToStl } from '../export/stl.js';
 import { meshesTo3mf } from '../export/threemf.js';
 import { MAX_EXPORT_TRIANGLES, concatMeshes, exportMeshes, exportTriangles } from '../geom/mesh.js';
 import { projectToJsonText } from '../model/io.js';
@@ -85,7 +86,7 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         download(slugFile(name, '3mf'), meshesTo3mf(meshes, { title: name }), 'model/3mf');
       }
     } catch (e) {
-      if (e instanceof StlPrecisionError) {
+      if (e instanceof MeshPrecisionError) {
         notify(e.message, true);
         return;
       }

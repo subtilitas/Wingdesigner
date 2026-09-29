@@ -238,6 +238,12 @@ describe('sanity checks', () => {
     const pts = nacaAirfoil('0012').points;
     const rolled = pts.slice(40).concat(pts.slice(0, 40));
     expect(codes(checkAirfoil(rolled).issues)).toContain('te-missing');
+    // Upper surface complete, lower surface ends at mid-chord: one end at the trailing edge is not enough.
+    const le = pts.findIndex(([x]) => x === 0);
+    const truncated = pts.slice(0, le + 1 + Math.floor((pts.length - le) / 2));
+    const r = checkAirfoil(truncated);
+    expect(r.ok).toBe(false);
+    expect(r.issues.find((i) => i.code === 'te-missing').message).toMatch(/^The last point lies at \d+\.\d % chord, not at the trailing edge/);
   });
 
   it('flags self intersection and crossed surfaces', () => {

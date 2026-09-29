@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
 import { buildWing } from '../src/geom/wing.js';
 import { MAX_EXPORT_TRIANGLES, concatMeshes, edgeCheck, exportMeshes, exportTriangles, meshVolume, mirrorMesh } from '../src/geom/mesh.js';
-import { StlPrecisionError, meshToStl, parseStl } from '../src/export/stl.js';
+import { meshToStl, parseStl } from '../src/export/stl.js';
+import { MeshPrecisionError } from '../src/export/precision.js';
 import { meshesTo3mf, modelXml, xmlEscape } from '../src/export/threemf.js';
 import { stepReal, stepString, wingToStep } from '../src/export/step.js';
 import { MAX_PROJECT_BYTES, projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
@@ -77,9 +78,10 @@ describe('STL', () => {
       return concatMeshes(exportMeshes(build, 'halves', { uRefine: 1, vRefine: 1 }).map((m) => m.mesh));
     };
     // 1 mm chord at 1,000,000 mm: coordinate spacing 0.0625 mm.
-    expect(() => meshToStl(at(1e6, 1e6))).toThrow(StlPrecisionError);
-    expect(() => meshToStl(at(1e6, 1e6))).toThrow(/spacing is 0\.063 mm, and \d+ of \d+ triangles collapse or turn over/);
-    // At 1000 mm the spacing is 6.1e-5 mm; every triangle keeps its orientation.
+    expect(() => meshToStl(at(1e6, 1e6))).toThrow(MeshPrecisionError);
+    expect(() => meshToStl(at(1e6, 1e6))).toThrow(/^STL stores 32-bit coordinates: at 1000001 mm their spacing is 0\.063 mm, and \d+ of \d+ triangles collapse \(two corners fall together\)/);
+    expect(() => meshesTo3mf([{ name: 'w', mesh: at(1e6, 1e6) }])).toThrow(/^3MF readers store 32-bit coordinates: at 1000001 mm/);
+    // At 1000 mm the spacing is 6.1e-5 mm; no corners merge.
     const near = at(1000, 0);
     const tris = parseStl(meshToStl(near));
     expect(tris.length).toBe(near.indices.length / 3);
@@ -103,10 +105,45 @@ describe('3MF', () => {
     expect(strFromU8(files['[Content_Types].xml'])).toContain('3dmanufacturing-3dmodel+xml');
   });
 
-  it('formats numbers compactly', () => {
-    const xml = modelXml([{ name: 'a', mesh: { positions: [0.1234567, -0.000001, 12], indices: [0, 0, 0] } }]);
-    expect(xml).toContain('x="0.12346" y="0" z="12"');
+  it('formats numbers with 9 significant digits in the 3MF number syntax', () => {
+    const xml = modelXml([{ name: 'a', mesh: { positions: [0.1234567891, -1e-7, 12, 1000000.123456, -0, 5e-324], indices: [0, 1, 1] } }]);
+    expect(xml).toContain('<vertex x="0.123456789" y="-1e-7" z="12"/>');
+    expect(xml).toContain('<vertex x="1000000.12" y="0" z="5e-324"/>');
+    // ST_Number of the 3MF core specification.
+    const number = /^[-+]?(\d+(\.\d+)?|\.\d+)([eE][-+]?\d+)?$/;
+    for (const [, v] of xml.matchAll(/ [xyz]="([^"]+)"/g)) expect(v).toMatch(number);
+    // Each written value reads back as the 32-bit float of the coordinate.
+    for (const v of [0.1234567891, 1000000.123456, 123.456789012]) {
+      const w = Number(modelXml([{ name: 'a', mesh: { positions: [v, 0, 0], indices: [] } }]).match(/x="([^"]+)"/)[1]);
+      expect(Math.fround(w)).toBe(Math.fround(v));
+    }
     expect(xmlEscape(`"'`)).toBe('&quot;&apos;');
+  });
+
+  it('keeps the triangles of a 1 mm chord at Fine density in the written coordinates', () => {
+    // 1 mm chord, closed trailing edge, 200 chord samples: 5 fixed decimals merged corners of 8 triangles.
+    const p = sampleProject({ settings: { chordSamples: 200, trailingEdge: { mode: 'closed', thickness: 0.4 } } });
+    for (const s of p.sections) s.chord = 1;
+    const build = buildWing(p);
+    expect(build.errors).toEqual([]);
+    const objects = exportMeshes(build, 'halves', { uRefine: 2, vRefine: 6 });
+    const xml = modelXml(objects);
+    const written = [...xml.matchAll(/<vertex x="([^"]+)" y="([^"]+)" z="([^"]+)"\/>/g)].map((m) => [1, 2, 3].map((k) => Math.fround(Number(m[k]))));
+    let offset = 0;
+    let merged = 0;
+    for (const { mesh } of objects) {
+      const P = mesh.positions;
+      const I = mesh.indices;
+      const key = (i) => written[offset + i].join(',');
+      const distinct = (i, j) => P[3 * i] !== P[3 * j] || P[3 * i + 1] !== P[3 * j + 1] || P[3 * i + 2] !== P[3 * j + 2];
+      for (let t = 0; t < I.length; t += 3) {
+        const [a, b2, c] = [I[t], I[t + 1], I[t + 2]];
+        if ([[a, b2], [b2, c], [a, c]].some(([i, j]) => distinct(i, j) && key(i) === key(j))) merged++;
+      }
+      offset += P.length / 3;
+    }
+    expect(written.length).toBe(offset);
+    expect(merged).toBe(0);
   });
 
   it('removes characters that XML 1.0 does not allow', () => {

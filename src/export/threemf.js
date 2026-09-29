@@ -4,6 +4,7 @@
 // maximum JavaScript string length (about 2^29 characters) still export.
 
 import { Zip, ZipDeflate, strToU8 } from 'fflate';
+import { checkPrecision } from './precision.js';
 
 const CORE_NS = 'http://schemas.microsoft.com/3dmanufacturing/core/2015/02';
 
@@ -31,9 +32,12 @@ export function xmlEscape(s) {
     .replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]);
 }
 
+// 9 significant digits keep every 32-bit float, the precision of 3MF readers such as lib3mf; fixed
+// decimals would merge the corners of small triangles near the origin (1 mm chord, 200 chord
+// samples: 12 collapsed triangles at 5 decimals).
 function num(x) {
-  const s = x.toFixed(5).replace(/\.?0+$/, '');
-  return s === '-0' ? '0' : s;
+  const v = Number(x.toPrecision(9));
+  return v === 0 ? '0' : String(v);
 }
 
 /**
@@ -78,7 +82,12 @@ export function modelXml(objects, options = {}) {
 }
 
 /** Zip the package. Returns Uint8Array. */
+/**
+ * @throws {MeshPrecisionError} when the written coordinates, read as 32-bit floats, merge two
+ * distinct corners of a triangle
+ */
 export function meshesTo3mf(objects, options = {}) {
+  for (const o of objects) checkPrecision(o.mesh.positions, o.mesh.indices, (x) => Math.fround(Number(num(x))), '3MF readers store');
   const out = [];
   let total = 0;
   let failure = null;

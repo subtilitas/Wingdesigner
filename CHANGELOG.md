@@ -90,8 +90,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   50 MB project held 100 copies (5,000 MB).
 - Autosave: an edit committed less than one frame before the page is hidden or left (reload, closing
   the tab, switching apps) is saved on `pagehide` or `visibilitychange`.
-- STL export refuses a mesh whose triangles collapse or turn over at 32-bit coordinate precision
-  (a 1 mm chord at 1,000,000 mm lost 720 of 960 triangles) and names the coordinate spacing.
+- STL and 3MF exports refuse a mesh in which 32-bit coordinates merge two corners of a triangle
+  (a 1 mm chord at 1,000,000 mm: 712 of 960 triangles) and name the coordinate spacing; 3MF
+  coordinates carry 9 significant digits instead of 5 decimals, which merged corners of 12
+  triangles at 1 mm chord and 200 chord samples.
+- Airfoil check: both ends of the outline lie at the trailing edge (`te-missing`); an outline with
+  one surface ending at mid-chord passed and lofted a trailing-edge face across the chord.
 - Loft: fitted-curve crossings, surface-row crossings and crossed trailing-edge slivers are ignored
   up to their chord fraction and at most 0.1 mm; a fixed fraction accepted a 6.19 mm loop at
   100,000 mm chord.
