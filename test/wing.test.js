@@ -793,6 +793,25 @@ describe('trailing-edge slivers and crossing size', () => {
     expect(curveCrossing(loop, { tolerance: CROSSING_TOLERANCE }).size).toBeGreaterThan(10 * CROSSING_TOLERANCE);
   });
 
+  it('limits an ignored crossing loop to 0.1 mm at large chords', () => {
+    // 10 cusped points with uniform parametrization: a trailing-edge loop 6.19e-5 chord wide.
+    const xs = Array.from({ length: 10 }, (_, i) => (1 - Math.cos((Math.PI * i) / 9)) / 2);
+    const t = (x) => 0.16 * Math.sqrt(x) * (1 - x) ** 1.25;
+    const pts = [...xs.slice().reverse().map((x) => [x, t(x) / 2]), ...xs.slice(1).map((x) => [x, -t(x) / 2])];
+    const build = (chord) =>
+      buildWing(
+        createProject({
+          airfoils: [{ id: 'c', name: 'cusped 10', points: pts }],
+          sections: [0, 3 * chord].map((y) => ({ airfoil: 'c', x: 0, y, z: 0, chord, twist: 0 })),
+          settings: { parametrization: 'uniform' },
+        }),
+      );
+    // 0.06 mm at 1000 mm chord: below both limits.
+    expect(build(1000).errors).toEqual([]);
+    // 6.19 mm at 100,000 mm chord: below 5e-4 chord, above 0.1 mm.
+    expect(build(100000).errors[0]).toMatch(/crosses itself near x = 99\.6 % chord; the loop is 6\.19 mm wide at 100000 mm chord, above 0\.1 mm/);
+  });
+
   it('finds a large crossing behind more small crossings than the search limit', () => {
     // 30 curls 1e-4 wide (below the tolerance) along y = 0, then a loop 0.05 wide at x = 0.8.
     const pts = [];

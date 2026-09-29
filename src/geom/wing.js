@@ -7,7 +7,7 @@
 import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
 import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
-import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
+import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
 import { blendPoints, blendScalar, spanwiseWeights } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
@@ -51,11 +51,14 @@ const MAX_EXTRA_STATIONS = 32;
 export const MAX_GAP_FRACTION = 0.05;
 
 /**
- * Crossed surfaces past 99 % chord up to this fraction of the chord count as zero thickness: the
- * resampled trailing edge of a cusped airfoil can lie in a sliver that the curve crossing check
- * (CROSSING_TOLERANCE) accepts. Equals the crossed trailing-edge limit of the airfoil checks.
+ * Crossed surfaces past 99 % chord up to this fraction of the chord, and at most CROSSING_LIMIT mm,
+ * count as zero thickness: the resampled trailing edge of a cusped airfoil can lie in a sliver that
+ * the curve crossing check accepts. Equals the crossed trailing-edge limit of the airfoil checks.
  */
 const TE_SLIVER = 1e-4;
+
+/** TE_SLIVER as a fraction of the given chord (mm). */
+const teSliver = (chord) => Math.min(TE_SLIVER, CROSSING_LIMIT / chord);
 
 /** Negative chord (mm) below which nose line and end line count as crossed. */
 const CROSS_TOLERANCE = 0.01;
@@ -171,6 +174,16 @@ function profileStage(a, parametrization, chordStations, N) {
 }
 
 /**
+ * Crossing of a profile stage's fitted curve at a tolerance below CROSSING_TOLERANCE (a fraction of
+ * the chord), cached on the stage per tolerance.
+ */
+function stageCrossing(stage, tolerance) {
+  stage.crossings ??= new Map();
+  if (!stage.crossings.has(tolerance)) stage.crossings.set(tolerance, curveCrossing(stage.prof.curve, { tolerance }));
+  return stage.crossings.get(tolerance);
+}
+
+/**
  * Crossing of the surface row at parameter v. Rows lie in planes y = const (every station lies in
  * one), so the row is tested in the x-z plane. Returns { x, size } in mm or null.
  */
@@ -234,10 +247,22 @@ export function buildWing(project) {
       continue;
     }
     const stage = profileStage(a, settings.parametrization, chordStations, N);
+    // Uniform and chord-length parametrization follow unevenly spaced points less closely.
+    const hint = settings.parametrization === 'centripetal' ? '' : ' Settings > Profile parametrization "centripetal" follows the points more closely.';
     if (stage.error) {
-      // Uniform and chord-length parametrization follow unevenly spaced points less closely.
-      const hint = settings.parametrization === 'centripetal' ? '' : ' Settings > Profile parametrization "centripetal" follows the points more closely.';
       errors.push(`Airfoil "${a.name ?? a.id}": ${stage.error}${hint}`);
+      continue;
+    }
+    // The crossing tolerance of the profile stage is a fraction of the chord; above 200 mm chord
+    // the loop is measured against CROSSING_LIMIT mm at the largest chord using this airfoil.
+    const chordMax = Math.max(...sections.filter((q) => q.airfoil === s.airfoil).map((q) => q.chord));
+    const cross = CROSSING_TOLERANCE * chordMax > CROSSING_LIMIT ? stageCrossing(stage, CROSSING_LIMIT / chordMax) : null;
+    if (cross) {
+      errors.push(
+        `Airfoil "${a.name ?? a.id}": the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
+          `the loop is ${(cross.size * chordMax).toFixed(2)} mm wide at ${chordMax} mm chord, above ${CROSSING_LIMIT} mm. ` +
+          `Use a file with more points or finer spacing near that position.${hint}`,
+      );
       continue;
     }
     result.profiles.set(s.airfoil, { ...stage.prof, id: a.id, name: a.name, points: stage.points, compat: stage.compat });
@@ -378,8 +403,8 @@ export function buildWing(project) {
   // Thinnest point of a resampled shape; `core` covers chord stations from 1 % to 99 %, where
   // thickness at or below the airfoil contact tolerance means the surfaces touch. Past 99 % chord a
   // station can lie in a trailing-edge sliver that the curve crossing check tolerates: crossings
-  // there up to TE_SLIVER chord count as zero thickness.
-  const thinnest = (shape) => {
+  // there up to `sliver` (teSliver of the chord) count as zero thickness.
+  const thinnest = (shape, sliver) => {
     let t = Infinity;
     let tX = 0;
     let core = Infinity;
@@ -387,7 +412,7 @@ export function buildWing(project) {
     for (let k = 1; k < N; k++) {
       const d = shape[N - k][1] - shape[N + k][1];
       const x = chordStations[k];
-      const dt = x > 0.99 && d < 0 ? Math.min(0, d + TE_SLIVER) : d;
+      const dt = x > 0.99 && d < 0 ? Math.min(0, d + sliver) : d;
       if (dt < t) {
         t = dt;
         tX = x;
@@ -443,14 +468,14 @@ export function buildWing(project) {
       for (let k = 1; k < 2 * N; k++) record(profileNames[k], '% chord', shape[k][1], profileRanges[k], y);
     }
     // Round-off level differences do not move the reported position.
-    const { t, tX } = thinnest(shape);
+    const { t, tX } = thinnest(shape, teSliver(chord));
     if (t < minThick - 1e-12) {
       minThick = t;
       minThickY = y;
       minThickX = tX;
     }
     if (chord >= LIMITS.minChord) {
-      const { t: tTe, core, coreX } = thinnest(applyTrailingEdge(shape, te.mode, teGap(chord), N));
+      const { t: tTe, core, coreX } = thinnest(applyTrailingEdge(shape, te.mode, teGap(chord), N), teSliver(chord));
       if (tTe < minTeThick - 1e-12) {
         minTeThick = tTe;
         minTeThickY = y;
@@ -583,10 +608,11 @@ export function buildWing(project) {
         const rz = (P[2] - pl.z) / pl.chord;
         return sn * rx + c * rz;
       };
+      const sliver = teSliver(pl.chord);
       for (let q = 0; q < probeK.length; q++) {
         const x = chordStations[probeK[q]];
         const d = localZ(fitted[2 + 2 * q]) - localZ(fitted[3 + 2 * q]);
-        const t = x > 0.99 && d < 0 ? Math.min(0, d + TE_SLIVER) : d;
+        const t = x > 0.99 && d < 0 ? Math.min(0, d + sliver) : d;
         if (t < fitThick) {
           fitThick = t;
           fitThickY = y;
@@ -739,7 +765,7 @@ export function buildWing(project) {
   const rowV = rowY.map((y) => (y1 > y0 ? (y - y0) / (y1 - y0) : 0));
   const chordAtV = (v) => placement(y0 + v * (y1 - y0)).chord;
   for (const v of rowV) {
-    const cross = surfaceRowCrossing(surface, v, CROSSING_TOLERANCE * chordAtV(v));
+    const cross = surfaceRowCrossing(surface, v, Math.min(CROSSING_TOLERANCE * chordAtV(v), CROSSING_LIMIT));
     if (cross) {
       errors.push(
         `The loft surface crosses itself at y = ${(y0 + v * (y1 - y0)).toFixed(1)} mm near x = ${cross.x.toFixed(1)} mm: ` +

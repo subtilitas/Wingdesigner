@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
 import { buildWing } from '../src/geom/wing.js';
 import { concatMeshes, edgeCheck, exportMeshes, meshVolume, mirrorMesh } from '../src/geom/mesh.js';
-import { meshToStl, parseStl } from '../src/export/stl.js';
+import { StlPrecisionError, meshToStl, parseStl } from '../src/export/stl.js';
 import { meshesTo3mf, modelXml, xmlEscape } from '../src/export/threemf.js';
 import { stepReal, stepString, wingToStep } from '../src/export/step.js';
 import { MAX_PROJECT_BYTES, projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
@@ -52,6 +52,23 @@ describe('STL', () => {
     }
     expect(v / meshVolume(mesh)).toBeCloseTo(1, 5);
     for (const t of tris.slice(0, 50)) expect(Math.hypot(...t.normal)).toBeCloseTo(1, 5);
+  });
+
+  it('refuses a mesh that 32-bit coordinates collapse', () => {
+    const at = (x, z) => {
+      const p = sampleProject();
+      for (const s of p.sections) Object.assign(s, { x, z, chord: 1 });
+      const build = buildWing(p);
+      expect(build.errors).toEqual([]);
+      return concatMeshes(exportMeshes(build, 'halves', { uRefine: 1, vRefine: 1 }).map((m) => m.mesh));
+    };
+    // 1 mm chord at 1,000,000 mm: coordinate spacing 0.0625 mm.
+    expect(() => meshToStl(at(1e6, 1e6))).toThrow(StlPrecisionError);
+    expect(() => meshToStl(at(1e6, 1e6))).toThrow(/spacing is 0\.063 mm, and \d+ of \d+ triangles collapse or turn over/);
+    // At 1000 mm the spacing is 6.1e-5 mm; every triangle keeps its orientation.
+    const near = at(1000, 0);
+    const tris = parseStl(meshToStl(near));
+    expect(tris.length).toBe(near.indices.length / 3);
   });
 });
 

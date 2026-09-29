@@ -1,7 +1,7 @@
 // Export dialog: STEP, STL, 3MF and the project JSON.
 
 import { wingToStep } from '../export/step.js';
-import { meshToStl } from '../export/stl.js';
+import { StlPrecisionError, meshToStl } from '../export/stl.js';
 import { meshesTo3mf } from '../export/threemf.js';
 import { concatMeshes, exportMeshes } from '../geom/mesh.js';
 import { projectToJsonText } from '../model/io.js';
@@ -78,6 +78,10 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         download(slugFile(name, '3mf'), meshesTo3mf(meshes, { title: name }), 'model/3mf');
       }
     } catch (e) {
+      if (e instanceof StlPrecisionError) {
+        notify(e.message, true);
+        return;
+      }
       // Out-of-memory and size limits of the browser end here, e.g. very dense meshes.
       notify(`Export failed: ${e.message}. Use Normal mesh density or fewer chord samples and panel stations.`, true);
     }

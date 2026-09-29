@@ -102,6 +102,11 @@ function pointSegmentDistance(P, A, B) {
 // resolution; the loop of a coarse 9-point file measures 2.5e-3 chord.
 export const CROSSING_TOLERANCE = 5e-4;
 
+// The wing build ignores crossings up to CROSSING_TOLERANCE of the chord and at most this size in
+// mm, so the fraction applies up to 200 mm chord. The real-file slivers of 1.6e-5 chord reach it
+// at 6250 mm chord; a fixed fraction would accept a 50 mm loop at the 100,000 mm chord limit.
+export const CROSSING_LIMIT = 0.1;
+
 /**
  * Crossing size for the polyline pts: size(i, j) splits the outline at the crossing of segments i
  * and j into the inner part pts[i+1..j] and the outer part (the rest), both closed polygons, and
