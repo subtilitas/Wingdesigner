@@ -30,7 +30,11 @@ export function displayGeometry(build, origin = [0, 0, 0]) {
   const S = build.surface;
   const us = build.paramsU;
   const fit = Math.floor(MAX_DISPLAY_VERTICES / (us.length * build.paramsV.length));
-  const vs = refine(build.paramsV, S.degreeV === 1 ? 1 : Math.max(1, Math.min(3, fit)));
+  // Above the cap the stations themselves are thinned (root and tip kept); the section outlines are
+  // drawn at their exact span positions.
+  const maxV = Math.max(2, Math.floor(MAX_DISPLAY_VERTICES / us.length));
+  const base = build.paramsV.length > maxV ? Array.from({ length: maxV }, (_, i) => build.paramsV[Math.round((i * (build.paramsV.length - 1)) / (maxV - 1))]) : build.paramsV;
+  const vs = refine(base, S.degreeV === 1 ? 1 : Math.max(1, Math.min(3, fit)));
   const M = us.length;
   const V = vs.length;
   const pos = new Float32Array(M * V * 3);

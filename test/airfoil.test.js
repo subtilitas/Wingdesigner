@@ -450,6 +450,13 @@ describe('parser robustness', () => {
     expect(d.issues.find((i) => i.code === 'many-points').message).toMatch(/^5,199 points \(warning above 5,000\): the checks and the first build of a wing that uses the airfoil take (under 1 s|about [\d.]+ s)\.$/);
   });
 
+  it('writes a Selig file whose name stays on the first line', () => {
+    const pts = nacaAirfoil('0012', { pointsPerSide: 11 }).points;
+    const text = toSeligDat('foil\n0.25 9\r\nend', pts);
+    expect(text.split('\n')[0]).toBe('foil 0.25 9 end');
+    expect(parseDat(text).points).toHaveLength(pts.length);
+  });
+
   it('keeps the first MAX_NAME characters of a long name line', () => {
     const pts = nacaAirfoil('2412', { pointsPerSide: 21 }).points;
     const r = parseDat([`N${'x'.repeat(MAX_NAME + 1000)}`, ...pts.map((p) => p.join(' '))].join('\n'));

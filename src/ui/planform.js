@@ -165,7 +165,7 @@ export class PlanformEditor {
     const sel = this.store.selection.section;
     const g = p.guides ?? {};
     sortedSections(p).forEach((s, i) => {
-      const st = build?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
+      const st = build?.stations?.find((q) => q.y === s.y);
       const xLE = st ? st.xLE : s.x;
       const chord = st ? st.chord : s.chord;
       const [ax, ay] = toS(s.y, xLE);
@@ -235,7 +235,7 @@ export class PlanformEditor {
     }
     const build = this.getBuild();
     for (const s of sortedSections(p)) {
-      const st = build?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
+      const st = build?.stations?.find((q) => q.y === s.y);
       const xLE = st ? st.xLE : s.x;
       const chord = st ? st.chord : s.chord;
       if (!g.nose?.enabled && Math.hypot(xLE - x, s.y - y) <= tol) return { type: 'le', id: s.id };
@@ -274,7 +274,7 @@ export class PlanformEditor {
           if (!s) return;
           // Effective edges come from the build: with one guide on, the other edge follows the chord.
           const b = this.getBuild();
-          const st = b?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
+          const st = b?.stations?.find((q) => q.y === s.y);
           if (hnd.type === 'le') {
             dragLeadingEdge(p, s.id, x, y, b?.guides?.end ?? null);
           } else {

@@ -373,7 +373,8 @@ function samePoint(a, b) {
 
 /** Serialize points to Selig .dat text. */
 export function toSeligDat(name, points, digits = 6) {
-  const lines = [name];
+  // The name is the first line only: line breaks in a name would start coordinate rows.
+  const lines = [String(name).replace(/[\r\n]+/g, ' ')];
   for (const [x, y] of points) lines.push(`${x.toFixed(digits).padStart(digits + 3)} ${y.toFixed(digits).padStart(digits + 3)}`);
   return lines.join('\n') + '\n';
 }

@@ -7,16 +7,16 @@ import { LAZY_OPTIONS, WARN, costPhrase, displayName, loftGrid, projectSize } fr
 
 const C = LIMITS.maxCoordinate;
 
-/** The station at span position y (within 1e-9 mm) of stations sorted by y, or undefined. */
+/** The station at span position y of stations sorted by y (stations at sections copy their y), or undefined. */
 function stationAt(stations, y) {
   let lo = 0;
   let hi = stations.length - 1;
   while (lo < hi) {
     const mid = (lo + hi) >> 1;
-    if (stations[mid].y < y - 1e-9) lo = mid + 1;
+    if (stations[mid].y < y) lo = mid + 1;
     else hi = mid;
   }
-  return stations.length && Math.abs(stations[lo].y - y) < 1e-9 ? stations[lo] : undefined;
+  return stations.length && stations[lo].y === y ? stations[lo] : undefined;
 }
 const FIELDS = [
   { key: 'y', label: 'y', unit: 'mm', title: 'Span position of the section plane', step: 5, min: 0, max: C },

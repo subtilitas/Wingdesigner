@@ -39,4 +39,18 @@ describe('3D view geometry', () => {
     expect(error(displayGeometry(build), [0, 0, 0])).toBeGreaterThan(0.01);
     expect(error(displayGeometry(build, origin), origin)).toBeLessThan(1e-5);
   });
+  it('keeps the display mesh within 100,000 vertices when the loft grid alone is larger', () => {
+    const build = buildWing(
+      createProject({
+        airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }],
+        sections: Array.from({ length: 20 }, (_, i) => ({ airfoil: 'a', x: 0, y: 50 * i, z: 0, chord: 200 - 5 * i, twist: 0 })),
+        settings: { spanwise: 'smooth', chordSamples: 200, panelStations: 40 },
+      }),
+    );
+    expect(build.errors).toEqual([]);
+    expect(build.paramsU.length * build.paramsV.length).toBeGreaterThan(100_000);
+    const vertices = displayGeometry(build).surface.getAttribute('position').count;
+    expect(vertices).toBeLessThanOrEqual(100_000);
+    expect(vertices).toBeGreaterThan(90_000);
+  });
 });
