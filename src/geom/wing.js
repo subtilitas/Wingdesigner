@@ -6,7 +6,7 @@
 
 import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
-import { averagingKnots, collocationFactor, collocationSolve, curvePoint, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
+import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
 import { blendPoints, blendScalar, spanwiseWeights } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
@@ -34,6 +34,15 @@ export const FOLD_LIMIT = 0.9 * LIMITS.minChord;
  * range. Natural cubic splines through closely spaced sections overshoot by thousands of times it.
  */
 export const OVERSHOOT_LIMIT = 2;
+
+/**
+ * Largest loft grid before added stations: spanwise stations times profile points (2N + 1). 20
+ * sections with 40 stations per panel and 200 chord samples (305,000 points) took 4 s to build.
+ */
+export const MAX_GRID_POINTS = 160_000;
+
+/** Surface rows tested halfway between fitted stations (the widest intervals), besides the sections. */
+const MAX_STATION_ROWS = 64;
 
 /** Stations the builder may add where the loft deviates from the intended planform. */
 const MAX_EXTRA_STATIONS = 32;
@@ -166,9 +175,18 @@ function profileStage(a, parametrization, chordStations, N) {
  * one), so the row is tested in the x-z plane. Returns { x, size } in mm or null.
  */
 export function surfaceRowCrossing(surface, v, tolerance) {
+  // Non-rational surface: the v basis at this row is the same for every control column.
+  const p = surface.degreeV;
+  const span = findSpan(surface.points[0].length - 1, p, v, surface.knotsV);
+  const Nb = basisFuns(span, v, p, surface.knotsV);
   const ctrl = surface.points.map((col) => {
-    const q = curvePoint({ degree: surface.degreeV, knots: surface.knotsV, points: col }, v);
-    return [q[0], q[2]];
+    let x = 0;
+    let z = 0;
+    for (let j = 0; j <= p; j++) {
+      x += Nb[j] * col[span - p + j][0];
+      z += Nb[j] * col[span - p + j][2];
+    }
+    return [x, z];
   });
   return curveCrossing({ degree: surface.degreeU, knots: surface.knotsU, points: ctrl }, { tolerance, samplesPerSpan: 4 });
 }
@@ -245,6 +263,16 @@ export function buildWing(project) {
       errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: the curve doubles back in span direction; move the points apart or use control-point mode.`);
       continue;
     }
+    // A B-spline lies within the hull of its control points: control points within the coordinate
+    // limit bound the whole curve. Through-point guides over unevenly spaced points overshoot.
+    const far = Math.max(...curve.points.map((q) => Math.abs(q[0])));
+    if (!(far <= LIMITS.maxCoordinate)) {
+      errors.push(
+        `${key === 'nose' ? 'Nose line' : 'End line'}: the curve through the points reaches x = ${far.toExponential(2)} mm, beyond ±${LIMITS.maxCoordinate} mm; ` +
+          'space the points more evenly in y or use control-point mode.',
+      );
+      continue;
+    }
     result.guides[key] = curve;
     guideOn[key] = true;
   }
@@ -255,7 +283,15 @@ export function buildWing(project) {
   const y1 = ys[ys.length - 1];
   const weights = spanwiseWeights(ys, settings.spanwise);
   const dense = guideOn.nose || guideOn.end || settings.spanwise === 'smooth';
-  const K = dense ? Math.max(LIMITS.panelStations[0], Math.min(settings.panelStations, LIMITS.panelStations[1])) : 1;
+  const Kset = dense ? Math.max(LIMITS.panelStations[0], Math.min(settings.panelStations, LIMITS.panelStations[1])) : 1;
+  // Grid budget: stations times profile points (2N + 1) stays within MAX_GRID_POINTS, so many
+  // sections with fine settings rebuild within about a second; fewer stations per panel then.
+  const K = Math.max(1, Math.min(Kset, Math.floor(MAX_GRID_POINTS / ((2 * N + 1) * (sections.length - 1)))));
+  if (K < Kset) {
+    warnings.push(
+      `Spanwise stations per panel reduced from ${Kset} to ${K}: ${sections.length} sections with ${N} chord samples keep the loft within ${MAX_GRID_POINTS.toLocaleString('en')} grid points.`,
+    );
+  }
 
   // Intermediate stations cluster towards the panel ends (cosine spacing), where guide curves
   // and pointed tips change fastest.
@@ -380,6 +416,7 @@ export function buildWing(project) {
     if (ratio > OVERSHOOT_LIMIT && !(overshoot && overshoot.ratio >= ratio)) overshoot = { name, unit, value, lo, hi, y, ratio };
   };
   let nonFiniteY = null;
+  let farPlacement = null;
   for (const y of [...checkYs].sort((a, b) => a - b)) {
     if (!(y >= y0 && y <= y1)) continue;
     const { chord, w, xLE, z, twist } = placement(y);
@@ -387,6 +424,10 @@ export function buildWing(project) {
     if (![xLE, chord, z, Math.cos((twist * Math.PI) / 180)].every(Number.isFinite)) {
       nonFiniteY = y;
       break;
+    }
+    // Interpolated values (smooth overshoot, guide curves) stay within the project limits too.
+    if (!farPlacement && (Math.abs(xLE) > LIMITS.maxCoordinate || Math.abs(z) > LIMITS.maxCoordinate || chord > LIMITS.maxChord)) {
+      farPlacement = { y, xLE, z, chord };
     }
     if (chord < minChord) {
       minChord = chord;
@@ -422,6 +463,14 @@ export function buildWing(project) {
   }
   if (nonFiniteY !== null) {
     errors.push(`Section values give non-finite coordinates at y = ${nonFiniteY.toFixed(1)} mm; check the positions, chords and twists of the sections.`);
+    return result;
+  }
+  if (farPlacement) {
+    const { y, xLE, z, chord } = farPlacement;
+    errors.push(
+      `At y = ${y.toFixed(1)} mm the wing leaves the project limits (leading-edge x ${xLE.toFixed(0)} mm, z ${z.toFixed(0)} mm, chord ${chord.toFixed(0)} mm; ` +
+        `limits ±${LIMITS.maxCoordinate} mm and ${LIMITS.maxChord} mm chord). Check the guide curves, or use linear interpolation.`,
+    );
     return result;
   }
   if (overshoot) {
@@ -680,7 +729,11 @@ export function buildWing(project) {
     rowSet.add(ys[i]);
     if (i + 1 < ys.length) rowSet.add((ys[i] + ys[i + 1]) / 2);
   }
-  for (let i = 0; i + 1 < yList.length; i++) rowSet.add((yList[i] + yList[i + 1]) / 2);
+  // Station intervals: the widest MAX_STATION_ROWS, where a row has the most room to swing.
+  const gaps = [];
+  for (let i = 0; i + 1 < yList.length; i++) gaps.push([yList[i + 1] - yList[i], (yList[i] + yList[i + 1]) / 2]);
+  gaps.sort((a, b) => b[0] - a[0]);
+  for (const [, y] of gaps.slice(0, MAX_STATION_ROWS)) rowSet.add(y);
   const rowY = [...rowSet].sort((a, b) => a - b);
   const rowV = rowY.map((y) => (y1 > y0 ? (y - y0) / (y1 - y0) : 0));
   const chordAtV = (v) => placement(y0 + v * (y1 - y0)).chord;

@@ -55,6 +55,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - The build stops with the validation message when a section or guide value exceeds the project
   limits, so a project that cannot be saved cannot be exported; planform drags keep chords, section
   positions and guide points within the limits.
+- Loft: a guide curve whose control points leave ±1,000,000 mm (through-point guides over unevenly
+  spaced points overshoot) and interpolated leading-edge x, z or chord beyond the project limits
+  are errors; a leading-edge drag keeps the chord at 1 mm when the end line lies at the coordinate
+  limit.
+- Loft: at most 160,000 grid points (stations times profile points) before added stations; stations
+  per panel are reduced with a warning. 20 sections with 40 stations per panel and 200 chord samples
+  build in 0.8 s instead of 4 s. Surface rows are tested halfway between the 64 widest station
+  intervals, each row with one basis evaluation.
 - Airfoil check: consecutive points closer than 1e-9 chord are removed (their interpolation
   parameters coincide and the collocation matrix is singular); the preview reports an interpolation
   failure as an error and does not offer "Add to project".

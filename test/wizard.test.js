@@ -204,6 +204,12 @@ describe('edit operations', () => {
     expect(tip.y).toBe(LIMITS.maxCoordinate);
     expect(tip.chord).toBe(LIMITS.maxChord);
     expect(tip.x + tip.chord).toBe(170);
+    // With the end line at the coordinate limit the chord keeps its minimum.
+    const q = sampleProject();
+    q.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[-LIMITS.maxCoordinate, 0], [-LIMITS.maxCoordinate, 300], [-LIMITS.maxCoordinate, 600]] };
+    dragLeadingEdge(q, q.sections[1].id, 50, 300, buildWing(q).guides.end);
+    expect(q.sections[1]).toMatchObject({ x: -LIMITS.maxCoordinate, chord: LIMITS.minChord });
+    expect(validateProject(q).ok).toBe(true);
     moveGuidePoint(p, 'nose', 1, 9e9, 300);
     expect(p.guides.nose.points[1][0]).toBe(LIMITS.maxCoordinate);
     moveGuidePoint(p, 'nose', 0, -9e9, 0);

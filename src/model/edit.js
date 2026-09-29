@@ -47,9 +47,10 @@ export function dragLeadingEdge(project, id, x, y, endCurve = null) {
     const ys = sorted.map((q) => (q === s ? newY : q.y));
     te = guideXAt(endCurve, newY, Math.min(...ys), Math.max(...ys));
   }
-  // Leading edge within the coordinate limit and LIMITS.minChord..maxChord ahead of the trailing edge.
+  // Leading edge within the coordinate limit and LIMITS.minChord..maxChord ahead of the trailing
+  // edge; the chord stays within its limits also when the trailing edge lies at the coordinate limit.
   s.x = clampCoordinate(Math.min(Math.max(x, te - LIMITS.maxChord), te - LIMITS.minChord));
-  s.chord = te - s.x;
+  s.chord = Math.min(Math.max(te - s.x, LIMITS.minChord), LIMITS.maxChord);
   s.y = newY;
 }
 

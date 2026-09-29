@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OVERSHOOT_LIMIT, buildWing, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
+import { MAX_GRID_POINTS, OVERSHOOT_LIMIT, buildWing, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nurbs.js';
 import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
@@ -704,6 +704,41 @@ describe('smooth spanwise overshoot', () => {
     }
     expect(hit).not.toBeNull();
     expect(hit.surface).toBeNull();
+  });
+
+  it('stops when interpolated placement or a guide curve leaves the project limits', () => {
+    // Smooth x through 0 / 1,000,000 / 0 mm at y = 0 / 100 / 1000 mm overshoots to about 2.3e6 mm,
+    // 1.34 section ranges: within the overshoot limit, beyond the coordinate limit.
+    const p = sampleProject({ settings: { spanwise: 'smooth' } });
+    p.sections = [
+      { id: 'a', airfoil: 'root', x: 0, y: 0, z: 0, chord: 100, twist: 0 },
+      { id: 'b', airfoil: 'root', x: 1_000_000, y: 100, z: 0, chord: 100, twist: 0 },
+      { id: 'c', airfoil: 'root', x: 0, y: 1000, z: 0, chord: 100, twist: 0 },
+    ];
+    expect(validateProject(p).ok).toBe(true);
+    expect(buildWing(p).errors[0]).toMatch(/^At y = [\d.]+ mm the wing leaves the project limits \(leading-edge x [12]\d{6} mm/);
+    // Through-point end line over unevenly spaced points: its control points reach 7.6e13 mm.
+    const q = sampleProject();
+    q.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[0, 0], [1_000_000, 0.1], [-1_000_000, 0.11], [1_000_000, 599.9], [0, 600]] };
+    expect(validateProject(q).ok).toBe(true);
+    const b = buildWing(q);
+    expect(b.errors[0]).toMatch(/^End line: the curve through the points reaches x = 7\.\d\de\+13 mm, beyond ±1000000 mm/);
+    expect(b.surface).toBeNull();
+  });
+
+  it('keeps the loft grid within MAX_GRID_POINTS by reducing stations per panel', { timeout: 30000 }, () => {
+    const p = sampleProject({ settings: { spanwise: 'smooth', panelStations: 40, chordSamples: 200 } });
+    const base = p.sections[0];
+    p.sections = Array.from({ length: 30 }, (_, i) => ({ ...base, id: `s${i}`, y: 20 * i, chord: 200 - 3 * i, x: 2 * i }));
+    const t0 = performance.now();
+    const b = buildWing(p);
+    const ms = performance.now() - t0;
+    expect(b.errors).toEqual([]);
+    // floor(160,000 / (401 points x 29 panels)) = 13 stations per panel.
+    expect(b.warnings[0]).toBe('Spanwise stations per panel reduced from 40 to 13: 30 sections with 200 chord samples keep the loft within 160,000 grid points.');
+    expect(b.stations.length - b.extraStations).toBe(29 * 13 + 1);
+    expect((b.stations.length - b.extraStations) * 401).toBeLessThanOrEqual(MAX_GRID_POINTS);
+    expect(ms).toBeLessThan(15000);
   });
 
   it('stops at values beyond the project limits, which would also block saving', () => {

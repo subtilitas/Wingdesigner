@@ -18,6 +18,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['test/**/*.test.js'],
+    // Timing limits live in the tests that measure them; the timeout only catches hangs. Under
+    // coverage on a loaded 2-core runner, the heaviest tests take 4 to 10 s.
+    testTimeout: 20000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.js'],
