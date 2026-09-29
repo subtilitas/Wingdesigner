@@ -199,6 +199,17 @@ describe('project JSON', () => {
     expect(projectFromJsonText(JSON.stringify(json)).project.guides.nose.edited).toBe(false);
   });
 
+  it('rejects oversized section and guide arrays without visiting every entry', () => {
+    const json = projectToJson(sampleProject(), null);
+    json.sections = Array.from({ length: 300_000 }, () => ({}));
+    const t0 = performance.now();
+    expect(validateProject(json).errors).toEqual(['At most 200 sections are supported (found 300000).']);
+    const g = projectToJson(sampleProject(), null);
+    g.guides.end.points = Array.from({ length: 300_000 }, () => ['x', null]);
+    expect(validateProject(g).errors).toEqual(['guides.end.points: at most 500 points.']);
+    expect(performance.now() - t0).toBeLessThan(500);
+  });
+
   it('rejects airfoils above the 5000-point file limit in project files', () => {
     const json = projectToJson(sampleProject(), null);
     json.airfoils[0].points = Array.from({ length: 5001 }, (_, i) => [Math.abs(Math.cos((2 * Math.PI * i) / 5000)), 0.05 * Math.sin((2 * Math.PI * i) / 5000)]);
@@ -267,6 +278,7 @@ describe('project JSON', () => {
       (p) => (p.sections[2].y = 1_000_001),
       (p) => (p.guides.nose.points = Array.from({ length: 501 }, (_, i) => [0, (600 * i) / 500])),
       (p) => (p.guides.nose.points[1] = [2e6, 300]),
+      (p) => (p.guides.end.points[1] = [-1_100_001, 300]),
       (p) => {
         const s = p.sections[0];
         p.sections = Array.from({ length: 201 }, (_, i) => ({ ...s, id: `s${i}`, y: i * 3 }));

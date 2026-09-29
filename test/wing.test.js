@@ -708,7 +708,7 @@ describe('smooth spanwise overshoot', () => {
 
   it('stops when interpolated placement or a guide curve leaves the project limits', () => {
     // Smooth x through 0 / 1,000,000 / 0 mm at y = 0 / 100 / 1000 mm overshoots to about 2.3e6 mm,
-    // 1.34 section ranges: within the overshoot limit, beyond the coordinate limit.
+    // 1.34 section ranges: within the overshoot limit, beyond the geometry extent of 1,200,000 mm.
     const p = sampleProject({ settings: { spanwise: 'smooth' } });
     p.sections = [
       { id: 'a', airfoil: 'root', x: 0, y: 0, z: 0, chord: 100, twist: 0 },
@@ -716,13 +716,13 @@ describe('smooth spanwise overshoot', () => {
       { id: 'c', airfoil: 'root', x: 0, y: 1000, z: 0, chord: 100, twist: 0 },
     ];
     expect(validateProject(p).ok).toBe(true);
-    expect(buildWing(p).errors[0]).toMatch(/^At y = [\d.]+ mm the wing leaves the project limits \(leading-edge x [12]\d{6} mm/);
+    expect(buildWing(p).errors[0]).toMatch(/^At y = [\d.]+ mm the wing leaves the project limits \(leading-edge x \d{7} mm.*limits ±1200000 mm/);
     // Through-point end line over unevenly spaced points: its control points reach 7.6e13 mm.
     const q = sampleProject();
     q.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[0, 0], [1_000_000, 0.1], [-1_000_000, 0.11], [1_000_000, 599.9], [0, 600]] };
     expect(validateProject(q).ok).toBe(true);
     const b = buildWing(q);
-    expect(b.errors[0]).toMatch(/^End line: the curve through the points reaches x = 7\.\d\de\+13 mm, beyond ±1000000 mm/);
+    expect(b.errors[0]).toMatch(/^End line: the curve through the points reaches x = 7\.\d\de\+13 mm, beyond ±1200000 mm/);
     expect(b.surface).toBeNull();
   });
 

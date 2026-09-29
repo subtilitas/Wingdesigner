@@ -24,7 +24,7 @@ export function clampSectionY(sorted, i, y) {
   return Math.min(Math.max(y, prev + m), next - m, LIMITS.maxCoordinate);
 }
 
-const clampCoordinate = (v) => Math.min(Math.max(v, -LIMITS.maxCoordinate), LIMITS.maxCoordinate);
+const clampCoordinate = (v, limit = LIMITS.maxCoordinate) => Math.min(Math.max(v, -limit), limit);
 
 /** Chord from a dragged trailing-edge x and the leading-edge x, within LIMITS.minChord..maxChord. */
 export function chordFromTrailingEdge(x, xLE) {
@@ -167,12 +167,12 @@ export function removeGuidePoint(project, key, index) {
 /**
  * Move a guide point. End points keep their span position; interior points stay strictly
  * between their neighbours (margin 0.5 mm, or a quarter of the gap when the neighbours are closer
- * than 2 mm); x stays within LIMITS.maxCoordinate.
+ * than 2 mm); x stays within LIMITS.maxGuideCoordinate.
  */
 export function moveGuidePoint(project, key, index, xIn, y) {
   const pts = project.guides[key].points;
   project.guides[key].edited = true;
-  const x = clampCoordinate(xIn);
+  const x = clampCoordinate(xIn, LIMITS.maxGuideCoordinate);
   const last = pts.length - 1;
   if (index === 0 || index === last) {
     pts[index] = [x, pts[index][1]];

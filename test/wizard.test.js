@@ -204,16 +204,30 @@ describe('edit operations', () => {
     expect(tip.y).toBe(LIMITS.maxCoordinate);
     expect(tip.chord).toBe(LIMITS.maxChord);
     expect(tip.x + tip.chord).toBe(170);
-    // With the end line at the coordinate limit the chord keeps its minimum.
+    // With the end line at its limit the chord keeps its minimum; the leading edge derived from the
+    // end line (end line x minus chord) stays within the geometry extent, so the wing still builds.
+    expect(LIMITS.maxGuideCoordinate).toBe(LIMITS.maxCoordinate + LIMITS.maxChord);
+    expect(LIMITS.maxExtent).toBe(LIMITS.maxGuideCoordinate + LIMITS.maxChord);
     const q = sampleProject();
-    q.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[-LIMITS.maxCoordinate, 0], [-LIMITS.maxCoordinate, 300], [-LIMITS.maxCoordinate, 600]] };
+    const xg = -LIMITS.maxGuideCoordinate;
+    q.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[xg, 0], [xg, 300], [xg, 600]] };
     dragLeadingEdge(q, q.sections[1].id, 50, 300, buildWing(q).guides.end);
     expect(q.sections[1]).toMatchObject({ x: -LIMITS.maxCoordinate, chord: LIMITS.minChord });
     expect(validateProject(q).ok).toBe(true);
+    expect(buildWing(q).errors).toEqual([]);
+    for (const s of q.sections) s.chord = LIMITS.maxChord;
+    expect(buildWing(q).errors).toEqual([]);
+    // Sections at the coordinate limit with the largest chord: disabled guides follow their edges.
+    const r = sampleProject();
+    r.sections[2].x = LIMITS.maxCoordinate;
+    r.sections[2].chord = LIMITS.maxChord;
+    resetDisabledGuides(r);
+    expect(r.guides.end.points[2][0]).toBe(LIMITS.maxGuideCoordinate);
+    expect(validateProject(r).ok).toBe(true);
     moveGuidePoint(p, 'nose', 1, 9e9, 300);
-    expect(p.guides.nose.points[1][0]).toBe(LIMITS.maxCoordinate);
+    expect(p.guides.nose.points[1][0]).toBe(LIMITS.maxGuideCoordinate);
     moveGuidePoint(p, 'nose', 0, -9e9, 0);
-    expect(p.guides.nose.points[0][0]).toBe(-LIMITS.maxCoordinate);
+    expect(p.guides.nose.points[0][0]).toBe(-LIMITS.maxGuideCoordinate);
     expect(validateProject(p).ok).toBe(true);
   });
 

@@ -263,12 +263,12 @@ export function buildWing(project) {
       errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: the curve doubles back in span direction; move the points apart or use control-point mode.`);
       continue;
     }
-    // A B-spline lies within the hull of its control points: control points within the coordinate
-    // limit bound the whole curve. Through-point guides over unevenly spaced points overshoot.
+    // A B-spline lies within the hull of its control points: control points within the geometry
+    // extent bound the whole curve. Through-point guides over unevenly spaced points overshoot.
     const far = Math.max(...curve.points.map((q) => Math.abs(q[0])));
-    if (!(far <= LIMITS.maxCoordinate)) {
+    if (!(far <= LIMITS.maxExtent)) {
       errors.push(
-        `${key === 'nose' ? 'Nose line' : 'End line'}: the curve through the points reaches x = ${far.toExponential(2)} mm, beyond ±${LIMITS.maxCoordinate} mm; ` +
+        `${key === 'nose' ? 'Nose line' : 'End line'}: the curve through the points reaches x = ${far.toExponential(2)} mm, beyond ±${LIMITS.maxExtent} mm; ` +
           'space the points more evenly in y or use control-point mode.',
       );
       continue;
@@ -425,8 +425,9 @@ export function buildWing(project) {
       nonFiniteY = y;
       break;
     }
-    // Interpolated values (smooth overshoot, guide curves) stay within the project limits too.
-    if (!farPlacement && (Math.abs(xLE) > LIMITS.maxCoordinate || Math.abs(z) > LIMITS.maxCoordinate || chord > LIMITS.maxChord)) {
+    // Interpolated values (smooth overshoot, guide curves) stay within the geometry extent and the
+    // chord limit; every combination of valid sections and guides does.
+    if (!farPlacement && (Math.abs(xLE) > LIMITS.maxExtent || Math.abs(xLE + chord) > LIMITS.maxExtent || Math.abs(z) > LIMITS.maxExtent || chord > LIMITS.maxChord)) {
       farPlacement = { y, xLE, z, chord };
     }
     if (chord < minChord) {
@@ -469,7 +470,7 @@ export function buildWing(project) {
     const { y, xLE, z, chord } = farPlacement;
     errors.push(
       `At y = ${y.toFixed(1)} mm the wing leaves the project limits (leading-edge x ${xLE.toFixed(0)} mm, z ${z.toFixed(0)} mm, chord ${chord.toFixed(0)} mm; ` +
-        `limits ±${LIMITS.maxCoordinate} mm and ${LIMITS.maxChord} mm chord). Check the guide curves, or use linear interpolation.`,
+        `limits ±${LIMITS.maxExtent} mm and ${LIMITS.maxChord} mm chord). Check the guide curves, or use linear interpolation.`,
     );
     return result;
   }

@@ -34,6 +34,11 @@ export const LIMITS = Object.freeze({
   // Every section can use its own airfoil; each project airfoil is a list entry with a thumbnail.
   maxAirfoils: 200,
   maxGuidePoints: 500,
+  // Guide x reaches the trailing edge of any valid section (x + chord), where disabled end lines lie.
+  maxGuideCoordinate: 1_100_000,
+  // Extent of the built geometry: every leading edge, trailing edge and z within this bound covers
+  // an end line at its limit less the largest chord. Only interpolation overshoot goes beyond it.
+  maxExtent: 1_200_000,
   tipRatio: [0.001, 0.01],
   chordSamples: [16, 200],
   panelStations: [3, 40],
@@ -94,6 +99,8 @@ function isNum(v) {
 export function limitErrors(p) {
   const errors = [];
   const sections = Array.isArray(p?.sections) ? p.sections : [];
+  // Counts first: an oversized array is rejected without visiting every entry.
+  if (sections.length > LIMITS.maxSections) return [`At most ${LIMITS.maxSections} sections are supported (found ${sections.length}).`];
   sections.forEach((s, i) => {
     if (!isObject(s)) return;
     if (isNum(s.chord) && s.chord > LIMITS.maxChord) errors.push(`Section ${i + 1}: chord must be at most ${LIMITS.maxChord} mm.`);
@@ -102,13 +109,12 @@ export function limitErrors(p) {
     }
     if (isNum(s.twist) && Math.abs(s.twist) > LIMITS.maxTwist) errors.push(`Section ${i + 1}: twist must be within ±${LIMITS.maxTwist} degrees.`);
   });
-  if (sections.length > LIMITS.maxSections) errors.push(`At most ${LIMITS.maxSections} sections are supported (found ${sections.length}).`);
   for (const key of ['nose', 'end']) {
     const g = isObject(p?.guides) ? p.guides[key] : null;
     if (!isObject(g) || !Array.isArray(g.points)) continue;
     if (g.points.length > LIMITS.maxGuidePoints) errors.push(`guides.${key}.points: at most ${LIMITS.maxGuidePoints} points.`);
-    if (g.points.some((q) => Array.isArray(q) && (Math.abs(q[0]) > LIMITS.maxCoordinate || Math.abs(q[1]) > LIMITS.maxCoordinate))) {
-      errors.push(`guides.${key}.points must be within ±${LIMITS.maxCoordinate} mm.`);
+    else if (g.points.some((q) => Array.isArray(q) && (Math.abs(q[0]) > LIMITS.maxGuideCoordinate || Math.abs(q[1]) > LIMITS.maxCoordinate))) {
+      errors.push(`guides.${key}.points: x must be within ±${LIMITS.maxGuideCoordinate} mm and y within ±${LIMITS.maxCoordinate} mm.`);
     }
   }
   return errors;
@@ -129,6 +135,7 @@ export function validateProject(p) {
   if (!Array.isArray(p.airfoils) || p.airfoils.length === 0) errors.push('airfoils must be a non-empty array.');
   else if (p.airfoils.length > LIMITS.maxAirfoils) errors.push(`At most ${LIMITS.maxAirfoils} airfoils are supported (found ${p.airfoils.length}).`);
   if (!Array.isArray(p.sections) || p.sections.length < 2) errors.push('At least 2 sections are required.');
+  else if (p.sections.length > LIMITS.maxSections) errors.push(`At most ${LIMITS.maxSections} sections are supported (found ${p.sections.length}).`);
   if (!errors.length && !p.airfoils.every(isObject)) errors.push('Every airfoil must be an object.');
   if (!errors.length && !p.sections.every(isObject)) errors.push('Every section must be an object.');
   if (errors.length) return { ok: false, errors };
@@ -201,6 +208,7 @@ export function validateProject(p) {
       if (g.edited !== undefined && typeof g.edited !== 'boolean') errors.push(`guides.${key}.edited must be true or false.`);
       if (!['fit', 'control'].includes(g.mode)) errors.push(`guides.${key}.mode must be "fit" or "control".`);
       if (!Array.isArray(g.points) || g.points.length < 2) errors.push(`guides.${key}.points needs at least 2 points.`);
+      else if (g.points.length > LIMITS.maxGuidePoints) continue; // reported by limitErrors without visiting the points
       else if (!g.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(`guides.${key}.points must be numeric [x, y] pairs.`);
       if (g.degree !== undefined && (!Number.isInteger(g.degree) || g.degree < 1 || g.degree > 5)) errors.push(`guides.${key}.degree must be 1..5.`);
     }

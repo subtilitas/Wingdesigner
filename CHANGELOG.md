@@ -59,6 +59,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   spaced points overshoot) and interpolated leading-edge x, z or chord beyond the project limits
   are errors; a leading-edge drag keeps the chord at 1 mm when the end line lies at the coordinate
   limit.
+- Limits follow the geometry: section leading edges within ±1,000,000 mm, guide x within
+  ±1,100,000 mm (the trailing edge of any valid section), and the built leading edges, trailing
+  edges and z within ±1,200,000 mm (an end line at its limit less the largest chord), so every
+  valid project builds and only interpolation overshoot is rejected. Section and guide-point counts
+  are checked before the entries are read (300,000 empty sections took 7.2 s to reject).
 - Loft: at most 160,000 grid points (stations times profile points) before added stations; stations
   per panel are reduced with a warning. 20 sections with 40 stations per panel and 200 chord samples
   build in 0.8 s instead of 4 s. Surface rows are tested halfway between the 64 widest station
