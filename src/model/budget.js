@@ -9,7 +9,7 @@
 // server CPU, JavaScript time without drawing the 3D view (RECORD.md lists the measurements). The
 // 3D view adds the drawing time of the graphics card; phones compute slower (not measured).
 
-import { LIMITS } from './project.js';
+import { LIMITS, resolveSettings } from './project.js';
 
 /** Sizes above which a warning names the expected time and memory. */
 export const WARN = Object.freeze({
@@ -20,6 +20,7 @@ export const WARN = Object.freeze({
   guidePoints: 500,
   gridPoints: 60_000,
   exportTriangles: 2_000_000,
+  stepPoints: 1_000_000,
   name: 200,
 });
 
@@ -39,6 +40,10 @@ const COST = Object.freeze({
   guidePoint: { s: 110e-6, mb: 0.05 },
   // Point of an airfoil once: the checks on import and the first build of a wing that uses it.
   airfoilFirstUse: { s: 30e-6, mb: 1e-3 },
+  // Airfoil once, whatever its points: curve sampling and crossing tests of the first build (7.4 ms
+  // per airfoil of 99 points at 1,000 and 2,000 airfoils, of it 3 ms by the point term; Node.js 24,
+  // not measured in the browser).
+  airfoilFirstBuild: { s: 4.4e-3 },
 });
 
 // Export cost per triangle by format (8.5 million triangles: STL 6.9 s, 1.7 GB above the open
@@ -46,7 +51,17 @@ const COST = Object.freeze({
 const EXPORT = Object.freeze({
   stl: { s: 0.8e-6, mb: 210e-6, fileMB: 50e-6 },
   '3mf': { s: 5.8e-6, mb: 110e-6, fileMB: 11.5e-6 },
+  // Per STEP control point (Node 24: 98 bytes of file, 620 bytes of heap at the peak, 1.6 to 3.4 µs;
+  // Chromium 141: 3.3 million points in 8.4 s).
+  step: { s: 2.5e-6, mb: 620e-6, fileMB: 98e-6 },
 });
+
+/** Surface control points a STEP export writes: the half-wing surface, twice with the left half. */
+export function stepPoints(build, half) {
+  const S = build?.surface;
+  if (!S) return 0;
+  return (half === 'right' ? 1 : 2) * S.points.length * S.points[0].length;
+}
 
 /**
  * Loft grid of a build: chord samples N, stations per panel as set (Kset) and as used (K), and the
@@ -67,12 +82,19 @@ export function loftGrid(sectionCount, settings, guidesOn = false) {
 export function projectSize(project) {
   const guides = project.guides ?? {};
   const enabled = ['nose', 'end'].filter((k) => guides[k]?.enabled);
+  const used = new Set(project.sections.map((s) => s.airfoil));
   let airfoilPoints = 0;
+  let usedAirfoils = 0;
+  let usedAirfoilPoints = 0;
   let largestAirfoil = 0;
   let longestName = String(project.name ?? '').length;
   for (const a of project.airfoils) {
     const n = a.points?.length ?? 0;
     airfoilPoints += n;
+    if (used.has(a.id)) {
+      usedAirfoils++;
+      usedAirfoilPoints += n;
+    }
     largestAirfoil = Math.max(largestAirfoil, n);
     longestName = Math.max(longestName, String(a.name ?? '').length);
   }
@@ -80,9 +102,13 @@ export function projectSize(project) {
     sections: project.sections.length,
     airfoils: project.airfoils.length,
     airfoilPoints,
+    // The build checks and fits only the airfoils that sections use.
+    usedAirfoils,
+    usedAirfoilPoints,
     largestAirfoil,
     guidePoints: Math.max(0, ...enabled.map((k) => guides[k].points?.length ?? 0)),
-    gridPoints: loftGrid(project.sections.length, project.settings, enabled.length > 0).points,
+    // Settings with their defaults: a project from the module API may carry some or none.
+    gridPoints: loftGrid(project.sections.length, resolveSettings(project.settings), enabled.length > 0).points,
     longestName,
   };
 }
@@ -105,12 +131,21 @@ export function changeCost(size) {
   return { seconds: s, megabytes: mb };
 }
 
+/**
+ * Expected time (s) of the first build of the project: Open, the restored autosave and a change of
+ * the profile parametrization check and fit every airfoil that a section uses again.
+ */
+export function firstBuildSeconds(size) {
+  return changeCost(size).seconds + COST.airfoilFirstBuild.s * size.usedAirfoils + COST.airfoilFirstUse.s * size.usedAirfoilPoints;
+}
+
 /** Expected time (s) of checking an airfoil of `points` points and of its first build. */
 export function airfoilFirstUseSeconds(points) {
   return COST.airfoilFirstUse.s * points;
 }
 
 /** Expected time (s), peak memory (MB) and file size (MB) of a mesh export. */
+/** Time, memory and file size of an export of n triangles (STL, 3MF) or n control points (STEP). */
 export function exportCost(triangles, format) {
   const c = EXPORT[format] ?? EXPORT.stl;
   return { seconds: c.s * triangles, megabytes: COST.base.mb + c.mb * triangles, fileMB: c.fileMB * triangles };
@@ -126,8 +161,10 @@ export function formatSeconds(s) {
 
 /** "about 250 MB", "about 1.2 GB" (two significant digits). */
 export function formatMegabytes(mb) {
-  if (mb >= 1000) return `about ${Number((mb / 1000).toPrecision(2))} GB`;
-  return `about ${Number(Math.max(mb, 1).toPrecision(2))} MB`;
+  // Rounded before the unit is chosen: 996 MB reads "about 1 GB", not "about 1000 MB".
+  const v = Number(Math.max(mb, 1).toPrecision(2));
+  if (v >= 1000) return `about ${Number((v / 1000).toPrecision(2))} GB`;
+  return `about ${v} MB`;
 }
 
 /** Time and memory of one change: "each change takes about 3 s and about 250 MB of browser memory". */
@@ -163,7 +200,10 @@ export function sizeWarning(project, size = projectSize(project)) {
   const large = largeSizes(size).map((q) => q.text);
   if (!large.length) return null;
   const list = large.length === 1 ? large[0] : `${large.slice(0, -1).join(', ')} and ${large[large.length - 1]}`;
-  return `Large project: ${list}. ${costSentence(size)}`;
+  // The first build names its own time when it takes at least 1 s more than a change.
+  const first = firstBuildSeconds(size);
+  const open = first - changeCost(size).seconds >= 1 ? ` Opening it or changing the profile parametrization takes ${formatSeconds(first)}.` : '';
+  return `Large project: ${list}. ${costSentence(size)}${open}`;
 }
 
 /** A name for lists and messages: at most WARN.name characters. */

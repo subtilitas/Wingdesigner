@@ -36,6 +36,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           notes="$(awk -v v="${GITHUB_REF_NAME#v}" '$0 ~ "^## \\[?"v"\\]?" {f=1; next} /^## / && f {exit} f' CHANGELOG.md)"
+          use="Use: unzip wingdesigner-${GITHUB_REF_NAME}-site.zip and open index.html in the browser; it runs from the file without a web server (tested in Chromium). A static web server on the folder works as well, e.g. python3 -m http.server. LICENSES.txt holds the licenses of the app and of its bundled libraries."
+          body="$(printf '%s\n\n%s\n' "${notes:-See CHANGELOG.md.}" "${use}")"
           gh release create "${GITHUB_REF_NAME}" "wingdesigner-${GITHUB_REF_NAME}-site.zip" \
             --title "Wingdesigner ${GITHUB_REF_NAME}" \
-            --notes "${notes:-See CHANGELOG.md.}"
+            --notes "${body}"

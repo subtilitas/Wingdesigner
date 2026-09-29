@@ -4,7 +4,8 @@
 import { MAX_FILE_BYTES, MAX_INPUT, decodeText, toSeligDat } from '../airfoil/parse.js';
 import { importAirfoilText, checkAirfoil } from '../airfoil/sanity.js';
 import { parseNacaCode } from '../airfoil/naca.js';
-import { EXTERNAL_SOURCES, NACA_PRESETS, loadLibraryIndex, nacaEntry, suggestAttribution } from '../airfoil/library.js';
+import { EXTERNAL_SOURCES, NACA_PRESETS, nacaEntry, suggestAttribution } from '../airfoil/library.js';
+import { bundledLibrary } from '../airfoil/bundled.js';
 import { profileCurve, profileProblem } from '../geom/profile.js';
 import { curvePoint } from '../geom/nurbs.js';
 import { addAirfoil, pruneAirfoils } from '../model/edit.js';
@@ -15,17 +16,23 @@ import { clear, download, h, slugFile } from './dom.js';
 
 const SEVERITY_LABEL = { error: 'Error', warning: 'Warning', info: 'Info' };
 
-/** Small static outline drawing. */
-export function drawThumb(canvas, points, color = cssVar('--ink', '#1d2430')) {
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth || 120;
-  const hgt = canvas.clientHeight || 40;
-  canvas.width = w * dpr;
-  canvas.height = hgt * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, hgt);
-  if (!points?.length) return;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+// Thumbnail drawing units (the CSS box is 110 x 36 px) and most points drawn.
+const THUMB_W = 120;
+const THUMB_H = 40;
+const THUMB_POINTS = 400;
+
+/**
+ * Small static outline drawing as SVG. A canvas per airfoil held a device-pixel backing store (77 KB
+ * at 2x), about 770 MB for 10,000 airfoils; a polyline of at most THUMB_POINTS points takes a few
+ * KB and stays sharp at every pixel ratio.
+ */
+export function airfoilThumb(points) {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'thumb');
+  svg.setAttribute('viewBox', `0 0 ${THUMB_W} ${THUMB_H}`);
+  svg.setAttribute('aria-hidden', 'true');
+  if (!points?.length) return svg;
   // Scale and centre from the point bounds: project files may hold any scale, e.g. percent of chord.
   let xmin = Infinity;
   let xmax = -Infinity;
@@ -37,19 +44,18 @@ export function drawThumb(canvas, points, color = cssVar('--ink', '#1d2430')) {
     ymin = Math.min(ymin, y);
     ymax = Math.max(ymax, y);
   }
-  const s = Math.min((w - 8) / Math.max(xmax - xmin, 1e-12), (hgt - 8) / Math.max(ymax - ymin, 1e-12));
-  const ox = w / 2 - ((xmax + xmin) / 2) * s;
-  const oy = hgt / 2 + ((ymax + ymin) / 2) * s;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  points.forEach(([x, y], i) => {
-    const px = ox + x * s;
-    const py = oy - y * s;
-    if (i) ctx.lineTo(px, py);
-    else ctx.moveTo(px, py);
-  });
-  ctx.stroke();
+  const s = Math.min((THUMB_W - 8) / Math.max(xmax - xmin, 1e-12), (THUMB_H - 8) / Math.max(ymax - ymin, 1e-12));
+  const ox = THUMB_W / 2 - ((xmax + xmin) / 2) * s;
+  const oy = THUMB_H / 2 + ((ymax + ymin) / 2) * s;
+  const step = Math.max(1, Math.ceil(points.length / THUMB_POINTS));
+  const at = (q) => `${(ox + q[0] * s).toFixed(2)},${(oy - q[1] * s).toFixed(2)}`;
+  const out = [];
+  for (let i = 0; i < points.length; i += step) out.push(at(points[i]));
+  if ((points.length - 1) % step) out.push(at(points[points.length - 1]));
+  const line = document.createElementNS(SVG_NS, 'polyline');
+  line.setAttribute('points', out.join(' '));
+  svg.append(line);
+  return svg;
 }
 
 /**
@@ -200,16 +206,12 @@ export class AirfoilsPanel {
     this.root = root;
     this.store = store;
     this.onMessage = onMessage ?? (() => {});
-    this.library = [];
+    this.library = bundledLibrary();
     this.filter = '';
     // Text typed into the upload and NACA fields survives re-rendering until it is added.
     this.drafts = { paste: '', naca: '', closedTE: false };
     this.entries = new WeakMap();
     this.render();
-    loadLibraryIndex().then((lib) => {
-      this.library = lib;
-      this.renderLibraryOnly();
-    });
   }
 
   update() {
@@ -235,12 +237,23 @@ export class AirfoilsPanel {
     if (!res) return null;
     const after = refusal(res.points.length);
     let id = null;
-    this.store.update((p) => {
-      id = addAirfoil(p, res);
-    });
+    const count = this.store.project.airfoils.length;
+    // No section uses the new airfoil yet: the wing stays as it is.
+    this.store.update(
+      (p) => {
+        id = addAirfoil(p, res);
+      },
+      { reason: 'airfoils' },
+    );
     if (id === null) {
       this.onMessage(after, true);
       return null;
+    }
+    // An equal airfoil already in the project keeps its entry (addAirfoil returns its id).
+    if (this.store.project.airfoils.length === count) {
+      const same = this.store.project.airfoils.find((a) => a.id === id);
+      this.onMessage(`The project already holds this airfoil as "${displayName(same?.name ?? id)}".`);
+      return id;
     }
     this.onMessage(`Added airfoil "${displayName(res.name)}".`);
     return id;
@@ -286,8 +299,7 @@ export class AirfoilsPanel {
         const inUse = used.has(a.id);
         const kept = this.entries.get(a);
         if (kept?.inUse === inUse) return kept.li;
-        const c = h('canvas', { class: 'thumb' });
-        requestAnimationFrame(() => drawThumb(c, a.points));
+        const c = airfoilThumb(a.points);
         const attribution = a.source?.attribution ?? (a.source?.kind === 'naca' ? 'NACA equations' : '');
         const li = h(
           'li',
@@ -311,7 +323,7 @@ export class AirfoilsPanel {
               class: 'icon',
               title: used.has(a.id) ? 'In use by a section' : 'Remove from project',
               disabled: used.has(a.id),
-              onclick: () => this.store.update((q) => (q.airfoils = q.airfoils.filter((x) => x.id !== a.id))),
+              onclick: () => this.store.update((q) => (q.airfoils = q.airfoils.filter((x) => x.id !== a.id)), { reason: 'airfoils' }),
             },
             '×',
           ),
@@ -405,7 +417,7 @@ export class AirfoilsPanel {
     this.fillLibrary(nacaList, libList, addNaca);
 
     clear(this.root).append(
-      h('section', {}, h('h3', {}, 'Project airfoils'), projectList, h('button', { type: 'button', onclick: () => this.store.update((q2) => pruneAirfoils(q2)) }, 'Remove unused')),
+      h('section', {}, h('h3', {}, 'Project airfoils'), projectList, h('button', { type: 'button', onclick: () => this.store.update((q2) => pruneAirfoils(q2), { reason: 'airfoils' }) }, 'Remove unused')),
       h(
         'section',
         {},
@@ -467,8 +479,7 @@ export class AirfoilsPanel {
         points: null,
         open: async () => {
           try {
-            const res = await fetch(a.url);
-            const r = importAirfoilText(await res.text(), a.file);
+            const r = importAirfoilText(a.text, a.file);
             await this.addCandidate(
               {
                 name: a.name,
@@ -491,8 +502,7 @@ export class AirfoilsPanel {
         'ul',
         { class: 'airfoil-list' },
         items.map((it) => {
-          const c = h('canvas', { class: 'thumb' });
-          if (it.points) requestAnimationFrame(() => drawThumb(c, it.points()));
+          const c = airfoilThumb(it.points?.());
           return h(
             'li',
             {},

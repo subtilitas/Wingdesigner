@@ -4,7 +4,7 @@
 //
 // Uploaded test airfoils are generated here from the NACA 4-digit equations; the library test adds the
 // bundled S9104 file from public/airfoils/.
-import { STORAGE_KEY, createDesign, dialogOf, downloadOf, expect, openTab, savedProject, statusOf, test, toastOf, whenRerendered } from './helpers.js';
+import { STORAGE_KEY, createDesign, dialogOf, downloadOf, expect, frames, openTab, savedProject, sectionField, statusOf, test, toastOf, whenRerendered } from './helpers.js';
 
 const NACA_MESSAGE = 'Enter a 4-digit (e.g. 2412) or 5-digit (e.g. 23012) designation.';
 // Generated NACA presets of the library as defined in src/airfoil/library.js (NACA_PRESETS), in list order.
@@ -88,10 +88,7 @@ const itemNames = (items) => items.locator('.grow > div:first-child').allTextCon
 
 /** First visit: create the Sport preset (root NACA 2412, tip NACA 2410) and open the Airfoils tab. */
 async function startSport(page) {
-  // The panel renders once more when the library index has loaded; wait for it before marking.
-  const index = page.waitForResponse((r) => r.url().endsWith('/airfoils/index.json'));
   await createDesign(page, 'Sport');
-  await index;
   await openTab(page, 'Airfoils');
   await expect(projectItems(page)).toHaveCount(2);
 }
@@ -240,24 +237,16 @@ test.describe('Airfoils tab', () => {
     await page.reload();
     await openTab(page, 'Airfoils');
     await expect(projectItems(page)).toHaveCount(2);
-    // Bounding box of the drawn pixels of each project thumbnail (canvas pixels). NACA 2412 in percent
-    // and NACA 2410 in unit chord differ by 2 % thickness only, so the boxes nearly match.
+    // Bounding box of the outline of each project thumbnail (drawing units of the 120 x 40 view box).
+    // NACA 2412 in percent and NACA 2410 in unit chord differ by 2 % thickness only, so the boxes
+    // nearly match.
     const inked = () =>
       projectItems(page).evaluateAll((lis) =>
         lis.map((li) => {
-          const c = li.querySelector('canvas');
-          const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-          const box = [c.width, c.height, -1, -1];
-          for (let i = 3; i < d.length; i += 4) {
-            if (!d[i]) continue;
-            const x = ((i - 3) / 4) % c.width;
-            const y = Math.floor((i - 3) / 4 / c.width);
-            box[0] = Math.min(box[0], x);
-            box[1] = Math.min(box[1], y);
-            box[2] = Math.max(box[2], x);
-            box[3] = Math.max(box[3], y);
-          }
-          return { left: box[0], right: c.width - 1 - box[2], width: box[2] - box[0] + 1, height: box[3] - box[1] + 1, canvasHeight: c.height };
+          const svg = li.querySelector('svg.thumb');
+          const [, , w, h] = svg.getAttribute('viewBox').split(' ').map(Number);
+          const b = svg.querySelector('polyline').getBBox();
+          return { left: b.x, right: w - b.x - b.width, width: b.width, height: b.height, canvasHeight: h };
         }),
       );
     await expect.poll(async () => (await inked())[0].width).toBeGreaterThan(0);
@@ -546,28 +535,25 @@ test.describe('Airfoils tab', () => {
 
     // The same preset added again is recognized as identical.
     await preset.getByRole('button', { name: 'Preview' }).click();
-    await addFromPreview(page, 'NACA 4412');
+    await dialogOf(page).getByRole('button', { name: 'Add to project' }).click();
+    await expect(dialogOf(page)).toHaveCount(0);
+    await expect(toastOf(page)).toHaveText('The project already holds this airfoil as "NACA 4412".');
     expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410', 'NACA 4412']);
     await expect.poll(async () => (await savedIds(page)).airfoils).toEqual(['naca2412', 'naca2410', 'naca-4412']);
   });
 
-  test('text typed before the library index loads stays in the Upload and NACA fields', async ({ page }) => {
-    let release;
-    const held = new Promise((r) => (release = r));
-    await page.route('**/airfoils/index.json', async (route) => {
-      await held;
-      await route.continue();
-    });
+  test('text typed in the Upload and NACA fields stays when the panel renders again', async ({ page }) => {
+    // The bundled library is part of the app: no request loads it.
+    const requests = [];
+    page.on('request', (r) => requests.push(r.url()));
     await createDesign(page, 'Sport');
     await openTab(page, 'Airfoils');
+    await expect(sectionOf(page, 'Library').locator('.airfoil-list > li', { hasText: 'S9104' })).toHaveCount(1);
+    expect(requests.filter((u) => u.includes('/airfoils/'))).toEqual([]);
     const draft = 'Draft\n1 0.01\n0 0\n1 -0.01';
     await page.getByLabel('Paste coordinates').fill(draft);
     await page.getByLabel('NACA designation').fill('4415');
     await page.getByLabel('Closed trailing edge').check();
-    const loaded = page.waitForResponse((r) => r.url().endsWith('/airfoils/index.json'));
-    release();
-    await loaded;
-    await expect(sectionOf(page, 'Library').locator('.airfoil-list > li', { hasText: 'S9104' })).toHaveCount(1);
     await expect(page.getByLabel('Paste coordinates')).toHaveValue(draft);
     await expect(page.getByLabel('NACA designation')).toHaveValue('4415');
     await expect(page.getByLabel('Closed trailing edge')).toBeChecked();
@@ -608,8 +594,29 @@ test.describe('Airfoils tab', () => {
     const preset = nacaLibraryItems(page).filter({ hasText: 'NACA 2412' });
     await expect(preset).toHaveCount(1);
     await preset.getByRole('button', { name: 'Preview' }).click();
-    await addFromPreview(page, 'NACA 2412');
+    await dialogOf(page).getByRole('button', { name: 'Add to project' }).click();
+    await expect(dialogOf(page)).toHaveCount(0);
+    await expect(toastOf(page)).toHaveText('The project already holds this airfoil as "NACA 2412".');
     expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410']);
+  });
+
+  test('an action that changes nothing keeps the undo and redo history', async ({ page }) => {
+    await startSport(page);
+    const undo = page.getByRole('button', { name: 'Undo', exact: true });
+    const redo = page.getByRole('button', { name: 'Redo', exact: true });
+    await openTab(page, 'Sections');
+    const chord = sectionField(page, 1, 'chord');
+    await chord.fill('150');
+    await chord.press('Enter');
+    await expect(undo).toBeEnabled();
+    await undo.click();
+    await expect(redo).toBeEnabled();
+    // Every airfoil is used: "Remove unused" removes nothing, and Redo still restores the edit.
+    await openTab(page, 'Airfoils');
+    await sectionOf(page, 'Project airfoils').getByRole('button', { name: 'Remove unused' }).click();
+    await expect(redo).toBeEnabled();
+    await redo.click();
+    await expect.poll(async () => (await savedProject(page)).sections[1].chord).toBe(150);
   });
 
   test('"Remove unused" keeps only airfoils used by sections; Undo and Redo', async ({ page }) => {
@@ -643,8 +650,9 @@ test.describe('Airfoils tab', () => {
     expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 4415']);
     await expect.poll(() => savedIds(page)).toEqual({ airfoils: ['naca2412', 'naca-4415'], sections: ['naca2412', 'naca-4415'] });
 
-    // Nothing left to remove: a second click changes nothing.
-    await clickAndRefresh(page, removeUnused);
+    // Nothing left to remove: a second click changes nothing and keeps Redo empty and Undo as it was.
+    await removeUnused.click();
+    await frames(page);
     expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 4415']);
     await expect.poll(() => savedIds(page)).toEqual({ airfoils: ['naca2412', 'naca-4415'], sections: ['naca2412', 'naca-4415'] });
   });

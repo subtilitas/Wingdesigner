@@ -23,6 +23,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   loft grid note name the estimate.
 - Export dialog: a note under the mesh density gives the triangles and file size of the chosen
   format, halves and density, with time and memory above 2,000,000 triangles.
+- Export dialog: for STEP a note gives the surface control points and the file size, with time and
+  memory above 1,000,000 control points; above 3,000,000 **Download** is disabled (3.3 million wrote
+  330 MB in 8.4 s, about 5.4 million exceed the 512 MB string limit of the browser).
+- `LICENSES.txt` in the build and the release zip: the license of the app and the license text of
+  every npm package whose code the bundle contains (three.js and fflate, both MIT), derived from the
+  bundle at build time; a bundled package without a license file stops the build. Help links to it.
+- The release zip runs without a web server: `index.html` opened from the file loads the app,
+  the bundled airfoil library and the autosave (tested in Chromium 141). The release notes say how
+  to use the zip and where the licenses are.
+- `npm run counts:check` (in CI): compares every test count in `README.md`, `README.de.md`,
+  `RECORD.md` and the Development and Geometry wiki pages (English and German) with the suites:
+  unit tests and files from Vitest, browser tests, spec files and runs from the Playwright listing,
+  tests that run on one device only from the report of the CI browser run, and the STEP and 3MF
+  validation cases from `test/step-cases.js`. Exit code 1 on a difference or a missing statement.
+  Playwright writes a JSON report to `playwright-report/results.json`.
 
 ### Changed
 
@@ -33,8 +48,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - Switching a guide curve off and on keeps its edited points; a guide is marked `edited` in the
   project JSON once points are added, removed or moved, and Reset to sections clears the mark.
 - Project limits: chord at most 100,000 mm, twist within ±360 degrees, coordinates within
-  ±1,000,000 mm, at most 200 sections and 500 points per guide; the Sections table clamps typed
-  values to them and disables insert at 200 sections.
+  ±1,000,000 mm, at most 20,000 sections and 20,000 points per guide; the Sections table clamps
+  typed values to them and disables insert at 20,000 sections, and the Planform tab disables
+  **Add point** at 20,000 guide points.
 - Crossing loops of fitted curves and surface rows are measured by their mean width (area over
   extent) instead of their extent, so long, thin trailing-edge slivers no longer fail at low chord
   sample counts.
@@ -46,7 +62,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   triangles, 10,000-character names.
 - Mesh export: Fine density is always offered; Download is off above 10,000,000 triangles.
 - Save and JSON export leave out the derived NURBS data when the file would exceed 100 MB, so every
-  saved project reopens; Open reads project files up to 100 MB (50 MB before), airfoil uploads up
+  file they write reopens; Open reads project files up to 100 MB (50 MB before), airfoil uploads up
   to 20 MB and 5,000,000 characters (8 MB and 2,000,000 before).
 - Selecting a section marks the row, the 3D section outline and the planform handle without
   rebuilding the wing; a click in a row outside its fields and buttons selects it.
@@ -54,6 +70,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   focused or pressed.
 - Lists and messages show the first 200 characters of a name followed by `…`; download file names
   are cut to 120 characters.
+- The build writes one classic deferred script (immediately invoked function expression, IIFE)
+  instead of an ES module loaded in cross-origin resource sharing (CORS) mode; the bundled airfoil
+  library is compiled into it instead of fetched from `airfoils/` at run time.
 
 ### Fixed
 
@@ -236,6 +255,108 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   dialog is open; input focus survives a rebuild; empty or invalid number fields restore their
   value; export formats are disabled while the wing has errors; equal section span positions are
   rejected.
+- Project files keep the derived NURBS data at full double precision; rounding to 12 significant
+  digits merged the span parameters and knots of close sections.
+- Span fractions, stations, knots and guide points count as distinct only when they differ by more
+  than 4 units in the last place and by more than 2^-1021, so subnormal gaps next to v = 0 are an
+  error instead of a failed build.
+- The file leading edge of an airfoil is the same point at every scale of the outline:
+  squared distances within a relative 1e-15 of the largest count as ties, and ties go to the
+  smaller x.
+- Number fields show the shortest decimal that reads back to the stored value instead of 3 decimal
+  places (a y of 600.0000002 mm showed as 600).
+- Adding an airfoil, or removing one that no section uses, updates the lists, the size warning and
+  the autosave without rebuilding the wing; selecting a section or changing the display redraws
+  the planform canvas without rendering its forms; Save or Export right after an edit renders the
+  planform forms of the new build.
+- The STEP size note shows the exact count below 1,000,000 control points (`4,114 control points`
+  for the Glider preset instead of `0.00 million`).
+- Airfoil parser: numbers, column headers and HTML titles are read in linear time (a 4,000-letter
+  line took 79 s, an 80,000-digit token 11 s, 80,000 unclosed `<title>` tags 13 s); a comment is cut
+  at the first `#`; column headers may use commas and semicolons; HTML tables read row by row
+  whatever their source line breaks, cell markup and end tags, and a caption no longer joins the first
+  row; `&nbsp;` reads as a space; XML values follow the text number rules; a closing point written
+  twice after a blunt trailing edge is removed; point order and the file leading edge do not depend
+  on the scale of the coordinates.
+- The `.dat` download writes as many decimals as needed to keep consecutive points distinct, and
+  escapes `<html`, `<pre` and `<body` at the end of a name.
+- The self-crossing search sizes its grid cells from the median segment box: a narrow zigzag of
+  40,201 points took 54 s.
+- Sections of exactly 1 mm chord build (blend round-off counted as a chord below the minimum); the
+  chord error names the smooth blend when no pair of guide curves sets the chord; sections or guide
+  points about 1e-300 of the span apart give a build error instead of an internal error.
+- Cap triangulation sums areas relative to a vertex: a wing 100,000 mm from the origin fell back to
+  ear clipping and took 2.6 s per export.
+- STL and 3MF precision notice: `at … mm` gives the largest coordinate of the damaged triangles
+  instead of the whole mesh; when the first damaged triangle still collapses or turns over with its
+  x and z moved next to 0 and the root moved to y = 0, the notice ends `Sections or stations near y = … mm lie closer together
+  than the spacing there (… mm); move them apart, or export STEP.` (sections at y = 300 and
+  300.00001 mm: moving the wing does not help).
+- Size warning: when the first build (Open, restored autosave, a change of the profile
+  parametrization) takes at least 1 s longer than a change, the warning ends with `Opening it or
+  changing the profile parametrization takes about … s.` The estimate is the time of a change plus
+  4.4 ms per airfoil that a section uses plus 30 µs per point of these airfoils (20,000 linear
+  sections at 16 chord samples with 10,000 used airfoils of 99 points: about 83 s).
+- First build: the curve samples of the airfoil check serve the crossing test at the chord of the
+  build as well (Node.js 24: 7.4 ms instead of 9.2 ms per airfoil of 99 points).
+- Save and JSON export estimate the derived NURBS data from the mean length of sampled surface
+  coordinates and, up to 110 MB by the estimate, write and measure the file; 26 characters per
+  number left the derived data out of files of 70 MB.
+- Wing statistics split the span at root, tip, sections and guide knots and control points, not at
+  the stations: 139,994 stations took 27 s at 20,000 sections with 20,000-point guides.
+- Cap triangulation uses the other diagonal of a quad whose first diagonal gives a triangle that is
+  not counterclockwise: Fine caps with a closed trailing edge (NACA 4415, 200 chord samples) fell
+  back to ear clipping and took 2.2 s.
+- The 3D control net stays within 100,000 segments for long nets (33 x 151,000 control points:
+  302,062 segments before): when the first and last lines alone exceed it, each kept line passes
+  through every k-th control point only.
+- Adaptive stations: 1 round above 60,000 loft grid points (a 4 mm guide bump at 2,000 sections took
+  3 fits and 22.8 s instead of 9.2 s); the build keeps the fit with the smallest largest deviation
+  relative to its tolerance, the first one on a tie (a 0.06 mm wide guide bump on a 2-section wing
+  went from 3.67 mm to 18,797 mm after 32 stations; now the first fit stays and warns); stations go
+  to the peaks of deviation / tolerance (a 10 mm root chord wing with 15° washout and 45° forward
+  sweep warned with 0 added stations; now 1 added station and no warning).
+- Airfoil thumbnails in the Airfoils tab and the library list are SVG polylines of at most 400
+  points: a canvas per airfoil held up to 77 KB of backing store at a pixel ratio of 2, about 770 MB
+  for 10,000 airfoils (derived from the code).
+- Sections table: the chosen airfoil of each row is looked up in a map (1.7 s per render at 20,000
+  sections and 10,000 airfoils); adding an airfoil finds a free id with a set (0.73 s per add at
+  9,999 same-named airfoils); the planform editor reuses the guide samples while mode, degree and
+  points of the guide stay equal (about 90 ms per repaint for a 20,000-point guide).
+- Size estimates round to 2 significant digits before the unit is chosen: from 995 MB they read
+  `about 1 GB` instead of `about 1000 MB`.
+- Undo history: an action that changes nothing (Remove unused with every airfoil in use, Add to
+  project of an airfoil the project already holds, typing the same value) adds no undo step and
+  keeps the redo steps; a planform drag is one undo step until the pointer is released (a pause of
+  800 ms started a new step); undo or redo during a drag ends the drag (the drag went on with a
+  point index that could name another point), and Redo restores the point; the planform editor picks
+  the nearest point within the pick radius instead of the first one (guide points near an elliptic
+  tip lie closer together than the radius).
+- Add to project of an airfoil the project already holds shows `The project already holds this
+  airfoil as "…".` instead of `Added airfoil "…".`; a NACA section held under another name with the
+  same code, Closed trailing edge setting and checked points keeps the existing entry (cambered
+  sections added through the preview were added twice).
+- Status bar: `Autosave off: use Save` shows from the start when the saved project could not be
+  loaded and browser storage had no room for a copy; the start notice of a lost autosave and the
+  size warning of the restored project show in one notice in the error colour.
+- A project name above 200 characters adds the size warning as soon as it is committed, and a
+  shorter name removes it (at the next geometry edit before).
+- Keyboard focus stays on the airfoil lists of the Sections table, the lists of Settings and of the
+  guide curves, checkboxes, the project name field and the section row buttons when the panel
+  renders again (only number fields kept it).
+- Planform: section drags move disabled, unedited guide curves to the new section edges, as edits in
+  the Sections table do, so after a reload switching such a guide on keeps the dragged edge; Reset
+  to sections and switching a guide curve on or off clear the selected guide point; a pointed tip
+  section shows no trailing-edge handle, and no leading-edge handle while the end line is on.
+- Edits keep span positions the build accepts: Insert refuses a position whose span fraction is not
+  apart from both neighbours (`No span position lies between y = … mm and y = … mm. Move the two
+  sections apart first.`), and section drags and guide point moves keep the old y when the clamped
+  one would not be apart (4 units in the last place, 2^-1021).
+- Wizard elliptic planforms: nose and end lines with 11 points at eta = sin(pi i / 20), i = 0 … 10,
+  closer together towards the tip; largest chord deviation from the elliptic law, Glider preset:
+  taper 0.1 0.55 % of the root chord instead of 3.42 % with 6 points, pointed tip 2.87 % instead of
+  5.20 % with 7 points; the end line x is the rounded nose x plus the rounded chord (a 1 mm tip gave
+  0.9999999999999982 mm).
 
 ## [0.1.0] - 2026-09-29
 

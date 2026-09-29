@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EXTERNAL_SOURCES, NACA_PRESETS, loadLibraryIndex, nacaEntry, suggestAttribution } from '../src/airfoil/library.js';
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { EXTERNAL_SOURCES, NACA_PRESETS, nacaEntry, suggestAttribution } from '../src/airfoil/library.js';
+import { bundledLibrary } from '../src/airfoil/bundled.js';
+import { importAirfoilText } from '../src/airfoil/sanity.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
 
 describe('airfoil library', () => {
-  afterEach(() => vi.unstubAllGlobals());
-
   it('generates every NACA preset as a valid airfoil', () => {
     for (const n of NACA_PRESETS) {
       const a = nacaEntry(n.code);
@@ -21,16 +22,23 @@ describe('airfoil library', () => {
     expect(EXTERNAL_SOURCES.every((s) => s.url.startsWith('https://'))).toBe(true);
   });
 
-  it('loads the bundled index and resolves file URLs', async () => {
-    vi.stubGlobal('fetch', async () => ({ ok: true, json: async () => ({ airfoils: [{ id: 'a', name: 'A', file: 'a.dat' }] }) }));
-    expect(await loadLibraryIndex('./lib/')).toEqual([{ id: 'a', name: 'A', file: 'a.dat', url: './lib/a.dat' }]);
-    vi.stubGlobal('fetch', async () => ({ ok: true, json: async () => ({}) }));
-    expect(await loadLibraryIndex()).toEqual([]);
-    vi.stubGlobal('fetch', async () => ({ ok: false }));
-    expect(await loadLibraryIndex()).toEqual([]);
-    vi.stubGlobal('fetch', async () => {
-      throw new Error('offline');
-    });
-    expect(await loadLibraryIndex()).toEqual([]);
+  it('bundles every file of public/airfoils/index.json with its text, in index order', () => {
+    const index = JSON.parse(readFileSync('public/airfoils/index.json', 'utf8'));
+    const lib = bundledLibrary();
+    expect(lib.map((a) => a.id)).toEqual(index.airfoils.map((a) => a.id));
+    for (const a of lib) {
+      expect(a.text).toBe(readFileSync(`public/airfoils/${a.file}`, 'utf8'));
+      expect(importAirfoilText(a.text, a.file).ok, a.file).toBe(true);
+    }
+  });
+});
+
+describe('build licenses', () => {
+  it('finds the npm package of a bundled module with / (Vite module ids) and \\ (Windows paths)', async () => {
+    const { packageRoot } = await import('../vite.config.js');
+    expect(packageRoot('C:/w/node_modules/three/build/three.module.js')).toBe('C:/w/node_modules/three');
+    expect(packageRoot('C:\\w\\node_modules\\@scope\\pkg\\lib\\index.js')).toBe('C:/w/node_modules/@scope/pkg');
+    expect(packageRoot('/w/node_modules/a/node_modules/fflate/esm/browser.js')).toBe('/w/node_modules/a/node_modules/fflate');
+    expect(packageRoot('C:/w/src/main.js')).toBeNull();
   });
 });

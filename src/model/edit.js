@@ -1,11 +1,20 @@
 // Pure project edit operations used by the UI (kept free of DOM code so they are testable).
 
 import { defaultGuides, guideXAt } from '../geom/guide.js';
+import { paramsApart } from '../geom/nurbs.js';
 import { LIMITS, airfoilPoints, newId } from './project.js';
 import { nacaAirfoil } from '../airfoil/naca.js';
 
 export function sortedSections(project) {
   return project.sections.slice().sort((a, b) => a.y - b.y);
+}
+
+/**
+ * True when span positions a < b of a wing from y0 to y1 map to distinct surface parameters, the
+ * test the build applies to sections (paramsApart on the span fractions).
+ */
+function spanApart(a, b, y0, y1) {
+  return paramsApart((a - y0) / (y1 - y0), (b - y0) / (y1 - y0));
 }
 
 /**
@@ -23,7 +32,20 @@ export function clampSectionY(sorted, i, y) {
   const next = i < sorted.length - 1 ? sorted[i + 1].y : Infinity;
   const m = Math.min(1, (next - prev) / 4);
   const v = Math.min(Math.max(y, prev + m), next - m, LIMITS.maxCoordinate);
-  return v > prev && v < next ? v : sorted[i].y;
+  // The span fractions must stay distinct for the build, also next to a close neighbour.
+  const last = sorted.length - 1;
+  const y1 = i === last ? v : sorted[last].y;
+  const apart = spanApart(prev, v, sorted[0].y, y1) && (i === last ? closePair(sorted, sorted[0].y, v, last) < 0 : spanApart(v, next, sorted[0].y, y1));
+  return v > prev && v < next && apart ? v : sorted[i].y;
+}
+
+/**
+ * Index k of the first adjacent pair sorted[k - 1], sorted[k] (k < end) whose span fractions over a
+ * wing from y0 to y1 fall together, or -1. A new tip rescales every span fraction.
+ */
+function closePair(sorted, y0, y1, end = sorted.length) {
+  for (let k = 1; k < end; k++) if (!spanApart(sorted[k - 1].y, sorted[k].y, y0, y1)) return k;
+  return -1;
 }
 
 const clampCoordinate = (v, limit = LIMITS.maxCoordinate) => Math.min(Math.max(v, -limit), limit);
@@ -104,9 +126,14 @@ function nextSection(project, afterIndex) {
 export function insertProblem(project, afterIndex) {
   if (project.sections.length >= LIMITS.maxSections) return `At most ${LIMITS.maxSections.toLocaleString('en')} sections.`;
   const { a, b, sec } = nextSection(project, afterIndex);
-  // Neighbouring span positions can be too close for a number between them.
-  if (b && !(sec.y > a.y && sec.y < b.y)) return `No span position lies between y = ${a.y} mm and y = ${b.y} mm. Move the two sections apart first.`;
+  // Neighbouring span positions can be too close for a number between them, or for one whose span
+  // fraction the build keeps apart from both.
+  const sorted = sortedSections(project);
+  const [y0, y1] = [sorted[0].y, sorted[sorted.length - 1].y];
+  if (b && !(sec.y > a.y && sec.y < b.y && spanApart(a.y, sec.y, y0, y1) && spanApart(sec.y, b.y, y0, y1))) return `No span position lies between y = ${a.y} mm and y = ${b.y} mm. Move the two sections apart first.`;
   if (!b && sec.y > LIMITS.maxCoordinate) return `A section beyond the tip would lie beyond y = ${LIMITS.maxCoordinate} mm.`;
+  const k = b ? -1 : closePair(sorted, y0, sec.y);
+  if (k > 0) return `A section at y = ${sec.y} mm beyond the tip makes the span too long for the sections at y = ${sorted[k - 1].y} mm and y = ${sorted[k].y} mm. Move the two sections apart first.`;
   return null;
 }
 
@@ -207,8 +234,10 @@ export function moveGuidePoint(project, key, index, xIn, y) {
   const next = pts[index + 1][1];
   const m = Math.min(0.5, (next - prev) / 4);
   const v = Math.min(Math.max(y, prev + m), next - m);
-  // Neighbours without a number strictly between the clamped bounds keep the point's y.
-  pts[index] = [x, v > prev && v < next ? v : pts[index][1]];
+  // Neighbours without a number strictly between the clamped bounds, or without one whose
+  // normalized y stays apart from theirs (the check of through-point guides), keep the point's y.
+  const apart = spanApart(prev, v, pts[0][1], pts[last][1]) && spanApart(v, next, pts[0][1], pts[last][1]);
+  pts[index] = [x, v > prev && v < next && apart ? v : pts[index][1]];
 }
 
 /** Remove airfoils that no section uses. Returns the number removed. */
@@ -238,14 +267,18 @@ export function addAirfoil(project, airfoil) {
       return false;
     }
   };
-  const same = project.airfoils.find((a) => (sameNaca(a) && nacaPoints(a)) || (a.name === airfoil.name && samePoints(a)));
+  // A NACA section added through the preview carries the checked points, which differ from the
+  // generator's by up to 3.5e-3 for cambered sections: equal stored points confirm it as well.
+  const same = project.airfoils.find((a) => (sameNaca(a) && (nacaPoints(a) || samePoints(a))) || (a.name === airfoil.name && samePoints(a)));
   if (same) return same.id;
   if (project.airfoils.length >= LIMITS.maxAirfoils) return null;
   if (airfoilPoints(project) + airfoil.points.length > LIMITS.maxAirfoilPoints) return null;
   const base = slug(airfoil.name) || 'airfoil';
   let id = base;
   let k = 2;
-  while (project.airfoils.some((a) => a.id === id)) id = `${base}-${k++}`;
+  // A set: a scan per candidate suffix took time quadratic in the same-named airfoils.
+  const ids = new Set(project.airfoils.map((a) => a.id));
+  while (ids.has(id)) id = `${base}-${k++}`;
   project.airfoils.push({ ...airfoil, id });
   return id;
 }

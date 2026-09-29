@@ -121,12 +121,14 @@ test.describe('Settings tab', () => {
     await openTab(page, 'Checks');
     await expect(checksValue(page, 'Trailing edge')).toHaveText('open');
 
-    // Undo steps back through the thickness edits and the mode change.
-    await page.getByRole('button', { name: 'Undo' }).click();
+    // Undo steps back through the thickness edits; the clamped -2 left the project as it was and
+    // added no step.
     await page.getByRole('button', { name: 'Undo' }).click();
     await expect(checksValue(page, 'Trailing edge')).toHaveText('closed');
     await openTab(page, 'Settings');
     await expect(teThickness(page)).toHaveValue('0');
+    await page.getByRole('button', { name: 'Undo' }).click();
+    await expect(teThickness(page)).toHaveValue('0.48');
 
     expect(await figures(page)).toEqual(before);
   });
@@ -543,5 +545,30 @@ test.describe('Settings tab', () => {
     await expect(checksValue(page, 'Trailing edge')).toHaveText('closed');
     await openTab(page, 'Sections');
     await expect(chordNote(page, 1)).toHaveText('tip: 1.60');
+  });
+
+  test('a project name above 200 characters brings the size warning at once; a short name removes it', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await openTab(page, 'Settings');
+    const nameField = page.locator('#pane-settings').getByRole('textbox', { name: 'Project name' });
+    await nameField.fill('n'.repeat(250));
+    await nameField.press('Enter');
+    await expect(status(page)).toContainText('· 1 warning(s)');
+    await expect(page.locator('#pane-checks')).toContainText('Large project: a name of 250 characters (warning above 200).');
+    await nameField.fill('Short');
+    await nameField.press('Enter');
+    await expect(status(page)).not.toContainText('warning');
+    await expect(page.locator('#pane-checks')).not.toContainText('Large project');
+  });
+
+  test('keyboard changes in the lists keep the focus there', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await openTab(page, 'Settings');
+    const spanwise = page.locator('#pane-settings').getByRole('combobox', { name: 'Spanwise interpolation' });
+    await spanwise.focus();
+    await spanwise.press('ArrowDown');
+    await expect.poll(async () => (await savedProject(page)).settings.spanwise).toBe('smooth');
+    await frames(page);
+    await expect(spanwise).toBeFocused();
   });
 });

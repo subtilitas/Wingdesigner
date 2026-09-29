@@ -1,6 +1,6 @@
 // Planform statistics of the full wing from a build result. The planform (chord and leading edge
 // over span) is integrated with 5-point Gauss-Legendre quadrature, exact for polynomials up to
-// degree 9, between the stations and the planform breakpoints (sections, guide knots and control
+// degree 9, between root, tip and the planform breakpoints (sections, guide knots and control
 // points). An interval is halved while the halves change any integral by more than
 // REL_TOLERANCE of its scale, at most MAX_DEPTH times, so guide curves that vary between the
 // breakpoints are integrated too. Builds without a planform function fall back to trapezoids over
@@ -64,7 +64,10 @@ export function wingStats(build) {
       add(a, m, l, depth + 1);
       add(m, b, r, depth + 1);
     };
-    const ys = [...new Set([...st.map((q) => q.y), ...(build.planformBreaks ?? [])])].sort((a, b) => a - b);
+    // Root, tip and the planform breakpoints bound the polynomial pieces; stations are not
+    // breakpoints (splitting at 139,994 stations took 27 s at 20,000 sections with guides).
+    const bounds = build.planformBreaks ? [st[0].y, st[st.length - 1].y, ...build.planformBreaks] : st.map((q) => q.y);
+    const ys = [...new Set(bounds)].sort((a, b) => a - b);
     for (let i = 1; i < ys.length; i++) add(ys[i - 1], ys[i], gauss(ys[i - 1], ys[i]), 0);
   } else {
     for (let i = 1; i < st.length; i++) {

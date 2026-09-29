@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { OVERSHOOT_LIMIT, buildWing, interpolateAlongV, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { syncGuidesToSpan } from '../src/model/edit.js';
-import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nurbs.js';
+import { curvePoint, dist, interpolateCurve, knotMultiplicities, surfacePoint } from '../src/geom/nurbs.js';
 import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
 import { blendPoints, blendScalar, spanwiseBlender, spanwiseWeights } from '../src/geom/spanwise.js';
 import { clampedUniformKnots, defaultGuides, guideCurve, guideProblems, guideXAt, isMonotonicInY, sampleGuide } from '../src/geom/guide.js';
-import { edgeCheck, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume, tessellateHalf } from '../src/geom/mesh.js';
+import { edgeCheck, exportMeshes, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume, tessellateHalf } from '../src/geom/mesh.js';
 import { earClip, polygonArea } from '../src/geom/triangulate.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { defaultProject } from '../src/model/defaults.js';
@@ -595,11 +595,11 @@ describe('fitted surface between stations', () => {
 
   it('reports a surface that folds between stations', () => {
     // Zigzag degree-5 control guides that 32 added stations cannot follow. The guides are drawn for
-    // 40 trials from one seeded sequence; trial 37 folds (trials 2, 7, 14, ... turn inside out).
+    // 40 trials from one seeded sequence; trial 26 folds (trials 2, 18 and 23 turn inside out).
     let seed = 9;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     let guides = null;
-    for (let t = 0; t <= 37; t++) {
+    for (let t = 0; t <= 26; t++) {
       const n = 20 + Math.floor(rnd() * 70);
       const ys = Array.from({ length: n }, (_, i) => (600 * i) / (n - 1));
       const nose = ys.map((y, i) => [(i % 2 ? 60 : 0) * rnd() + 20 * rnd(), y]);
@@ -696,6 +696,16 @@ describe('smooth spanwise overshoot', () => {
     const b = buildWing(symmetric(['0012', '0012', '0012'], [0, 500, 510], (i) => chords[i]));
     // The chord reaches 1388 mm at y = 286 mm from sections of 20 to 200 mm.
     expect(b.errors[0]).toMatch(/overshoots at y = [\d.]+ mm: chord is 1[34]\d\d\.\d\d mm, while the sections range from 20\.00 to 200\.00 mm/);
+  });
+
+  it('stops on non-finite placement values (User Guide example: sections 1e-300 mm apart)', () => {
+    // The spline of the twist through 0, 90 and 0 degrees overflows between sections 1e-300 mm apart.
+    const p = symmetric(['0012', '0012', '0012'], [0, 1e-300, 2e-300]);
+    p.sections[1].twist = 90;
+    expect(validateProject(p).ok).toBe(true);
+    const b = buildWing(p);
+    expect(b.errors[0]).toMatch(/^Section values give non-finite coordinates at y = 0\.0 mm; /);
+    expect(b.surface).toBeNull();
   });
 
   it('keeps curved smooth planforms within OVERSHOOT_LIMIT section ranges', () => {
@@ -992,5 +1002,122 @@ describe('guide inversion on a nearly flat y(t)', () => {
       // The reference itself is uncertain by about 0.1 mm: y resolves 6e-11 mm at 500,000 mm.
       expect(Math.abs(guideXAt(curve, y, 0, 1e6) - curvePoint(curve, 0.5 * (a + b))[0])).toBeLessThan(1);
     }
+  });
+});
+
+describe('span fractions near zero', () => {
+  const at = (ys) =>
+    buildWing(
+      createProject({
+        airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }],
+        sections: ys.map((y, i) => ({ airfoil: 'a', x: i === 1 ? 50 : 0, y, z: 0, chord: 200, twist: 0 })),
+      }),
+    );
+  it('rejects a section a subnormal distance from the root and keeps a normal one', () => {
+    for (const d of [Number.MIN_VALUE, 1e-310]) expect(at([0, d, 1]).errors[0]).toMatch(/^Sections 1 and 2 at y = 0 mm and y = [\d.e-]+ mm lie too close together for the surface parameters/);
+    const b = at([0, 1e-300, 1]);
+    expect(b.errors).toEqual([]);
+    for (const v of [0, 1e-300, 0.5, 1]) expect(surfacePoint(b.surface, 0.3, v).every(Number.isFinite)).toBe(true);
+  });
+  it('merges knots closer than MIN_PARAM_GAP', () => {
+    expect(knotMultiplicities([0, 0, Number.MIN_VALUE, 1, 1])).toEqual({ knots: [0, 1], mults: [3, 2] });
+    expect(knotMultiplicities([0, 0, 1e-300, 1, 1])).toEqual({ knots: [0, 1e-300, 1], mults: [2, 1, 2] });
+  });
+});
+
+describe('builds at the edges of double precision', () => {
+  const foil = [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }];
+  const project = (sections, settings = {}, guides) =>
+    createProject({ airfoils: foil, sections: sections.map((s) => ({ airfoil: 'a', x: 0, z: 0, chord: 200, twist: 0, ...s })), settings, ...(guides ? { guides } : {}) });
+
+  it('builds sections of exactly the minimum chord, smooth or between two guide curves', () => {
+    const smooth = project([{ y: 0 }, { y: 169.7 }, { y: 436.6 }, { y: 881.4 }].map((s) => ({ ...s, chord: 1 })), { spanwise: 'smooth' });
+    expect(buildWing(smooth).errors).toEqual([]);
+    for (const x of [20, 123.4, 5e5]) {
+      const p = project([{ y: 0, chord: 1 }, { y: 600, x, chord: 1 }]);
+      p.guides = defaultGuides(p.sections);
+      p.guides.nose.enabled = true;
+      p.guides.end.enabled = true;
+      expect(buildWing(p).errors, String(x)).toEqual([]);
+    }
+  });
+
+  it('names the smooth blend, not the guide curves, when the blended chord drops below 1 mm', () => {
+    const p = project([{ y: 0, chord: 1 }, { y: 500, chord: 1 }, { y: 600, chord: 5 }, { y: 1000, chord: 5 }], { spanwise: 'smooth' });
+    expect(buildWing(p).errors).toEqual(['Chord drops to -2.56 mm at y = 289.1 mm; the smooth blend of the section chords falls below the minimum of 1 mm; use linear interpolation or add sections.']);
+  });
+
+  it('reports a singular fit of sections or guide points 1e-300 of the span apart as an error', () => {
+    const near = [{ y: 0 }, { y: 1e-300 }, { y: 600, chord: 150 }];
+    const withNose = project(near);
+    withNose.guides = defaultGuides(withNose.sections);
+    withNose.guides.nose.enabled = true;
+    expect(() => buildWing(withNose)).not.toThrow();
+    expect(buildWing(withNose).errors[0]).toMatch(/^(Nose line: the curve fit is singular|The surface fit is singular)/);
+    const smooth = buildWing(project([{ y: 0 }, { y: 1e-200 }, { y: 600, chord: 150 }], { spanwise: 'smooth' }));
+    expect(smooth.errors[0]).toMatch(/^The surface fit is singular: sections 1 and 2 at y = 0 mm and y = 1e-200 mm lie too close together; move them apart\.$/);
+    const fitGuide = project([{ y: 0 }, { y: 600, chord: 150 }]);
+    fitGuide.guides = defaultGuides(fitGuide.sections);
+    fitGuide.guides.nose = { ...fitGuide.guides.nose, enabled: true, mode: 'fit', points: [[0, 0], [1, 1e-300], [0, 600]] };
+    expect(() => buildWing(fitGuide)).not.toThrow();
+    expect(buildWing(fitGuide).errors[0]).toMatch(/^Nose line: /);
+  });
+
+  it('triangulates Fine caps of a closed trailing edge by strips', () => {
+    const p = createProject({
+      airfoils: [{ id: 'a', name: 'NACA 4415', points: nacaAirfoil('4415').points }],
+      sections: [
+        { airfoil: 'a', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+        { airfoil: 'a', x: 0, y: 600, z: 0, chord: 120, twist: 0 },
+      ],
+      settings: { chordSamples: 200, trailingEdge: { mode: 'closed', thickness: 0 } },
+    });
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    const t0 = performance.now();
+    const meshes = exportMeshes(b, 'halves', { uRefine: 2, vRefine: 2 });
+    expect(performance.now() - t0).toBeLessThan(500);
+    for (const { mesh } of meshes) expect(edgeCheck(mesh).closed).toBe(true);
+  });
+
+  it('triangulates the caps of a wing far from the origin by strips', () => {
+    const square = [[1e5, 1e3], [1e5 + 20, 1e3], [1e5 + 20, 1e3 + 1], [1e5, 1e3 + 1]];
+    expect(polygonArea(square)).toBe(20);
+    const p = project([{ y: 0, x: 1e5, z: 1e3, chord: 20 }, { y: 600, x: 1e5, z: 1e3, chord: 20 }], { chordSamples: 200 });
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    const t0 = performance.now();
+    const [{ mesh }] = exportMeshes(b, 'right', { uRefine: 2, vRefine: 2 });
+    expect(performance.now() - t0).toBeLessThan(500);
+    expect(edgeCheck(mesh).closed).toBe(true);
+  });
+});
+
+describe('added stations', () => {
+  // A nose line with a bump 4 mm high and 0.06 mm wide at y = 713 mm (control points).
+  const bumped = (n) => {
+    const ys = Array.from({ length: n }, (_, i) => (1000 * i) / (n - 1));
+    const p = createProject({ airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }], sections: ys.map((y) => ({ airfoil: 'a', x: 0, y, z: 0, chord: 200, twist: 0 })) });
+    p.guides = defaultGuides(p.sections);
+    const line = [];
+    for (let y = 0; y <= 1000; y += 50) if (y < 712 || y > 714) line.push([0, y]);
+    const bump = [[0, 712.97], [1, 712.98], [3, 712.99], [4, 713], [3, 713.01], [1, 713.02], [0, 713.03]];
+    p.guides.nose = { enabled: true, mode: 'control', degree: 3, points: [...line, ...bump].sort((a, b) => a[1] - b[1]) };
+    return p;
+  };
+
+  it('undoes a round of added stations that makes the deviation larger', () => {
+    const b = buildWing(bumped(2));
+    expect(b.errors).toEqual([]);
+    // Without the check, 32 stations clustered at the bump made the loft deviate 18,797 mm.
+    expect(b.planformDeviation).toBeLessThan(5);
+    expect(b.warnings.find((w) => w.startsWith('The loft deviates'))).toMatch(/^The loft deviates up to 3\.\d\d mm from the intended surface at y = 713\.0 mm/);
+  });
+
+  it('fits the loft at most twice above the loft grid warning threshold', () => {
+    const b = buildWing(bumped(200));
+    expect(b.errors).toEqual([]);
+    expect(b.fits).toBe(2);
+    expect(b.extraStations).toBeGreaterThan(0);
   });
 });

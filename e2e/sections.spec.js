@@ -195,11 +195,14 @@ test.describe('Sections tab', () => {
     await expect(rows(page)).toHaveCount(3);
     const view = await capture(page);
     const yField = await field(page, 1, 'y').elementHandle();
+    // The planform guide forms are not rendered again by a selection either.
+    const planformField = await page.locator('#pane-planform input').first().elementHandle();
     await rows(page).nth(2).locator('th').click();
     await expect(rows(page).nth(2)).toHaveClass(/selected/);
     await expect(page.locator('table.sections tbody tr.selected')).toHaveCount(1);
     await changedFrom(page, view, 'selecting section 3');
     expect(await yField.evaluate((e) => e.isConnected)).toBe(true);
+    expect(await planformField.evaluate((e) => e.isConnected)).toBe(true);
     await rows(page).nth(0).locator('th').click();
     await expect(rows(page).nth(0)).toHaveClass(/selected/);
     await expect(page.locator('table.sections tbody tr.selected')).toHaveCount(1);
@@ -321,6 +324,8 @@ test.describe('Sections tab', () => {
     // A y 2e-7 mm from another section is a distinct position and is accepted.
     await editField(page, 2, 'y', 600.0000002);
     await expect.poll(async () => (await savedProject(page)).sections.map((s) => s.y)).toEqual([0, 600, 600.0000002]);
+    // The field shows the stored value, not a rounded one.
+    await expect(field(page, 2, 'y')).toHaveValue('600.0000002');
 
     await editField(page, 2, 'y', 650);
     await expect(status(page)).not.toHaveClass(/has-error/);
@@ -532,5 +537,19 @@ test.describe('Sections tab', () => {
     await expect(chordCell(page, 1).locator('input')).toHaveValue('144');
     await expect(status(page)).toHaveText(SPORT_STATUS);
     expect((await savedProject(page)).sections[1]).toMatchObject({ twist: -1, chord: 144 });
+  });
+
+  test('an airfoil list changed with the arrow keys keeps the focus after the table renders again', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const list = airfoilSelect(page, 0);
+    await list.focus();
+    await list.press('ArrowDown');
+    await expect.poll(async () => (await savedProject(page)).sections[0].airfoil).toBe('naca2410');
+    await frames(page);
+    await expect(airfoilSelect(page, 0)).toBeFocused();
+    await airfoilSelect(page, 0).press('ArrowUp');
+    await expect.poll(async () => (await savedProject(page)).sections[0].airfoil).toBe('naca2412');
+    await frames(page);
+    await expect(airfoilSelect(page, 0)).toBeFocused();
   });
 });

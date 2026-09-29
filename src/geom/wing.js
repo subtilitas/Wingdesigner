@@ -6,12 +6,12 @@
 
 import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
-import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
-import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
+import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, paramsApart, surfacePoint } from './nurbs.js';
+import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile, sampleCurve } from './profile.js';
 import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
-import { displayName, loftGrid, sizeWarning } from '../model/budget.js';
+import { WARN, displayName, loftGrid, sizeWarning } from '../model/budget.js';
 
 /**
  * Deviation (mm) between loft and intended surface above which stations are added and, if it remains,
@@ -28,6 +28,9 @@ const CHORD_CHECK_SAMPLES = 256;
  * minimum chord less the 10 % deviation that small chords may keep.
  */
 export const FOLD_LIMIT = 0.9 * LIMITS.minChord;
+// Chord minimum with the relative round-off of the blends: equal 1 mm sections blend to
+// 0.9999999999999999 mm, and guide curves through them to 1 mm less a few units in the last place.
+const MIN_CHORD = LIMITS.minChord * (1 - 1e-9);
 
 /**
  * Smooth spanwise interpolation: largest distance, as a multiple of the section value range, by
@@ -188,9 +191,12 @@ function profileStage(a, parametrization, chordStations, N) {
     } else {
       try {
         const prof = profileCurve(check.points, { parametrization });
-        const problem = profileProblem(prof);
+        // The samples serve the crossing test at the chord of the build too (stageCrossing), then
+        // go: kept for every airfoil they would take 64 KB each.
+        const samples = sampleCurve(prof.curve);
+        const problem = profileProblem(prof, samples);
         if (problem) entry.error = problem;
-        else Object.assign(entry, { prof, points: check.points });
+        else Object.assign(entry, { prof, points: check.points, samples });
       } catch (e) {
         entry.error = `the NURBS interpolation failed (${e.message}).`;
       }
@@ -211,7 +217,7 @@ function profileStage(a, parametrization, chordStations, N) {
  */
 function stageCrossing(stage, tolerance) {
   stage.crossings ??= new Map();
-  if (!stage.crossings.has(tolerance)) stage.crossings.set(tolerance, curveCrossing(stage.prof.curve, { tolerance }));
+  if (!stage.crossings.has(tolerance)) stage.crossings.set(tolerance, curveCrossing(stage.prof.curve, { tolerance, samples: stage.samples }));
   return stage.crossings.get(tolerance);
 }
 
@@ -271,13 +277,14 @@ export function buildWing(project) {
     }
   }
   // The surface parameter of a section is its span fraction v; two sections whose v values lie within
-  // 4 units in the last place would share one knot (and STEP merges such knots), so one of them is lost.
+  // 4 units in the last place or within MIN_PARAM_GAP would share one knot (and STEP merges such
+  // knots), so one of them is lost (paramsApart).
   const y0s = sections[0].y;
   const spanS = sections[sections.length - 1].y - y0s;
   for (let i = 1; i < sections.length; i++) {
     const a = (sections[i - 1].y - y0s) / spanS;
     const b = (sections[i].y - y0s) / spanS;
-    if (!(b - a > 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b)))) {
+    if (!paramsApart(a, b)) {
       errors.push(
         `Sections ${i} and ${i + 1} at y = ${sections[i - 1].y} mm and y = ${sections[i].y} mm lie too close together for the surface parameters ` +
           `(span fractions ${a} and ${b}); move them apart.`,
@@ -313,6 +320,7 @@ export function buildWing(project) {
     // the loop is measured against CROSSING_LIMIT mm at the largest chord using this airfoil.
     const chordMax = chordMaxOf.get(s.airfoil);
     const cross = CROSSING_TOLERANCE * chordMax > CROSSING_LIMIT ? stageCrossing(stage, CROSSING_LIMIT / chordMax) : null;
+    delete stage.samples;
     if (cross) {
       errors.push(
         `Airfoil "${displayName(a.name ?? a.id)}": the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
@@ -339,7 +347,16 @@ export function buildWing(project) {
       errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: ${problems.join(' ')}`);
       continue;
     }
-    const curve = guideCurve(g);
+    let curve;
+    try {
+      curve = guideCurve(g);
+    } catch (e) {
+      // Points closer than the solver resolves (normalized y gaps near 1e-300) make the
+      // interpolation singular.
+      if (!/zero pivot/.test(e.message)) throw e;
+      errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: the curve fit is singular; move the points further apart in y or use control-point mode.`);
+      continue;
+    }
     if (!isMonotonicInY(curve)) {
       errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: the curve doubles back in span direction; move the points apart or use control-point mode.`);
       continue;
@@ -385,7 +402,6 @@ export function buildWing(project) {
   // in a panel only a few doubles wide the stations round together, and repeated parameters make
   // the interpolation singular. Every section stays (the span-fraction check above keeps them apart).
   const vOf = (y) => (y - y0) / (y1 - y0);
-  const apart = (a, b) => b - a > 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b));
   const stationYs = [];
   for (let i = 0; i < sections.length - 1; i++) {
     stationYs.push(ys[i]);
@@ -394,7 +410,7 @@ export function buildWing(project) {
     for (let k = 1; k < K; k++) {
       const y = ys[i] + (ys[i + 1] - ys[i]) * (dense ? (1 - Math.cos((Math.PI * k) / K)) / 2 : k / K);
       const v = vOf(y);
-      if (apart(last, v) && apart(v, vEnd)) {
+      if (paramsApart(last, v) && paramsApart(v, vEnd)) {
         stationYs.push(y);
         last = v;
       }
@@ -562,7 +578,7 @@ export function buildWing(project) {
       minThickY = y;
       minThickX = tX;
     }
-    if (chord >= LIMITS.minChord) {
+    if (chord >= MIN_CHORD) {
       const { t: tTe, core, coreX } = thinnest(applyTrailingEdge(shape, te.mode, teGap(chord), N), teSliver(chord));
       if (tTe < minTeThick - 1e-12) {
         minTeThick = tTe;
@@ -624,9 +640,12 @@ export function buildWing(project) {
     );
     return result;
   }
-  if (minChord < LIMITS.minChord) {
+  if (minChord < MIN_CHORD) {
     const hint = !pointed && minChordY === y1 && minChord > -CROSS_TOLERANCE ? ' For a tip that ends in a point, set Settings > Wing tip to Pointed.' : '';
-    errors.push(`Chord drops to ${minChord.toFixed(2)} mm at y = ${minChordY.toFixed(1)} mm; nose line and end line must not touch or cross.${hint}`);
+    // With both guide curves the chord is their distance; otherwise it is the blend of the section
+    // chords, which only the smooth blend takes below the section values.
+    const cause = guideOn.nose && guideOn.end ? 'nose line and end line must not touch or cross' : `the smooth blend of the section chords falls below the minimum of ${LIMITS.minChord} mm; use linear interpolation or add sections`;
+    errors.push(`Chord drops to ${minChord.toFixed(2)} mm at y = ${minChordY.toFixed(1)} mm; ${cause}.${hint}`);
     return result;
   }
 
@@ -789,12 +808,43 @@ export function buildWing(project) {
 
   // Adaptive stations: insert stations where the loft deviates more than PLANFORM_TOLERANCE from
   // the intended surface (fast planform changes such as pointed elliptic tips), up to
-  // MAX_EXTRA_STATIONS in at most 6 rounds.
+  // MAX_EXTRA_STATIONS in at most 6 rounds. Each round fits the whole loft again, so above the
+  // loft grid warning threshold one round adds every peak at once (a 4 mm guide bump at 2,000
+  // sections took 3 fits and 22.8 s instead of 9.2 s).
+  const rounds = grid.points > WARN.gridPoints ? 1 : 6;
+  // Stations closer than the solver resolves (span fractions near 1e-300, and their powers in the
+  // cubic basis) make the surface fit singular: reported with the closest pair of sections.
+  const singular = () => {
+    let k = 1;
+    for (let i = 2; i < ys.length; i++) if (ys[i] - ys[i - 1] < ys[k] - ys[k - 1]) k = i;
+    errors.push(`The surface fit is singular: sections ${k} and ${k + 1} at y = ${ys[k - 1]} mm and y = ${ys[k]} mm lie too close together; move them apart.`);
+    return result;
+  };
+  let fits = 0;
+  const tryFit = (list) => {
+    fits++;
+    try {
+      return fit(list);
+    } catch (e) {
+      if (!/zero pivot/.test(e.message)) throw e;
+      return null;
+    }
+  };
   let yList = stationYs.slice();
-  let fitted = fit(yList);
+  let fitted = tryFit(yList);
+  if (!fitted) return singular();
   let extra = 0;
-  for (let round = 0; round < 6 && extra < MAX_EXTRA_STATIONS; round++) {
-    const peaks = fitted.devs.filter(([, d, tol], i, arr) => d > tol && d >= (arr[i - 1]?.[1] ?? 0) && d >= (arr[i + 1]?.[1] ?? 0));
+  // Largest deviation relative to its tolerance. The rounds keep the fit where it is smallest, the
+  // first one on a tie: stations added very close together can make the cubic fit swing (a 0.06 mm
+  // wide guide bump on a 2-section wing went from 4 mm to 18,797 mm deviation after 32 stations),
+  // while a round that raises it can still lead to a better one.
+  const worst = (f) => f.devs.reduce((m, [, d, tol]) => Math.max(m, d / tol), 0);
+  let best = { fitted, yList, extra, worst: worst(fitted) };
+  for (let round = 0; round < rounds && extra < MAX_EXTRA_STATIONS; round++) {
+    // Peaks of the deviation relative to its tolerance: the tolerance shrinks with the chord, so the
+    // largest deviation can lie below it while smaller ones further out exceed theirs.
+    const ratio = (q) => (q ? q[1] / q[2] : 0);
+    const peaks = fitted.devs.filter((q, i, arr) => q[1] > q[2] && ratio(q) >= ratio(arr[i - 1]) && ratio(q) >= ratio(arr[i + 1]));
     // New stations keep 1e-6 of the span from every other station: equal or nearly equal
     // positions make the interpolation singular.
     const minGap = 1e-6 * (y1 - y0);
@@ -806,8 +856,12 @@ export function buildWing(project) {
     if (!fresh.length) break;
     yList = [...yList, ...fresh].sort((a, b) => a - b);
     extra += fresh.length;
-    fitted = fit(yList);
+    fitted = tryFit(yList);
+    if (!fitted) return singular();
+    const w = worst(fitted);
+    if (w < best.worst) best = { fitted, yList, extra, worst: w };
   }
+  ({ fitted, yList, extra } = best);
   const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs } = fitted;
   result.stations = stations;
   // Quarter points of every fitted station interval: between closely spaced stations the global
@@ -870,6 +924,7 @@ export function buildWing(project) {
   }
   result.surface = surface;
   result.extraStations = extra;
+  result.fits = fits;
   if (limited) {
     warnings.push(`Trailing-edge thickness ${te.thickness} mm exceeds ${MAX_GAP_FRACTION * 100} % of the chord at ${limited} station(s); it is limited to ${MAX_GAP_FRACTION * 100} % there.`);
   }

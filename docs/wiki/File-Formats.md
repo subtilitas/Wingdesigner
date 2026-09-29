@@ -61,9 +61,9 @@ Name inside STEP, STL and 3MF files, written `<name>` below: project name; empty
 | Numeric line | 2 or more numbers and nothing else |
 | Separators | space, tab, comma, semicolon |
 | Decimal comma | `0,125  1,250` is read as `0.125  1.250`. Conditions: at least 2 values. Separators: spaces, tabs or semicolons. Every value is a decimal-comma number or an integer, either with an optional exponent (`e`, `E`, `d` or `D`), e.g. `1,25e-1`. At least 1 value has a comma. A line with 1 field, e.g. `0,5`, is split at the comma: values `0` and `5`. |
-| Number syntax | optional sign, decimal point, exponent with `e`, `E`, `d` or `D` (`1.0D-3`) |
+| Number syntax | optional sign, decimal point, exponent with `e`, `E`, `d` or `D` (`1.0D-3`). XML `<x>` and `<y>` values follow the same syntax and the decimal-comma rule; other text, e.g. `0x1`, is not a number (error `non-finite`). |
 | Name | First non-numeric line before the first numeric line. The name line keeps a `#` comment: `NACA 0012 # from UIUC` → name `NACA 0012 # from UIUC`. HTML: the `<title>` when not empty. XML: the first `<name>` element. None found: the file name without extension; pasted text: `pasted`. A name longer than 10,000 characters is cut to the first 10,000 (info `long-name`). |
-| Column header lines | 2 or 3 words that start with `x`, `y` or `z` (`x y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). After the name line: skipped without a message. As the first non-numeric line before the first numeric line: taken as the name (e.g. `X Yo Yu`), no info `no-name`. |
+| Column header lines | 2 or 3 words that start with `x`, `y` or `z`, separated by spaces, tabs, commas or semicolons (`x y`, `x;y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). After the name line: skipped without a message. As the first non-numeric line before the first numeric line: taken as the name (e.g. `X Yo Yu`), no info `no-name`. |
 | Other non-numeric lines | Skipped, warning `ignored-lines` |
 
 ### Layouts
@@ -73,7 +73,7 @@ Checked in this order. The first match applies.
 | Order | Layout | Condition | Point order |
 | --- | --- | --- | --- |
 | 1 | XML | text contains `<coordinates>` | `<point><x>…</x><y>…</y></point>` list of the first `<coordinates>` element |
-| 2 | HTML | text contains an `<html`, `<pre` or `<body` tag | Text of all `<pre>` blocks. Without `<pre>`: page text, table cells as columns, table rows as lines. Rules 3–5 then apply to that text. |
+| 2 | HTML | text contains an `<html`, `<pre` or `<body` tag | Text of all `<pre>` blocks. Without `<pre>`: page text; inside a `<table>`, white space collapses, each row (`<tr>`), caption, row group and `<br>` starts a line, and each cell becomes a column, whatever markup it holds (`<p>`, `<div>`) and with or without end tags. Rules 3–5 then apply to that text. |
 | 3 | Table | every numeric line has 3 values, 3 or more lines, x strictly increasing or strictly decreasing, y_upper ≥ y_lower on ≥ 90 % of the lines | x, y_upper, y_lower per line (e.g. "X Yo Yu" tables); a table with decreasing x is read in reverse order |
 | 4 | Lednicer | all 3 Lednicer conditions below | counts line, upper surface LE → TE, lower surface LE → TE |
 | 5 | Selig | all other files | upper TE → LE → lower TE |
@@ -87,7 +87,7 @@ Lednicer conditions:
 
 Further rules:
 
-- XML and HTML: entities decoded are `&lt;` `&gt;` `&quot;` `&apos;` `&amp;`, `&#NNN;` and `&#xHHHH;` (as Unicode code points, in one pass, so `&amp;lt;` becomes `&lt;`). A reference to a surrogate or above U+10FFFF stays as written. Without `<pre>`, the content of `<head>`, `<title>`, `<script>` and `<style>` is dropped.
+- XML and HTML: entities decoded are `&lt;` `&gt;` `&quot;` `&apos;` `&amp;`, `&nbsp;` (read as a space), `&#NNN;` and `&#xHHHH;` (as Unicode code points, in one pass, so `&amp;lt;` becomes `&lt;`). A reference to a surrogate or above U+10FFFF stays as written. Without `<pre>`, the content of `<head>`, `<title>`, `<script>` and `<style>` is dropped.
 - Lednicer: when the counts do not match the number of points, the surfaces are split at the first x reset. x reset: x drops by more than 25 % of the previous x.
 - Lines with more than 2 values that do not form a table: columns 1 and 2 are used.
 
@@ -98,13 +98,13 @@ Steps in this order:
 1. A value that is not a finite number stops the import (error `non-finite`).
 2. No point found: the import stops (error `no-points`).
 3. More than 100,000 points: the import stops (error `too-many-points`: `<n> points; the limit is 100,000.`).
-4. Closed outline with a blunt TE: points on the drawn TE base are removed (warning `closing-point`, rules below). TE base: the steep segment that closes a blunt TE.
-5. Consecutive duplicate points (equal x and equal y) are removed.
+4. Consecutive duplicate points (equal x and equal y) are removed (info `duplicates`), so a closing point written twice counts once in step 5.
+5. Closed outline with a blunt TE: points on the drawn TE base are removed (warning `closing-point`, rules below). TE base: the steep segment that closes a blunt TE.
 6. Largest x above 5 and at most 110: the coordinates are percent of chord and are divided by 100.
-7. Clockwise point order (lower surface first): the order is reversed to Selig order.
+7. Clockwise point order (lower surface first): the order is reversed to Selig order. The signed area is summed relative to the first point in units of the outline extent, so the test gives the same result at every scale.
 8. The sanity checks run (section "Sanity checks").
 
-Rules for step 4. They apply when there are more than 4 points and the last point equals the first point (equal x and equal y).
+Rules for step 5. They apply when there are more than 4 points and the last point equals the first point (equal x and equal y).
 
 | Term | Definition |
 | --- | --- |
@@ -166,7 +166,7 @@ The checks run:
 | --- | --- |
 | Duplicates | Consecutive points closer than 1e-9 of the x range (x_max − x_min, the chord) to the previous point are removed first (info `duplicates`: `<n> consecutive point(s) closer than 1e-9 chord to the previous point removed.`), also for points from a project file. |
 | Normalization | x → (x − x_min) / c, y → (y − y_LE) / c, c = x_max − x_min; no rotation |
-| LE point | point farthest from the TE midpoint (mean of the first and the last point); y_LE is its y |
+| LE point | point farthest from the TE midpoint (mean of the first and the last point); squared distances within a relative 1e-15 of the largest count as equal, and of those the point with the smallest x wins; y_LE is its y |
 | % chord | fraction of the normalized chord 1 |
 | Checks on raw coordinates (files: after the parser steps) | `too-few-points`, `too-many-points`, `many-points`, `coarse`, `zero-chord`, `not-normalized`, `rotated`, `te-missing` |
 | Checks on normalized coordinates | all other checks, starting with `outline-length`; `curve-shape` tests the NURBS curve through the normalized points |
@@ -205,7 +205,7 @@ The checks run:
 
 | Condition | Result |
 | --- | --- |
-| HTML table cells with other entities, e.g. `&nbsp;` | The line counts as non-numeric. When every line is affected: error `no-points`. |
+| HTML table cells with other named entities, e.g. `&ensp;` | The line counts as non-numeric. When every line is affected: error `no-points`. |
 | XML file with more than 1 `<coordinates>` element | Only the first is read (warning `multi-element`). |
 
 ### Real-file test
@@ -221,9 +221,9 @@ The checks run:
 
 | Property | Value |
 | --- | --- |
-| Layout | Selig: name line, then one `x y` line per point. A name that reads as a coordinate row (e.g. `123 456`) or as a comment (e.g. `# custom`, since the reader drops `#` to the line end) gets the prefix `Airfoil `; `<` before `coordinates>`, `html`, `pre` or `body` is written as `‹`, so the file is not read as XML or HTML. |
+| Layout | Selig: name line, then one `x y` line per point. A name that reads as a coordinate row (e.g. `123 456`) or as a comment (e.g. `# custom`, since the reader drops `#` to the line end) gets the prefix `Airfoil `; `<` before `coordinates>`, or before `html`, `pre` or `body` followed by a space, `>` or the end of the name, is written as `‹`, so the file is not read as XML or HTML. |
 | Points | the stored points of the airfoil, Selig order |
-| Numbers | 7 decimal places for an outline extent of 1 or more (extent: the larger of the x range and the y range); below, 7 − floor(log10(extent)) decimal places, e.g. 13 for a 1e-6 chord at any x offset; above 100 decimal places, 17 significant digits. Each value right-aligned in at least 10 characters, 1 space between x and y |
+| Numbers | 7 decimal places for an outline extent of 1 or more (extent: the larger of the x range and the y range); below, 7 − floor(log10(extent)) decimal places, e.g. 13 for a 1e-6 chord at any x offset; more when 2 consecutive distinct points would round to the same line: at least 1 − floor(log10(d)) decimal places, d = the smallest non-zero coordinate difference of consecutive points; above 100 decimal places, 17 significant digits. Each value right-aligned in at least 10 characters, 1 space between x and y |
 | Line end | LF, also after the last line |
 | Encoding | UTF-8 |
 | Source and license | not written; the name line holds the airfoil name only. `source` stays in the project JSON. |
@@ -238,7 +238,7 @@ The checks run:
 | Size read by **Open** | at most 100 MB (100,000,000 bytes) |
 | Units | mm, angles in degrees (°) |
 | Axes | x chordwise towards the TE, y spanwise towards the right tip, z up; mirror plane y = 0 |
-| Numbers in `derived` | rounded to 12 significant digits |
+| Numbers in `derived` | full 64-bit precision: the shortest decimal that reads back to the same value (up to 17 significant digits) |
 
 ### Top-level keys
 
@@ -280,7 +280,7 @@ Ids made by the app:
 
 - Same name and identical points as an airfoil in the project: the existing id is used; no new entry.
 - Wizard and sample wing: `naca<code>`.
-- Generated NACA section (`source.code` set) with the same code and the same `source.closedTE` as a project airfoil: the existing id is used, whatever the name; no new entry.
+- Generated NACA section (`source.code` set) with the same code and the same `source.closedTE` as a project airfoil whose stored points are that section (generator points within 1e-9, or points identical to the added ones): the existing id is used, whatever the name; no new entry. Stored points that differ from both (e.g. edited in an opened file): new entry.
 - Project with 10,000 airfoils (`LIMITS.maxAirfoils`): no new entry. The **Airfoils** tab refuses the next airfoil before the preview with the message `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.`
 - Airfoil that would take the points of all airfoils above 1,000,000 (`LIMITS.maxAirfoilPoints`): no new entry. Message: `With this airfoil the project airfoils hold <n> points; the limit is 1,000,000. "Remove unused" frees points.`
 
@@ -343,13 +343,14 @@ Unknown keys inside `settings` are dropped on **Open**. **Save** writes the keys
 | `profiles[]` | one entry per airfoil that a section uses: `airfoil` (id), `name`, `curve`, `leadingEdgeParameter` (curve parameter at the LE) |
 | `guides.nose`, `guides.end` | guide curve, control points `[x, y]` in mm; `null` when the guide is disabled |
 | `stations[]` | every spanwise station: `y` (mm), `v` (span fraction 0–1), `xLE`, `z`, `chord` (mm), `twist` (°) |
-| `surface` | surface of the right half: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` without guides; 3: `"smooth"` or a guide enabled), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
+| `surface` | surface of the right half: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` without guides; `"linear"` with a guide enabled: 3, or 2 or 1 when the loft grid limit lowers the stations per panel to 2 or 1; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
 
 - Curve object: `degree`, `knots`, `controlPoints`. All curves and the surface are non-rational; no `weights` key is written.
 - `profiles[].curve.controlPoints`: `[x, y]` in normalized airfoil coordinates (chord 1).
 - `surface.controlPoints[i][j]`: `[x, y, z]` in mm. i runs along u: u = 0 upper TE, u = `leadingEdgeU` LE, u = 1 lower TE. j runs along v: v = 0 root, v = 1 tip.
 - Algorithms: [[Geometry|Geometry]].
-- Size: when the file with `derived` would exceed 100 MB, **Save** and **Export** > **Project JSON** leave `derived` out and show the notice `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
+- Size: **Save** and **Export** > **Project JSON** estimate the characters of `derived`: its count of numbers times the mean length of the coordinates of at most 1,000 surface control points spread over the surface, plus 2 characters per number. Up to 110 MB by this estimate they write the file with `derived` and measure it. When the estimate exceeds 110 MB or the written file exceeds 100 MB, they leave `derived` out and show the notice `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
+- Without `derived`, a text above 100 MB is written without indentation. When it still exceeds 100 MB (names and source texts near their limits, e.g. 10,000 airfoils with 10,000-character names), no file is written; **Save** shows `Save failed: the project takes … MB as a file, above the 100 MB that Open reads.`
 
 ### Checks on **Open**
 
@@ -536,7 +537,7 @@ Faces, edges, orientation flags and the OpenCascade validation: [[Geometry|Geome
 | `<model>` | `unit="millimeter"`, `xml:lang="en-US"` |
 | Metadata | `Title` = `<name>` (section "Export file names"), `Application` = `Wingdesigner` |
 | Objects | 1 `<object type="model">` per shell, 1 `<build><item>` per object; names: table "Bodies per file" |
-| Vertices | up to 5 decimal places (0.00001 mm), trailing zeros removed |
+| Vertices | 9 significant digits (enough for every 32-bit float), shortest form without trailing zeros, e.g. `1000000.12`, `0.123456789`, `12`; magnitudes below 1e-6 mm in exponent notation, e.g. `-1e-7`; zero as `0` |
 | Triangles | `v1`, `v2`, `v3`: vertex indices from 0, counterclockwise seen from outside |
 | Zip entry date | fixed at 2026-01-01 00:00 UTC, stored in the local time of the browser; not the export time |
 
@@ -547,6 +548,6 @@ stations per surface). 1 KB = 1024 bytes. Triangle counts in parentheses.
 
 | Project | Sections | Spanwise stations | STEP | STL **Normal** | STL **Fine** | 3MF **Normal** | 3MF **Fine** | JSON |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Sample wing `Sport wing 1500` | 3 | 3 | 122 KB | 71 KB (1444) | 235 KB (4812) | 18 KB | 56 KB | 77 KB |
-| Wizard preset **Sport** | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 10 KB | 35 KB | 69 KB |
-| Wizard preset **Glider**, elliptic guides | 3 | 17 | 445 KB | 1158 KB (23708) | 4566 KB (93500) | 254 KB | 1000 KB | 205 KB |
+| Sample wing `Sport wing 1500` | 3 | 3 | 122 KB | 71 KB (1444) | 235 KB (4812) | 20 KB | 61 KB | 63 KB |
+| Wizard preset **Sport** | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 11 KB | 38 KB | 56 KB |
+| Wizard preset **Glider**, elliptic guides | 3 | 17 | 444 KB | 1158 KB (23708) | 4566 KB (93500) | 279 KB | 1099 KB | 175 KB |

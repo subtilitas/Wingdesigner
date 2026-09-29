@@ -12,11 +12,12 @@
 //
 // Output points are in Selig order with the chord along +x.
 
-import { signedArea } from './geometry.js';
+import { runsClockwise } from './geometry.js';
 
-const NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?$/;
+// The point is required before fraction digits: with an optional point, \d+ and \d* split a long
+// digit run in as many ways as it has digits (quadratic time).
+const NUMBER = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][-+]?\d+)?$/;
 const DECIMAL_COMMA = /^[-+]?\d*,\d+(?:[eEdD][-+]?\d+)?$/;
-// Column header lines such as "x y", "X Yo Yu", "x/c y/c", "X Y_upper Y_lower".
 /** Largest accepted input in characters (a 2000-point file is about 60 000). */
 export const MAX_INPUT = 5_000_000;
 // A UTF-8 character takes at most 4 bytes: larger files exceed MAX_INPUT and are rejected by size
@@ -28,7 +29,10 @@ export const MAX_POINTS = 100_000;
 // Longest airfoil name in characters; longer name lines are cut. The longest name line among 1,964
 // real files has 179 characters; lists and messages show the first 200.
 export const MAX_NAME = 10_000;
-const COLUMN_HEADER = /^(?:[xyz](?:\/c)?[a-z_]*\s*){2,3}$/i;
+// Column header lines such as "x y", "X Yo Yu", "x/c y/c", "X Y_upper Y_lower", "x;y": 2 or 3 words,
+// separated like coordinates. A required separator keeps the match linear (optional white space
+// let a run of x, y and z letters split among the words in quadratic ways).
+const COLUMN_HEADER = /^[xyz](?:\/c)?[a-z_]*(?:[\s,;]+[xyz](?:\/c)?[a-z_]*){1,2}$/i;
 
 function issue(severity, code, message) {
   return { severity, code, message };
@@ -71,12 +75,13 @@ export function decodeText(bytes) {
   }
 }
 
-const ENTITIES = { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' };
+const ENTITIES = { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&', nbsp: '\u00a0' };
 
-// One pass: the 5 predefined XML entities and decimal or hexadecimal character references as code
-// points; a reference to no Unicode scalar value stays as written.
+// One pass: the 5 predefined XML entities, &nbsp; (a space for the number reader) and decimal or
+// hexadecimal character references as code points; a reference to no Unicode scalar value stays as
+// written.
 function decodeEntities(s) {
-  return s.replace(/&(lt|gt|quot|apos|amp|#\d+|#[xX][0-9a-fA-F]+);/g, (m, e) => {
+  return s.replace(/&(lt|gt|quot|apos|amp|nbsp|#\d+|#[xX][0-9a-fA-F]+);/g, (m, e) => {
     if (e[0] !== '#') return ENTITIES[e];
     const cp = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
     return cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : m;
@@ -93,10 +98,13 @@ function between(text, open, close, from = 0, lower = text.toLowerCase()) {
   return { content: text.slice(a + open.length, b), end: b + close.length };
 }
 
+/** Number of one <x> or <y> element with the rules of text lines (D exponents, decimal comma); NaN otherwise. */
 function xmlNumber(block, tag) {
   const m = between(block, `<${tag}>`, `</${tag}>`);
-  const t = m?.content?.trim();
-  return t ? Number(t) : NaN;
+  const t = m?.content?.trim() ?? '';
+  if (NUMBER.test(t)) return Number(t.replace(/[dD]/, 'e'));
+  if (DECIMAL_COMMA.test(t)) return Number(t.replace(',', '.').replace(/[dD]/, 'e'));
+  return NaN;
 }
 
 function parseXml(text) {
@@ -152,10 +160,34 @@ function stripBlocks(text, tags) {
   return out;
 }
 
-function htmlToText(text) {
-  const title = decodeEntities((text.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? '').trim());
-  const pres = [];
+/**
+ * Table rows as lines and cells as spaces, whatever the source line breaks: white space inside a
+ * table collapses, and row, caption and section tags and <br> start a line. Unclosed tables run to
+ * the end.
+ */
+function flattenTables(text) {
   const lower = text.toLowerCase();
+  let out = '';
+  let at = 0;
+  for (let a = lower.indexOf('<table', at); a >= 0; a = lower.indexOf('<table', at)) {
+    const b = lower.indexOf('</table', a);
+    const end = b < 0 ? text.length : b;
+    const rows = text
+      .slice(a, end)
+      .replace(/\s+/g, ' ')
+      .replace(/<\/?(?:tr|caption|thead|tbody|tfoot)\b[^<>]*>|<br\s*\/?>/gi, '\n')
+      .replace(TAG, ' ');
+    out += `${text.slice(at, a)}\n${rows}\n`;
+    at = end;
+  }
+  return out + text.slice(at);
+}
+
+function htmlToText(text) {
+  const lower = text.toLowerCase();
+  // indexOf, not a lazy regex: a regex rescans to the end of the text from every unclosed <title>.
+  const title = decodeEntities((between(text, '<title>', '</title>', 0, lower)?.content ?? '').trim());
+  const pres = [];
   for (let at = lower.indexOf('<pre'); at >= 0; ) {
     const open = lower.indexOf('>', at);
     const close = open < 0 ? -1 : lower.indexOf('</pre>', open);
@@ -163,8 +195,9 @@ function htmlToText(text) {
     pres.push(decodeEntities(text.slice(open + 1, close).replace(TAG, '')));
     at = lower.indexOf('<pre', close);
   }
-  // Without <pre> blocks: table cells become spaces, rows and line breaks become newlines.
-  const flat = stripBlocks(text, ['head', 'title', 'script', 'style'])
+  // Without <pre> blocks: table rows become lines and cells spaces; outside tables, line breaks and
+  // the ends of paragraphs, divisions, list items and headings start a line.
+  const flat = flattenTables(stripBlocks(text, ['head', 'title', 'script', 'style']))
     .replace(/<\/t[dh]\s*>/gi, ' ')
     .replace(/<br\s*\/?>|<\/(tr|p|div|li|h\d)\s*>/gi, '\n')
     .replace(TAG, '');
@@ -209,7 +242,9 @@ export function parseDat(text, options = {}) {
   let ignored = 0;
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
-    const line = raw.replace(/#.*$/, '').trim();
+    // A comment runs from "#" to the line end (indexOf: "." in a regex stops at U+2028 and U+2029).
+    const hash = raw.indexOf('#');
+    const line = (hash < 0 ? raw : raw.slice(0, hash)).trim();
     if (!line) continue;
     const parsed = parseNumbers(line);
     if (parsed) {
@@ -331,6 +366,16 @@ function finish(nameIn, format, pointsIn, issuesIn) {
     return { name, format, points: [], issues: [...issues, issue('error', 'too-many-points', `${n} points; the limit is ${MAX_POINTS.toLocaleString('en')}.`)] };
   }
 
+  // Exact duplicates go first, so a closing point written twice reaches the test below once.
+  const dedup = [];
+  let dups = 0;
+  for (const p of points) {
+    if (dedup.length && samePoint(p, dedup[dedup.length - 1])) dups++;
+    else dedup.push(p);
+  }
+  if (dups > 0) issues.push(issue('info', 'duplicates', `${dups} duplicate consecutive point(s) removed.`));
+  points = dedup;
+
   // A blunt trailing edge drawn as a closed outline (CAD polylines) repeats the first point after a
   // steep segment at the trailing edge (the drawn TE base). The outline either starts at a TE
   // corner (drop the repeated point) or on the base itself, e.g. at the TE midpoint (drop the base
@@ -357,14 +402,6 @@ function finish(nameIn, format, pointsIn, issuesIn) {
       issues.push(issue('warning', 'closing-point', 'The outline repeats its first point after a blunt trailing edge; the repeated point was removed.'));
     }
   }
-  const dedup = [];
-  let dups = 0;
-  for (const p of points) {
-    if (dedup.length && samePoint(p, dedup[dedup.length - 1])) dups++;
-    else dedup.push(p);
-  }
-  if (dups > 0) issues.push(issue('info', 'duplicates', `${dups} duplicate consecutive point(s) removed.`));
-  points = dedup;
 
   let xmax = -Infinity;
   for (const p of points) if (p[0] > xmax) xmax = p[0];
@@ -373,7 +410,7 @@ function finish(nameIn, format, pointsIn, issuesIn) {
     issues.push(issue('warning', 'percent', 'Coordinates look like percent of chord and were divided by 100.'));
   }
 
-  if (points.length >= 3 && signedArea(points) < 0) {
+  if (points.length >= 3 && runsClockwise(points)) {
     points = points.slice().reverse();
     issues.push(issue('warning', 'reversed', 'Points run clockwise (lower surface first); order reversed to Selig order.'));
   }
@@ -391,9 +428,11 @@ export function toSeligDat(name, points, digits = 6) {
   // The name is the first line only: line breaks in a name would start coordinate rows. A name
   // that reads as a coordinate row ("123 456") or as a comment ("# custom") gets the prefix
   // "Airfoil "; "<" before a tag the reader takes for XML or HTML becomes "‹".
-  let title = String(name).replace(/[\r\n]+/g, ' ').replace(/<(?=coordinates>|(?:html|pre|body)[\s>])/gi, '‹');
+  // The line break after the name ends a tag for the reader, so a tag name at the end is escaped too.
+  let title = String(name).replace(/[\r\n]+/g, ' ').replace(/<(?=coordinates>|(?:html|pre|body)(?:[\s>]|$))/gi, '‹');
   // The reader drops "#" to the line end: the rest must be text, not empty and not a coordinate row.
-  const probe = title.replace(/#.*$/, '').trim();
+  const hash = title.indexOf('#');
+  const probe = (hash < 0 ? title : title.slice(0, hash)).trim();
   if (!probe || parseNumbers(probe)) title = `Airfoil ${title}`;
   const lines = [title];
   // Decimals resolve `digits` significant digits of the outline extent (at least `digits` decimals):
@@ -408,7 +447,15 @@ export function toSeligDat(name, points, digits = 6) {
     }
   }
   const extent = Math.max(hi[0] - lo[0], hi[1] - lo[1]);
-  const decimals = extent > 0 ? Math.max(digits, digits - Math.floor(Math.log10(extent))) : digits;
+  let decimals = extent > 0 ? Math.max(digits, digits - Math.floor(Math.log10(extent))) : digits;
+  // Consecutive distinct points stay distinct: values more than 10^-d apart round to different
+  // d-decimal numbers, and the reader removes equal consecutive points.
+  let gap = Infinity;
+  for (let i = 1; i < points.length; i++) {
+    const d = Math.max(Math.abs(points[i][0] - points[i - 1][0]), Math.abs(points[i][1] - points[i - 1][1]));
+    if (d > 0 && d < gap) gap = d;
+  }
+  if (gap < Infinity) decimals = Math.max(decimals, 1 - Math.floor(Math.log10(gap)));
   const num = decimals <= 100 ? (v) => v.toFixed(decimals) : (v) => v.toPrecision(17);
   for (const [x, y] of points) lines.push(`${num(x).padStart(digits + 3)} ${num(y).padStart(digits + 3)}`);
   return lines.join('\n') + '\n';

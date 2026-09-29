@@ -13,12 +13,18 @@ function pointInTriangle(p, a, b, c) {
   return !(neg && pos);
 }
 
+/**
+ * Signed area, positive for counterclockwise order. Summed relative to the first vertex: products
+ * of raw coordinates 1e5 mm from the origin lose the area of a 20 mm chord to round-off.
+ */
 export function polygonArea(poly) {
+  if (poly.length < 3) return 0;
+  const [ox, oy] = poly[0];
   let a = 0;
-  for (let i = 0; i < poly.length; i++) {
+  for (let i = 1; i + 1 < poly.length; i++) {
     const p = poly[i];
-    const q = poly[(i + 1) % poly.length];
-    a += p[0] * q[1] - q[0] * p[1];
+    const q = poly[i + 1];
+    a += (p[0] - ox) * (q[1] - oy) - (q[0] - ox) * (p[1] - oy);
   }
   return a / 2;
 }
@@ -101,8 +107,10 @@ export function earClip(poly) {
  * Triangulate an airfoil outline whose leading edge is at index `le` and whose upper and lower
  * points pair up by index distance from the leading edge (common chord stations). Each pair of
  * neighbouring rungs forms a quad of 2 triangles, so the cost is linear in the point count.
- * Falls back to ear clipping when a triangle is not counterclockwise or the triangles do not
- * cover exactly the polygon area. Input must be counterclockwise.
+ * A quad whose first diagonal gives a triangle that is not counterclockwise (refined chord
+ * stations no longer pair exactly) uses the other diagonal. Falls back to ear clipping when neither
+ * diagonal works or the triangles do not cover exactly the polygon area. Input must be
+ * counterclockwise.
  */
 export function stripTriangulate(poly, le) {
   const n = poly.length;
@@ -118,15 +126,24 @@ export function stripTriangulate(poly, le) {
     const u1 = upper(k + 1);
     const l0 = lower(k);
     const l1 = lower(k + 1);
-    for (const t of [
-      [l0, l1, u1],
-      [l0, u1, u0],
-    ]) {
-      if (t[0] === t[1] || t[1] === t[2] || t[0] === t[2]) continue;
-      const a = area(t[0], t[1], t[2]);
-      if (!(a > 0)) return earClip(poly);
-      sum += a;
-      tris.push(t);
+    const quad = (pair) => {
+      const kept = pair.filter((t) => t[0] !== t[1] && t[1] !== t[2] && t[0] !== t[2]);
+      const areas = kept.map((t) => area(t[0], t[1], t[2]));
+      return areas.every((a) => a > 0) ? { kept, areas } : null;
+    };
+    const q =
+      quad([
+        [l0, l1, u1],
+        [l0, u1, u0],
+      ]) ??
+      quad([
+        [l0, l1, u0],
+        [l1, u1, u0],
+      ]);
+    if (!q) return earClip(poly);
+    for (let t = 0; t < q.kept.length; t++) {
+      sum += q.areas[t];
+      tris.push(q.kept[t]);
     }
   }
   const total = polygonArea(poly);

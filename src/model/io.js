@@ -7,11 +7,12 @@ import { defaultGuides } from '../geom/guide.js';
 import { syncGuidesToSpan } from './edit.js';
 import { FORMAT, SOURCE_KEYS, VERSION, resolveSettings, validateProject } from './project.js';
 
-const round = (x) => (Number.isFinite(x) ? Number(x.toPrecision(12)) : x);
-const roundPts = (pts) => pts.map((p) => p.map(round));
+// Derived numbers keep full double precision (JSON writes the shortest string that reads back to
+// the same double): rounding merged distinct span parameters and knots of close sections.
+const copyPts = (pts) => pts.map((p) => p.slice());
 
 function curveJson(c) {
-  return c ? { degree: c.degree, knots: c.knots.map(round), controlPoints: roundPts(c.points), ...(c.weights ? { weights: c.weights } : {}) } : null;
+  return c ? { degree: c.degree, knots: c.knots.slice(), controlPoints: copyPts(c.points), ...(c.weights ? { weights: c.weights } : {}) } : null;
 }
 
 /**
@@ -39,17 +40,17 @@ export function projectToJson(project, build, meta = {}) {
         airfoil: p.id,
         name: p.name,
         curve: curveJson(p.curve),
-        leadingEdgeParameter: round(p.tLE),
+        leadingEdgeParameter: p.tLE,
       })),
       guides: { nose: curveJson(build.guides.nose), end: curveJson(build.guides.end) },
-      stations: build.stations.map((s) => ({ y: round(s.y), v: round(s.v), xLE: round(s.xLE), z: round(s.z), chord: round(s.chord), twist: round(s.twist) })),
+      stations: build.stations.map((s) => ({ y: s.y, v: s.v, xLE: s.xLE, z: s.z, chord: s.chord, twist: s.twist })),
       surface: {
         degreeU: build.surface.degreeU,
         degreeV: build.surface.degreeV,
-        knotsU: build.surface.knotsU.map(round),
-        knotsV: build.surface.knotsV.map(round),
-        controlPoints: build.surface.points.map(roundPts),
-        leadingEdgeU: round(build.uLE),
+        knotsU: build.surface.knotsU.slice(),
+        knotsV: build.surface.knotsV.slice(),
+        controlPoints: build.surface.points.map(copyPts),
+        leadingEdgeU: build.uLE,
         closedTrailingEdge: build.closedTE,
       },
     };
@@ -82,13 +83,12 @@ export function projectToJsonText(project, build, meta) {
 }
 
 /**
- * Largest project file read (bytes). The project data of every project within LIMITS fits (1,000,000
- * airfoil points take about 40 MB); the derived NURBS data of large wings may not.
+ * Largest project file read (bytes). 1,000,000 airfoil points take about 40 MB; names and source
+ * texts near their limits can exceed it (10,000 airfoils with 10,000-character names take 102 MB,
+ * and Save then fails with its size); the derived NURBS data of large wings may not fit either.
  */
 export const MAX_PROJECT_BYTES = 100_000_000;
 
-// Characters per number of derived data in the file (12 significant digits, sign, separator).
-const CHARS_PER_NUMBER = 22;
 
 /** Bytes of a string in UTF-8, the encoding of the downloaded file (Open limits File.size). */
 export function utf8Length(s) {
@@ -115,13 +115,35 @@ function derivedNumbers(build) {
 }
 
 /**
+ * Expected characters of the derived data: its number count times the mean length, with separator,
+ * of the coordinates of at most 1,000 surface control points spread over the surface. The largest
+ * possible length per number (26 characters) left the derived data out of files of 70 MB.
+ */
+function derivedChars(build) {
+  const P = build.surface.points;
+  const nJ = P[0].length;
+  const total = P.length * nJ;
+  const step = Math.max(1, Math.ceil(total / 1000));
+  let chars = 0;
+  let count = 0;
+  for (let k = 0; k < total; k += step) {
+    for (const v of P[Math.floor(k / nJ)][k % nJ]) {
+      chars += String(v).length + 2;
+      count++;
+    }
+  }
+  return (chars / count) * derivedNumbers(build);
+}
+
+/**
  * Text of a project file (Save, JSON export). The derived NURBS data is left out when the file would
  * exceed MAX_PROJECT_BYTES, so that Open reads every file the app writes; Open recomputes it. Above
  * the limit without indentation it throws.
  * @returns {{text: string, derived: boolean, omitted: boolean}} omitted: derived data left out for size
  */
 export function projectFileText(project, build, meta) {
-  if (build?.surface && CHARS_PER_NUMBER * derivedNumbers(build) <= MAX_PROJECT_BYTES) {
+  // Within 10 % of the limit by the estimate, the written text decides.
+  if (build?.surface && derivedChars(build) <= 1.1 * MAX_PROJECT_BYTES) {
     const full = formatJson(projectToJson(project, build, meta));
     if (utf8Length(full) <= MAX_PROJECT_BYTES) return { text: full, derived: true, omitted: false };
   }

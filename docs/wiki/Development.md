@@ -7,8 +7,8 @@ Deutsch: [[Entwicklung|Entwicklung]]
 | Property | Value |
 | --- | --- |
 | Language | JavaScript modules, no framework. Build target ES2022 (ECMAScript 2022); ESLint parses ECMAScript 2024 (`ecmaVersion: 2024`). |
-| Build tool | Vite `^8.3.1`. Relative base `./`, source maps. `build.chunkSizeWarningLimit: 900`: Vite warns when a chunk exceeds 900 kB (Vite unit: 1 kB = 1000 bytes). |
-| Runtime dependencies | three.js `^0.186.1`: 3D view, imported only in `src/ui/viewer3d.js`. fflate `^0.8.3`: zip container of 3D Manufacturing Format (3MF) files, imported only in `src/export/threemf.js`. |
+| Build tool | Vite `^8.3.1`. Relative base `./`, source maps. `build.chunkSizeWarningLimit: 900`: Vite warns when a chunk exceeds 900 kB (Vite unit: 1 kB = 1000 bytes). Output: one classic script in IIFE format (immediately invoked function expression) with the styles inside, loaded with `defer` and without `crossorigin` (plugin `classicScript` in `vite.config.js`), because Chromium refuses module scripts and CORS-mode (Cross-Origin Resource Sharing) stylesheets from file URLs; `build.modulePreload: false`. `dist/index.html` therefore runs opened from a file. |
+| Runtime dependencies | three.js `^0.186.1`: 3D view, imported only in `src/ui/viewer3d.js`. fflate `^0.8.3`: zip container of 3D Manufacturing Format (3MF) files, imported only in `src/export/threemf.js`. The build bundles both at the versions in `package-lock.json` (`npm ci`). Plugin `licenses` in `vite.config.js` writes `dist/LICENSES.txt`: `LICENSE` of this app, then the license file of every npm package with code in the bundle (found from the bundled modules, not from a list); a bundled package without a license file stops the build. |
 | Node.js | 24 or later (`.nvmrc`: 24; `engines.node`: `>=24`) |
 | Unit tests | Vitest `^5.0.2` in Node.js; timeout 20000 ms per test (`test.testTimeout` in `vite.config.js`); coverage with `@vitest/coverage-v8` |
 | Browser tests | Playwright `^1.63.0` |
@@ -16,7 +16,7 @@ Deutsch: [[Entwicklung|Entwicklung]]
 
 Code in `src/geom/`, `src/airfoil/`, `src/export/` and `src/model/` does not use the Document Object Model (DOM) application programming interface (API).
 Unit tests and scripts import it in Node.js.
-`src/airfoil/library.js` uses `fetch` to load `public/airfoils/index.json`.
+The bundled airfoil library needs no network request: plugin `airfoilLibrary` in `vite.config.js` compiles `public/airfoils/index.json` and its files into the module `virtual:airfoil-library`, read by `src/airfoil/bundled.js`. Vite also copies `public/airfoils/` to `dist/airfoils/`.
 
 | Path | Content |
 | --- | --- |
@@ -82,13 +82,14 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `scripts/validate_3mf.py` | 3MF validation (lib3mf) |
 | `scripts/screenshots.mjs` | Wiki screenshots |
 | `scripts/check-docs.mjs` | Documentation check |
+| `scripts/check-test-counts.mjs` | Test count check |
 
 ### Data flow
 
-1. A tab (class in `src/ui/`) calls `store.update(mutate, { key })`.
-   The store pushes the previous project onto the undo stack and clears the redo stack.
+1. A tab (class in `src/ui/`) calls `store.update(mutate, { key, session })`.
+   The store pushes the previous project onto the undo stack and clears the redo stack. A mutation that leaves the serialized project unchanged pushes nothing, keeps the redo stack and notifies nobody.
    The undo stack holds at most 100 steps. Undo and redo stack together hold at most 64,000,000 characters of serialized project (JSON). Above that, the oldest undo steps are dropped first, then the redo steps farthest from the current project. The newest step of each stack stays.
-   Consecutive updates with the same key, each less than 800 ms after the one before, form one undo step, e.g. a point drag.
+   Consecutive updates with the same key, each less than 800 ms after the one before, form one undo step. With `session: true` (planform drags) updates with the same key form one step however long the pauses, until the drag ends on pointer release or cancel (`lastKey` reset); undo and redo also reset it, so a drag in progress continues as a new step.
 2. The store notifies its subscribers.
    `main.js` schedules at most 1 rebuild in the next animation frame; further notifications before that frame share it.
 3. The rebuild runs `buildWing(project)`.
@@ -158,7 +159,7 @@ Build time and memory use on phones: not measured.
 
 ### Size warnings and limits
 
-Sizes above a warning threshold work as usual. The build then adds 1 warning to the **Checks** tab: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Each size reads `<value> (warning above <threshold>)`, for example `250 sections (warning above 200)`. `<time>` reads `under 1 s` or `about X s`; `<memory>` reads `about X MB` or `about X GB`. The status bar counts the warning. When a size rises above its threshold (an edit, **Open**, the restored autosave), a short message shows the same text. Beyond a hard limit a desktop browser tab runs out of memory or a change takes about 1 minute; the app refuses such projects and changes.
+Sizes above a warning threshold work as usual. The build then adds 1 warning to the **Checks** tab: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Each size reads `<value> (warning above <threshold>)`, for example `250 sections (warning above 200)`. `<time>` reads `under 1 s` or `about X s`; `<memory>` reads `about X MB` or `about X GB`. When the estimated first build takes at least 1 s longer than a change (`firstBuildSeconds`), the warning ends with `Opening it or changing the profile parametrization takes <time>.` The first build runs after **Open**, for the restored autosave and after a change of **Profile parametrization**; it checks and fits every airfoil that a section uses again. The status bar counts the warning. When a size rises above its threshold (an edit, **Open**, the restored autosave), a short message shows the same text. Beyond a hard limit a desktop browser tab runs out of memory or a change takes about 1 minute; the app refuses such projects and changes.
 
 | Size | Warning above (`WARN` in `src/model/budget.js`) | Hard limit (`LIMITS` in `src/model/project.js`) |
 | --- | ---: | ---: |
@@ -169,13 +170,14 @@ Sizes above a warning threshold work as usual. The build then adds 1 warning to 
 | Points of a guide curve | 500 (enabled guide curves) | 20,000 |
 | Loft grid points | 60,000 | 5,000,000 |
 | Export triangles (STL, 3MF) | 2,000,000 | 10,000,000 |
+| Export control points (STEP) | 1,000,000 | 3,000,000 |
 | Characters in a name (project, airfoils) | 200 | 10,000 |
 
-- Where the warnings appear: points in one airfoil in the airfoil preview (`many-points`); export triangles in the export dialog, which disables **Download** above 10,000,000 triangles; all other sizes in the `Large project` warning. The **Settings** tab shows `Loft grid: N points.` under the resolution fields, with the time and memory above 60,000 points.
+- Where the warnings appear: points in one airfoil in the airfoil preview (`many-points`); export triangles and STEP control points in the export dialog, which disables **Download** above 10,000,000 triangles or 3,000,000 control points; all other sizes in the `Large project` warning. The **Settings** tab shows `Loft grid: N points.` under the resolution fields, with the time and memory above 60,000 points.
 - Further hard limits: ids 200 characters; airfoil source texts 2,000 characters; airfoil input 5,000,000 characters (`MAX_INPUT` in `src/airfoil/parse.js`); airfoil files above 20 MB are not read; the parser stops after 100,001 coordinate lines (`MAX_POINTS`); **Open** rejects project files above 100 MB unread (`MAX_PROJECT_BYTES` in `src/model/io.js`).
 - Loft grid: spanwise stations × (2N + 1) profile points before added stations, N = **Chordwise stations per surface** (`loftGrid` in `src/model/budget.js`). Up to 5,000,000 grid points the build uses the settings as entered. Above, it uses fewer stations per panel and warns `Spanwise stations per panel reduced from K to k: S sections with N chord samples keep the loft within 5,000,000 grid points.` When 1 station per panel still exceeds the limit, the build stops with `The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.`
 
-Estimate model: linear fits to the browser measurements above, JavaScript time without drawing the 3D view. The 3D view adds the drawing time of the graphics card. Phones: not measured. The coefficients are `COST` (each change) and `EXPORT` (mesh export) in `src/model/budget.js`. Units: 1 MB = 1000 KB = 1,000,000 bytes.
+Estimate model: linear fits to the browser measurements above, JavaScript time without drawing the 3D view. The 3D view adds the drawing time of the graphics card. Phones: not measured. The coefficients are `COST` (each change) and `EXPORT` (export) in `src/model/budget.js`. Units: 1 MB = 1000 KB = 1,000,000 bytes.
 
 | Unit (`COST`) | Time | Memory |
 | --- | ---: | ---: |
@@ -184,12 +186,16 @@ Estimate model: linear fits to the browser measurements above, JavaScript time w
 | Airfoil list entry in the **Sections** table: sections × airfoils up to 20,000 entries (`LAZY_OPTIONS`), above that 1 per section | 8.5 µs | 0.5 KB |
 | Airfoil point | 1.5 µs | 0.2 KB |
 | Point of an enabled guide curve | 110 µs | 50 KB |
-| Airfoil point, checks on import and first build of a wing that uses the airfoil (`many-points` warning only) | 30 µs | not used |
+| Airfoil point, checks on import and first build of a wing that uses the airfoil (`airfoilFirstUse`: `many-points` warning and first build) | 30 µs | not used |
+| Airfoil, first build whatever its points: curve sampling and crossing tests (`airfoilFirstBuild`: first build only) | 4.4 ms | not used |
 
 | Export, per triangle (`EXPORT`) | Time | Memory | File |
 | --- | ---: | ---: | ---: |
 | STL | 0.8 µs | 210 bytes | 50 bytes |
 | 3MF | 5.8 µs | 110 bytes | 11.5 bytes |
+| STEP, per control point | 2.5 µs | 620 bytes | 98 bytes |
+
+First build (`firstBuildSeconds`): the time of a change plus 4.4 ms per airfoil that a section uses plus 30 µs per point of these airfoils. Basis: 7.4 ms per airfoil of 99 points in Node.js 24 at 1,000 and 2,000 airfoils, of it 3 ms by the point term; not measured in the browser. Example: 20,000 sections (**Linear**, 16 **Chordwise stations per surface**: 660,000 loft grid points) and 10,000 airfoils of 99 points: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
 
 The export memory adds the base of 15 MB. Tests: `test/budget.test.js` (thresholds, estimates, loft grid as the build computes it, shortened names), `e2e/limits.spec.js` (warning above 200 sections and the title of the **+** button, airfoil lists of large sections tables, export dialog note and the hard limit).
 
@@ -218,7 +224,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 200 tests in 9 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 278 tests in 10 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -228,6 +234,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 8 STEP files, 8 3MF files and `cases.json` in `step-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 12 Portable Network Graphics (PNG) files in `docs/wiki/images/` |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
+| `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
 
 | Environment variable | Used by | Effect |
 | --- | --- | --- |
@@ -258,8 +265,9 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Server | `npm run preview -- --port 4173 --strictPort`; every run starts its own server (`reuseExistingServer: false`) |
 | Timeouts | 60000 ms per test, 60000 ms for server start |
 | Retries | 0 |
+| Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-137 tests in 10 spec files, 274 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+149 tests in 10 spec files, 298 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 30 tests run in one project only (`test.skip` in the other project):
 
@@ -384,6 +392,27 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 Paths resolve against `docs/wiki/` for wiki pages and against the repository root for the READMEs.
 Not checked: language switch line, alt text language, link target language, link anchors (`#…`), external links (`http:`, `https:`, `mailto:`).
 
+### Test count check
+
+`npm run counts:check` derives every test count that `README.md`, `README.de.md`, `RECORD.md`, Development, Entwicklung, Geometry and Geometrie state from the suites.
+Exit code 1 when a stated number differs or a statement is not found; `scripts/check-test-counts.mjs` holds each statement as a pattern with the number of times it occurs.
+
+| Count | Source |
+| --- | --- |
+| Unit tests and test files | `vitest list --staticParse=false`: runs the test files to collect the tests, so a test inside a loop counts once per pass. The default static parse counts it once. |
+| Browser tests, spec files, runs; tests of `e2e/limits.spec.js` per project | `playwright test --list --reporter=json`; no browser, no server |
+| Tests that run in one project only (total and per spec file), passed and skipped runs in `RECORD.md` | JSON report of a run, given with `--e2e-report <file>`. `test.skip` decides at run time. Without a report these numbers are not checked; the passed, skipped and failed runs in `RECORD.md` still have to add up to the runs. With a report, a run with a failed test fails the check. |
+| Sentence `No test is marked test.fail.` | Present only while no test in the listing or the report expects to fail |
+| STEP and 3MF validation cases: count; names in order and solids (2 when mirrored, else 1) in the case table | `stepCases()` in `test/step-cases.js` |
+
+```bash
+npm run counts:check                                                                # without the device-only counts
+npm run e2e && npm run counts:check -- --e2e-report playwright-report/results.json  # all counts
+```
+
+CI runs it in the job `test` without a report and in the job `e2e` with the report of that job's run.
+Not checked: `CHANGELOG.md` (it records changes, with the counts of their time).
+
 ## Continuous integration (CI)
 
 Platform: GitHub Actions, runner `ubuntu-latest` for every job.
@@ -399,9 +428,9 @@ The `docs.yml` job `wiki` only checks out.
 
 | `ci.yml` job | Name | Steps | Permissions | Runs on |
 | --- | --- | --- | --- | --- |
-| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`; uploads artifact `coverage` | `contents: read` | Every trigger |
+| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`; uploads artifact `coverage` | `contents: read` | Every trigger |
 | `step` | STEP and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`; uploads artifact `step-files` (STEP, 3MF, `cases.json`) | `contents: read` | Every trigger |
-| `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (build, then all specs in `e2e/`, both projects); on failure uploads artifact `playwright-results` (`test-results/`) | `contents: read` | Every trigger |
+| `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (build, then all specs in `e2e/`, both projects), `counts:check -- --e2e-report playwright-report/results.json`; on failure uploads artifact `playwright-results` (`test-results/`) | `contents: read` | Every trigger |
 | `build` | Build site | `build`; on push to `main` also `configure-pages` and `upload-pages-artifact` with `dist/` | `contents: read`, `pages: read` | Every trigger |
 | `deploy` | Deploy to GitHub Pages | `deploy-pages` to environment `github-pages`. Concurrency group `pages`: an active run is not cancelled. | `pages: write`, `id-token: write` | Push to `main`, after `test`, `step`, `e2e` and `build` pass |
 
@@ -424,7 +453,7 @@ All listed actions run on Node.js 24 (`runs.using: node24`); `upload-pages-artif
 CI does not rewrite the README coverage tables.
 Update them with `npm run coverage && npm run coverage:readme` and commit both READMEs.
 
-Not verified: the `deploy` job and `docs.yml` have no recorded run on `main`.
+The first run on `main` (merge of #1, 2026-09-29): CI run 36590504445 deployed Pages, Docs run 36590504459 pushed the wiki.
 The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creates it with the first page saved in the web interface.
 
 ## Release
@@ -442,7 +471,7 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 | --- | --- |
 | Tag check | Fails when the tag is not `v` + `package.json` `version` |
 | `npm run lint`, `npm test`, `npm run build` | Fails on lint error, test failure or build error |
-| Package | `wingdesigner-<tag>-site.zip` with the content of `dist/` |
-| GitHub release | Title `Wingdesigner <tag>`, the zip file as asset. Notes: the `CHANGELOG.md` section from `## [<version>]` to the next `## ` heading; `See CHANGELOG.md.` when the section is missing. |
+| Package | `wingdesigner-<tag>-site.zip` with the content of `dist/`: `index.html`, `LICENSES.txt`, `assets/` (script and source map), `airfoils/` |
+| GitHub release | Title `Wingdesigner <tag>`, the zip file as asset. Notes: the `CHANGELOG.md` section from `## [<version>]` to the next `## ` heading; `See CHANGELOG.md.` when the section is missing. Then a paragraph on use: unzip, open `index.html` (tested in Chromium) or serve the folder with a static web server; `LICENSES.txt` holds the licenses. |
 
 `release.yml` runs no coverage check, no airfoil library check, no documentation check, no STEP validation, no 3MF validation and no browser tests.

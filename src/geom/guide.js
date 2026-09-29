@@ -5,7 +5,7 @@
 // mode 'fit':     the curve interpolates the points (global interpolation, parameters proportional to y).
 // mode 'control': the points are the control polygon of a clamped uniform B-spline.
 
-import { curvePoint, interpolateCurve, solveMonotonic } from './nurbs.js';
+import { curvePoint, interpolateCurve, paramsApart, solveMonotonic } from './nurbs.js';
 
 export function clampedUniformKnots(nPoints, degree) {
   const n = nPoints - 1;
@@ -45,7 +45,7 @@ export function guideProblems(guide) {
     for (let i = 1; i < P.length; i++) {
       const a = (P[i - 1][1] - ya) / (yb - ya);
       const b = (P[i][1] - ya) / (yb - ya);
-      if (!(b - a > 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b)))) {
+      if (!paramsApart(a, b)) {
         out.push(`Points ${i} and ${i + 1} at y = ${P[i - 1][1]} mm and y = ${P[i][1]} mm lie too close together for the curve parameters; move them apart.`);
         break;
       }

@@ -1,3 +1,5 @@
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   checksValue,
   chordCell,
@@ -98,4 +100,32 @@ test('first run wizard, editing, upload and exports work without errors', async 
   await expect(projectList).not.toContainText('TEST 12');
   await openTab(page, 'Sections');
   await expect(chordCell(page, 2).locator('input')).toHaveValue('100');
+});
+
+test.describe('release build', () => {
+  // The unzipped release: dist/ (E2E_DIST overrides the folder), opened as a file without a server.
+  const dist = process.env.E2E_DIST ?? resolve('dist');
+
+  test('runs opened from a file: wizard, wing, bundled library and autosave', async ({ page }) => {
+    await page.goto(pathToFileURL(join(dist, 'index.html')).href);
+    const wizard = dialogOf(page);
+    await expect(wizard).toHaveCount(1);
+    await wizard.getByRole('button', { name: 'Create design' }).click();
+    await expect(statusOf(page)).toHaveText(/^Span 1200 mm · area/);
+    await openTab(page, 'Airfoils');
+    await expect(page.locator('#pane-airfoils .airfoil-list > li', { hasText: 'S9104' })).toHaveCount(1);
+    await page.reload();
+    await expect(statusOf(page)).toHaveText(/^Span 1200 mm · area/);
+    await expect(dialogOf(page)).toHaveCount(0);
+  });
+
+  test('ships the licenses of the app and of every bundled library, linked from Help', async ({ page, request }) => {
+    const text = await (await request.get('LICENSES.txt')).text();
+    for (const name of ['wingdesigner', 'three', 'fflate']) expect(text).toMatch(new RegExp(`^${name} \\d+\\.\\d+\\.\\d+ \\(MIT\\)$`, 'm'));
+    expect(text).toContain('Permission is hereby granted, free of charge');
+    const wizard = await openFirstRun(page);
+    await wizard.getByRole('button', { name: 'Skip (open sample wing)' }).click();
+    await page.getByRole('button', { name: 'Help', exact: true }).click();
+    await expect(dialogOf(page).getByRole('link', { name: 'Licenses of this app and its libraries' })).toHaveAttribute('href', 'LICENSES.txt');
+  });
 });

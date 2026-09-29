@@ -4,7 +4,7 @@ import './ui/styles.css';
 import { buildWing } from './geom/wing.js';
 import { wingStats } from './geom/stats.js';
 import { MAX_PROJECT_BYTES, OMITTED_NOTE, projectFileText, projectFromJsonText } from './model/io.js';
-import { largeSizes, projectSize, sizeWarning } from './model/budget.js';
+import { displayName, largeSizes, projectSize, sizeWarning } from './model/budget.js';
 import { defaultProject } from './model/defaults.js';
 import { validateProject } from './model/project.js';
 import { Store } from './ui/store.js';
@@ -103,6 +103,7 @@ function currentBuild() {
     build = safeBuild(store.project);
     geometryPending = false;
     viewPending = true;
+    formsPending = true;
   }
   return build;
 }
@@ -133,6 +134,8 @@ const getBuild = () => build;
 // Layout.
 const statusText = h('span', { class: 'status-text' });
 const autosaveNote = h('span', { class: 'sev-error' });
+// A saved project that could not be loaded nor copied aside keeps autosave off for the session.
+if (keepSaved) autosaveNote.textContent = ' · Autosave off: use Save';
 const toast = h('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
 const undoBtn = h('button', { type: 'button', title: 'Undo (Ctrl+Z)', onclick: () => store.undo() }, 'Undo');
 const redoBtn = h('button', { type: 'button', title: 'Redo (Ctrl+Shift+Z)', onclick: () => store.redo() }, 'Redo');
@@ -300,9 +303,10 @@ function noteLargeSizes() {
   const size = projectSize(store.project);
   const keys = new Set(largeSizes(size).map((q) => q.key));
   if ([...keys].some((k) => !largeKeys.has(k))) {
-    // After a notice of the same change ("Added airfoil ..."), both stay readable.
-    const shown = toast.classList.contains('show') && !toast.classList.contains('error') ? `${toast.textContent} ` : '';
-    message(shown + sizeWarning(store.project, size));
+    // After a notice of the same change ("Added airfoil ...") or of the start (a lost autosave),
+    // both stay readable, and an error notice keeps its colour.
+    const showing = toast.classList.contains('show');
+    message((showing ? `${toast.textContent} ` : '') + sizeWarning(store.project, size), showing && toast.classList.contains('error'));
   }
   largeKeys = keys;
 }
@@ -313,6 +317,13 @@ let refreshPanels = false;
 // A display setting (mirror) redraws from the current build; the start shows the build made above.
 let geometryPending = false;
 let viewPending = true;
+// Airfoils added or removed without a section using them: the table and Checks refresh, the wing stays.
+let tablePending = false;
+// The project name changed: its length enters the size warning; the wing and the panels stay.
+let namePending = false;
+// The project geometry changed and was built by currentBuild (Save, Export) before the next frame:
+// the planform forms still render the new project there.
+let formsPending = false;
 function rebuild() {
   if (rebuildPending) return;
   rebuildPending = true;
@@ -322,25 +333,44 @@ function rebuild() {
     const focusKey = document.activeElement?.dataset?.focusKey;
     const changed = geometryPending;
     const redraw = changed || viewPending;
+    const table = tablePending && !redraw;
+    // A rebuild writes the size warning itself; a display redraw keeps the build and its warnings.
+    const sizes = (tablePending || namePending) && !changed;
     geometryPending = false;
     viewPending = false;
+    tablePending = false;
+    namePending = false;
     if (changed) build = safeBuild(store.project);
+    if (sizes) {
+      // The size warning follows the airfoil count without a rebuild.
+      const large = sizeWarning(store.project);
+      const at = build.warnings.findIndex((w) => w.startsWith('Large project'));
+      if (at >= 0 && large) build.warnings[at] = large;
+      else if (at >= 0) build.warnings.splice(at, 1);
+      else if (large) build.warnings.unshift(large);
+    }
     const sel = store.project.sections.find((s) => s.id === store.selection.section);
     const selV = sel && build.surface ? (sel.y - build.rootY) / (build.tipY - build.rootY || 1) : null;
     if (redraw) {
       viewer.setBuild(build.surface ? build : null, { mirror: store.project.settings.mirror !== false, selectedV: selV });
       sectionsPanel.update();
+    } else if (table) {
+      sectionsPanel.update();
     } else {
       viewer.setSelection(selV);
       sectionsPanel.markSelected();
     }
-    planform.update();
+    // The guide point tables change only with the project geometry; a selection or a display change
+    // redraws the planform canvas.
+    if (changed || formsPending) planform.update();
+    else planform.pz.redraw();
+    formsPending = false;
     if (refreshPanels) {
       airfoils.update();
       settings.update();
       refreshPanels = false;
     }
-    if (redraw) {
+    if (redraw || sizes) {
       renderChecks();
       noteLargeSizes();
     }
@@ -348,7 +378,8 @@ function rebuild() {
       const el = document.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
       if (el && el !== document.activeElement) {
         el.focus();
-        el.select?.();
+        // Text is selected in text and number fields only: lists, boxes and buttons keep focus alone.
+        if (el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'number')) el.select();
       }
     }
     undoBtn.disabled = !store.canUndo();
@@ -375,9 +406,12 @@ store.subscribe((project, reason) => {
   if (reason !== 'select') {
     refreshPanels = true;
     savePending = true;
-    // 'meta' (project name) changes neither the wing nor the view.
+    // 'meta' (project name) changes neither the wing nor the view; 'airfoils' (an airfoil added or
+    // removed that no section uses) changes the airfoil lists and the size warning only.
     if (reason === 'display') viewPending = true;
-    else if (reason !== 'meta') geometryPending = true;
+    else if (reason === 'airfoils') tablePending = true;
+    else if (reason === 'meta') namePending = true;
+    else geometryPending = true;
   }
   rebuild();
 });
@@ -403,7 +437,7 @@ async function newDesign(firstRun) {
     viewer.hasFitted = false;
     planform.pz.fitted = false;
     selectTab('sections');
-    message(`Created "${p.name}".`);
+    message(`Created "${displayName(p.name)}".`);
   }
 }
 
@@ -442,7 +476,16 @@ function helpDialog() {
         {},
         'NACA sections are computed from their published equations. Uploaded airfoils keep their name and attribution in the project file; respect the terms of the source you downloaded them from.',
       ),
-      h('p', {}, h('a', { href: `${REPO}/wiki`, target: '_blank', rel: 'noopener' }, 'Documentation (wiki)'), ' · ', h('a', { href: REPO, target: '_blank', rel: 'noopener' }, 'Source code (MIT license)')),
+      h(
+        'p',
+        {},
+        h('a', { href: `${REPO}/wiki`, target: '_blank', rel: 'noopener' }, 'Documentation (wiki)'),
+        ' · ',
+        h('a', { href: REPO, target: '_blank', rel: 'noopener' }, 'Source code (MIT license)'),
+        ' · ',
+        // Written by the build (vite.config.js): this app's license and those of the bundled libraries.
+        h('a', { href: 'LICENSES.txt', target: '_blank', rel: 'noopener' }, 'Licenses of this app and its libraries'),
+      ),
       h('div', { class: 'row end' }, h('button', { value: 'close', class: 'primary' }, 'Close')),
     ),
   );

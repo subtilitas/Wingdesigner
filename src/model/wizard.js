@@ -125,14 +125,19 @@ export function wizardProject(params, name) {
   }
   const project = createProject({ name: name || `${params.span} mm wing`, airfoils, sections });
   if (params.planform === 'elliptic') {
-    const etas = params.tip === 'pointed' ? [0, 0.3, 0.55, 0.75, 0.88, 0.96, 1] : [0, 0.3, 0.55, 0.75, 0.9, 1];
+    // Points closer together towards the tip, where the elliptic chord falls fastest:
+    // eta_i = sin(pi i / 20), i = 0 ... 10. With 6 points at eta = 0, 0.3, 0.55, 0.75, 0.9, 1 the chord
+    // fell 3.4 % of the root chord below the law at taper 0.1; with these 11 points 0.55 %.
+    const etas = Array.from({ length: 11 }, (_, i) => (i === 10 ? 1 : Math.sin((Math.PI * i) / 20)));
     const pts = (edge) =>
       etas.map((eta) => {
         const y = eta * b;
         // The pointed tip ends in the tip section, a quarter of its chord ahead of the sweep line.
         const c = eta === 1 && pointedChord !== null ? pointedChord : chordAt(params, eta);
         const xle = leadingEdgeX(params, y, c);
-        return [r(edge === 'nose' ? xle : xle + c), r(y)];
+        // The end line x is the rounded nose x plus the rounded chord: rounded separately, the
+        // difference of the two could fall below the chord (a 1 mm tip gave 0.9999999999999982 mm).
+        return [edge === 'nose' ? r(xle) : r(xle) + r(c), r(y)];
       });
     project.guides = {
       nose: { enabled: true, mode: 'fit', degree: 3, points: pts('nose') },

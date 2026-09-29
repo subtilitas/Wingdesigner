@@ -31,19 +31,23 @@ export class Store {
   }
 
   /**
-   * Apply a mutation. Consecutive updates with the same key within COALESCE_MS form one undo step
-   * (e.g. dragging a point).
+   * Apply a mutation. Consecutive updates with the same key within COALESCE_MS form one undo step;
+   * with `session`, updates with the same key form one step however long the pauses between them,
+   * until lastKey is reset (a drag, ended on pointer up). A mutation that changes nothing keeps the
+   * undo and redo history and notifies nobody.
    */
-  update(mutate, { key = null, reason = 'edit' } = {}) {
+  update(mutate, { key = null, reason = 'edit', session = false } = {}) {
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const coalesce = key !== null && key === this.lastKey && now - this.lastTime < COALESCE_MS;
+    const coalesce = key !== null && key === this.lastKey && (session || now - this.lastTime < COALESCE_MS);
+    const before = coalesce ? null : JSON.stringify(this.project);
+    mutate(this.project);
     if (!coalesce) {
+      if (JSON.stringify(this.project) === before) return;
       this.clearRedo();
-      this.push(this.undoStack, JSON.stringify(this.project));
+      this.push(this.undoStack, before);
     }
     this.lastKey = key;
     this.lastTime = now;
-    mutate(this.project);
     this.emit(reason);
   }
 
