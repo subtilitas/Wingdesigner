@@ -220,7 +220,7 @@ Die Prüfungen laufen:
 
 | Eigenschaft | Wert |
 | --- | --- |
-| Aufbau | Selig: Namenszeile, dann eine Zeile `x y` je Punkt |
+| Aufbau | Selig: Namenszeile, dann eine Zeile `x y` je Punkt. Ein Name, der sich als Koordinatenzeile liest (z. B. `123 456`), erhält das Präfix `Airfoil `; `<` vor `coordinates>`, `html`, `pre` oder `body` wird als `‹` geschrieben, damit die Datei nicht als XML oder HTML gelesen wird. |
 | Punkte | die gespeicherten Punkte des Profils, Selig-Reihenfolge |
 | Zahlen | 7 Nachkommastellen bei einer Ausdehnung der Kontur von 1 oder mehr (Ausdehnung: der größere Wert aus x-Bereich und y-Bereich); darunter 7 − floor(log10(Ausdehnung)) Nachkommastellen, z. B. 13 bei 1e-6 Profiltiefe mit beliebigem x-Versatz; über 100 Nachkommastellen 17 signifikante Stellen. Jeder Wert rechtsbündig in mindestens 10 Zeichen, 1 Leerzeichen zwischen x und y |
 | Zeilenende | LF, auch nach der letzten Zeile |

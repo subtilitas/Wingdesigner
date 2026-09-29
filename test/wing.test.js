@@ -910,3 +910,17 @@ describe('trailing-edge slivers and crossing size', () => {
     expect(cross.size).toBeGreaterThan(10 * CROSSING_TOLERANCE);
   });
 });
+
+describe('span stations', () => {
+  it('rejects distinct sections whose span fractions round together', () => {
+    const ys = [169026.8951015743, 714063.9936875999, 714063.9936876, 816583.3893996814];
+    const b = buildWing(
+      createProject({
+        airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }],
+        sections: ys.map((y, i) => ({ airfoil: 'a', x: 10 * i, y, z: 0, chord: 200, twist: 0 })),
+      }),
+    );
+    expect(b.errors).toHaveLength(1);
+    expect(b.errors[0]).toMatch(/^Sections 2 and 3 at y = 714063\.9936875999 mm and y = 714063\.9936876 mm lie too close together for the surface parameters/);
+  });
+});

@@ -480,6 +480,22 @@ describe('parser robustness', () => {
     expect(toSeligDat('n', [[1, 0], [0, 0.05], [1, 0]]).split('\n')[1]).toBe(' 1.000000  0.000000');
   });
 
+  it('writes a numeric or markup-like name so that it reads back as the name', () => {
+    const pts = nacaAirfoil('2412').points;
+    const numeric = toSeligDat('123 456', pts);
+    expect(numeric.split('\n')[0]).toBe('Airfoil 123 456');
+    const r = importAirfoilText(numeric, 'n.dat');
+    expect(r.ok).toBe(true);
+    expect(r.name).toBe('Airfoil 123 456');
+    expect(r.points).toHaveLength(pts.length);
+    const markup = toSeligDat('<pre> and <coordinates> foil', pts);
+    expect(markup.split('\n')[0]).toBe('‹pre> and ‹coordinates> foil');
+    const m = importAirfoilText(markup, 'm.dat');
+    expect(m.ok).toBe(true);
+    expect(m.format).toBe('selig');
+    expect(m.points).toHaveLength(pts.length);
+  });
+
   it('writes a Selig file whose name stays on the first line', () => {
     const pts = nacaAirfoil('0012', { pointsPerSide: 11 }).points;
     const text = toSeligDat('foil\n0.25 9\r\nend', pts);

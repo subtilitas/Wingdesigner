@@ -270,6 +270,21 @@ export function buildWing(project) {
       return result;
     }
   }
+  // The surface parameter of a section is its span fraction v; two sections whose v values lie within
+  // 4 units in the last place would share one knot (and STEP merges such knots), so one of them is lost.
+  const y0s = sections[0].y;
+  const spanS = sections[sections.length - 1].y - y0s;
+  for (let i = 1; i < sections.length; i++) {
+    const a = (sections[i - 1].y - y0s) / spanS;
+    const b = (sections[i].y - y0s) / spanS;
+    if (!(b - a > 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b)))) {
+      errors.push(
+        `Sections ${i} and ${i + 1} at y = ${sections[i - 1].y} mm and y = ${sections[i].y} mm lie too close together for the surface parameters ` +
+          `(span fractions ${a} and ${b}); move them apart.`,
+      );
+      return result;
+    }
+  }
 
   const N = Math.round(Math.min(Math.max(settings.chordSamples, LIMITS.chordSamples[0]), LIMITS.chordSamples[1]));
   const chordStations = cosineStations(N);

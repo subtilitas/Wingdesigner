@@ -21,6 +21,20 @@ function cross(a, b) {
 /** Largest display mesh in vertices; cubic lofts are refined 3 times in v while they fit. */
 const MAX_DISPLAY_VERTICES = 100_000;
 
+/** Largest displayed set of section outlines in line segments (the selected section is drawn apart). */
+export const MAX_OUTLINE_SEGMENTS = 100_000;
+
+/**
+ * Indices of the section outlines to draw: all while count x perOutline segments stay within
+ * maxSegments, otherwise every step-th outline with the first and the last.
+ */
+export function outlineIndices(count, perOutline, maxSegments = MAX_OUTLINE_SEGMENTS) {
+  let step = Math.max(1, Math.ceil((count * perOutline) / maxSegments));
+  const kept = (s) => Math.floor((count - 1) / s) + 1 + ((count - 1) % s ? 1 : 0);
+  while (step < count && kept(step) * perOutline > maxSegments) step++;
+  return Array.from({ length: count }, (_, i) => i).filter((i) => i % step === 0 || i === count - 1);
+}
+
 /** Largest displayed control net in line segments (the net of a 5,000,000-point loft has 10 million). */
 export const MAX_NET_SEGMENTS = 100_000;
 
@@ -235,9 +249,12 @@ export class Viewer3D {
     const us = refine(build.paramsU, 1);
     const lines = new THREE.Group();
     if (this.options.sections) {
-      // All section outlines as one set of line segments (one draw call for any number of sections).
-      const sectionVs = build.sections.map((s) => (build.tipY > build.rootY ? (s.y - build.rootY) / (build.tipY - build.rootY) : 0));
+      // Section outlines as one set of line segments (one draw call for any number of sections); above
+      // MAX_OUTLINE_SEGMENTS every step-th outline, root and tip included.
       const closing = build.closedTE ? 0 : 1;
+      const sectionVs = outlineIndices(build.sections.length, us.length - 1 + closing).map((i) =>
+        build.tipY > build.rootY ? (build.sections[i].y - build.rootY) / (build.tipY - build.rootY) : 0,
+      );
       const segs = new Float32Array(sectionVs.length * (us.length - 1 + closing) * 6);
       let at = 0;
       let prev = null;

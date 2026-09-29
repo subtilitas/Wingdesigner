@@ -40,7 +40,7 @@ export class SettingsPanel {
         'fieldset',
         {},
         h('legend', {}, 'Geometry'),
-        h('label', { class: 'field' }, 'Project name', h('input', { type: 'text', value: this.store.project.name, maxLength: LIMITS.maxName, onchange: (e) => this.store.update((p) => (p.name = e.target.value)) })),
+        h('label', { class: 'field' }, 'Project name', h('input', { type: 'text', value: this.store.project.name, maxLength: LIMITS.maxName, onchange: (e) => this.store.update((p) => (p.name = e.target.value), { reason: 'meta' }) })),
         h(
           'label',
           { class: 'field' },

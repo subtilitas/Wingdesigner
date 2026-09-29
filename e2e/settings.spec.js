@@ -448,8 +448,12 @@ test.describe('Settings tab', () => {
     expect(quick.text).toContain("FILE_NAME('Quick name',");
 
     await openTab(page, 'Settings');
+    // A name change rebuilds nothing: the Sections table keeps its fields.
+    const sectionField = await page.locator('table.sections tbody tr input').first().elementHandle();
     await commit(projectName(page), 'My Wing 7');
     await expect.poll(async () => (await savedProject(page)).name).toBe('My Wing 7');
+    await frames(page);
+    expect(await sectionField.evaluate((e) => e.isConnected)).toBe(true);
 
     const step = await exportAs('step');
     expect(step.name).toBe('My_Wing_7.step');

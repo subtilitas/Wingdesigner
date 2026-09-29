@@ -363,8 +363,9 @@ store.subscribe((project, reason) => {
   if (reason !== 'select') {
     refreshPanels = true;
     savePending = true;
+    // 'meta' (project name) changes neither the wing nor the view.
     if (reason === 'display') viewPending = true;
-    else geometryPending = true;
+    else if (reason !== 'meta') geometryPending = true;
   }
   rebuild();
 });

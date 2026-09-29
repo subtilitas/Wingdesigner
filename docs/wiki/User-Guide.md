@@ -424,7 +424,7 @@ The box **More airfoils (external, not bundled)** links to 3 collections. The ap
 | Resolution | **Profile parametrization** | **Centripetal (recommended)**, **Chord length**, **Uniform** | Centripetal | Parameter spacing of the airfoil NURBS interpolation, in the wing build and in the airfoil preview |
 | Display | **Show mirrored half (y < 0)** | on, off | on | Display only (3D view). Checks, status bar and wizard always report both halves. Stored in the project. |
 | Display | **Show NURBS control net** | on, off | off | 3D view only; not stored. Above 100,000 net segments the view draws every k-th control line in each direction, first and last included. |
-| Display | **Show section outlines** | on, off | on | 3D view only; not stored |
+| Display | **Show section outlines** | on, off | on | 3D view only; not stored. Above 100,000 outline segments (2 · N per section, 2 · N + 1 with an open trailing edge) the view draws every k-th outline, root and tip included; the selected section is always drawn. |
 
 Below **Spanwise stations per panel** a note gives the loft grid points of the current settings (section [Guide curves](#guide-curves)), e.g. Glider preset: `Loft grid: 2,057 points.`
 
@@ -542,6 +542,7 @@ Build errors that the UI and **Open** prevent (reachable only through code). The
 | guides.….points: at most 20,000 points (found …). / guides.….points: x must be within ±1100000 mm and y within ±1000000 mm. | a guide curve with more than 20,000 points, a point x outside ±1,100,000 mm or a point y outside ±1,000,000 mm | **Add point** is disabled at 20,000 points; drags and the point table keep x within ±1,100,000 mm; **Open** rejects the file |
 | Section at y = … mm lies on the mirrored side; … | root y below 0 | the y field sets negative values to 0; **Open** rejects the file |
 | Sections … and … share span position y = … mm. | two sections with the same y | the Sections table rejects the value; **Open** rejects the file |
+| Sections … and … at y = … mm and y = … mm lie too close together for the surface parameters (span fractions … and …); move them apart. | two sections whose span fractions (y − root y) / (tip y − root y) differ by at most 4 units in the last place, e.g. y = 714063.9936875999 and 714063.9936876 mm between a root at 169026.9 mm and a tip at 816583.4 mm | move one of the two sections |
 | Section at y = … mm uses unknown airfoil "…". | airfoil id missing in the project | **×** is disabled for used airfoils; **Open** rejects the file |
 
 With an error the wing is not built: the 3D view and the statistics stay empty, and **Export** offers only the project JSON.
