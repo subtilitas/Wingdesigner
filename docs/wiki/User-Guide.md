@@ -298,7 +298,7 @@ Controls per guide curve (boxes **Nose line (leading edge)** and **End line (tra
 | --- | --- |
 | List entry | Outline, name, point count, attribution, `unused` when no section uses the airfoil |
 | **View** | Opens the preview; name and attribution are read-only. The only button is **Close**. |
-| **.dat** | Downloads the airfoil as Selig `.dat` file with 7 decimal places (more for outlines smaller than 1, see [[File Formats|File-Formats]]) |
+| **.dat** | Downloads the airfoil as Selig `.dat` file with 7 decimal places (more for outlines smaller than 1, see [[File Formats]]) |
 | **×** | Removes the airfoil. Disabled while a section uses it. |
 | **Remove unused** | Removes every airfoil that no section uses |
 
@@ -317,7 +317,7 @@ Limits of the project airfoils (section [Project size](#project-size)):
 | --- | --- | --- |
 | 10,000 airfoils | At 10,000 airfoils no preview opens: red notice `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.` | More airfoils: `At most 10,000 airfoils are supported (found …).` |
 | 1,000,000 airfoil points in all | An airfoil that would take the total above 1,000,000 opens no preview and is not added: red notice `With this airfoil the project airfoils hold … points; the limit is 1,000,000. "Remove unused" frees points.` | More points: `The airfoils hold … points together; the limit is 1,000,000.` |
-| 100,000 points per airfoil | Error `too-many-points` in the preview ([[File Formats|File-Formats]]) | More points: `Airfoil … has … points; the limit is 100,000.` |
+| 100,000 points per airfoil | Error `too-many-points` in the preview ([[File Formats]]) | More points: `Airfoil … has … points; the limit is 100,000.` |
 
 - Above 200 airfoils or above 100,000 airfoil points in all, the wing build adds the `Large project` warning.
 - Lists and messages show the first 200 characters of a longer airfoil name, followed by `…`.
@@ -329,7 +329,7 @@ Limits of the project airfoils (section [Project size](#project-size)):
 | Files | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Drop them on the drop zone or use **Choose files**. Several files open one preview each, in order. A file above 20 MB is not read: red notice `<file>: … MB; airfoil files are limited to 5,000,000 characters.` A file the browser cannot read: red notice `<file>: the browser could not read the file (NotReadableError).` |
 | Pasted text | Paste coordinates into the text area, then **Check pasted text**. |
 | Text encoding | UTF-8 (Unicode Transformation Format, 8-bit); a file that is not valid UTF-8 is read as Windows-1252. |
-| Layouts and checks | Selig, Lednicer, x/upper/lower table, XML (Extensible Markup Language), HTML (HyperText Markup Language): see [[File Formats|File-Formats]] |
+| Layouts and checks | Selig, Lednicer, x/upper/lower table, XML (Extensible Markup Language), HTML (HyperText Markup Language): see [[File Formats]] |
 
 ![Upload preview of a percent table with decimal commas: file points, NURBS curve, check messages](images/upload-preview.png)
 
@@ -339,7 +339,7 @@ Limits of the project airfoils (section [Project size](#project-size)):
 | **Name** | From the name line of the file, otherwise the file name. Editable. |
 | **Source / attribution** | Stored in the project file. Pre-filled for names starting with `HS` plus space or hyphen (`HS 3.4`, `HS-1.4`): `Hartmut Siegmann, www.aerodesign.de`. Pre-filled for names starting with `MH`, an optional space or hyphen and a digit (`MH45`, `MH 60`): `Martin Hepperle, www.mh-aerotools.de`. Both matches are case-insensitive. Pre-filled for a bundled library file with its author from `index.json`. |
 | Format line | Detected format and point count |
-| Messages | **Error**: blocks adding. **Warning**: adding allowed. **Info**: facts, e.g. thickness, camber and trailing-edge gap in % chord, or the number of removed points that lie closer than 1e-9 chord to the previous point. Above 5,000 points: warning `… points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take ….` A surface that runs back in x at more than 50 points: error `The upper surface runs back in x at … points; the limit is 50.` (`lower` likewise). After the sanity checks pass, the preview also rejects a NURBS curve that crosses itself or runs back in x, and points on which the NURBS interpolation fails (`The NURBS interpolation through the points failed (…).`). All three are error `curve-shape` ([[File Formats|File-Formats]]). |
+| Messages | **Error**: blocks adding. **Warning**: adding allowed. **Info**: facts, e.g. thickness, camber and trailing-edge gap in % chord, or the number of removed points that lie closer than 1e-9 chord to the previous point. Above 5,000 points: warning `… points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take ….` A surface that runs back in x at more than 50 points: error `The upper surface runs back in x at … points; the limit is 50.` (`lower` likewise). After the sanity checks pass, the preview also rejects a NURBS curve that crosses itself or runs back in x, and points on which the NURBS interpolation fails (`The NURBS interpolation through the points failed (…).`). All three are error `curve-shape` ([[File Formats]]). |
 | **Add to project** | Adds the airfoil. Disabled and labelled **Cannot add (errors)** while an error exists. |
 
 ### NACA generator
@@ -512,11 +512,11 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 
 | Message | Severity | Condition |
 | --- | --- | --- |
-| Airfoil "…": … | error | the airfoil fails the sanity checks ([[File Formats|File-Formats]]), e.g. in an opened project file. With **Profile parametrization** **Chord length** or **Uniform**, every `Airfoil "…"` message ends with `Settings > Profile parametrization "centripetal" follows the points more closely.` |
+| Airfoil "…": … | error | the airfoil fails the sanity checks ([[File Formats]]), e.g. in an opened project file. With **Profile parametrization** **Chord length** or **Uniform**, every `Airfoil "…"` message ends with `Settings > Profile parametrization "centripetal" follows the points more closely.` |
 | Airfoil "…": the NURBS interpolation failed (…). | error | the airfoil NURBS interpolation fails |
 | Airfoil "…": the NURBS curve through the points crosses itself near x = … % chord; … | error | the curve through the airfoil points crosses itself. The crossing splits the outline into 2 parts; the part with the smaller bounding-box diagonal has a mean width (area / bounding-box diagonal) above 0.05 % of the chord. An airfoil used at a chord above 200 mm also fails when that width exceeds 0.1 mm at its largest chord; the message then reads `…; the loop is … mm wide at … mm chord, above 0.1 mm. …` |
-| Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | error | the curve through the airfoil points runs back in x by more than 0.01 % of the chord. In the parser test with 1,964 real airfoil files, this check rejects 4 files with **Centripetal**, 12 with **Chord length** and 82 with **Uniform** ([[Airfoil Sources|Airfoil-Sources]], section Parser test). |
-| Airfoil "…": The upper surface runs back in x at … points; the limit is 50. (also `lower`) | error | a surface of the airfoil runs back in x at more than 50 points (check `folds`, [[File Formats|File-Formats]]) |
+| Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | error | the curve through the airfoil points runs back in x by more than 0.01 % of the chord. In the parser test with 1,964 real airfoil files, this check rejects 4 files with **Centripetal**, 12 with **Chord length** and 82 with **Uniform** ([[Airfoil Sources]], section Parser test). |
+| Airfoil "…": The upper surface runs back in x at … points; the limit is 50. (also `lower`) | error | a surface of the airfoil runs back in x at more than 50 points (check `folds`, [[File Formats]]) |
 | Nose line: … / End line: … | error | guide points not strictly increasing in y, or the curve turns back in y; through-points mode: `Points … and … at y = … mm and y = … mm lie too close together for the curve parameters; move them apart.` when two normalized y values lie within 4 units in the last place of the larger one or within 2^-1021 (about 4.5e-308); `the curve fit is singular; move the points further apart in y or use control-point mode.` when the interpolation cannot solve for points whose normalized y lie closer than it resolves, e.g. 1e-300 of the span |
 | Nose line: the curve through the points reaches x = … mm, beyond ±1200000 mm; space the points more evenly in y or use control-point mode. (also End line) | error | a control point of the guide curve lies beyond x = ±1,200,000 mm |
 | Section values give non-finite coordinates at y = … mm; … | error | leading-edge x, chord, z or twist of a checked span position gives a non-finite coordinate, e.g. **Smooth** with 3 sections at y = 0, 1e-300 and 2e-300 mm and twists 0°, 90° and 0°. **Open** and the **Sections** table accept such positions; the **Sections** table rejects only a y equal to that of another section. |
