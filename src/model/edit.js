@@ -2,6 +2,7 @@
 
 import { defaultGuides, guideXAt } from '../geom/guide.js';
 import { LIMITS, airfoilPoints, newId } from './project.js';
+import { nacaAirfoil } from '../airfoil/naca.js';
 
 export function sortedSections(project) {
   return project.sections.slice().sort((a, b) => a.y - b.y);
@@ -215,16 +216,25 @@ export function pruneAirfoils(project) {
 }
 
 /**
- * Add an airfoil unless the project holds the same one (same points, and the same name or the same
- * generated NACA section). Returns its id, or null when the project already holds LIMITS.maxAirfoils airfoils or
+ * Add an airfoil unless the project holds the same one (same name and points, or the same generated
+ * NACA section whose stored points match its designation). Returns its id, or null when the project already holds LIMITS.maxAirfoils airfoils or
  * the airfoil would take the points of all airfoils beyond LIMITS.maxAirfoilPoints.
  */
 export function addAirfoil(project, airfoil) {
   const samePoints = (a) => a.points.length === airfoil.points.length && a.points.every((p, i) => p[0] === airfoil.points[i][0] && p[1] === airfoil.points[i][1]);
-  // NACA metadata of an opened project is not trusted alone: the points must match too.
   const sameNaca = (a) =>
     a.source?.kind === 'naca' && airfoil.source?.kind === 'naca' && a.source.code !== undefined && a.source.code === airfoil.source.code && a.source.closedTE === airfoil.source.closedTE;
-  const same = project.airfoils.find((a) => (sameNaca(a) || a.name === airfoil.name) && samePoints(a));
+  // NACA metadata of an opened project is not trusted alone: the stored points must be the section
+  // the metadata names (within 1e-9).
+  const nacaPoints = (a) => {
+    try {
+      const g = nacaAirfoil(a.source.code, { closedTE: a.source.closedTE === true }).points;
+      return g.length === a.points.length && g.every((p, i) => Math.abs(p[0] - a.points[i][0]) <= 1e-9 && Math.abs(p[1] - a.points[i][1]) <= 1e-9);
+    } catch {
+      return false;
+    }
+  };
+  const same = project.airfoils.find((a) => (sameNaca(a) && nacaPoints(a)) || (a.name === airfoil.name && samePoints(a)));
   if (same) return same.id;
   if (project.airfoils.length >= LIMITS.maxAirfoils) return null;
   if (airfoilPoints(project) + airfoil.points.length > LIMITS.maxAirfoilPoints) return null;
