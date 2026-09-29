@@ -82,12 +82,19 @@ export function loftGrid(sectionCount, settings, guidesOn = false) {
 export function projectSize(project) {
   const guides = project.guides ?? {};
   const enabled = ['nose', 'end'].filter((k) => guides[k]?.enabled);
+  const used = new Set(project.sections.map((s) => s.airfoil));
   let airfoilPoints = 0;
+  let usedAirfoils = 0;
+  let usedAirfoilPoints = 0;
   let largestAirfoil = 0;
   let longestName = String(project.name ?? '').length;
   for (const a of project.airfoils) {
     const n = a.points?.length ?? 0;
     airfoilPoints += n;
+    if (used.has(a.id)) {
+      usedAirfoils++;
+      usedAirfoilPoints += n;
+    }
     largestAirfoil = Math.max(largestAirfoil, n);
     longestName = Math.max(longestName, String(a.name ?? '').length);
   }
@@ -95,6 +102,9 @@ export function projectSize(project) {
     sections: project.sections.length,
     airfoils: project.airfoils.length,
     airfoilPoints,
+    // The build checks and fits only the airfoils that sections use.
+    usedAirfoils,
+    usedAirfoilPoints,
     largestAirfoil,
     guidePoints: Math.max(0, ...enabled.map((k) => guides[k].points?.length ?? 0)),
     // Settings with their defaults: a project from the module API may carry some or none.
@@ -123,10 +133,10 @@ export function changeCost(size) {
 
 /**
  * Expected time (s) of the first build of the project: Open, the restored autosave and a change of
- * the profile parametrization check and fit every airfoil again.
+ * the profile parametrization check and fit every airfoil that a section uses again.
  */
 export function firstBuildSeconds(size) {
-  return changeCost(size).seconds + COST.airfoilFirstBuild.s * size.airfoils + COST.airfoilFirstUse.s * size.airfoilPoints;
+  return changeCost(size).seconds + COST.airfoilFirstBuild.s * size.usedAirfoils + COST.airfoilFirstUse.s * size.usedAirfoilPoints;
 }
 
 /** Expected time (s) of checking an airfoil of `points` points and of its first build. */

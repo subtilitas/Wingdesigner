@@ -334,7 +334,8 @@ function rebuild() {
     const changed = geometryPending;
     const redraw = changed || viewPending;
     const table = tablePending && !redraw;
-    const sizes = (table || namePending) && !redraw;
+    // A rebuild writes the size warning itself; a display redraw keeps the build and its warnings.
+    const sizes = (tablePending || namePending) && !changed;
     geometryPending = false;
     viewPending = false;
     tablePending = false;

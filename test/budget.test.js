@@ -55,12 +55,26 @@ describe('project size warnings', () => {
 
   it('names the time of the first build when many airfoils make it at least 1 s longer than a change', () => {
     // 10,000 airfoils of 99 points used by 20,000 sections: 74 s for the first build in Node.js 24.
-    const size = { sections: 20_000, airfoils: 10_000, airfoilPoints: 990_000, largestAirfoil: 99, guidePoints: 0, gridPoints: 20_000 * 33, longestName: 10 };
+    const size = { sections: 20_000, airfoils: 10_000, airfoilPoints: 990_000, usedAirfoils: 10_000, usedAirfoilPoints: 990_000, largestAirfoil: 99, guidePoints: 0, gridPoints: 20_000 * 33, longestName: 10 };
     expect(firstBuildSeconds(size) - changeCost(size).seconds).toBeCloseTo(10_000 * 4.4e-3 + 990_000 * 30e-6, 6);
     const p = withSections(1000);
     const w = sizeWarning(p, size);
     expect(w).toMatch(/Each change takes about 9\.5 s and about 650 MB of browser memory\. Opening it or changing the profile parametrization takes about 83 s\.$/);
     // Few airfoils: no sentence on the first build.
+    expect(sizeWarning(p)).not.toMatch(/Opening it/);
+  });
+
+  it('adds first-build time only for the airfoils that sections use', () => {
+    // 2 sections, 1 used airfoil of 99 points, 3,000 unused ones: the build fits 1 airfoil.
+    const p = sampleProject();
+    const used = new Set(p.sections.map((s) => s.airfoil));
+    const unused = Array.from({ length: 3000 }, (_, i) => ({ ...p.airfoils[0], id: `unused-${i}`, name: `Unused ${i}` }));
+    p.airfoils.push(...unused);
+    const size = projectSize(p);
+    const usedPoints = p.airfoils.filter((a) => used.has(a.id)).reduce((n, a) => n + a.points.length, 0);
+    expect(size).toMatchObject({ airfoils: 3000 + used.size, usedAirfoils: used.size, usedAirfoilPoints: usedPoints });
+    expect(firstBuildSeconds(size) - changeCost(size).seconds).toBeCloseTo(used.size * 4.4e-3 + usedPoints * 30e-6, 9);
+    expect(sizeWarning(p)).toMatch(/^Large project: 3,00\d airfoils \(warning above 200\)/);
     expect(sizeWarning(p)).not.toMatch(/Opening it/);
   });
 

@@ -295,8 +295,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - Size warning: when the first build (Open, restored autosave, a change of the profile
   parametrization) takes at least 1 s longer than a change, the warning ends with `Opening it or
   changing the profile parametrization takes about … s.` The estimate is the time of a change plus
-  4.4 ms per airfoil plus 30 µs per airfoil point (20,000 linear sections at 16 chord samples with
-  10,000 airfoils of 99 points: about 83 s).
+  4.4 ms per airfoil that a section uses plus 30 µs per point of these airfoils (20,000 linear
+  sections at 16 chord samples with 10,000 used airfoils of 99 points: about 83 s).
 - First build: the curve samples of the airfoil check serve the crossing test at the chord of the
   build as well (Node.js 24: 7.4 ms instead of 9.2 ms per airfoil of 99 points).
 - Save and JSON export estimate the derived NURBS data from the mean length of sampled surface

@@ -159,7 +159,7 @@ Rechenzeit und Speicherbedarf auf Smartphones: nicht gemessen.
 
 ### Größenwarnungen und Grenzen
 
-Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt dann 1 Warnung in der Registerkarte **Checks**: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Jede Größe lautet `<value> (warning above <threshold>)`, zum Beispiel `250 sections (warning above 200)`. `<time>` lautet `under 1 s` oder `about X s`; `<memory>` lautet `about X MB` oder `about X GB`. Dauert der geschätzte erste Aufbau mindestens 1 s länger als eine Änderung (`firstBuildSeconds`), endet die Warnung mit `Opening it or changing the profile parametrization takes <time>.` Der erste Aufbau läuft nach **Open**, für die wiederhergestellte automatische Sicherung und nach einer Änderung von **Profile parametrization**; er prüft und interpoliert jedes Profil neu. Die Statusleiste zählt die Warnung. Steigt eine Größe über ihre Schwelle (Bearbeitung, **Open**, wiederhergestellte automatische Sicherung), zeigt eine Kurzmeldung denselben Text. Jenseits einer harten Grenze läuft einem Browser-Tab auf dem Desktop der Speicher aus oder eine Änderung dauert etwa 1 Minute; die App weist solche Projekte und Änderungen ab.
+Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt dann 1 Warnung in der Registerkarte **Checks**: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Jede Größe lautet `<value> (warning above <threshold>)`, zum Beispiel `250 sections (warning above 200)`. `<time>` lautet `under 1 s` oder `about X s`; `<memory>` lautet `about X MB` oder `about X GB`. Dauert der geschätzte erste Aufbau mindestens 1 s länger als eine Änderung (`firstBuildSeconds`), endet die Warnung mit `Opening it or changing the profile parametrization takes <time>.` Der erste Aufbau läuft nach **Open**, für die wiederhergestellte automatische Sicherung und nach einer Änderung von **Profile parametrization**; er prüft und interpoliert jedes Profil neu, das ein Schnitt verwendet. Die Statusleiste zählt die Warnung. Steigt eine Größe über ihre Schwelle (Bearbeitung, **Open**, wiederhergestellte automatische Sicherung), zeigt eine Kurzmeldung denselben Text. Jenseits einer harten Grenze läuft einem Browser-Tab auf dem Desktop der Speicher aus oder eine Änderung dauert etwa 1 Minute; die App weist solche Projekte und Änderungen ab.
 
 | Größe | Warnung über (`WARN` in `src/model/budget.js`) | Harte Grenze (`LIMITS` in `src/model/project.js`) |
 | --- | ---: | ---: |
@@ -195,7 +195,7 @@ Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit o
 | 3MF | 5,8 µs | 110 Byte | 11,5 Byte |
 | STEP, je Kontrollpunkt | 2,5 µs | 620 Byte | 98 Byte |
 
-Erster Aufbau (`firstBuildSeconds`): die Zeit einer Änderung plus 4,4 ms je Projektprofil plus 30 µs je Profilpunkt. Grundlage: 7,4 ms je Profil mit 99 Punkten in Node.js 24 bei 1000 und 2000 Profilen, davon 3 ms durch den Punktanteil; im Browser nicht gemessen. Beispiel: 20 000 Schnitte (**Linear**, 16 **Chordwise stations per surface**: 660 000 Punkte des Loft-Gitters) und 10 000 Profile mit 99 Punkten: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
+Erster Aufbau (`firstBuildSeconds`): die Zeit einer Änderung plus 4,4 ms je Profil, das ein Schnitt verwendet, plus 30 µs je Punkt dieser Profile. Grundlage: 7,4 ms je Profil mit 99 Punkten in Node.js 24 bei 1000 und 2000 Profilen, davon 3 ms durch den Punktanteil; im Browser nicht gemessen. Beispiel: 20 000 Schnitte (**Linear**, 16 **Chordwise stations per surface**: 660 000 Punkte des Loft-Gitters) und 10 000 Profile mit 99 Punkten: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
 
 Der Speicher beim Export enthält zusätzlich den Grundwert von 15 MB. Tests: `test/budget.test.js` (Schwellen, Schätzungen, Loft-Gitter wie im Aufbau, gekürzte Namen), `e2e/limits.spec.js` (Warnung über 200 Schnitten und Titel der Schaltfläche **+**, Profillisten großer Schnitttabellen, Hinweis im Exportdialog und harte Grenze).
 
@@ -224,7 +224,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 274 Tests in 10 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 275 Tests in 10 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |

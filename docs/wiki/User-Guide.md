@@ -566,7 +566,7 @@ Above a warning threshold the app works as usual. The wing build adds one warnin
 `Large project: <sizes>. Each change takes … and … of browser memory.`
 
 - Each size reads e.g. `1,000 sections (warning above 200)`.
-- When the estimated first build takes at least 1 s longer than a change, the warning ends with `Opening it or changing the profile parametrization takes ….` The first build runs after **Open**, for the restored project of the next visit and after a change of **Profile parametrization**; it checks and fits every airfoil again.
+- When the estimated first build takes at least 1 s longer than a change, the warning ends with `Opening it or changing the profile parametrization takes ….` The first build runs after **Open**, for the restored project of the next visit and after a change of **Profile parametrization**; it checks and fits every airfoil that a section uses again. Airfoils no section uses do not enter it.
 - A notice with the same text shows when a size crosses its threshold: after an edit, after **Open**, and for the restored project of the next visit.
 - The hard limits lie where a desktop browser tab runs out of memory or a change takes about a minute.
 
@@ -594,7 +594,7 @@ The estimate in the warning is a linear fit to measurements in Chromium 141 on 4
 | Per point of a guide curve that is on (the one with more points) | 0.11 ms | 0.05 MB |
 | Per 1,000 airfoil points | 1.5 ms | 0.2 MB |
 | Per 1,000 entries of the airfoil lists in the Sections table (sections × airfoils; above 20,000 one per section) | 8.5 ms | 0.5 MB |
-| First build only, in addition to a change: per project airfoil | 4.4 ms | not estimated |
+| First build only, in addition to a change: per airfoil that a section uses | 4.4 ms | not estimated |
 | First build only, in addition to a change: per 1,000 airfoil points | 30 ms | not estimated |
 
 - Times read `under 1 s`, `about 1.5 s` (half seconds below 10 s) or `about 14 s`; memory has 2 significant digits, e.g. `about 94 MB`, `about 1.6 GB`.

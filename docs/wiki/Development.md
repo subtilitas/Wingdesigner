@@ -159,7 +159,7 @@ Build time and memory use on phones: not measured.
 
 ### Size warnings and limits
 
-Sizes above a warning threshold work as usual. The build then adds 1 warning to the **Checks** tab: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Each size reads `<value> (warning above <threshold>)`, for example `250 sections (warning above 200)`. `<time>` reads `under 1 s` or `about X s`; `<memory>` reads `about X MB` or `about X GB`. When the estimated first build takes at least 1 s longer than a change (`firstBuildSeconds`), the warning ends with `Opening it or changing the profile parametrization takes <time>.` The first build runs after **Open**, for the restored autosave and after a change of **Profile parametrization**; it checks and fits every airfoil again. The status bar counts the warning. When a size rises above its threshold (an edit, **Open**, the restored autosave), a short message shows the same text. Beyond a hard limit a desktop browser tab runs out of memory or a change takes about 1 minute; the app refuses such projects and changes.
+Sizes above a warning threshold work as usual. The build then adds 1 warning to the **Checks** tab: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Each size reads `<value> (warning above <threshold>)`, for example `250 sections (warning above 200)`. `<time>` reads `under 1 s` or `about X s`; `<memory>` reads `about X MB` or `about X GB`. When the estimated first build takes at least 1 s longer than a change (`firstBuildSeconds`), the warning ends with `Opening it or changing the profile parametrization takes <time>.` The first build runs after **Open**, for the restored autosave and after a change of **Profile parametrization**; it checks and fits every airfoil that a section uses again. The status bar counts the warning. When a size rises above its threshold (an edit, **Open**, the restored autosave), a short message shows the same text. Beyond a hard limit a desktop browser tab runs out of memory or a change takes about 1 minute; the app refuses such projects and changes.
 
 | Size | Warning above (`WARN` in `src/model/budget.js`) | Hard limit (`LIMITS` in `src/model/project.js`) |
 | --- | ---: | ---: |
@@ -195,7 +195,7 @@ Estimate model: linear fits to the browser measurements above, JavaScript time w
 | 3MF | 5.8 µs | 110 bytes | 11.5 bytes |
 | STEP, per control point | 2.5 µs | 620 bytes | 98 bytes |
 
-First build (`firstBuildSeconds`): the time of a change plus 4.4 ms per project airfoil plus 30 µs per airfoil point. Basis: 7.4 ms per airfoil of 99 points in Node.js 24 at 1,000 and 2,000 airfoils, of it 3 ms by the point term; not measured in the browser. Example: 20,000 sections (**Linear**, 16 **Chordwise stations per surface**: 660,000 loft grid points) and 10,000 airfoils of 99 points: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
+First build (`firstBuildSeconds`): the time of a change plus 4.4 ms per airfoil that a section uses plus 30 µs per point of these airfoils. Basis: 7.4 ms per airfoil of 99 points in Node.js 24 at 1,000 and 2,000 airfoils, of it 3 ms by the point term; not measured in the browser. Example: 20,000 sections (**Linear**, 16 **Chordwise stations per surface**: 660,000 loft grid points) and 10,000 airfoils of 99 points: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
 
 The export memory adds the base of 15 MB. Tests: `test/budget.test.js` (thresholds, estimates, loft grid as the build computes it, shortened names), `e2e/limits.spec.js` (warning above 200 sections and the title of the **+** button, airfoil lists of large sections tables, export dialog note and the hard limit).
 
@@ -224,7 +224,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 274 tests in 10 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 275 tests in 10 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |

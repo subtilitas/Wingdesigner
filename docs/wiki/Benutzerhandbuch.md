@@ -567,7 +567,7 @@ Bei einem Fehler wird der Flügel nicht aufgebaut: 3D-Ansicht und Kennwerte blei
 `Large project: <sizes>. Each change takes … and … of browser memory.`
 
 - Jede Größe lautet z. B. `1,000 sections (warning above 200)`.
-- Dauert der geschätzte erste Aufbau mindestens 1 s länger als eine Änderung, endet die Warnung mit `Opening it or changing the profile parametrization takes ….` Der erste Aufbau läuft nach **Open**, für das wiederhergestellte Projekt beim nächsten Aufruf und nach einer Änderung von **Profile parametrization**; er prüft und interpoliert jedes Profil neu.
+- Dauert der geschätzte erste Aufbau mindestens 1 s länger als eine Änderung, endet die Warnung mit `Opening it or changing the profile parametrization takes ….` Der erste Aufbau läuft nach **Open**, für das wiederhergestellte Projekt beim nächsten Aufruf und nach einer Änderung von **Profile parametrization**; er prüft und interpoliert jedes Profil neu, das ein Schnitt verwendet. Profile ohne Schnitt gehen nicht ein.
 - Eine Meldung mit demselben Text erscheint, wenn eine Größe ihre Schwelle überschreitet: nach einer Änderung, nach **Open** und für das wiederhergestellte Projekt beim nächsten Aufruf.
 - Die festen Grenzen liegen dort, wo einem Browser-Tab am Desktop der Speicher ausgeht oder eine Änderung etwa eine Minute dauert.
 
@@ -595,7 +595,7 @@ Die Schätzung in der Warnung ist eine lineare Anpassung an Messungen in Chromiu
 | Je Punkt einer eingeschalteten Leitkurve (der mit mehr Punkten) | 0,11 ms | 0,05 MB |
 | Je 1000 Profilpunkte | 1,5 ms | 0,2 MB |
 | Je 1000 Einträge der Profil-Auswahllisten in der Tabelle Sections (Schnitte × Profile; über 20 000 einer je Schnitt) | 8,5 ms | 0,5 MB |
-| Nur erster Aufbau, zusätzlich zu einer Änderung: je Projektprofil | 4,4 ms | nicht geschätzt |
+| Nur erster Aufbau, zusätzlich zu einer Änderung: je Profil, das ein Schnitt verwendet | 4,4 ms | nicht geschätzt |
 | Nur erster Aufbau, zusätzlich zu einer Änderung: je 1000 Profilpunkte | 30 ms | nicht geschätzt |
 
 - Zeiten lauten `under 1 s`, `about 1.5 s` (halbe Sekunden unter 10 s) oder `about 14 s`; der Speicher hat 2 signifikante Stellen, z. B. `about 94 MB`, `about 1.6 GB`.

@@ -506,6 +506,9 @@ export class PlanformEditor {
                   onclick: () => {
                     this.selectedGuide = null;
                     this.store.update((q) => resetGuide(q, key));
+                    // A guide that already follows the sections leaves the project unchanged, and the store
+                    // then notifies nobody: the form drops the selection here.
+                    this.update();
                   },
                 },
                 'Reset to sections',
