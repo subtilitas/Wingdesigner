@@ -18,6 +18,7 @@ import {
   removeGuidePoint,
   removeSection,
   resetDisabledGuides,
+  sortedSections,
   resetGuide,
   setGuideEnabled,
   slug,
@@ -239,6 +240,34 @@ describe('edit operations', () => {
     expect(validateProject(p).ok).toBe(true);
     p.airfoils.push({ id: 'extra', name: 'Extra', points: dense });
     expect(validateProject(p).errors).toEqual([`The airfoils hold ${airfoilPoints(p).toLocaleString('en')} points together; the limit is ${LIMITS.maxAirfoilPoints.toLocaleString('en')}.`]);
+  });
+
+  it('refuses moves and inserts that leave no number strictly between two span positions', () => {
+    const [a, b, c] = [1, 1.0000000000000002, 1.0000000000000004];
+    const p = sampleProject();
+    p.sections[0].y = a;
+    p.sections[1].y = b;
+    p.sections[2].y = c;
+    expect(clampSectionY(sortedSections(p), 1, 0)).toBe(b);
+    expect(clampSectionY(sortedSections(p), 1, 5)).toBe(b);
+    p.guides.nose.points = [[0, a], [0, b], [0, c]];
+    moveGuidePoint(p, 'nose', 1, 5, 0);
+    expect(p.guides.nose.points[1]).toEqual([5, b]);
+    expect(addGuidePoint(p, 'nose')).toBe(-1);
+    expect(p.guides.nose.points).toHaveLength(3);
+    expect(validateProject(p).errors).toEqual([]);
+  });
+
+  it('adds a NACA airfoil when a stored airfoil carries its code but other points', () => {
+    const p = sampleProject();
+    const n0012 = nacaAirfoil('0012').points;
+    p.airfoils.push({ id: 'fake', name: 'Labelled 2412', points: n0012, source: { kind: 'naca', code: '2412' } });
+    const real = { name: 'Generated 2412', points: nacaAirfoil('2412').points, source: { kind: 'naca', code: '2412' } };
+    const id = addAirfoil(p, real);
+    expect(id).not.toBe('fake');
+    expect(p.airfoils.find((q) => q.id === id).points).toEqual(real.points);
+    // The same generated airfoil again is found.
+    expect(addAirfoil(p, { ...real, name: 'Generated 2412 again' })).toBe(id);
   });
 
   it('keeps drags within the project limits', () => {

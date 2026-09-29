@@ -123,6 +123,8 @@ const autosaveNote = h('span', { class: 'sev-error' });
 const toast = h('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
 const undoBtn = h('button', { type: 'button', title: 'Undo (Ctrl+Z)', onclick: () => store.undo() }, 'Undo');
 const redoBtn = h('button', { type: 'button', title: 'Redo (Ctrl+Shift+Z)', onclick: () => store.redo() }, 'Redo');
+// Each Open choice gets a number; a read that finishes after a newer choice is dropped.
+let openRequest = 0;
 const openInput = h('input', {
   type: 'file',
   accept: '.json,application/json',
@@ -131,11 +133,14 @@ const openInput = h('input', {
     const f = e.target.files[0];
     e.target.value = '';
     if (!f) return;
+    const request = ++openRequest;
     if (f.size > MAX_PROJECT_BYTES) {
       message(`Cannot open ${f.name}: ${(f.size / 1e6).toFixed(1)} MB; project files are limited to ${MAX_PROJECT_BYTES / 1e6} MB.`, true);
       return;
     }
-    const r = projectFromJsonText(await f.text());
+    const text = await f.text();
+    if (request !== openRequest) return;
+    const r = projectFromJsonText(text);
     if (!r.ok) {
       message(`Cannot open ${f.name}: ${r.errors.slice(0, 3).join(' ')}`, true);
       return;

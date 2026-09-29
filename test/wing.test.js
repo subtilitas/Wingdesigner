@@ -772,6 +772,14 @@ describe('smooth spanwise overshoot', () => {
     expect(b.surface).toBeNull();
   });
 
+  it('builds sections at the chord limit in linear and smooth mode (blend round-off)', () => {
+    for (const spanwise of ['linear', 'smooth']) {
+      const p = sampleProject({ settings: { spanwise } });
+      for (const s of p.sections) s.chord = LIMITS.maxChord;
+      expect(buildWing(p).errors).toEqual([]);
+    }
+  });
+
   it('stops at values beyond the project limits, which would also block saving', () => {
     // A twist of 1e308 degrees overflows the angle conversion to NaN coordinates.
     const cases = [

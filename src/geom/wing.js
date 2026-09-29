@@ -499,7 +499,9 @@ export function buildWing(project) {
     }
     // Interpolated values (smooth overshoot, guide curves) stay within the geometry extent and the
     // chord limit; every combination of valid sections and guides does.
-    if (!farPlacement && (Math.abs(xLE) > LIMITS.maxExtent || Math.abs(xLE + chord) > LIMITS.maxExtent || Math.abs(z) > LIMITS.maxExtent || chord > LIMITS.maxChord)) {
+    // Relative round-off of the blend (1e-9) does not count: sections at the limits blend to them.
+    const ext = LIMITS.maxExtent * (1 + 1e-9);
+    if (!farPlacement && (Math.abs(xLE) > ext || Math.abs(xLE + chord) > ext || Math.abs(z) > ext || chord > LIMITS.maxChord * (1 + 1e-9))) {
       farPlacement = { y, xLE, z, chord };
     }
     if (chord < minChord) {

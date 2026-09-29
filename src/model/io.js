@@ -100,7 +100,8 @@ function derivedNumbers(build) {
 
 /**
  * Text of a project file (Save, JSON export). The derived NURBS data is left out when the file would
- * exceed MAX_PROJECT_BYTES, so that Open reads every file the app writes; Open recomputes it.
+ * exceed MAX_PROJECT_BYTES, so that Open reads every file the app writes; Open recomputes it. Above
+ * the limit without indentation it throws.
  * @returns {{text: string, derived: boolean, omitted: boolean}} omitted: derived data left out for size
  */
 export function projectFileText(project, build, meta) {
@@ -108,7 +109,12 @@ export function projectFileText(project, build, meta) {
     const full = formatJson(projectToJson(project, build, meta));
     if (full.length <= MAX_PROJECT_BYTES) return { text: full, derived: true, omitted: false };
   }
-  return { text: formatJson(projectToJson(project, null, meta)), derived: false, omitted: !!build?.surface };
+  const json = projectToJson(project, null, meta);
+  // Indentation can push a project near the limit over it; compact JSON is about the size read.
+  let text = formatJson(json);
+  if (text.length > MAX_PROJECT_BYTES) text = JSON.stringify(json);
+  if (text.length > MAX_PROJECT_BYTES) throw new Error(`the project takes ${(text.length / 1e6).toFixed(1)} MB as a file, above the ${MAX_PROJECT_BYTES / 1e6} MB that Open reads`);
+  return { text, derived: false, omitted: !!build?.surface };
 }
 
 /** The message after writing a file without its derived data. */

@@ -14,14 +14,15 @@ export function sortedSections(project) {
 /**
  * Span position for a dragged section: strictly between its neighbours (margin 1 mm, or a quarter of
  * the gap when they are closer than 4 mm), the tip at most LIMITS.maxCoordinate. The root section
- * (index 0) keeps its y.
+ * (index 0) keeps its y; so does a section whose neighbours leave no number strictly between them.
  */
 export function clampSectionY(sorted, i, y) {
   if (i <= 0) return sorted[0].y;
   const prev = sorted[i - 1].y;
   const next = i < sorted.length - 1 ? sorted[i + 1].y : Infinity;
   const m = Math.min(1, (next - prev) / 4);
-  return Math.min(Math.max(y, prev + m), next - m, LIMITS.maxCoordinate);
+  const v = Math.min(Math.max(y, prev + m), next - m, LIMITS.maxCoordinate);
+  return v > prev && v < next ? v : sorted[i].y;
 }
 
 const clampCoordinate = (v, limit = LIMITS.maxCoordinate) => Math.min(Math.max(v, -limit), limit);
@@ -162,12 +163,15 @@ export function setGuideEnabled(project, key, on) {
 export function addGuidePoint(project, key) {
   const pts = project.guides[key].points;
   if (pts.length >= LIMITS.maxGuidePoints) return -1;
-  project.guides[key].edited = true;
   let best = 0;
   for (let i = 1; i < pts.length - 1; i++) if (pts[i + 1][1] - pts[i][1] > pts[best + 1][1] - pts[best][1]) best = i;
   const a = pts[best];
   const b = pts[best + 1];
-  pts.splice(best + 1, 0, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]);
+  const y = (a[1] + b[1]) / 2;
+  // Even the widest gap can be too narrow for a number strictly between its ends.
+  if (!(y > a[1] && y < b[1])) return -1;
+  project.guides[key].edited = true;
+  pts.splice(best + 1, 0, [(a[0] + b[0]) / 2, y]);
   return best + 1;
 }
 
@@ -182,7 +186,8 @@ export function removeGuidePoint(project, key, index) {
 /**
  * Move a guide point. End points keep their span position; interior points stay strictly
  * between their neighbours (margin 0.5 mm, or a quarter of the gap when the neighbours are closer
- * than 2 mm); x stays within LIMITS.maxGuideCoordinate.
+ * than 2 mm), or keep their y when no number lies strictly between; x stays within
+ * LIMITS.maxGuideCoordinate.
  */
 export function moveGuidePoint(project, key, index, xIn, y) {
   const pts = project.guides[key].points;
@@ -196,7 +201,9 @@ export function moveGuidePoint(project, key, index, xIn, y) {
   const prev = pts[index - 1][1];
   const next = pts[index + 1][1];
   const m = Math.min(0.5, (next - prev) / 4);
-  pts[index] = [x, Math.min(Math.max(y, prev + m), next - m)];
+  const v = Math.min(Math.max(y, prev + m), next - m);
+  // Neighbours without a number strictly between the clamped bounds keep the point's y.
+  pts[index] = [x, v > prev && v < next ? v : pts[index][1]];
 }
 
 /** Remove airfoils that no section uses. Returns the number removed. */
@@ -208,18 +215,16 @@ export function pruneAirfoils(project) {
 }
 
 /**
- * Add an airfoil unless the project holds the same one (same points, or the same generated NACA
- * section). Returns its id, or null when the project already holds LIMITS.maxAirfoils airfoils or
+ * Add an airfoil unless the project holds the same one (same points, and the same name or the same
+ * generated NACA section). Returns its id, or null when the project already holds LIMITS.maxAirfoils airfoils or
  * the airfoil would take the points of all airfoils beyond LIMITS.maxAirfoilPoints.
  */
 export function addAirfoil(project, airfoil) {
+  const samePoints = (a) => a.points.length === airfoil.points.length && a.points.every((p, i) => p[0] === airfoil.points[i][0] && p[1] === airfoil.points[i][1]);
+  // NACA metadata of an opened project is not trusted alone: the points must match too.
   const sameNaca = (a) =>
     a.source?.kind === 'naca' && airfoil.source?.kind === 'naca' && a.source.code !== undefined && a.source.code === airfoil.source.code && a.source.closedTE === airfoil.source.closedTE;
-  const same = project.airfoils.find(
-    (a) =>
-      sameNaca(a) ||
-      (a.name === airfoil.name && a.points.length === airfoil.points.length && a.points.every((p, i) => p[0] === airfoil.points[i][0] && p[1] === airfoil.points[i][1])),
-  );
+  const same = project.airfoils.find((a) => (sameNaca(a) || a.name === airfoil.name) && samePoints(a));
   if (same) return same.id;
   if (project.airfoils.length >= LIMITS.maxAirfoils) return null;
   if (airfoilPoints(project) + airfoil.points.length > LIMITS.maxAirfoilPoints) return null;
