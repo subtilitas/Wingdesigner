@@ -33,7 +33,22 @@ export function guideProblems(guide) {
   for (let i = 1; i < guide.points.length; i++) {
     if (!(guide.points[i][1] > guide.points[i - 1][1])) {
       out.push('Guide points must have strictly increasing span position y.');
-      break;
+      return out;
+    }
+  }
+  // Through-points mode: the curve parameters are the normalized y values. Two of them within 4
+  // units in the last place make the interpolation singular.
+  if (guide.mode !== 'control') {
+    const P = guide.points;
+    const ya = P[0][1];
+    const yb = P[P.length - 1][1];
+    for (let i = 1; i < P.length; i++) {
+      const a = (P[i - 1][1] - ya) / (yb - ya);
+      const b = (P[i][1] - ya) / (yb - ya);
+      if (!(b - a > 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b)))) {
+        out.push(`Points ${i} and ${i + 1} at y = ${P[i - 1][1]} mm and y = ${P[i][1]} mm lie too close together for the curve parameters; move them apart.`);
+        break;
+      }
     }
   }
   return out;
@@ -81,6 +96,24 @@ export function guideXAt(curve, y, yRoot, yTip) {
   // guides spanning less than 1e-12 mm.
   const t = solveMonotonic((s) => curvePoint(curve, s)[1], yg, 0, 1, 1e-12 * Math.abs(y1 - y0));
   return curvePoint(curve, t)[0];
+}
+
+/** Largest samples of one drawn guide curve. */
+export const MAX_GUIDE_SAMPLES = 40_000;
+
+/**
+ * Points [x, y] of a guide curve for drawing and view bounds: 2 to 16 samples in every nonzero knot
+ * span (a uniform sample aliased guides with many points), at most maxSamples in all, and the end.
+ */
+export function sampleGuide(curve, maxSamples = MAX_GUIDE_SAMPLES) {
+  const U = curve.knots;
+  const spans = [];
+  for (let j = curve.degree; j < U.length - curve.degree - 1; j++) if (U[j + 1] > U[j]) spans.push([U[j], U[j + 1]]);
+  const per = Math.max(2, Math.min(16, Math.floor(maxSamples / Math.max(1, spans.length))));
+  const out = [];
+  for (const [a, b] of spans) for (let k = 0; k < per; k++) out.push(curvePoint(curve, a + ((b - a) * k) / per));
+  out.push(curvePoint(curve, U[U.length - 1]));
+  return out;
 }
 
 /** Default guides through the section leading and trailing edges. */

@@ -388,10 +388,12 @@ function samePoint(a, b) {
 /** Serialize points to Selig .dat text. */
 export function toSeligDat(name, points, digits = 6) {
   // The name is the first line only: line breaks in a name would start coordinate rows. A name
-  // that reads as a coordinate row ("123 456") gets the prefix "Airfoil "; "<" before a tag the
-  // reader takes for XML or HTML becomes "‹".
+  // that reads as a coordinate row ("123 456") or as a comment ("# custom") gets the prefix
+  // "Airfoil "; "<" before a tag the reader takes for XML or HTML becomes "‹".
   let title = String(name).replace(/[\r\n]+/g, ' ').replace(/<(?=coordinates>|(?:html|pre|body)[\s>])/gi, '‹');
-  if (parseNumbers(title)) title = `Airfoil ${title}`;
+  // The reader drops "#" to the line end: the rest must be text, not empty and not a coordinate row.
+  const probe = title.replace(/#.*$/, '').trim();
+  if (!probe || parseNumbers(probe)) title = `Airfoil ${title}`;
   const lines = [title];
   // Decimals resolve `digits` significant digits of the outline extent (at least `digits` decimals):
   // 6 for unit-chord and millimetre outlines, 12 for a 1e-6 chord at any offset. Beyond the 100

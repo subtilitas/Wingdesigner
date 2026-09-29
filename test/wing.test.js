@@ -5,10 +5,11 @@ import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nu
 import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
 import { blendPoints, blendScalar, spanwiseBlender, spanwiseWeights } from '../src/geom/spanwise.js';
-import { clampedUniformKnots, defaultGuides, guideCurve, guideProblems, guideXAt, isMonotonicInY } from '../src/geom/guide.js';
+import { clampedUniformKnots, defaultGuides, guideCurve, guideProblems, guideXAt, isMonotonicInY, sampleGuide } from '../src/geom/guide.js';
 import { edgeCheck, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume, tessellateHalf } from '../src/geom/mesh.js';
 import { earClip, polygonArea } from '../src/geom/triangulate.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
+import { defaultProject } from '../src/model/defaults.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { LIMITS, createProject, validateProject } from '../src/model/project.js';
 import { loftGrid } from '../src/model/budget.js';
@@ -939,5 +940,39 @@ describe('guide inversion', () => {
     const x = curvePoint(curve, 0.5 * (a + b))[0];
     expect(x).toBeCloseTo(43.85, 1);
     expect(guideXAt(curve, 300, 0, 600)).toBeCloseTo(x, 6);
+  });
+});
+
+describe('stations and guides near the resolution of doubles', () => {
+  it('builds a smooth wing with a section cloned 5e-13 mm away', () => {
+    const p = defaultProject();
+    p.settings.spanwise = 'smooth';
+    const s = p.sections.find((q) => q.y === 450);
+    p.sections.push({ ...s, id: 'clone', y: 450 + 5e-13 });
+    p.sections.sort((a, b) => a.y - b.y);
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    // Span fractions of the stations strictly increase.
+    for (let i = 1; i < b.paramsV.length; i++) expect(b.paramsV[i]).toBeGreaterThan(b.paramsV[i - 1]);
+  });
+
+  it('reports guide points whose curve parameters round together', () => {
+    const ys = [169026.8951015743, 714063.9936875999, 714063.9936876, 816583.3893996814];
+    const guide = { enabled: true, mode: 'fit', degree: 3, points: ys.map((y, i) => [10 * i, y]) };
+    expect(guideProblems(guide)).toEqual([
+      'Points 2 and 3 at y = 714063.9936875999 mm and y = 714063.9936876 mm lie too close together for the curve parameters; move them apart.',
+    ]);
+    expect(guideProblems({ ...guide, mode: 'control' })).toEqual([]);
+    const p = defaultProject();
+    p.guides.nose = guide;
+    const b = buildWing(p);
+    expect(b.errors.some((e) => e.startsWith('Nose line: Points 2 and 3 at y = 714063.9936875999 mm'))).toBe(true);
+  });
+
+  it('samples every knot span of a guide with many points', () => {
+    const pts = Array.from({ length: 401 }, (_, i) => [i % 2 ? 100 : 0, i]);
+    const samples = sampleGuide(guideCurve({ enabled: true, mode: 'fit', degree: 3, points: pts }));
+    expect(Math.max(...samples.map((q) => q[0]))).toBeGreaterThan(123);
+    expect(samples.length).toBeLessThanOrEqual(40_001);
   });
 });

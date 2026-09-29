@@ -21,6 +21,20 @@ function cross(a, b) {
 /** Largest display mesh in vertices; cubic lofts are refined 3 times in v while they fit. */
 const MAX_DISPLAY_VERTICES = 100_000;
 
+/** Largest span samples per edge polyline (leading edge and the two trailing-edge lines). */
+export const MAX_EDGE_SAMPLES = 20_000;
+
+/** At most maxLen of the sorted parameters, evenly picked, first and last kept. */
+export function thinParams(params, maxLen) {
+  if (params.length <= maxLen) return params;
+  return Array.from({ length: maxLen }, (_, i) => params[Math.round((i * (params.length - 1)) / (maxLen - 1))]);
+}
+
+/** Span parameters of the edge polylines: 4 samples per station interval within MAX_EDGE_SAMPLES. */
+export function edgeParams(paramsV) {
+  return refine(thinParams(paramsV, Math.floor((MAX_EDGE_SAMPLES - 1) / 4) + 1), 4);
+}
+
 /** Largest displayed set of section outlines in line segments (the selected section is drawn apart). */
 export const MAX_OUTLINE_SEGMENTS = 100_000;
 
@@ -78,7 +92,7 @@ export function displayGeometry(build, origin = [0, 0, 0]) {
   // Above the cap the stations themselves are thinned (root and tip kept); the section outlines are
   // drawn at their exact span positions.
   const maxV = Math.max(2, Math.floor(MAX_DISPLAY_VERTICES / us.length));
-  const base = build.paramsV.length > maxV ? Array.from({ length: maxV }, (_, i) => build.paramsV[Math.round((i * (build.paramsV.length - 1)) / (maxV - 1))]) : build.paramsV;
+  const base = thinParams(build.paramsV, maxV);
   const vs = refine(base, S.degreeV === 1 ? 1 : Math.max(1, Math.min(3, fit)));
   const M = us.length;
   const V = vs.length;
@@ -277,7 +291,7 @@ export class Viewer3D {
       g.setAttribute('position', new THREE.BufferAttribute(segs, 3));
       lines.add(new THREE.LineSegments(g, this.lineMaterial));
     }
-    const vs = refine(build.paramsV, 4);
+    const vs = edgeParams(build.paramsV);
     const edges = [[], [], []];
     surfacePointGrid(S, [0, build.uLE, 1], vs, (k, j, P) => edges[j].push(P));
     for (const e of edges) lines.add(new THREE.Line(polyline(e, origin), this.edgeMaterial));

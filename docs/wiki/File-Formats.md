@@ -221,7 +221,7 @@ The checks run:
 
 | Property | Value |
 | --- | --- |
-| Layout | Selig: name line, then one `x y` line per point. A name that reads as a coordinate row (e.g. `123 456`) gets the prefix `Airfoil `; `<` before `coordinates>`, `html`, `pre` or `body` is written as `‹`, so the file is not read as XML or HTML. |
+| Layout | Selig: name line, then one `x y` line per point. A name that reads as a coordinate row (e.g. `123 456`) or as a comment (e.g. `# custom`, since the reader drops `#` to the line end) gets the prefix `Airfoil `; `<` before `coordinates>`, `html`, `pre` or `body` is written as `‹`, so the file is not read as XML or HTML. |
 | Points | the stored points of the airfoil, Selig order |
 | Numbers | 7 decimal places for an outline extent of 1 or more (extent: the larger of the x range and the y range); below, 7 − floor(log10(extent)) decimal places, e.g. 13 for a 1e-6 chord at any x offset; above 100 decimal places, 17 significant digits. Each value right-aligned in at least 10 characters, 1 space between x and y |
 | Line end | LF, also after the last line |

@@ -1,11 +1,12 @@
 // Planform editor: top view of the half wing with draggable section edges and guide-curve points.
 // Screen layout: span y to the right, chord x downwards (world coordinates [y, -x]).
 
-import { curvePoint, surfacePoint } from '../geom/nurbs.js';
-import { guideCurve } from '../geom/guide.js';
+import { surfacePoint } from '../geom/nurbs.js';
+import { guideCurve, sampleGuide } from '../geom/guide.js';
 import { addGuidePoint, chordFromTrailingEdge, dragLeadingEdge, moveGuidePoint, removeGuidePoint, resetGuide, setGuideEnabled, sortedSections, syncGuidesToSpan } from '../model/edit.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, formatNum, h, numberInput } from './dom.js';
+import { stationAt } from './sections.js';
 import { LIMITS } from '../model/project.js';
 import { WARN, costPhrase, projectSize } from '../model/budget.js';
 
@@ -50,16 +51,14 @@ function guideSpan(project, gd) {
   return { toWing: (y) => y0 + ((y - a) / (b - a)) * (y1 - y0), toGuide: (y) => a + ((y - y0) / (y1 - y0)) * (b - a) };
 }
 
-/** An enabled guide curve sampled at 201 points as [x, y], or null. */
+/** An enabled guide curve sampled per knot span as [x, y] (sampleGuide), or null. */
 function guideSamples(gd) {
   if (!gd?.enabled || !gd.points || gd.points.length < 2) return null;
-  let curve;
   try {
-    curve = guideCurve(gd);
+    return sampleGuide(guideCurve(gd));
   } catch {
     return null;
   }
-  return Array.from({ length: 201 }, (_, k) => curvePoint(curve, k / 200));
 }
 
 export class PlanformEditor {
@@ -177,7 +176,7 @@ export class PlanformEditor {
     const sel = this.store.selection.section;
     const g = p.guides ?? {};
     sortedSections(p).forEach((s, i) => {
-      const st = build?.stations?.find((q) => q.y === s.y);
+      const st = build?.stations ? stationAt(build.stations, s.y) : undefined;
       const xLE = st ? st.xLE : s.x;
       const chord = st ? st.chord : s.chord;
       const [ax, ay] = toS(s.y, xLE);
@@ -249,7 +248,7 @@ export class PlanformEditor {
     }
     const build = this.getBuild();
     for (const s of sortedSections(p)) {
-      const st = build?.stations?.find((q) => q.y === s.y);
+      const st = build?.stations ? stationAt(build.stations, s.y) : undefined;
       const xLE = st ? st.xLE : s.x;
       const chord = st ? st.chord : s.chord;
       if (!g.nose?.enabled && Math.hypot(xLE - x, s.y - y) <= tol) return { type: 'le', id: s.id };

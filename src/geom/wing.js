@@ -380,14 +380,27 @@ export function buildWing(project) {
 
   // Intermediate stations cluster towards the panel ends (cosine spacing), where guide curves
   // and pointed tips change fastest.
+  // An intermediate station stays only when its span fraction v lies more than 4 units in the last
+  // place from its neighbours and from the next section (the tolerance knotMultiplicities merges):
+  // in a panel only a few doubles wide the stations round together, and repeated parameters make
+  // the interpolation singular. Every section stays (the span-fraction check above keeps them apart).
+  const vOf = (y) => (y - y0) / (y1 - y0);
+  const apart = (a, b) => b - a > 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b));
   const stationYs = [];
   for (let i = 0; i < sections.length - 1; i++) {
-    for (let k = 0; k < K; k++) stationYs.push(ys[i] + (ys[i + 1] - ys[i]) * (dense ? (1 - Math.cos((Math.PI * k) / K)) / 2 : k / K));
+    stationYs.push(ys[i]);
+    let last = vOf(ys[i]);
+    const vEnd = vOf(ys[i + 1]);
+    for (let k = 1; k < K; k++) {
+      const y = ys[i] + (ys[i + 1] - ys[i]) * (dense ? (1 - Math.cos((Math.PI * k) / K)) / 2 : k / K);
+      const v = vOf(y);
+      if (apart(last, v) && apart(v, vEnd)) {
+        stationYs.push(y);
+        last = v;
+      }
+    }
   }
   stationYs.push(y1);
-  // Sections at adjacent doubles leave no number for intermediate stations: those round to a panel
-  // end and are dropped, since repeated positions make the interpolation singular.
-  for (let i = stationYs.length - 1; i > 0; i--) if (!(stationYs[i] > stationYs[i - 1])) stationYs.splice(i, 1);
 
   const compat = sections.map((s) => result.profiles.get(s.airfoil).compat);
   const blendCompat = spanwiseBlender(ys, settings.spanwise, compat);

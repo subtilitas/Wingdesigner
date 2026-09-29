@@ -3,7 +3,7 @@ import { buildWing } from '../src/geom/wing.js';
 import { createProject } from '../src/model/project.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { surfacePoint } from '../src/geom/nurbs.js';
-import { MAX_NET_SEGMENTS, MAX_OUTLINE_SEGMENTS, controlNetSegments, displayGeometry, outlineIndices } from '../src/ui/viewer3d.js';
+import { MAX_EDGE_SAMPLES, MAX_NET_SEGMENTS, MAX_OUTLINE_SEGMENTS, controlNetSegments, displayGeometry, edgeParams, outlineIndices } from '../src/ui/viewer3d.js';
 
 describe('3D view geometry', () => {
   it('rebases a small wing near the coordinate limit, so 32-bit positions keep its shape', () => {
@@ -39,6 +39,16 @@ describe('3D view geometry', () => {
     expect(error(displayGeometry(build), [0, 0, 0])).toBeGreaterThan(0.01);
     expect(error(displayGeometry(build, origin), origin)).toBeLessThan(1e-5);
   });
+  it('samples the edge polylines 4 times per station interval within 20,000 samples', () => {
+    expect(edgeParams([0, 0.5, 1])).toEqual([0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1]);
+    // 151,481 span parameters (3,788 smooth sections, 40 stations per panel).
+    const many = Array.from({ length: 151_481 }, (_, i) => i / 151_480);
+    const vs = edgeParams(many);
+    expect(vs.length).toBeLessThanOrEqual(MAX_EDGE_SAMPLES);
+    expect(vs[0]).toBe(0);
+    expect(vs[vs.length - 1]).toBe(1);
+  });
+
   it('draws every section outline up to 100,000 segments and every k-th outline above', () => {
     expect(outlineIndices(3, 121)).toEqual([0, 1, 2]);
     // 12,468 sections x 401 segments: every 50th outline and the tip give 251 x 401 = 100,651, above

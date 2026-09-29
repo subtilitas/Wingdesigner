@@ -374,6 +374,17 @@ describe('wizard tips', () => {
     expect(wizardProblems({ ...params, tip: 'round' })).toContain('tip must be "flat" or "pointed".');
   });
 
+  it('puts the quarter chord of a pointed elliptic tip on the sweep line', () => {
+    for (const sections of [2, 3]) {
+      const params = { ...PRESETS.glider.params, tip: 'pointed', rootChord: 3000, sections };
+      const b = buildWing(wizardProject(params));
+      expect(b.errors).toEqual([]);
+      const tip = b.stations[b.stations.length - 1];
+      const target = 0.25 * params.rootChord + (params.span / 2) * Math.tan((params.sweep * Math.PI) / 180);
+      expect(Math.abs(tip.xLE + 0.25 * tip.chord - target)).toBeLessThan(0.01);
+    }
+  });
+
   it('builds a straight wing with a pointed last panel', () => {
     const p = wizardProject({ ...PRESETS.sport.params, sections: 3, tip: 'pointed' });
     const b = buildWing(p);

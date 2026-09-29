@@ -8,7 +8,7 @@ import { LAZY_OPTIONS, WARN, costPhrase, displayName, loftGrid, projectSize } fr
 const C = LIMITS.maxCoordinate;
 
 /** The station at span position y of stations sorted by y (stations at sections copy their y), or undefined. */
-function stationAt(stations, y) {
+export function stationAt(stations, y) {
   let lo = 0;
   let hi = stations.length - 1;
   while (lo < hi) {

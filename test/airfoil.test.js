@@ -508,6 +508,17 @@ describe('parser robustness', () => {
     expect(r.ok).toBe(true);
     expect(r.name).toBe('Airfoil 123 456');
     expect(r.points).toHaveLength(pts.length);
+    // A name the reader would drop as a comment, or a coordinate row before a comment.
+    for (const [title, line] of [
+      ['# custom', 'Airfoil # custom'],
+      ['12 34 # x', 'Airfoil 12 34 # x'],
+    ]) {
+      const t = toSeligDat(title, pts);
+      expect(t.split('\n')[0]).toBe(line);
+      const back = importAirfoilText(t, 'c.dat');
+      expect(back.name).toBe(line);
+      expect(back.points).toHaveLength(pts.length);
+    }
     const markup = toSeligDat('<pre> and <coordinates> foil', pts);
     expect(markup.split('\n')[0]).toBe('‹pre> and ‹coordinates> foil');
     const m = importAirfoilText(markup, 'm.dat');

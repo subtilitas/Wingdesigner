@@ -107,11 +107,12 @@ export function wizardProject(params, name) {
   const tanD = Math.tan((params.dihedral * Math.PI) / 180);
   const r = (v) => Math.round(v * 100) / 100;
   const sections = [];
+  // A pointed tip section carries the scaled chord (1/200 of the previous section, at least 1 mm).
+  const pointedChord = params.tip === 'pointed' ? Math.max(chordAt(params, (n - 2) / (n - 1)) * 0.005, LIMITS.minChord) : null;
   for (let i = 0; i < n; i++) {
     const eta = i / (n - 1);
     const y = eta * b;
-    // A pointed tip section carries the scaled chord (1/200 of the previous section, at least 1 mm).
-    const chord = i === n - 1 && params.tip === 'pointed' ? Math.max(chordAt(params, (n - 2) / (n - 1)) * 0.005, LIMITS.minChord) : chordAt(params, eta);
+    const chord = i === n - 1 && pointedChord !== null ? pointedChord : chordAt(params, eta);
     sections.push({
       id: `s${i + 1}`,
       airfoil: i === n - 1 ? tipId : rootId,
@@ -128,7 +129,8 @@ export function wizardProject(params, name) {
     const pts = (edge) =>
       etas.map((eta) => {
         const y = eta * b;
-        const c = chordAt(params, eta);
+        // The pointed tip ends in the tip section, a quarter of its chord ahead of the sweep line.
+        const c = eta === 1 && pointedChord !== null ? pointedChord : chordAt(params, eta);
         const xle = leadingEdgeX(params, y, c);
         return [r(edge === 'nose' ? xle : xle + c), r(y)];
       });

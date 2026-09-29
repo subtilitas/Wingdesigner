@@ -275,10 +275,11 @@ Beispiel: Vorlage **Swept flying wing** (3 Profilschnitte, **Linear**, Schränku
 keine zusätzliche Station.
 
 Spitze elliptische Flügelenden (Assistent: **Planform** = **Elliptic (guide curves)**, **Tip** =
-**Pointed (1/200 scale)**), jede Vorlage: 6 bis 9 zusätzliche Stationen. Größte Abweichung an den
-Prüfpositionen: 0,156 mm (**Glider**) bis 0,460 mm (**Tail surface**), unter der Toleranz; keine Warnung.
-Innerhalb von 2 mm vor dem Flügelende weicht die Fläche zwischen den Stationen (Viertelpunkte) um bis zu
-0,64 mm (**Glider**) bis 0,80 mm (**Trainer**) ab. Die Warnung erfasst diese Positionen nicht.
+**Pointed (1/200 scale)**), jede Vorlage: 1 bis 5 zusätzliche Stationen. Größte Abweichung an den
+Prüfpositionen: 0,159 mm (**Plank**) bis 0,376 mm (**Trainer**), unter der Toleranz; keine Warnung. Nasenlinie
+und Endlinie enden ein Viertel und drei Viertel der Randtiefe um die Pfeillinie, sodass der Randschnitt
+seinen Viertelpunkt auf dieser Linie behält. Die Abweichung zwischen den Stationen innerhalb von 2 mm vor dem
+Flügelende ist für diese Leitkurvenenden nicht gemessen; die Warnung erfasst diese Positionen nicht.
 
 ### 3.3 Leitkurven
 
@@ -515,7 +516,7 @@ Maßstab so dicht, dass sie als Schattierung erscheinen.
 | **Sport** (Sportmodell) | 2 | 121 × 2 | 3 × 1 |
 | **Swept flying wing** (Pfeilnurflügel) | 5 (2 zusätzlich, Abschnitt 3.2) | 121 × 5 | 3 × 1 |
 | **Glider** (Segelflugmodell, elliptische Leitkurven, **Tip** = **Flat**) | 17 | 121 × 17 | 3 × 3 |
-| **Glider** (Segelflugmodell, elliptische Leitkurven, **Tip** = **Pointed (1/200 scale)**) | 23 (6 zusätzlich, Abschnitt 3.2; größte Abweichung 0,156 mm, keine Warnung) | 121 × 23 | 3 × 3 |
+| **Glider** (Segelflugmodell, elliptische Leitkurven, **Tip** = **Pointed (1/200 scale)**) | 18 (1 zusätzlich, Abschnitt 3.2; größte Abweichung 0,356 mm, keine Warnung) | 121 × 18 | 3 × 3 |
 
 ## 5. Dreiecksnetze
 

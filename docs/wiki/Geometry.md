@@ -265,10 +265,11 @@ Example: **Swept flying wing** preset (3 sections, **Linear**, tip twist −4°)
 y = 150.0 mm and y = 450.0 mm. The same preset with tip twist 0°: no added station.
 
 Pointed elliptic tips (wizard: **Planform** = **Elliptic (guide curves)**, **Tip** =
-**Pointed (1/200 scale)**), every preset: 6 to 9 added stations. Largest deviation at the check
-positions: 0.156 mm (**Glider**) to 0.460 mm (**Tail surface**), below the tolerance; no warning.
-Within 2 mm of the tip the loft deviates between stations (quarter points) by up to 0.64 mm
-(**Glider**) to 0.80 mm (**Trainer**). The warning does not cover these positions.
+**Pointed (1/200 scale)**), every preset: 1 to 5 added stations. Largest deviation at the check
+positions: 0.159 mm (**Plank**) to 0.376 mm (**Trainer**), below the tolerance; no warning. The nose
+line and the end line end a quarter and three quarters of the tip chord around the sweep line, so
+the tip section keeps its quarter chord on that line. The deviation between stations within 2 mm of
+the tip is not measured for these guide ends; the warning does not cover those positions.
 
 ### 3.3 Guide curves
 
@@ -497,7 +498,7 @@ as shading.
 | **Sport** | 2 | 121 × 2 | 3 × 1 |
 | **Swept flying wing** | 5 (2 added, section 3.2) | 121 × 5 | 3 × 1 |
 | **Glider** (elliptic guide curves, **Tip** = **Flat**) | 17 | 121 × 17 | 3 × 3 |
-| **Glider** (elliptic guide curves, **Tip** = **Pointed (1/200 scale)**) | 23 (6 added, section 3.2; largest deviation 0.156 mm, no warning) | 121 × 23 | 3 × 3 |
+| **Glider** (elliptic guide curves, **Tip** = **Pointed (1/200 scale)**) | 18 (1 added, section 3.2; largest deviation 0.356 mm, no warning) | 121 × 18 | 3 × 3 |
 
 ## 5. Meshes
 
