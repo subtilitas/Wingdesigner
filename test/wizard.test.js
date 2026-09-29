@@ -339,6 +339,18 @@ describe('edit operations', () => {
     expect(insertProblem(tight, 1)).toBeNull();
   });
 
+  it('refuses a section beyond the tip that makes the span too long for a close pair', () => {
+    // The copy of the tip at 11 mm: the first gap becomes 3.6e-308 of the span, below 2^-1021.
+    const p = sampleProject();
+    [0, 4e-307, 1].forEach((y, i) => (p.sections[i].y = y));
+    expect(validateProject(p).errors).toEqual([]);
+    expect(insertProblem(p, 2)).toBe('A section at y = 11 mm beyond the tip makes the span too long for the sections at y = 0 mm and y = 4e-307 mm. Move the two sections apart first.');
+    expect(insertSection(p, 2)).toBeNull();
+    // A wider close pair keeps its fractions apart over 11 mm.
+    p.sections[1].y = 1e-300;
+    expect(insertProblem(p, 2)).toBeNull();
+  });
+
   it('manages airfoils', () => {
     const p = sampleProject();
     const a = { name: 'My Foil', points: p.airfoils[0].points };

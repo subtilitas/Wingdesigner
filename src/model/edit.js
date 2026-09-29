@@ -35,10 +35,17 @@ export function clampSectionY(sorted, i, y) {
   // The span fractions must stay distinct for the build, also next to a close neighbour.
   const last = sorted.length - 1;
   const y1 = i === last ? v : sorted[last].y;
-  let apart = spanApart(prev, v, sorted[0].y, y1) && (i === last || spanApart(v, next, sorted[0].y, y1));
-  // Moving the tip rescales every span fraction: the other gaps are checked against the new span too.
-  for (let k = 1; apart && i === last && k < last; k++) apart = spanApart(sorted[k - 1].y, sorted[k].y, sorted[0].y, v);
+  const apart = spanApart(prev, v, sorted[0].y, y1) && (i === last ? closePair(sorted, sorted[0].y, v, last) < 0 : spanApart(v, next, sorted[0].y, y1));
   return v > prev && v < next && apart ? v : sorted[i].y;
+}
+
+/**
+ * Index k of the first adjacent pair sorted[k - 1], sorted[k] (k < end) whose span fractions over a
+ * wing from y0 to y1 fall together, or -1. A new tip rescales every span fraction.
+ */
+function closePair(sorted, y0, y1, end = sorted.length) {
+  for (let k = 1; k < end; k++) if (!spanApart(sorted[k - 1].y, sorted[k].y, y0, y1)) return k;
+  return -1;
 }
 
 const clampCoordinate = (v, limit = LIMITS.maxCoordinate) => Math.min(Math.max(v, -limit), limit);
@@ -125,6 +132,8 @@ export function insertProblem(project, afterIndex) {
   const [y0, y1] = [sorted[0].y, sorted[sorted.length - 1].y];
   if (b && !(sec.y > a.y && sec.y < b.y && spanApart(a.y, sec.y, y0, y1) && spanApart(sec.y, b.y, y0, y1))) return `No span position lies between y = ${a.y} mm and y = ${b.y} mm. Move the two sections apart first.`;
   if (!b && sec.y > LIMITS.maxCoordinate) return `A section beyond the tip would lie beyond y = ${LIMITS.maxCoordinate} mm.`;
+  const k = b ? -1 : closePair(sorted, y0, sec.y);
+  if (k > 0) return `A section at y = ${sec.y} mm beyond the tip makes the span too long for the sections at y = ${sorted[k - 1].y} mm and y = ${sorted[k].y} mm. Move the two sections apart first.`;
   return null;
 }
 

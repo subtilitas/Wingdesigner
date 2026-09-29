@@ -200,6 +200,7 @@ Computation: [[Geometry|Geometry]].
 
 - the mean of the y values of the two neighbouring sections does not lie strictly between them, or its span fraction is not apart from both of theirs (apart: more than 4 units in the last place and more than 2^-1021, as in [Checks](#checks)): `No span position lies between y = … mm and y = … mm. Move the two sections apart first.`
 - the copy of the tip would lie beyond y = 1,000,000 mm: `A section beyond the tip would lie beyond y = 1000000 mm.`
+- the copy of the tip lengthens the span so far that the span fractions of two neighbouring sections are no longer apart: `A section at y = … mm beyond the tip makes the span too long for the sections at y = … mm and y = … mm. Move the two sections apart first.` Dragging the tip in the **Planform** tab stops at the same condition.
 
 Tooltip of **+**: `Insert a section after this one`. When the insert gives more than 200 sections, the tooltip adds the estimate of section [Project size](#project-size): `Insert a section after this one. With … sections, each change takes … and … of browser memory.`
 
