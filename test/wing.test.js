@@ -776,6 +776,14 @@ describe('smooth spanwise overshoot', () => {
     expect(b.surface).toBeNull();
   });
 
+  it('builds sections at adjacent doubles in smooth mode without repeated stations', () => {
+    const p = sampleProject({ settings: { spanwise: 'smooth' } });
+    [1, 1.0000000000000002, 1.0000000000000004].forEach((y, i) => Object.assign(p.sections[i], { y, x: 0, z: 0, chord: 200, twist: 0 }));
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.stations.map((s) => s.y)).toEqual([1, 1.0000000000000002, 1.0000000000000004]);
+  });
+
   it('builds sections at the chord limit in linear and smooth mode (blend round-off)', () => {
     for (const spanwise of ['linear', 'smooth']) {
       const p = sampleProject({ settings: { spanwise } });

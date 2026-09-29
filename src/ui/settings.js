@@ -172,7 +172,12 @@ export class SettingsPanel {
         h(
           'label',
           { class: 'check' },
-          h('input', { type: 'checkbox', checked: s.mirror, onchange: (e) => set((q) => (q.mirror = e.target.checked)) }),
+          h('input', {
+            type: 'checkbox',
+            checked: s.mirror,
+            // Display only: the wing is drawn again from the current build.
+            onchange: (e) => this.store.update((p) => (p.settings.mirror = e.target.checked), { reason: 'display' }),
+          }),
           'Show mirrored half (y < 0)',
         ),
         h(

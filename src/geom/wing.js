@@ -362,6 +362,9 @@ export function buildWing(project) {
     for (let k = 0; k < K; k++) stationYs.push(ys[i] + (ys[i + 1] - ys[i]) * (dense ? (1 - Math.cos((Math.PI * k) / K)) / 2 : k / K));
   }
   stationYs.push(y1);
+  // Sections at adjacent doubles leave no number for intermediate stations: those round to a panel
+  // end and are dropped, since repeated positions make the interpolation singular.
+  for (let i = stationYs.length - 1; i > 0; i--) if (!(stationYs[i] > stationYs[i - 1])) stationYs.splice(i, 1);
 
   const compat = sections.map((s) => result.profiles.get(s.airfoil).compat);
   const blendCompat = spanwiseBlender(ys, settings.spanwise, compat);

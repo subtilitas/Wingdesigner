@@ -89,6 +89,21 @@ export const MAX_PROJECT_BYTES = 100_000_000;
 // Characters per number of derived data in the file (12 significant digits, sign, separator).
 const CHARS_PER_NUMBER = 22;
 
+/** Bytes of a string in UTF-8, the encoding of the downloaded file (Open limits File.size). */
+export function utf8Length(s) {
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00) {
+      n += 4;
+      i++;
+    } else n += 3;
+  }
+  return n;
+}
+
 /** Numbers in the derived data of a build. */
 function derivedNumbers(build) {
   const curve = (c) => (c ? 2 * c.points.length + c.knots.length + (c.weights?.length ?? 0) : 0);
@@ -107,13 +122,14 @@ function derivedNumbers(build) {
 export function projectFileText(project, build, meta) {
   if (build?.surface && CHARS_PER_NUMBER * derivedNumbers(build) <= MAX_PROJECT_BYTES) {
     const full = formatJson(projectToJson(project, build, meta));
-    if (full.length <= MAX_PROJECT_BYTES) return { text: full, derived: true, omitted: false };
+    if (utf8Length(full) <= MAX_PROJECT_BYTES) return { text: full, derived: true, omitted: false };
   }
   const json = projectToJson(project, null, meta);
   // Indentation can push a project near the limit over it; compact JSON is about the size read.
   let text = formatJson(json);
-  if (text.length > MAX_PROJECT_BYTES) text = JSON.stringify(json);
-  if (text.length > MAX_PROJECT_BYTES) throw new Error(`the project takes ${(text.length / 1e6).toFixed(1)} MB as a file, above the ${MAX_PROJECT_BYTES / 1e6} MB that Open reads`);
+  if (utf8Length(text) > MAX_PROJECT_BYTES) text = JSON.stringify(json);
+  const bytes = utf8Length(text);
+  if (bytes > MAX_PROJECT_BYTES) throw new Error(`the project takes ${(bytes / 1e6).toFixed(1)} MB as a file, above the ${MAX_PROJECT_BYTES / 1e6} MB that Open reads`);
   return { text, derived: false, omitted: !!build?.surface };
 }
 

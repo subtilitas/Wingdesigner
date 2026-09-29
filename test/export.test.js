@@ -6,7 +6,7 @@ import { meshToStl, parseStl } from '../src/export/stl.js';
 import { MeshPrecisionError } from '../src/export/precision.js';
 import { meshesTo3mf, modelXml, xmlEscape } from '../src/export/threemf.js';
 import { stepReal, stepString, wingToStep } from '../src/export/step.js';
-import { MAX_PROJECT_BYTES, formatJson, projectFileText, projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
+import { MAX_PROJECT_BYTES, formatJson, projectFileText, projectFromJsonText, projectToJson, projectToJsonText, utf8Length } from '../src/model/io.js';
 import { LIMITS, createProject, validateProject } from '../src/model/project.js';
 import { setGuideEnabled } from '../src/model/edit.js';
 import { sampleProject } from './helpers.js';
@@ -511,6 +511,16 @@ describe('import hardening', () => {
 
   it('rejects project text above the size limit', () => {
     expect(projectFromJsonText(' '.repeat(MAX_PROJECT_BYTES + 1)).errors[0]).toBe('The file is larger than 100 MB.');
+  });
+
+  it('counts file size in UTF-8 bytes', () => {
+    expect(utf8Length('abc')).toBe(3);
+    expect(utf8Length('é')).toBe(2);
+    expect(utf8Length('€')).toBe(3);
+    expect(utf8Length('😀')).toBe(4);
+    expect(utf8Length('\ud800x')).toBe(4);
+    const s = 'aé€😀';
+    expect(utf8Length(s)).toBe(new TextEncoder().encode(s).length);
   });
 
   it('leaves out the derived data when the file would exceed the Open limit', () => {

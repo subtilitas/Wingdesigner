@@ -292,7 +292,9 @@ function noteLargeSizes() {
 let rebuildPending = false;
 let refreshPanels = false;
 // A selection alone keeps the build: the viewer, the table and the planform only mark the section.
-let geometryPending = true;
+// A display setting (mirror) redraws from the current build; the start shows the build made above.
+let geometryPending = false;
+let viewPending = true;
 function rebuild() {
   if (rebuildPending) return;
   rebuildPending = true;
@@ -301,11 +303,13 @@ function rebuild() {
     // Panels re-render below; remember the focused field so Tab and arrow-key editing continue.
     const focusKey = document.activeElement?.dataset?.focusKey;
     const changed = geometryPending;
+    const redraw = changed || viewPending;
     geometryPending = false;
+    viewPending = false;
     if (changed) build = safeBuild(store.project);
     const sel = store.project.sections.find((s) => s.id === store.selection.section);
     const selV = sel && build.surface ? (sel.y - build.rootY) / (build.tipY - build.rootY || 1) : null;
-    if (changed) {
+    if (redraw) {
       viewer.setBuild(build.surface ? build : null, { mirror: store.project.settings.mirror !== false, selectedV: selV });
       sectionsPanel.update();
     } else {
@@ -318,7 +322,7 @@ function rebuild() {
       settings.update();
       refreshPanels = false;
     }
-    if (changed) {
+    if (redraw) {
       renderChecks();
       noteLargeSizes();
     }
@@ -353,7 +357,8 @@ store.subscribe((project, reason) => {
   if (reason !== 'select') {
     refreshPanels = true;
     savePending = true;
-    geometryPending = true;
+    if (reason === 'display') viewPending = true;
+    else geometryPending = true;
   }
   rebuild();
 });
