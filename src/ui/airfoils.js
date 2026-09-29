@@ -371,7 +371,7 @@ export class AirfoilsPanel {
       })),
       ...libList.map((a) => ({
         name: a.name,
-        detail: `${a.category ?? ''}${a.use ? ` · ${a.use}` : ''}${a.source?.author ? ` · ${a.source.author}` : ''}`,
+        detail: `${a.category ?? ''}${a.use ? ` · ${a.use}` : ''}${a.source?.author ? ` · ${a.source.author}` : ''}${a.source?.license ? ` · ${a.source.license}` : ''}`,
         points: null,
         open: async () => {
           try {
@@ -384,7 +384,7 @@ export class AirfoilsPanel {
                 format: r.format,
                 issues: r.issues,
                 checked: { ok: r.ok, points: r.points, issues: [] },
-                source: { kind: 'library', id: a.id, attribution: a.source?.author, license: a.source?.license, url: a.source?.url },
+                source: { kind: 'library', id: a.id, attribution: a.source?.author, license: a.source?.license, url: a.source?.url, terms: a.source?.terms },
               },
               a.name,
             );

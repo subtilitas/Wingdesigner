@@ -18,7 +18,7 @@ Last updated: 2026-09-29
 | STL, 3MF, project JSON | Implemented | `test/export.test.js` |
 | UI (`src/ui/`, `src/main.js`) | 3D viewer, planform editor, sections, airfoils, settings, checks, wizard, export | Playwright smoke test on desktop (1280 x 720) and Pixel 7 viewports, no console errors |
 | CI | `ci.yml` (lint, unit tests, coverage check, STEP validation, e2e, Pages deploy), `docs.yml` (wiki), `release.yml` (tags) | All jobs green on pull request #1; Pages deployment and wiki push run on `main` only and are not yet observed |
-| Bundled airfoil library | Empty index; NACA presets are generated | `npm run airfoils:check` |
+| Bundled airfoil library | Empty index; NACA presets are generated | `npm run airfoils:check` (in CI): free license per entry, restricted hosts rejected, every file indexed and listed in `public/airfoils/NOTICE.md` |
 
 ## Decisions
 
@@ -40,6 +40,7 @@ Last updated: 2026-09-29
 | Chord and planform checks on 257 span samples plus every guide breakpoint | The loft passes through the stations only; a guide crossing or guide detail between stations is reported (error below 0.01 mm chord, stations added above 0.5 mm edge deviation, warning if still above after 32 added stations). |
 | aerodesign.de and mh-aerotools.de coordinates not bundled | Their terms grant personal use and restrict redistribution (quotes in the wiki page Airfoil-Sources). The app links to them and fills in attribution on upload. |
 | MIT license for the code | Chosen by the owner. Airfoil data keeps its own terms. |
+| Bundled airfoils only under a free license: public domain (by law, expired copyright or dedication) or CC0-1.0, Unlicense, CC-BY-4.0, CC-BY-3.0, MIT, BSD-2-Clause, BSD-3-Clause | Owner requirement: bundled airfoils are free to use. Personal-use, non-commercial, no-derivatives, share-alike, "ask first" and inferred permissions are excluded. `scripts/check-airfoils.mjs` enforces the list. |
 | GitHub Actions: checkout v7, setup-node v7, setup-python v7, cache v6, upload-artifact v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5 | Latest majors on 2026-09-29; all `runs.using: node24` (upload-pages-artifact is composite on upload-artifact v7), checked in each `action.yml`. |
 
 ## Measurements
@@ -58,8 +59,8 @@ Mean of 10 runs after 2 warm-up runs (STEP: 3 runs). Cap triangulation pairs upp
 
 ## Open items
 
-- Bundled library: decide which additional airfoils have a clear license for redistribution
-  (research on public-domain NACA/NASA report data is in progress).
+- Bundled library: research on free-licensed and public-domain airfoil sources (NACA/NASA/NREL
+  reports, Drela, databases, historical series, open releases) is in progress.
 - Written permission from Hartmut Siegmann (postal only, per his site) or Martin Hepperle
   (e-mail in his page footer) would allow bundling HS or MH airfoils.
 - First run on `main`: confirm Pages deployment and the wiki push with `GITHUB_TOKEN`.
