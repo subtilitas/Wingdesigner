@@ -148,6 +148,7 @@ export function validateProject(p) {
         errors.push(`guides.${key} must be an object.`);
         continue;
       }
+      if (g.enabled !== undefined && typeof g.enabled !== 'boolean') errors.push(`guides.${key}.enabled must be true or false.`);
       if (!['fit', 'control'].includes(g.mode)) errors.push(`guides.${key}.mode must be "fit" or "control".`);
       if (!Array.isArray(g.points) || g.points.length < 2) errors.push(`guides.${key}.points needs at least 2 points.`);
       else if (!g.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(`guides.${key}.points must be numeric [x, y] pairs.`);

@@ -50,7 +50,7 @@ Wing tip:
 | Mode | Tip station |
 | --- | --- |
 | Flat | the tip section as placed; the tip cap is a plane |
-| Pointed | chord = ratio × chord at the previous section (ratio 1/100 to 1/1000, default 1/200, at least 1 mm); in the last panel the chord does not fall below this value, so guides that meet at the tip end in the scaled profile |
+| Pointed | chord = ratio × chord at the previous section (ratio 1/100 to 1/1000, default 1/200, at least 1 mm); in the last panel the chord does not fall below this value, so guides that meet at the tip end in the scaled profile. With both guides on, their end points set the tip chord: more than 0.5 mm above the scaled value leaves a blunt tip, the build warns and the Sections table shows the actual tip chord |
 
 Trailing edge per station: as in the files, closed (gap 0, both end points merged), or a fixed
 thickness t in mm (gap t / chord, at most 5 % of the chord). The gap change is added with weight

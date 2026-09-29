@@ -9,7 +9,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 ### Changed
 
 - Minimum chord (profile depth) 1 mm instead of 0.01 mm, for every section, span position and pointed
-  tip; the Sections table marks a tip chord held at the minimum with (min.).
+  tip; the Sections table marks a tip chord held at the minimum with (min.) and shows the actual tip
+  chord when both guide curves set it; guide ends more than 0.5 mm wider than the scaled tip chord
+  give a warning.
 
 ### Fixed
 
@@ -28,6 +30,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   sections at y < 0 are rejected; dragging a section keeps it strictly between its neighbours.
 - 3MF export: the model XML is written in 1 MB chunks, so meshes beyond the JavaScript string limit
   export; characters outside XML 1.0 are removed from names; export failures show a message.
+- Project import: `guides.*.enabled` must be a boolean; a guide point between neighbours closer than
+  1 mm keeps its span position when edited.
 - CI: runs on `main` queue instead of cancelling a running Pages deployment; 3MF files are validated
   with lib3mf.
 - UI: rejected autosave data is kept under a separate key; keyboard shortcuts are inactive while a

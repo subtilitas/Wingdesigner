@@ -231,14 +231,17 @@ export function buildWing(project) {
     result.tipChordLimited = scaled < LIMITS.minChord;
     C[C.length - 1] = tipChord;
     placed.clear();
-    if (guideOn.nose && guideOn.end) {
-      const gap = guideXAt(result.guides.end, y1, y0, y1) - guideXAt(result.guides.nose, y1, y0, y1);
-      if (gap > 10 * tipChord) {
-        warnings.push(`Pointed tip: nose line and end line end ${gap.toFixed(1)} mm apart; move their last points together to close the tip.`);
-      }
-    }
   }
-  result.tipChord = pointed ? tipChord : null;
+  // Actual tip chord: with both guides on, the guides set it, and a gap wider than the scaled tip
+  // chord leaves a blunt tip.
+  result.tipChord = pointed ? placement(y1).chord : null;
+  if (pointed && result.tipChord > tipChord + PLANFORM_TOLERANCE) {
+    warnings.push(
+      `Pointed tip: nose line and end line end ${result.tipChord.toFixed(1)} mm apart, so the tip chord is ${result.tipChord.toFixed(1)} mm ` +
+        `instead of ${tipChord.toFixed(2)} mm; move their last points together to close the tip.`,
+    );
+    result.tipChordLimited = false;
+  }
 
   // Chord check on a dense span sampling plus every guide breakpoint (control points and knots),
   // so a crossing between two loft stations is reported too.

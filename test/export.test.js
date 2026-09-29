@@ -227,6 +227,8 @@ describe('project JSON', () => {
       (p) => (p.settings.mirror = 'false'),
       (p) => (p.version = 0),
       (p) => (p.sections[2].chord = 0.99),
+      (p) => (p.guides.nose.enabled = 'true'),
+      (p) => (p.guides.end.enabled = 1),
     ];
     for (const mutate of cases) {
       const p = base();

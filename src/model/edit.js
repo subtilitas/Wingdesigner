@@ -117,7 +117,8 @@ export function removeGuidePoint(project, key, index) {
 
 /**
  * Move a guide point. End points keep their span position; interior points stay strictly
- * between their neighbours (0.5 mm margin).
+ * between their neighbours (margin 0.5 mm, or a quarter of the gap when the neighbours are closer
+ * than 2 mm).
  */
 export function moveGuidePoint(project, key, index, x, y) {
   const pts = project.guides[key].points;
@@ -126,9 +127,10 @@ export function moveGuidePoint(project, key, index, x, y) {
     pts[index] = [x, pts[index][1]];
     return;
   }
-  const lo = pts[index - 1][1] + 0.5;
-  const hi = pts[index + 1][1] - 0.5;
-  pts[index] = [x, Math.min(Math.max(y, lo), hi)];
+  const prev = pts[index - 1][1];
+  const next = pts[index + 1][1];
+  const m = Math.min(0.5, (next - prev) / 4);
+  pts[index] = [x, Math.min(Math.max(y, prev + m), next - m)];
 }
 
 /** Remove airfoils that no section uses. Returns the number removed. */

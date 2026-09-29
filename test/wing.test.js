@@ -402,11 +402,22 @@ describe('pointed wing tip', () => {
     expect(buildWing(p).errors[0]).toMatch(/Pointed/);
   });
 
-  it('warns when guides do not meet at a pointed tip', () => {
+  it('warns when guides do not meet at a pointed tip and reports the actual tip chord', () => {
     const p = pointedProject();
     p.guides.nose.enabled = true;
     p.guides.end.enabled = true;
     expect(buildWing(p).warnings.some((w) => /end [\d.]+ mm apart/.test(w))).toBe(true);
+    // Guide ends 5 mm apart against a scaled tip chord of 1.7 mm.
+    p.guides.nose.points = [[0, 0], [20, 300], [118, 600]];
+    p.guides.end.points = [[200, 0], [190, 300], [123, 600]];
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.tipChord).toBeCloseTo(5, 9);
+    expect(b.stations[b.stations.length - 1].chord).toBeCloseTo(5, 9);
+    expect(b.warnings.some((w) => /tip chord is 5\.0 mm instead of 1\.70 mm/.test(w))).toBe(true);
+    // Ends within 0.5 mm of the scaled tip chord: no warning.
+    p.guides.end.points = [[200, 0], [190, 300], [119.9, 600]];
+    expect(buildWing(p).warnings.some((w) => /Pointed tip/.test(w))).toBe(false);
   });
 
   it('keeps crossings an error in pointed mode', () => {

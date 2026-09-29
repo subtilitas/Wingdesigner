@@ -42,7 +42,7 @@ export class SectionsPanel {
         }
         this.store.update((q) => {
           const t = q.sections.find((z) => z.id === s.id);
-          if (key === 'chord') v = Math.max(v, 0.01);
+          if (key === 'chord') v = Math.max(v, LIMITS.minChord);
           if (key === 'y') v = Math.max(v, 0);
           t[key] = v;
           if (key === 'y') {

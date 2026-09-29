@@ -194,4 +194,18 @@ describe('section drag clamp', () => {
   it('keeps the root section in place', () => {
     expect(clampSectionY(sorted(0, 300), 0, 120)).toBe(0);
   });
+
+  it('keeps a guide point between neighbours closer than 1 mm', () => {
+    const p = sampleProject();
+    p.guides.nose.points = [[0, 0], [5, 0.4]];
+    const i = addGuidePoint(p, 'nose');
+    expect(p.guides.nose.points[i][1]).toBeCloseTo(0.2, 12);
+    moveGuidePoint(p, 'nose', i, 7, p.guides.nose.points[i][1]);
+    expect(p.guides.nose.points[i]).toEqual([7, 0.2]);
+    for (const y of [-5, 0, 0.4, 3]) {
+      moveGuidePoint(p, 'nose', i, 7, y);
+      expect(p.guides.nose.points[i][1]).toBeGreaterThan(0);
+      expect(p.guides.nose.points[i][1]).toBeLessThan(0.4);
+    }
+  });
 });

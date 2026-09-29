@@ -6,6 +6,7 @@ import { guideCurve } from '../geom/guide.js';
 import { addGuidePoint, clampSectionY, moveGuidePoint, removeGuidePoint, resetGuide, sortedSections, syncGuidesToSpan } from '../model/edit.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, formatNum, h, numberInput } from './dom.js';
+import { LIMITS } from '../model/project.js';
 
 const GUIDE_LABEL = { nose: 'Nose line (leading edge)', end: 'End line (trailing edge)' };
 
@@ -245,14 +246,14 @@ export class PlanformEditor {
           const st = this.getBuild()?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
           if (hnd.type === 'le') {
             const te = p.guides?.end?.enabled && st ? st.xLE + st.chord : s.x + s.chord;
-            s.x = Math.min(x, te - 1);
+            s.x = Math.min(x, te - LIMITS.minChord);
             s.chord = te - s.x;
             const sorted = sortedSections(p);
             const i = sorted.indexOf(s);
             s.y = clampSectionY(sorted, i, y);
           } else {
             const le = p.guides?.nose?.enabled && st ? st.xLE : s.x;
-            s.chord = Math.max(1, x - le);
+            s.chord = Math.max(LIMITS.minChord, x - le);
           }
           syncGuidesToSpan(p);
         },
