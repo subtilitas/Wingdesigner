@@ -6,12 +6,14 @@
 // bounds of the sections and enabled guide points (mirrored half included when "Mirror" is on) with a
 // 24 px margin; span y runs to the right, chord x downwards (see src/ui/planform.js, panzoom.js).
 import {
+  STORAGE_KEY,
   VALID_RE,
   createDesign,
   dialogOf,
   expect,
   frames,
   openTab,
+  savedProject,
   sectionRows,
   sectionValues as tableValues,
   statusFigures,
@@ -163,6 +165,40 @@ async function handlePositions(page, v) {
 }
 
 test.describe('Planform tab', () => {
+  test('Fit shows the evaluated guide curve and the built outline, also where a guide overshoots', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    // End line through points 0.001 mm apart near the root: the cubic swings to x = -53,087 mm and the
+    // wing, which follows the end line, moves with it.
+    const p = await savedProject(page);
+    const te = p.sections[0].x + p.sections[0].chord;
+    p.guides.end = { mode: 'fit', degree: 3, points: [[te, 0], [te + 0.001, 0.1], [te, 0.11], [te, 600]], enabled: true, edited: true };
+    await page.evaluate(([key, project]) => localStorage.setItem(key, JSON.stringify(project)), [STORAGE_KEY, p]);
+    await page.reload();
+    await expect(status(page)).toHaveText(VALID_RE);
+    await openTab(page, 'Planform');
+    await canvasOf(page).scrollIntoViewIfNeeded();
+    await pane(page).getByRole('button', { name: 'Fit', exact: true }).click();
+    await frames(page);
+    // Rows of the canvas that hold the orange end line: the whole curve lies inside, with a margin.
+    const rows = await canvasOf(page).evaluate((c) => {
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      const tinted = [];
+      for (let y = 0; y < c.height; y++) {
+        for (let x = 0; x < c.width; x++) {
+          const i = 4 * (y * c.width + x);
+          if (d[i] > d[i + 2] + 80 && d[i] > d[i + 1] + 40) {
+            tinted.push(y);
+            break;
+          }
+        }
+      }
+      return { first: tinted[0], last: tinted.at(-1), height: c.height };
+    });
+    expect(rows.first).toBeGreaterThan(0);
+    expect(rows.last).toBeLessThan(rows.height - 1);
+    expect(rows.last - rows.first).toBeGreaterThan(0.5 * rows.height);
+  });
+
   test('nose line and end line switches show point tables through the section edges', async ({ page }) => {
     await createDesign(page, 'Swept flying wing');
     const secs = await sectionValues(page);

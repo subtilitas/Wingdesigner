@@ -10,6 +10,35 @@ import { LIMITS } from '../model/project.js';
 
 const GUIDE_LABEL = { nose: 'Nose line (leading edge)', end: 'End line (trailing edge)' };
 
+/** Built planform outline as [y, x] points: leading edge root to tip, trailing edge tip to root. */
+function outlinePoints(build) {
+  if (!build?.surface) return [];
+  const n = 80;
+  const le = [];
+  const te = [];
+  for (let k = 0; k <= n; k++) {
+    const v = k / n;
+    const a = surfacePoint(build.surface, build.uLE, v);
+    const b = surfacePoint(build.surface, 0, v);
+    const c = surfacePoint(build.surface, 1, v);
+    le.push([a[1], a[0]]);
+    te.push([b[1], Math.max(b[0], c[0])]);
+  }
+  return [...le, ...te.reverse()];
+}
+
+/** An enabled guide curve sampled at 201 points as [x, y], or null. */
+function guideSamples(gd) {
+  if (!gd?.enabled || !gd.points || gd.points.length < 2) return null;
+  let curve;
+  try {
+    curve = guideCurve(gd);
+  } catch {
+    return null;
+  }
+  return Array.from({ length: 201 }, (_, k) => curvePoint(curve, k / 200));
+}
+
 export class PlanformEditor {
   constructor(root, store, getBuild) {
     this.root = root;
@@ -58,14 +87,20 @@ export class PlanformEditor {
       xmin = Math.min(xmin, sec.x);
       xmax = Math.max(xmax, sec.x + sec.chord);
     }
+    // Guide points, the evaluated guide curves and the built outline: a through-point guide over
+    // unevenly spaced points can swing far beyond its points.
     const g = this.store.project.guides;
+    const addX = (x) => {
+      if (!Number.isFinite(x)) return;
+      xmin = Math.min(xmin, x);
+      xmax = Math.max(xmax, x);
+    };
     for (const key of ['nose', 'end']) {
       if (!g?.[key]?.enabled) continue;
-      for (const [x] of g[key].points) {
-        xmin = Math.min(xmin, x);
-        xmax = Math.max(xmax, x);
-      }
+      for (const [x] of g[key].points) addX(x);
+      for (const [x] of guideSamples(g[key]) ?? []) addX(x);
     }
+    for (const [, x] of outlinePoints(this.getBuild())) addX(x);
     const left = this.ghost?.checked ? -ymax : ymin;
     return [left, -xmax, ymax, -xmin];
   }
@@ -91,21 +126,7 @@ export class PlanformEditor {
     const p = this.store.project;
     const build = this.getBuild();
     const toS = (y, x) => view.toScreen(y, -x);
-    const outline = [];
-    if (build?.surface) {
-      const n = 80;
-      const le = [];
-      const te = [];
-      for (let k = 0; k <= n; k++) {
-        const v = k / n;
-        const a = surfacePoint(build.surface, build.uLE, v);
-        const b = surfacePoint(build.surface, 0, v);
-        const c = surfacePoint(build.surface, 1, v);
-        le.push([a[1], a[0]]);
-        te.push([b[1], Math.max(b[0], c[0])]);
-      }
-      outline.push(...le, ...te.reverse());
-    }
+    const outline = outlinePoints(build);
     const poly = (pts, mirror) => {
       ctx.beginPath();
       pts.forEach(([y, x], i) => {
@@ -155,22 +176,16 @@ export class PlanformEditor {
       const gd = g[key];
       if (!gd?.enabled || !gd.points || gd.points.length < 2) continue;
       const color = key === 'nose' ? cssVar('--nose', '#0f9d58') : cssVar('--end', '#b8621b');
-      let curve;
-      try {
-        curve = guideCurve(gd);
-      } catch {
-        curve = null;
-      }
-      if (curve) {
+      const samples = guideSamples(gd);
+      if (samples) {
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        for (let k = 0; k <= 200; k++) {
-          const [x, y] = curvePoint(curve, k / 200);
+        samples.forEach(([x, y], k) => {
           const [sx, sy] = toS(y, x);
           if (k) ctx.lineTo(sx, sy);
           else ctx.moveTo(sx, sy);
-        }
+        });
         ctx.stroke();
       }
       if (gd.mode === 'control') {

@@ -21,8 +21,12 @@ function cross(a, b) {
 /** Largest display mesh in vertices; cubic lofts are refined 3 times in v while they fit. */
 const MAX_DISPLAY_VERTICES = 100_000;
 
-/** Display geometry of the half wing (duplicated edge vertices for crisp creases). */
-export function displayGeometry(build) {
+/**
+ * Display geometry of the half wing (duplicated edge vertices for crisp creases), with coordinates
+ * relative to `origin`: 32-bit floats keep 0.06 mm near 1,000,000 mm, so the view rebases the wing
+ * around a point on it and places that point with the group transform.
+ */
+export function displayGeometry(build, origin = [0, 0, 0]) {
   const S = build.surface;
   const us = build.paramsU;
   const fit = Math.floor(MAX_DISPLAY_VERTICES / (us.length * build.paramsV.length));
@@ -46,9 +50,9 @@ export function displayGeometry(build) {
         l = Math.hypot(n[0], n[1], n[2]) || 1;
       }
       const o = (k * M + j) * 3;
-      pos[o] = point[0];
-      pos[o + 1] = point[1];
-      pos[o + 2] = point[2];
+      pos[o] = point[0] - origin[0];
+      pos[o + 1] = point[1] - origin[1];
+      pos[o + 2] = point[2] - origin[2];
       nrm[o] = n[0] / l;
       nrm[o + 1] = n[1] / l;
       nrm[o + 2] = n[2] / l;
@@ -73,7 +77,8 @@ export function displayGeometry(build) {
 
   // Caps and trailing-edge strip as flat-shaded geometry.
   const flat = [];
-  const tri = (a, b, c) => flat.push(...a, ...b, ...c);
+  const rel = (P) => [P[0] - origin[0], P[1] - origin[1], P[2] - origin[2]];
+  const tri = (a, b, c) => flat.push(...rel(a), ...rel(b), ...rel(c));
   const cap = (row, flip) => {
     const ring = build.closedTE ? row.slice(0, -1) : row;
     const poly = ring.map((P) => [P[0], P[2]]);
@@ -100,9 +105,9 @@ export function displayGeometry(build) {
   return { surface, caps };
 }
 
-function polyline(points) {
+function polyline(points, origin) {
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(points.flat()), 3));
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(points.flatMap((P) => [P[0] - origin[0], P[1] - origin[1], P[2] - origin[2]])), 3));
   return g;
 }
 
@@ -188,8 +193,11 @@ export class Viewer3D {
       this.render();
       return;
     }
-    const { surface, caps } = displayGeometry(build);
+    // A point on the wing, in whole millimetres, as the origin of the display coordinates.
+    const origin = surfacePoint(build.surface, build.uLE, 0.5).map(Math.round);
+    const { surface, caps } = displayGeometry(build, origin);
     const half = new THREE.Group();
+    half.position.set(...origin);
     half.add(new THREE.Mesh(surface, this.material), new THREE.Mesh(caps, this.capMaterial));
 
     const S = build.surface;
@@ -201,11 +209,11 @@ export class Viewer3D {
         const pts = us.map((u) => surfacePoint(S, u, v));
         if (!build.closedTE) pts.push(pts[0]);
         const sel = selectedV !== null && Math.abs(v - selectedV) < 1e-9;
-        lines.add(new THREE.Line(polyline(pts), sel ? this.selMaterial : this.lineMaterial));
+        lines.add(new THREE.Line(polyline(pts, origin), sel ? this.selMaterial : this.lineMaterial));
       }
     }
     const vs = refine(build.paramsV, 4);
-    for (const u of [0, build.uLE, 1]) lines.add(new THREE.Line(polyline(vs.map((v) => surfacePoint(S, u, v))), this.edgeMaterial));
+    for (const u of [0, build.uLE, 1]) lines.add(new THREE.Line(polyline(vs.map((v) => surfacePoint(S, u, v)), origin), this.edgeMaterial));
     if (this.options.controlNet) {
       const segs = [];
       const P = S.points;
@@ -213,6 +221,7 @@ export class Viewer3D {
         if (i + 1 < P.length) segs.push(...P[i][j], ...P[i + 1][j]);
         if (j + 1 < P[i].length) segs.push(...P[i][j], ...P[i][j + 1]);
       }
+      for (let k = 0; k < segs.length; k++) segs[k] -= origin[k % 3];
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segs), 3));
       lines.add(new THREE.LineSegments(g, this.netMaterial));
@@ -220,8 +229,10 @@ export class Viewer3D {
     half.add(lines);
     this.wingGroup.add(half);
     if (mirror) {
+      // Mirror at the world plane y = 0: local y maps to -(y + origin y) - origin y.
       const left = half.clone();
       left.scale.set(1, -1, 1);
+      left.position.set(origin[0], -origin[1], origin[2]);
       this.wingGroup.add(left);
     }
     this.updateGrid(build);

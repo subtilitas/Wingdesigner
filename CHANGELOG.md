@@ -90,10 +90,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   50 MB project held 100 copies (5,000 MB).
 - Autosave: an edit committed less than one frame before the page is hidden or left (reload, closing
   the tab, switching apps) is saved on `pagehide` or `visibilitychange`.
-- STL and 3MF exports refuse a mesh in which 32-bit coordinates merge two corners of a triangle
-  (a 1 mm chord at 1,000,000 mm: 712 of 960 triangles) and name the coordinate spacing; 3MF
-  coordinates carry 9 significant digits instead of 5 decimals, which merged corners of 12
-  triangles at 1 mm chord and 200 chord samples.
+- STL and 3MF exports refuse a mesh in which 32-bit coordinates collapse or turn over a triangle
+  whose longest edge is at least 4 coordinate spacings (a 1 mm chord at 1,000,000 mm: 712 of 960
+  triangles; a 7.41 mm chord near the limit: 4 triangles 10 mm long) and name the coordinate
+  spacing; 3MF coordinates carry 9 significant digits instead of 5 decimals, which merged corners
+  of 12 triangles at 1 mm chord and 200 chord samples.
+- The 3D view stores its vertices relative to a point on the wing and places that point with the
+  object transform: absolute 32-bit positions deviated by up to 0.03 mm near 1,000,000 mm.
+- Airfoils without a name in a project file are named after their id on import (blank list
+  entries before).
+- Planform **Fit** covers the evaluated guide curves and the built outline: a through-point guide
+  over unevenly spaced points swung to x = -53,087 mm outside the fitted view.
 - Airfoil check: both ends of the outline lie at the trailing edge (`te-missing`); an outline with
   one surface ending at mid-chord passed and lofted a trailing-edge face across the chord.
 - Loft: fitted-curve crossings, surface-row crossings and crossed trailing-edge slivers are ignored

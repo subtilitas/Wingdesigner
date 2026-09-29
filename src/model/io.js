@@ -89,7 +89,8 @@ export function projectFromJsonText(text) {
     // Known keys only: unknown keys (and their contents) are dropped.
     airfoils: data.airfoils.map((a) => ({
       id: a.id,
-      ...(typeof a.name === 'string' ? { name: a.name } : {}),
+      // Lists, previews and downloads show the name; an airfoil without one shows its id.
+      name: typeof a.name === 'string' && a.name.trim() ? a.name : a.id,
       points: a.points.map((p) => [p[0], p[1]]),
       ...(isObject(a.source) ? { source: Object.fromEntries(SOURCE_KEYS.filter((k) => a.source[k] !== undefined).map((k) => [k, a.source[k]])) } : {}),
     })),

@@ -10,6 +10,8 @@ import { MAX_PROJECT_BYTES, projectFromJsonText, projectToJson, projectToJsonTex
 import { createProject, validateProject } from '../src/model/project.js';
 import { setGuideEnabled } from '../src/model/edit.js';
 import { sampleProject } from './helpers.js';
+import { nacaAirfoil } from '../src/airfoil/naca.js';
+import { defaultProject } from '../src/model/defaults.js';
 import { stepCases } from './step-cases.js';
 
 describe('export meshes', () => {
@@ -55,6 +57,31 @@ describe('STL', () => {
     for (const t of tris.slice(0, 50)) expect(Math.hypot(...t.normal)).toBeCloseTo(1, 5);
   });
 
+  it('refuses visible triangles that turn over at 32-bit precision; ignores sub-resolution slivers', () => {
+    const wing = (x, z, chord, settings) =>
+      buildWing(
+        createProject({
+          airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }],
+          sections: [0, 10].map((y) => ({ airfoil: 'a', x, y, z, chord, twist: 0 })),
+          settings,
+        }),
+      );
+    // 7.41 mm chord near the coordinate limit, 16 chord samples: 4 triangles 10 mm long and 0.02 mm
+    // high, below the 0.0625 mm spacing, turn over without merging corners (flipped triangles with
+    // 0.08 mm edges stay under 4 spacings).
+    const far = concatMeshes(exportMeshes(wing(801579, 955903, 7.41, { chordSamples: 16 }), 'halves', { uRefine: 1, vRefine: 1 }).map((m) => m.mesh));
+    expect(() => meshToStl(far)).toThrow('STL stores 32-bit coordinates: at 955904 mm their spacing is 0.063 mm, and 4 of 256 triangles collapse or turn over.');
+    expect(() => meshesTo3mf([{ name: 'w', mesh: far }])).toThrow(MeshPrecisionError);
+    // 1 mm chord of the default design with a closed trailing edge and 200 chord samples: at Fine
+    // density 2 triangles of 1.4e-4 mm turn over; they are under 4 spacings and stay below the resolution.
+    const p = defaultProject();
+    for (const s of p.sections) s.chord = 1;
+    Object.assign(p.settings, { chordSamples: 200, trailingEdge: { mode: 'closed', thickness: 0.4 } });
+    const small = concatMeshes(exportMeshes(buildWing(p), 'halves', { uRefine: 2, vRefine: 6 }).map((m) => m.mesh));
+    expect(() => meshToStl(small)).not.toThrow();
+    expect(() => meshesTo3mf([{ name: 'w', mesh: small }])).not.toThrow();
+  });
+
   it('counts export triangles before meshing, for the Fine density limit', () => {
     const build = buildWing(sampleProject());
     for (const mode of ['right', 'halves']) {
@@ -79,7 +106,7 @@ describe('STL', () => {
     };
     // 1 mm chord at 1,000,000 mm: coordinate spacing 0.0625 mm.
     expect(() => meshToStl(at(1e6, 1e6))).toThrow(MeshPrecisionError);
-    expect(() => meshToStl(at(1e6, 1e6))).toThrow(/^STL stores 32-bit coordinates: at 1000001 mm their spacing is 0\.063 mm, and \d+ of \d+ triangles collapse \(two corners fall together\)/);
+    expect(() => meshToStl(at(1e6, 1e6))).toThrow(/^STL stores 32-bit coordinates: at 1000001 mm their spacing is 0\.063 mm, and \d+ of \d+ triangles collapse or turn over/);
     expect(() => meshesTo3mf([{ name: 'w', mesh: at(1e6, 1e6) }])).toThrow(/^3MF readers store 32-bit coordinates: at 1000001 mm/);
     // At 1000 mm the spacing is 6.1e-5 mm; no corners merge.
     const near = at(1000, 0);
@@ -155,7 +182,11 @@ describe('3MF', () => {
   it('writes a model larger than one 1 MB chunk identically to the single-string XML', () => {
     // 25,000 vertices produce about 1.6 MB of XML, i.e. more than one chunk.
     const n = 25000;
-    const positions = Float64Array.from({ length: 3 * n }, (_, i) => (i % 997) * 0.123);
+    // A helix of radius 100 mm: consecutive corners form well-shaped triangles.
+    const positions = Float64Array.from({ length: 3 * n }, (_, i) => {
+      const t = 0.5 * Math.floor(i / 3);
+      return [100 * Math.cos(t), 100 * Math.sin(t), 0.1 * t][i % 3];
+    });
     const indices = Uint32Array.from({ length: 3 * (n - 2) }, (_, i) => Math.floor(i / 3) + (i % 3));
     const objs = [{ name: 'big', mesh: { positions, indices } }];
     const xml = modelXml(objs, { title: 'big' });
@@ -284,6 +315,16 @@ describe('project JSON', () => {
     const r = projectFromJsonText(JSON.stringify(json));
     expect(r.ok).toBe(false);
     expect(r.errors[0]).toMatch(/has 5001 points; the limit is 5000/);
+  });
+
+  it('names airfoils without a name after their id on import', () => {
+    const j = projectToJson(sampleProject(), null);
+    const extra = { ...j.airfoils[0], id: 'second', points: j.airfoils[0].points.map(([x, y]) => [x, 0.9 * y]) };
+    delete j.airfoils[0].name;
+    j.airfoils.push({ ...extra, name: '  ' });
+    const r = projectFromJsonText(JSON.stringify(j));
+    expect(r.ok).toBe(true);
+    expect(r.project.airfoils.map((a) => a.name)).toEqual([j.airfoils[0].id, j.airfoils[1].name, 'second']);
   });
 
   it('limits names, ids and source texts, and drops unknown keys on import', () => {
