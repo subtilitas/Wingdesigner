@@ -35,7 +35,9 @@ export function clampSectionY(sorted, i, y) {
   // The span fractions must stay distinct for the build, also next to a close neighbour.
   const last = sorted.length - 1;
   const y1 = i === last ? v : sorted[last].y;
-  const apart = spanApart(prev, v, sorted[0].y, y1) && (i === last || spanApart(v, next, sorted[0].y, y1));
+  let apart = spanApart(prev, v, sorted[0].y, y1) && (i === last || spanApart(v, next, sorted[0].y, y1));
+  // Moving the tip rescales every span fraction: the other gaps are checked against the new span too.
+  for (let k = 1; apart && i === last && k < last; k++) apart = spanApart(sorted[k - 1].y, sorted[k].y, sorted[0].y, v);
   return v > prev && v < next && apart ? v : sorted[i].y;
 }
 

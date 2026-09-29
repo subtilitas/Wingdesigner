@@ -439,6 +439,12 @@ describe('section drag clamp', () => {
     expect(clampSectionY(sorted(0, 300), 0, 120)).toBe(0);
   });
 
+  it('keeps the tip when the longer span would merge the span fractions of a close pair', () => {
+    // Span 2 mm: fractions 0 and 2e-302 are apart; span 1e6 mm: 4e-308, below the 2^-1021 floor.
+    expect(clampSectionY(sorted(0, 4e-302, 1, 2), 3, 1e6)).toBe(2);
+    expect(clampSectionY(sorted(0, 4e-302, 1, 2), 3, 5)).toBe(5);
+  });
+
   it('keeps a guide point between neighbours closer than 1 mm', () => {
     const p = sampleProject();
     p.guides.nose.points = [[0, 0], [5, 0.4]];
