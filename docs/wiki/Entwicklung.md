@@ -82,6 +82,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `scripts/validate_3mf.py` | 3MF-Validierung (lib3mf) |
 | `scripts/screenshots.mjs` | Screenshots für das Wiki |
 | `scripts/check-docs.mjs` | Dokumentationsprüfung |
+| `scripts/check-test-counts.mjs` | Prüfung der Testanzahlen |
 
 ### Datenfluss
 
@@ -223,7 +224,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 266 Tests in 9 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 274 Tests in 10 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -233,6 +234,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 8 STEP-Dateien, 8 3MF-Dateien und `cases.json` in `step-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 12 Dateien im Format Portable Network Graphics (PNG) in `docs/wiki/images/` |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
+| `npm run counts:check` | `node scripts/check-test-counts.mjs` | Prüfungen unter [Prüfung der Testanzahlen](#prüfung-der-testanzahlen); Exit-Code 1 bei einer Abweichung |
 
 | Umgebungsvariable | Genutzt von | Wirkung |
 | --- | --- | --- |
@@ -263,6 +265,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Server | `npm run preview -- --port 4173 --strictPort`; jeder Lauf startet einen eigenen Server (`reuseExistingServer: false`) |
 | Zeitlimits | 60000 ms je Test, 60000 ms für den Serverstart |
 | Wiederholungsversuche | 0 |
+| Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
 149 Tests in 10 Spec-Dateien, 298 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
@@ -389,6 +392,27 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 Pfade gelten relativ zu `docs/wiki/` für Wiki-Seiten und relativ zum Repository-Stamm für die READMEs.
 Nicht geprüft: Sprachumschaltzeile, Sprache des Alternativtexts, Sprache des Linkziels, Linkanker (`#…`), externe Links (`http:`, `https:`, `mailto:`).
 
+### Prüfung der Testanzahlen
+
+`npm run counts:check` leitet jede Testanzahl, die `README.md`, `README.de.md`, `RECORD.md`, Development, Entwicklung, Geometry und Geometrie nennen, aus den Testsuiten ab.
+Exit-Code 1, wenn eine genannte Zahl abweicht oder eine Aussage nicht gefunden wird; `scripts/check-test-counts.mjs` enthält jede Aussage als Muster mit der Anzahl ihrer Fundstellen.
+
+| Anzahl | Quelle |
+| --- | --- |
+| Unit-Tests und Testdateien | `vitest list --staticParse=false`: führt die Testdateien zum Sammeln der Tests aus, sodass ein Test in einer Schleife je Durchlauf zählt. Die voreingestellte statische Analyse zählt ihn einmal. |
+| Browsertests, Spec-Dateien, Läufe; Tests von `e2e/limits.spec.js` je Projekt | `playwright test --list --reporter=json`; ohne Browser, ohne Server |
+| Tests, die nur in einem Projekt laufen (gesamt und je Spec-Datei), bestandene und übersprungene Läufe in `RECORD.md` | JSON-Bericht eines Laufs, angegeben mit `--e2e-report <Datei>`. `test.skip` entscheidet zur Laufzeit. Ohne Bericht werden diese Zahlen nicht geprüft; bestandene, übersprungene und fehlgeschlagene Läufe in `RECORD.md` müssen trotzdem zusammen die Läufe ergeben. Mit Bericht schlägt die Prüfung bei einem Lauf mit einem fehlgeschlagenen Test fehl. |
+| Satz `Kein Test ist mit test.fail markiert.` | Nur vorhanden, solange kein Test in der Auflistung oder im Bericht ein Fehlschlagen erwartet |
+| STEP- und 3MF-Validierungsfälle: Anzahl; Namen in Reihenfolge und Volumenkörper (2 bei Spiegelung, sonst 1) in der Tabelle der Testfälle | `stepCases()` in `test/step-cases.js` |
+
+```bash
+npm run counts:check                                                                # ohne die Anzahlen für nur ein Gerät
+npm run e2e && npm run counts:check -- --e2e-report playwright-report/results.json  # alle Anzahlen
+```
+
+Die CI führt sie im Job `test` ohne Bericht aus und im Job `e2e` mit dem Bericht des Laufs dieses Jobs.
+Nicht geprüft: `CHANGELOG.md` (verzeichnet Änderungen, mit den Anzahlen ihrer Zeit).
+
 ## Continuous Integration (CI)
 
 Plattform: GitHub Actions, Runner `ubuntu-latest` für jeden Job.
@@ -404,9 +428,9 @@ Der Job `wiki` in `docs.yml` checkt nur aus.
 
 | Job in `ci.yml` | Name | Schritte | Berechtigungen | Läuft bei |
 | --- | --- | --- | --- | --- |
-| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`; lädt Artefakt `coverage` hoch | `contents: read` | Jedem Auslöser |
+| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`; lädt Artefakt `coverage` hoch | `contents: read` | Jedem Auslöser |
 | `step` | STEP and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`; lädt Artefakt `step-files` hoch (STEP, 3MF, `cases.json`) | `contents: read` | Jedem Auslöser |
-| `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (Build, dann alle Specs in `e2e/`, beide Projekte); bei einem Fehlschlag Upload des Artefakts `playwright-results` (`test-results/`) | `contents: read` | Jedem Auslöser |
+| `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (Build, dann alle Specs in `e2e/`, beide Projekte), `counts:check -- --e2e-report playwright-report/results.json`; bei einem Fehlschlag Upload des Artefakts `playwright-results` (`test-results/`) | `contents: read` | Jedem Auslöser |
 | `build` | Build site | `build`; bei Push auf `main` zusätzlich `configure-pages` und `upload-pages-artifact` mit `dist/` | `contents: read`, `pages: read` | Jedem Auslöser |
 | `deploy` | Deploy to GitHub Pages | `deploy-pages` in die Umgebung `github-pages`. Concurrency-Gruppe `pages`: ein aktiver Lauf wird nicht abgebrochen. | `pages: write`, `id-token: write` | Push auf `main`, nachdem `test`, `step`, `e2e` und `build` bestanden sind |
 

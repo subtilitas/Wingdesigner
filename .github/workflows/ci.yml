@@ -33,6 +33,8 @@ jobs:
         run: npm run airfoils:check
       - name: Documentation pages, links and images
         run: npm run docs:check
+      - name: Test counts in the documentation
+        run: npm run counts:check
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -81,6 +83,9 @@ jobs:
       - run: npx playwright install --with-deps chromium
       # npm run e2e builds dist/ first and serves that build.
       - run: npm run e2e
+      # test.skip decides at run time which tests run on one device only: counted from this run.
+      - name: Device-only test counts in the documentation
+        run: npm run counts:check -- --e2e-report playwright-report/results.json
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

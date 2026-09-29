@@ -8,7 +8,8 @@ export default defineConfig({
   testDir: 'e2e',
   timeout: 60000,
   retries: 0,
-  reporter: [['list']],
+  // The JSON report feeds the device-only test counts of npm run counts:check -- --e2e-report.
+  reporter: [['list'], ['json', { outputFile: 'playwright-report/results.json' }]],
   use: { baseURL: 'http://localhost:4173', launchOptions },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], launchOptions } },

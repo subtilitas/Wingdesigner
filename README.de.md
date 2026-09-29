@@ -198,7 +198,7 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 266 Unit-Tests (Vitest)
+npm test                 # 274 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern
@@ -210,6 +210,7 @@ npm run airfoils:check   # mitgelieferte Profilbibliothek und NACA-Vorlagen prü
 npm run step:cases       # 8 STEP-Dateien, 8 3MF-Dateien und cases.json nach step-check/ schreiben
 npm run screenshots      # Build erzeugen und docs/wiki/images/ neu aufnehmen
 npm run docs:check       # Seitenpaare, Wiki-Links, Bilder und Abdeckungsmarker prüfen
+npm run counts:check     # Testanzahlen in README, RECORD und Wiki mit den Testsuiten vergleichen
 pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0         # Python 3.12
 python scripts/validate_step.py step-check/cases.json   # STEP-Dateien mit OpenCascade prüfen
 python scripts/validate_3mf.py step-check/cases.json    # 3MF-Dateien mit lib3mf prüfen (strikter Modus)

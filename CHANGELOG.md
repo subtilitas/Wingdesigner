@@ -32,6 +32,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - The release zip runs without a web server: `index.html` opened from the file loads the app,
   the bundled airfoil library and the autosave (tested in Chromium 141). The release notes say how
   to use the zip and where the licenses are.
+- `npm run counts:check` (in CI): compares every test count in `README.md`, `README.de.md`,
+  `RECORD.md` and the Development and Geometry wiki pages (English and German) with the suites:
+  unit tests and files from Vitest, browser tests, spec files and runs from the Playwright listing,
+  tests that run on one device only from the report of the CI browser run, and the STEP and 3MF
+  validation cases from `test/step-cases.js`. Exit code 1 on a difference or a missing statement.
+  Playwright writes a JSON report to `playwright-report/results.json`.
 
 ### Changed
 

@@ -82,6 +82,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `scripts/validate_3mf.py` | 3MF validation (lib3mf) |
 | `scripts/screenshots.mjs` | Wiki screenshots |
 | `scripts/check-docs.mjs` | Documentation check |
+| `scripts/check-test-counts.mjs` | Test count check |
 
 ### Data flow
 
@@ -223,7 +224,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 266 tests in 9 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 274 tests in 10 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -233,6 +234,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 8 STEP files, 8 3MF files and `cases.json` in `step-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 12 Portable Network Graphics (PNG) files in `docs/wiki/images/` |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
+| `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
 
 | Environment variable | Used by | Effect |
 | --- | --- | --- |
@@ -263,6 +265,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Server | `npm run preview -- --port 4173 --strictPort`; every run starts its own server (`reuseExistingServer: false`) |
 | Timeouts | 60000 ms per test, 60000 ms for server start |
 | Retries | 0 |
+| Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
 149 tests in 10 spec files, 298 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
@@ -389,6 +392,27 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 Paths resolve against `docs/wiki/` for wiki pages and against the repository root for the READMEs.
 Not checked: language switch line, alt text language, link target language, link anchors (`#…`), external links (`http:`, `https:`, `mailto:`).
 
+### Test count check
+
+`npm run counts:check` derives every test count that `README.md`, `README.de.md`, `RECORD.md`, Development, Entwicklung, Geometry and Geometrie state from the suites.
+Exit code 1 when a stated number differs or a statement is not found; `scripts/check-test-counts.mjs` holds each statement as a pattern with the number of times it occurs.
+
+| Count | Source |
+| --- | --- |
+| Unit tests and test files | `vitest list --staticParse=false`: runs the test files to collect the tests, so a test inside a loop counts once per pass. The default static parse counts it once. |
+| Browser tests, spec files, runs; tests of `e2e/limits.spec.js` per project | `playwright test --list --reporter=json`; no browser, no server |
+| Tests that run in one project only (total and per spec file), passed and skipped runs in `RECORD.md` | JSON report of a run, given with `--e2e-report <file>`. `test.skip` decides at run time. Without a report these numbers are not checked; the passed, skipped and failed runs in `RECORD.md` still have to add up to the runs. With a report, a run with a failed test fails the check. |
+| Sentence `No test is marked test.fail.` | Present only while no test in the listing or the report expects to fail |
+| STEP and 3MF validation cases: count; names in order and solids (2 when mirrored, else 1) in the case table | `stepCases()` in `test/step-cases.js` |
+
+```bash
+npm run counts:check                                                                # without the device-only counts
+npm run e2e && npm run counts:check -- --e2e-report playwright-report/results.json  # all counts
+```
+
+CI runs it in the job `test` without a report and in the job `e2e` with the report of that job's run.
+Not checked: `CHANGELOG.md` (it records changes, with the counts of their time).
+
 ## Continuous integration (CI)
 
 Platform: GitHub Actions, runner `ubuntu-latest` for every job.
@@ -404,9 +428,9 @@ The `docs.yml` job `wiki` only checks out.
 
 | `ci.yml` job | Name | Steps | Permissions | Runs on |
 | --- | --- | --- | --- | --- |
-| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`; uploads artifact `coverage` | `contents: read` | Every trigger |
+| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`; uploads artifact `coverage` | `contents: read` | Every trigger |
 | `step` | STEP and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`; uploads artifact `step-files` (STEP, 3MF, `cases.json`) | `contents: read` | Every trigger |
-| `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (build, then all specs in `e2e/`, both projects); on failure uploads artifact `playwright-results` (`test-results/`) | `contents: read` | Every trigger |
+| `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (build, then all specs in `e2e/`, both projects), `counts:check -- --e2e-report playwright-report/results.json`; on failure uploads artifact `playwright-results` (`test-results/`) | `contents: read` | Every trigger |
 | `build` | Build site | `build`; on push to `main` also `configure-pages` and `upload-pages-artifact` with `dist/` | `contents: read`, `pages: read` | Every trigger |
 | `deploy` | Deploy to GitHub Pages | `deploy-pages` to environment `github-pages`. Concurrency group `pages`: an active run is not cancelled. | `pages: write`, `id-token: write` | Push to `main`, after `test`, `step`, `e2e` and `build` pass |
 

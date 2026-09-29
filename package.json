@@ -22,7 +22,8 @@
     "e2e": "npm run build && playwright test",
     "step:cases": "node scripts/export-step-cases.mjs step-check",
     "screenshots": "node scripts/screenshots.mjs",
-    "docs:check": "node scripts/check-docs.mjs"
+    "docs:check": "node scripts/check-docs.mjs",
+    "counts:check": "node scripts/check-test-counts.mjs"
   },
   "dependencies": {
     "fflate": "^0.8.3",
