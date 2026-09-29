@@ -265,9 +265,9 @@ export function parseDat(text, options = {}) {
   const first = rows[0].values;
   const isCount = (v) => v >= 2 && Math.abs(v - Math.round(v)) < 1e-9;
   // Lednicer: a counts line followed by the upper surface starting at the leading edge. The first
-  // data row lies within 1 % of the x range of the smallest x, and either the counts match the rows
-  // or the split at the x reset starts the lower surface at the leading edge too. A percent Selig
-  // file whose trailing-edge row holds two integers ("100 2") fails these tests.
+  // data row lies within 1 % of the x range of the smallest x, and the lower surface starts there
+  // too: at the announced split when the counts match the rows, otherwise at the x reset. A percent
+  // Selig file whose trailing-edge row holds two integers ("100 2") fails these tests.
   let lednicer = null;
   if (isCount(first[0]) && isCount(first[1]) && rows.length > 2) {
     const data = rows.slice(1).map((r) => [r.values[0], r.values[1]]);
@@ -281,8 +281,9 @@ export function parseDat(text, options = {}) {
     const nu = Math.round(first[0]);
     const nl = Math.round(first[1]);
     if (nearLE(data[0][0])) {
-      if (data.length === nu + nl) lednicer = { upper: data.slice(0, nu), lower: data.slice(nu) };
-      else {
+      if (data.length === nu + nl) {
+        if (nearLE(data[nu][0])) lednicer = { upper: data.slice(0, nu), lower: data.slice(nu) };
+      } else {
         let split = data.length;
         for (let k = 1; k < data.length; k++) {
           if (data[k][0] < data[k - 1][0] - 0.25 * (Math.abs(data[k - 1][0]) + 1e-12)) {

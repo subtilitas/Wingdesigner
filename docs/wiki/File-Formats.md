@@ -83,7 +83,7 @@ Lednicer conditions:
 - The first numeric line holds 2 integers ≥ 2 (e.g. `61. 61.`).
 - At least 1 more numeric line follows.
 - The x of the next line lies within 1 % of the x range above the smallest x of all following lines: the upper surface starts at the LE.
-- The counts match the number of following lines, or the split at the first x reset (rule below) leaves at least 2 points per surface and the lower surface also starts within 1 % of the x range of the smallest x. A percent Selig file whose trailing-edge line holds 2 integers, e.g. `100 2`, fails these conditions and reads as Selig.
+- The lower surface also starts within 1 % of the x range of the smallest x: at the announced split when the counts match the number of following lines, otherwise at the first x reset (rule below), which must leave at least 2 points per surface. A percent Selig file whose trailing-edge line holds 2 integers, e.g. `100 2`, fails these conditions and reads as Selig.
 
 Further rules:
 

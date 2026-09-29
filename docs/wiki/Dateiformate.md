@@ -83,7 +83,7 @@ Lednicer-Bedingungen:
 - Die erste Zahlenzeile enthält 2 ganze Zahlen ≥ 2 (z. B. `61. 61.`).
 - Mindestens 1 weitere Zahlenzeile folgt.
 - Das x der nächsten Zeile liegt höchstens 1 % des x-Bereichs über dem kleinsten x aller folgenden Zeilen: Die Oberseite beginnt an der Profilnase.
-- Die Anzahlen stimmen mit der Zahl der folgenden Zeilen überein, oder die Trennung am ersten x-Rücksprung (Regel unten) lässt mindestens 2 Punkte je Seite, und auch die Unterseite beginnt höchstens 1 % des x-Bereichs über dem kleinsten x. Eine Selig-Datei in Prozent, deren Endleistenzeile 2 ganze Zahlen enthält, z. B. `100 2`, erfüllt diese Bedingungen nicht und wird als Selig gelesen.
+- Auch die Unterseite beginnt höchstens 1 % des x-Bereichs über dem kleinsten x: an der angekündigten Trennung, wenn die Anzahlen mit der Zahl der folgenden Zeilen übereinstimmen, sonst am ersten x-Rücksprung (Regel unten), der mindestens 2 Punkte je Seite lassen muss. Eine Selig-Datei in Prozent, deren Endleistenzeile 2 ganze Zahlen enthält, z. B. `100 2`, erfüllt diese Bedingungen nicht und wird als Selig gelesen.
 
 Weitere Regeln:
 

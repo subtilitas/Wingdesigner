@@ -307,6 +307,12 @@ describe('parser variants', () => {
       [0.5, -0.05],
       [1, -0.02],
     ]);
+    // Counts that match the rows but split inside the lower surface: Selig.
+    const lowerRows = Array.from({ length: 100 }, (_, i) => `${i + 1} ${(-0.05 * Math.sin((Math.PI * (i + 1)) / 101)).toFixed(4)}`);
+    const exact = parseDat(['exact', '100 2', '1 0.2', '0 0', ...lowerRows].join('\n'));
+    expect(exact.format).toBe('selig');
+    expect(exact.points).toHaveLength(103);
+    expect(exact.points[0]).toEqual([1, 0.02]);
     // A Lednicer file with matching counts still reads as Lednicer.
     const led = parseDat(['led', '3 3', '0 0', '0.5 0.06', '1 0', '0 0', '0.5 -0.04', '1 0'].join('\n'));
     expect(led.format).toBe('lednicer');
