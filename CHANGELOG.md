@@ -38,6 +38,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - Save writes the derived NURBS data of the current project, not of the last rendered build.
 - The closed and fixed-thickness trailing-edge modes report surfaces made to touch (thickness at most
   0.001 % chord between 1 % and 99 % chord).
+- The loft deviation that adds stations is measured in 3D, so strong twist between stations adds
+  stations instead of shortening the chord; a fitted surface whose chord falls below 0.5 mm or
+  reverses between stations (after 32 added stations) is an error; rows halfway between sections are
+  tested for self-crossing.
+- Non-object `settings.trailingEdge` and `settings.tip` are rejected on import.
+- The fitted-curve crossing test samples at most about 4000 points (1 per span for 5000-point files).
 - XML airfoils are read in one pass and reading stops one point past the 5000-point limit.
 - Dragging a leading edge with only the end line enabled evaluates the end line at the new span
   position, so the leading edge lands under the pointer.

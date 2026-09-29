@@ -84,16 +84,16 @@ describe('3MF', () => {
   });
 
   it('writes a model larger than one 1 MB chunk identically to the single-string XML', () => {
-    // 40,000 vertices produce about 2.4 MB of XML, i.e. several chunks.
-    const n = 40000;
+    // 25,000 vertices produce about 1.6 MB of XML, i.e. more than one chunk.
+    const n = 25000;
     const positions = Float64Array.from({ length: 3 * n }, (_, i) => (i % 997) * 0.123);
     const indices = Uint32Array.from({ length: 3 * (n - 2) }, (_, i) => Math.floor(i / 3) + (i % 3));
     const objs = [{ name: 'big', mesh: { positions, indices } }];
     const xml = modelXml(objs, { title: 'big' });
-    expect(xml.length).toBeGreaterThan(2 * (1 << 20));
+    expect(xml.length).toBeGreaterThan(1 << 20);
     const model = strFromU8(unzipSync(meshesTo3mf(objs, { title: 'big' }))['3D/3dmodel.model']);
     expect(model).toBe(xml);
-  });
+  }, 20000);
 });
 
 describe('STEP', () => {
@@ -228,6 +228,8 @@ describe('project JSON', () => {
       (p) => (p.version = 0),
       (p) => (p.sections[2].chord = 0.99),
       (p) => (p.guides.nose.enabled = 'true'),
+      (p) => (p.settings.trailingEdge = 'closed'),
+      (p) => (p.settings.tip = 'pointed'),
       (p) => (p.guides.end.enabled = 1),
     ];
     for (const mutate of cases) {

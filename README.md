@@ -100,7 +100,7 @@ python scripts/validate_3mf.py step-check/cases.json    # needs: pip install lib
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.0 % | 93.6 % | 99.7 % | 98.6 % |
+| 98.0 % | 93.7 % | 99.7 % | 98.6 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

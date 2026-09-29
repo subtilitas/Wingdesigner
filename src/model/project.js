@@ -123,6 +123,14 @@ export function validateProject(p) {
       break;
     }
   }
+  // Nested settings must be objects when present (null means "use the default"); resolveSettings
+  // would silently replace a string or number with the defaults.
+  if (isObject(p.settings)) {
+    for (const k of ['trailingEdge', 'tip']) {
+      const v = p.settings[k];
+      if (v !== undefined && v !== null && !isObject(v)) errors.push(`settings.${k} must be an object.`);
+    }
+  }
   const st = resolveSettings(p.settings);
   if (!['linear', 'smooth'].includes(st.spanwise)) errors.push('settings.spanwise must be "linear" or "smooth".');
   if (!['asis', 'closed', 'thickness'].includes(st.trailingEdge.mode)) errors.push('settings.trailingEdge.mode must be "asis", "closed" or "thickness".');

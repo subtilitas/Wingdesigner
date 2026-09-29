@@ -503,6 +503,43 @@ describe('trailing-edge setting and span range', () => {
   });
 });
 
+describe('fitted surface between stations', () => {
+  it('adds stations where strong twist would shrink linear rows', () => {
+    // 180 degrees of twist about mid-chord: averaging the end rows would collapse midspan to the pivot.
+    const p = sampleProject({ settings: { twistPivot: 0.5 } });
+    p.airfoils = [naca('2412', 'a')];
+    p.sections = [
+      { id: 'a', airfoil: 'a', x: 0, y: 0, z: 0, chord: 2, twist: 0 },
+      { id: 'b', airfoil: 'a', x: 0, y: 2, z: 0, chord: 2, twist: 180 },
+    ];
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.extraStations).toBeGreaterThan(0);
+    const mid = surfacePoint(b.surface, b.uLE, 0.5);
+    const te = surfacePoint(b.surface, 0, 0.5);
+    expect(Math.hypot(te[0] - mid[0], te[2] - mid[2])).toBeGreaterThan(1.9);
+  });
+
+  it('reports a surface that folds between stations', () => {
+    // Zigzag degree-5 control guides that 32 added stations cannot follow.
+    let seed = 9;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    let fold = null;
+    for (let t = 0; t < 10 && !fold; t++) {
+      const n = 20 + Math.floor(rnd() * 70);
+      const ys = Array.from({ length: n }, (_, i) => (600 * i) / (n - 1));
+      const nose = ys.map((y, i) => [(i % 2 ? 60 : 0) * rnd() + 20 * rnd(), y]);
+      const end = ys.map((y, i) => [nose[i][0] + 1 + 100 * rnd() * rnd(), y]);
+      const p = sampleProject();
+      p.guides = { nose: { enabled: true, mode: 'control', degree: 5, points: nose }, end: { enabled: true, mode: 'control', degree: 5, points: end } };
+      const b = buildWing(p);
+      if (/folds between stations/.test(b.errors[0] ?? '')) fold = b;
+    }
+    expect(fold).not.toBeNull();
+    expect(fold.surface).toBeNull();
+  });
+});
+
 describe('fitted curve and surface row crossings', () => {
   // Nine points that pass the point checks; the cubic curve through them loops past the trailing edge.
   const coarse = [[1, 0.002], [0.9422, 0.0062], [0.4103, 0.1048], [0.3764, 0.0957], [0, 0], [0.2163, -0.0488], [0.4749, -0.0296], [0.9349, -0.0728], [1, -0.002]];
@@ -519,6 +556,13 @@ describe('fitted curve and surface row crossings', () => {
     const b = buildWing(p);
     expect(b.errors[0]).toMatch(/NURBS curve through the points crosses itself near x = 10\d\.\d % chord/);
     expect(b.surface).toBeNull();
+  });
+
+  it('samples a 5000-point curve in bounded time', () => {
+    const { curve } = profileCurve(nacaAirfoil('2412', { pointsPerSide: 2500 }).points);
+    const t0 = performance.now();
+    expect(curveCrossing(curve, { tolerance: CROSSING_TOLERANCE })).toBeNull();
+    expect(performance.now() - t0).toBeLessThan(1000);
   });
 
   it('accepts fine airfoils and finds a crossing surface row', () => {

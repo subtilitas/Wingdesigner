@@ -118,7 +118,8 @@ function extent(pts) {
 /**
  * Self-crossing of a fitted 2D curve between its data points (cubic interpolation can overshoot
  * where coarse data changes quickly, e.g. near a trailing edge). Samples every knot span
- * (`samplesPerSpan`, by default 8 to 256 with about 4000 points in total) and tests the
+ * (`samplesPerSpan`, by default 1 to 256 with at most about 4000 points in total; dense files have
+ * short spans, coarse files, where interpolation overshoots, get many samples per span) and tests the
  * polyline for crossings. The size of a crossing is the extent of the smaller of the two parts the
  * crossing splits the outline into; crossings up to `tolerance` are ignored.
  * @returns {{x: number, size: number}|null} position and size of the largest crossing, or null
@@ -128,7 +129,7 @@ export function curveCrossing(curve, { tolerance = 0, samplesPerSpan } = {}) {
   const p = curve.degree;
   const spans = [];
   for (let i = p; i < U.length - p - 1; i++) if (U[i + 1] > U[i]) spans.push([U[i], U[i + 1]]);
-  const per = samplesPerSpan ?? Math.max(8, Math.min(256, Math.floor(4000 / Math.max(spans.length, 1))));
+  const per = samplesPerSpan ?? Math.max(1, Math.min(256, Math.floor(4000 / Math.max(spans.length, 1))));
   const pts = [];
   for (const [a, b] of spans) for (let s = 0; s < per; s++) pts.push(curvePoint(curve, a + ((b - a) * s) / per));
   pts.push(curvePoint(curve, U[U.length - 1]));

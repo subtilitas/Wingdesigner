@@ -39,6 +39,7 @@ Last updated: 2026-09-29
 | Fitted profile curves and section rows tested for self-crossing, loops up to 0.05 % chord ignored | Cubic interpolation of coarse files can loop past the trailing edge while the points pass every check (6 of 6314 random 9-point outlines). Cusped closed trailing edges leave slivers of 1.1e-4 to 1.4e-4 chord (MH 83, MH 50), coarse-file loops measure about 9e-3 chord. Rows between sections are not tested. |
 | Profile stage cached per airfoil (32 entries) | The crossing test costs 10 to 60 ms per airfoil; cached rebuilds: sport preset 16 ms, glider 20 ms at 60 chord samples, 70 ms at 200. |
 | Profile thickness checked before and after the trailing-edge setting | The linear taper of the closed and fixed-thickness modes pulls the surfaces through each other where an airfoil is thinner inside than its trailing-edge gap. |
+| Loft deviation measured in 3D; fitted chord below 0.5 mm or reversed is an error | Linear rows between stations twisted by 180° collapse to the pivot at midspan while the x-only deviation stays 0; zigzag degree-5 guides that 32 added stations cannot follow fold the fitted chord to -24 mm. |
 | Planform statistics by 5-point Gauss-Legendre quadrature of the intended planform | Trapezoids over stations were off by 1.45 % (8 stations per panel) to more than 2 % (3 stations) in smooth mode; the quadrature is exact for cubic spanwise splines. |
 | Interior contact (thickness at most 1e-5 chord between 1 % and 99 % chord) is an error, in the airfoil check and again after the trailing-edge setting | Touching surfaces give a zero-thickness solid. Thickness between polylines is smallest at a vertex, so every file point is checked. 247 real files: no new rejection. |
 | Minimum chord 1 mm for every section and span position, also the floor of a pointed tip | Owner requirement: below 1 mm the profile falls under the resolution of meshes, STEP modelling tolerances and manufacturing. With the default 1/200 ratio the tip chord reaches the floor for previous chords below 200 mm (4 of 6 wizard presets with a pointed tip). |
@@ -57,12 +58,12 @@ Node.js 24.21, sandbox x86-64 CPU, 2026-09-29 (`buildWing`, `exportMeshes(..., '
 
 | Case | Chord stations | Build | Mesh | STEP write | STEP size |
 | --- | --- | --- | --- | --- | --- |
-| Sport preset, 2 sections | 60 | 14 ms | 1 ms | 1 ms | 99 KB |
-| Sport preset, 2 sections | 200 | 44 ms | 2 ms | 3 ms | 303 KB |
-| Glider preset, elliptic guides, 17 stations | 60 | 24 ms | 11 ms | 5 ms | 441 KB |
-| Glider preset, elliptic guides, 17 stations | 200 | 72 ms | 37 ms | 18 ms | 1393 KB |
+| Sport preset, 2 sections | 60 | 22 ms | 1 ms | 1 ms | 99 KB |
+| Sport preset, 2 sections | 200 | 56 ms | 2 ms | 3 ms | 303 KB |
+| Glider preset, elliptic guides, 17 stations | 60 | 34 ms | 11 ms | 5 ms | 441 KB |
+| Glider preset, elliptic guides, 17 stations | 200 | 109 ms | 37 ms | 18 ms | 1393 KB |
 
-Mean of 10 runs after 2 warm-up runs (STEP: 3 runs). Build times include the section-row crossing test;
+Mean of 10 runs after 2 warm-up runs (STEP: 3 runs). Build times include the section-row crossing test, the 3D deviation and the fitted-chord check;
 the profile stage is cached after the warm-up runs (first build of a new airfoil: 35 to 100 ms more). Cap triangulation pairs upper and lower points per chord station (linear time); ear clipping
 (cubic time) is the fallback.
 

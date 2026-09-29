@@ -39,8 +39,13 @@ Section values (x, z, chord, twist and the resampled shape) are blended between 
 Stations are the sections only (linear mode without guides) or the sections plus `panelStations − 1`
 intermediate stations per panel (smooth mode or any guide curve on), spaced by
 (1 − cos(πk/K)) / 2 so they cluster at the panel ends. After the fit, stations are added at the span
-positions where the loft leading or trailing edge deviates more than 0.5 mm from the intended edge,
-up to 32 added stations in at most 6 rounds.
+positions where the loft leading or trailing edge deviates more than 0.5 mm (3D distance) from the
+intended edge, up to 32 added stations in at most 6 rounds. Twist counts: linear rows between strongly
+twisted stations average rotated shapes and shorten the chord (180° of twist would collapse midspan to
+the pivot), and the 3D deviation adds stations there. After the last round, the chord of the fitted
+surface along the intended chord direction is sampled at 257 span positions and every guide
+breakpoint; below 0.5 mm, or reversed, the surface folds between stations and the build stops with an
+error.
 
 With guide curves, x_LE(y) and/or x_TE(y) come from the curves instead. A guide is stretched linearly
 so its first and last point y match the root and tip. Through-point guides use parameters
@@ -88,9 +93,10 @@ Global surface interpolation (A9.4) through the station grid Q[j][k] (j chordwis
 - The root and tip control rows are set to exactly y_root and y_tip.
 
 The surface passes through every station point; the leading edge lies on the iso-curve u = u_LE.
-The surface row at every section (a plane y = const) is sampled with 8 points per knot span and
-tested for self-crossing with the same 0.05 % chord tolerance; between sections the thickness check
-on the blended points applies. Not checked: self-crossing of rows between sections.
+The surface rows (planes y = const) at every section and halfway between neighbouring sections are
+sampled with 4 points per knot span and tested for self-crossing with the same 0.05 % chord
+tolerance. Not checked: self-crossing of rows at other span positions; the thickness check on the
+blended points and the fitted-chord check cover them.
 
 ## 5. Meshes
 

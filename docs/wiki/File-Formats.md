@@ -79,7 +79,8 @@ above 2,000,000 characters or 5000 points is rejected.
 ```
 
 - Guide points are `[x, y]` in the planform. Section and guide values are in mm and degrees.
-- `enabled` and `settings.mirror` are JSON booleans; other types are rejected on import. Section chords
+- `enabled` and `settings.mirror` are JSON booleans, `settings.trailingEdge` and `settings.tip` objects
+  (`null` selects the default); other types are rejected on import. Section chords
   are at least 1 mm.
 - `derived` is written on export and ignored on import; it is recomputed from the rest.
 - `surface.controlPoints[i][j]` has i along u (around the profile) and j along v (span).

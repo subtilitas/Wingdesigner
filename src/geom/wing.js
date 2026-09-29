@@ -18,6 +18,9 @@ export const PLANFORM_TOLERANCE = 0.5;
 /** Span samples for the chord check (in addition to stations and guide breakpoints). */
 const CHORD_CHECK_SAMPLES = 256;
 
+/** Fitted chord (mm, along the intended chord direction) below which the surface counts as folded. */
+export const FOLD_LIMIT = 0.5;
+
 /** Stations the builder may add where the loft deviates from the intended planform. */
 const MAX_EXTRA_STATIONS = 32;
 
@@ -148,7 +151,7 @@ export function surfaceRowCrossing(surface, v, tolerance) {
     const q = curvePoint({ degree: surface.degreeV, knots: surface.knotsV, points: col }, v);
     return [q[0], q[2]];
   });
-  return curveCrossing({ degree: surface.degreeU, knots: surface.knotsU, points: ctrl }, { tolerance, samplesPerSpan: 8 });
+  return curveCrossing({ degree: surface.degreeU, knots: surface.knotsU, points: ctrl }, { tolerance, samplesPerSpan: 4 });
 }
 
 /**
@@ -454,19 +457,33 @@ export function buildWing(project) {
     }
     const surface = { degreeU: degU, degreeV: along.degree, knotsU, knotsV: along.knots, points: ctrl };
 
-    // Planform deviation: the loft passes through the stations only. Compare its leading and
-    // trailing edge with the intended placement between stations.
+    // Deviation: the loft passes through the stations only. Compare its leading and trailing edge
+    // with the intended placement between stations, in 3D (twist moves the edges in z as well).
+    // fitChord: chord of the fitted surface along the intended chord direction; linear rows between
+    // strongly twisted stations shrink it and fast guide changes can fold it below zero.
     const devs = [];
+    let minFit = Infinity;
+    let minFitY = y0;
+    const d3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
     for (const y of checkYs) {
       if (!(y >= y0 && y <= y1) || !(y1 > y0)) continue;
       const pl = placement(y);
-      const [le, teU] = placeSection([[0, 0], blendPoints(pl.w, teShapes)[0]], { ...pl, y }, pivot);
+      const [le, teU, axis] = placeSection([[0, 0], blendPoints(pl.w, teShapes)[0], [1, 0]], { ...pl, y }, pivot);
       const v = (y - y0) / (y1 - y0);
-      const d = Math.max(Math.abs(surfacePoint(surface, paramsU[N], v)[0] - le[0]), Math.abs(surfacePoint(surface, 0, v)[0] - teU[0]));
-      devs.push([y, d]);
+      const sLE = surfacePoint(surface, paramsU[N], v);
+      const sTE = surfacePoint(surface, 0, v);
+      const sTEl = surfacePoint(surface, 1, v);
+      devs.push([y, Math.max(d3(sLE, le), d3(sTE, teU))]);
+      const dir = [axis[0] - le[0], axis[2] - le[2]];
+      const len = Math.hypot(dir[0], dir[1]) || 1;
+      const fitChord = (((sTE[0] + sTEl[0]) / 2 - sLE[0]) * dir[0] + ((sTE[2] + sTEl[2]) / 2 - sLE[2]) * dir[1]) / len;
+      if (fitChord < minFit) {
+        minFit = fitChord;
+        minFitY = y;
+      }
     }
     devs.sort((a, b) => a[0] - b[0]);
-    return { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs };
+    return { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs, minFit, minFitY };
   };
 
   // Adaptive stations: insert stations where the loft deviates more than PLANFORM_TOLERANCE from
@@ -482,12 +499,23 @@ export function buildWing(project) {
     extra += fresh.length;
     fitted = fit(yList);
   }
-  const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs } = fitted;
+  const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs, minFit, minFitY } = fitted;
   result.stations = stations;
-  // Surface rows (planes y = const) at the sections: a cubic row can overshoot between the
-  // resampled points and cross, which the point checks above do not see. Between sections the
-  // thickness check on the blended points applies.
-  const rowV = ys.map((y) => (y1 > y0 ? (y - y0) / (y1 - y0) : 0));
+  if (minFit < FOLD_LIMIT) {
+    errors.push(
+      `The fitted surface folds between stations at y = ${minFitY.toFixed(1)} mm (chord ${minFit.toFixed(2)} mm along the intended chord direction): ` +
+        `twist or guide curves change faster than ${MAX_EXTRA_STATIONS} added stations resolve. Add sections, reduce the twist difference or smooth the guide curves.`,
+    );
+    return result;
+  }
+  // Surface rows (planes y = const) at the sections and halfway between them: a cubic row can
+  // overshoot between the resampled points and cross, which the point checks above do not see.
+  const rowY = [];
+  for (let i = 0; i < ys.length; i++) {
+    rowY.push(ys[i]);
+    if (i + 1 < ys.length) rowY.push((ys[i] + ys[i + 1]) / 2);
+  }
+  const rowV = rowY.map((y) => (y1 > y0 ? (y - y0) / (y1 - y0) : 0));
   const chordAtV = (v) => placement(y0 + v * (y1 - y0)).chord;
   for (const v of rowV) {
     const cross = surfaceRowCrossing(surface, v, CROSSING_TOLERANCE * chordAtV(v));
