@@ -26,6 +26,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - Export dialog: for STEP a note gives the surface control points and the file size, with time and
   memory above 1,000,000 control points; above 3,000,000 **Download** is disabled (3.3 million wrote
   330 MB in 8.4 s, about 5.4 million exceed the 512 MB string limit of the browser).
+- `LICENSES.txt` in the build and the release zip: the license of the app and the license text of
+  every npm package whose code the bundle contains (three.js and fflate, both MIT), derived from the
+  bundle at build time; a bundled package without a license file stops the build. Help links to it.
+- The release zip runs without a web server: `index.html` opened from the file loads the app,
+  the bundled airfoil library and the autosave (tested in Chromium 141). The release notes say how
+  to use the zip and where the licenses are.
 
 ### Changed
 
@@ -58,6 +64,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   focused or pressed.
 - Lists and messages show the first 200 characters of a name followed by `…`; download file names
   are cut to 120 characters.
+- The build writes one classic deferred script (immediately invoked function expression, IIFE)
+  instead of an ES module loaded in cross-origin resource sharing (CORS) mode; the bundled airfoil
+  library is compiled into it instead of fetched from `airfoils/` at run time.
 
 ### Fixed
 

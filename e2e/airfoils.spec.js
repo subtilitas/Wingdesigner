@@ -88,10 +88,7 @@ const itemNames = (items) => items.locator('.grow > div:first-child').allTextCon
 
 /** First visit: create the Sport preset (root NACA 2412, tip NACA 2410) and open the Airfoils tab. */
 async function startSport(page) {
-  // The panel renders once more when the library index has loaded; wait for it before marking.
-  const index = page.waitForResponse((r) => r.url().endsWith('/airfoils/index.json'));
   await createDesign(page, 'Sport');
-  await index;
   await openTab(page, 'Airfoils');
   await expect(projectItems(page)).toHaveCount(2);
 }
@@ -545,23 +542,18 @@ test.describe('Airfoils tab', () => {
     await expect.poll(async () => (await savedIds(page)).airfoils).toEqual(['naca2412', 'naca2410', 'naca-4412']);
   });
 
-  test('text typed before the library index loads stays in the Upload and NACA fields', async ({ page }) => {
-    let release;
-    const held = new Promise((r) => (release = r));
-    await page.route('**/airfoils/index.json', async (route) => {
-      await held;
-      await route.continue();
-    });
+  test('text typed in the Upload and NACA fields stays when the panel renders again', async ({ page }) => {
+    // The bundled library is part of the app: no request loads it.
+    const requests = [];
+    page.on('request', (r) => requests.push(r.url()));
     await createDesign(page, 'Sport');
     await openTab(page, 'Airfoils');
+    await expect(sectionOf(page, 'Library').locator('.airfoil-list > li', { hasText: 'S9104' })).toHaveCount(1);
+    expect(requests.filter((u) => u.includes('/airfoils/'))).toEqual([]);
     const draft = 'Draft\n1 0.01\n0 0\n1 -0.01';
     await page.getByLabel('Paste coordinates').fill(draft);
     await page.getByLabel('NACA designation').fill('4415');
     await page.getByLabel('Closed trailing edge').check();
-    const loaded = page.waitForResponse((r) => r.url().endsWith('/airfoils/index.json'));
-    release();
-    await loaded;
-    await expect(sectionOf(page, 'Library').locator('.airfoil-list > li', { hasText: 'S9104' })).toHaveCount(1);
     await expect(page.getByLabel('Paste coordinates')).toHaveValue(draft);
     await expect(page.getByLabel('NACA designation')).toHaveValue('4415');
     await expect(page.getByLabel('Closed trailing edge')).toBeChecked();

@@ -1,5 +1,5 @@
-// Built-in airfoil library: NACA sections generated in the browser plus bundled coordinate files
-// listed in public/airfoils/index.json, and external sources the user can download from.
+// Built-in airfoil library: NACA sections generated in the browser, and external sources the user
+// can download from. The bundled coordinate files of public/airfoils/ come from bundled.js.
 
 import { nacaAirfoil, parseNacaCode } from './naca.js';
 
@@ -67,19 +67,4 @@ export const EXTERNAL_SOURCES = [
 export function suggestAttribution(name) {
   for (const s of EXTERNAL_SOURCES) if (s.match && s.match.test(name)) return s.attribution;
   return '';
-}
-
-/**
- * Load the bundled library index (relative to the page). Returns [] when unavailable.
- * Entry: { id, name, file, category, use, source: { author, url, license } }
- */
-export async function loadLibraryIndex(base = './airfoils/') {
-  try {
-    const res = await fetch(`${base}index.json`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data.airfoils) ? data.airfoils.map((a) => ({ ...a, url: `${base}${a.file}` })) : [];
-  } catch {
-    return [];
-  }
 }

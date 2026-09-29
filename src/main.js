@@ -4,7 +4,7 @@ import './ui/styles.css';
 import { buildWing } from './geom/wing.js';
 import { wingStats } from './geom/stats.js';
 import { MAX_PROJECT_BYTES, OMITTED_NOTE, projectFileText, projectFromJsonText } from './model/io.js';
-import { largeSizes, projectSize, sizeWarning } from './model/budget.js';
+import { displayName, largeSizes, projectSize, sizeWarning } from './model/budget.js';
 import { defaultProject } from './model/defaults.js';
 import { validateProject } from './model/project.js';
 import { Store } from './ui/store.js';
@@ -436,7 +436,7 @@ async function newDesign(firstRun) {
     viewer.hasFitted = false;
     planform.pz.fitted = false;
     selectTab('sections');
-    message(`Created "${p.name}".`);
+    message(`Created "${displayName(p.name)}".`);
   }
 }
 
@@ -475,7 +475,16 @@ function helpDialog() {
         {},
         'NACA sections are computed from their published equations. Uploaded airfoils keep their name and attribution in the project file; respect the terms of the source you downloaded them from.',
       ),
-      h('p', {}, h('a', { href: `${REPO}/wiki`, target: '_blank', rel: 'noopener' }, 'Documentation (wiki)'), ' · ', h('a', { href: REPO, target: '_blank', rel: 'noopener' }, 'Source code (MIT license)')),
+      h(
+        'p',
+        {},
+        h('a', { href: `${REPO}/wiki`, target: '_blank', rel: 'noopener' }, 'Documentation (wiki)'),
+        ' · ',
+        h('a', { href: REPO, target: '_blank', rel: 'noopener' }, 'Source code (MIT license)'),
+        ' · ',
+        // Written by the build (vite.config.js): this app's license and those of the bundled libraries.
+        h('a', { href: 'LICENSES.txt', target: '_blank', rel: 'noopener' }, 'Licenses of this app and its libraries'),
+      ),
       h('div', { class: 'row end' }, h('button', { value: 'close', class: 'primary' }, 'Close')),
     ),
   );

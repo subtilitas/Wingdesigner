@@ -7,8 +7,8 @@ Deutsch: [[Entwicklung|Entwicklung]]
 | Property | Value |
 | --- | --- |
 | Language | JavaScript modules, no framework. Build target ES2022 (ECMAScript 2022); ESLint parses ECMAScript 2024 (`ecmaVersion: 2024`). |
-| Build tool | Vite `^8.3.1`. Relative base `./`, source maps. `build.chunkSizeWarningLimit: 900`: Vite warns when a chunk exceeds 900 kB (Vite unit: 1 kB = 1000 bytes). |
-| Runtime dependencies | three.js `^0.186.1`: 3D view, imported only in `src/ui/viewer3d.js`. fflate `^0.8.3`: zip container of 3D Manufacturing Format (3MF) files, imported only in `src/export/threemf.js`. |
+| Build tool | Vite `^8.3.1`. Relative base `./`, source maps. `build.chunkSizeWarningLimit: 900`: Vite warns when a chunk exceeds 900 kB (Vite unit: 1 kB = 1000 bytes). Output: one classic script in IIFE format (immediately invoked function expression) with the styles inside, loaded with `defer` and without `crossorigin` (plugin `classicScript` in `vite.config.js`), because Chromium refuses module scripts and CORS-mode (Cross-Origin Resource Sharing) stylesheets from file URLs; `build.modulePreload: false`. `dist/index.html` therefore runs opened from a file. |
+| Runtime dependencies | three.js `^0.186.1`: 3D view, imported only in `src/ui/viewer3d.js`. fflate `^0.8.3`: zip container of 3D Manufacturing Format (3MF) files, imported only in `src/export/threemf.js`. The build bundles both at the versions in `package-lock.json` (`npm ci`). Plugin `licenses` in `vite.config.js` writes `dist/LICENSES.txt`: `LICENSE` of this app, then the license file of every npm package with code in the bundle (found from the bundled modules, not from a list); a bundled package without a license file stops the build. |
 | Node.js | 24 or later (`.nvmrc`: 24; `engines.node`: `>=24`) |
 | Unit tests | Vitest `^5.0.2` in Node.js; timeout 20000 ms per test (`test.testTimeout` in `vite.config.js`); coverage with `@vitest/coverage-v8` |
 | Browser tests | Playwright `^1.63.0` |
@@ -16,7 +16,7 @@ Deutsch: [[Entwicklung|Entwicklung]]
 
 Code in `src/geom/`, `src/airfoil/`, `src/export/` and `src/model/` does not use the Document Object Model (DOM) application programming interface (API).
 Unit tests and scripts import it in Node.js.
-`src/airfoil/library.js` uses `fetch` to load `public/airfoils/index.json`.
+The bundled airfoil library needs no network request: plugin `airfoilLibrary` in `vite.config.js` compiles `public/airfoils/index.json` and its files into the module `virtual:airfoil-library`, read by `src/airfoil/bundled.js`. Vite also copies `public/airfoils/` to `dist/airfoils/`.
 
 | Path | Content |
 | --- | --- |
@@ -223,7 +223,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 200 tests in 9 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 265 tests in 9 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -264,7 +264,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Timeouts | 60000 ms per test, 60000 ms for server start |
 | Retries | 0 |
 
-137 tests in 10 spec files, 274 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+149 tests in 10 spec files, 298 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 30 tests run in one project only (`test.skip` in the other project):
 
@@ -429,7 +429,7 @@ All listed actions run on Node.js 24 (`runs.using: node24`); `upload-pages-artif
 CI does not rewrite the README coverage tables.
 Update them with `npm run coverage && npm run coverage:readme` and commit both READMEs.
 
-Not verified: the `deploy` job and `docs.yml` have no recorded run on `main`.
+The first run on `main` (merge of #1, 2026-09-29): CI run 36590504445 deployed Pages, Docs run 36590504459 pushed the wiki.
 The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creates it with the first page saved in the web interface.
 
 ## Release
@@ -447,7 +447,7 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 | --- | --- |
 | Tag check | Fails when the tag is not `v` + `package.json` `version` |
 | `npm run lint`, `npm test`, `npm run build` | Fails on lint error, test failure or build error |
-| Package | `wingdesigner-<tag>-site.zip` with the content of `dist/` |
-| GitHub release | Title `Wingdesigner <tag>`, the zip file as asset. Notes: the `CHANGELOG.md` section from `## [<version>]` to the next `## ` heading; `See CHANGELOG.md.` when the section is missing. |
+| Package | `wingdesigner-<tag>-site.zip` with the content of `dist/`: `index.html`, `LICENSES.txt`, `assets/` (script and source map), `airfoils/` |
+| GitHub release | Title `Wingdesigner <tag>`, the zip file as asset. Notes: the `CHANGELOG.md` section from `## [<version>]` to the next `## ` heading; `See CHANGELOG.md.` when the section is missing. Then a paragraph on use: unzip, open `index.html` (tested in Chromium) or serve the folder with a static web server; `LICENSES.txt` holds the licenses. |
 
 `release.yml` runs no coverage check, no airfoil library check, no documentation check, no STEP validation, no 3MF validation and no browser tests.

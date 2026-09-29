@@ -4,7 +4,8 @@
 import { MAX_FILE_BYTES, MAX_INPUT, decodeText, toSeligDat } from '../airfoil/parse.js';
 import { importAirfoilText, checkAirfoil } from '../airfoil/sanity.js';
 import { parseNacaCode } from '../airfoil/naca.js';
-import { EXTERNAL_SOURCES, NACA_PRESETS, loadLibraryIndex, nacaEntry, suggestAttribution } from '../airfoil/library.js';
+import { EXTERNAL_SOURCES, NACA_PRESETS, nacaEntry, suggestAttribution } from '../airfoil/library.js';
+import { bundledLibrary } from '../airfoil/bundled.js';
 import { profileCurve, profileProblem } from '../geom/profile.js';
 import { curvePoint } from '../geom/nurbs.js';
 import { addAirfoil, pruneAirfoils } from '../model/edit.js';
@@ -205,16 +206,12 @@ export class AirfoilsPanel {
     this.root = root;
     this.store = store;
     this.onMessage = onMessage ?? (() => {});
-    this.library = [];
+    this.library = bundledLibrary();
     this.filter = '';
     // Text typed into the upload and NACA fields survives re-rendering until it is added.
     this.drafts = { paste: '', naca: '', closedTE: false };
     this.entries = new WeakMap();
     this.render();
-    loadLibraryIndex().then((lib) => {
-      this.library = lib;
-      this.renderLibraryOnly();
-    });
   }
 
   update() {
@@ -482,8 +479,7 @@ export class AirfoilsPanel {
         points: null,
         open: async () => {
           try {
-            const res = await fetch(a.url);
-            const r = importAirfoilText(await res.text(), a.file);
+            const r = importAirfoilText(a.text, a.file);
             await this.addCandidate(
               {
                 name: a.name,

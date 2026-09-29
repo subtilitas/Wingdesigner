@@ -32,7 +32,7 @@ English: [[User Guide|User-Guide]]
 | **Save** | Lädt das Projekt-JSON herunter. Gleiche Datei wie **Export** > Project JSON. Brächten die abgeleiteten NURBS-Daten die Datei über 100 MB, lässt die Datei sie weg (Abschnitt [Export](#export)). Ein Fehler zeigt die rote Meldung `Save failed: <reason>.` |
 | **Export** | Öffnet den Exportdialog (Abschnitt [Export](#export)). |
 | **Undo** / **Redo** | Rückgängig / Wiederholen im Bearbeitungsverlauf, nur im Arbeitsspeicher: höchstens 100 Schritte und höchstens 64 000 000 Zeichen serialisiertes Projekt (Rückgängig und Wiederholen zusammen); ein Projekt über 640 000 Zeichen behält weniger Schritte, mindestens 1. **Undo** macht auch **New** und **Open** rückgängig. |
-| **Help** | App-Version, Arbeitsablauf, Bedienung, Links zu diesem Wiki und zum Quellcode. |
+| **Help** | App-Version, Arbeitsablauf, Bedienung, Links zu diesem Wiki, zum Quellcode und zu `LICENSES.txt` (**Licenses of this app and its libraries**: die MIT-Lizenz der App und die Lizenztexte von three.js und fflate). |
 
 ### Schmale Bildschirme
 
@@ -360,7 +360,7 @@ Grenzen der Projektprofile (Abschnitt [Projektgröße](#projektgröße)):
 ### Bibliothek
 
 - **Filter library** durchsucht Name, Kategorie und Verwendungstext.
-- Die Bibliothek enthält 17 erzeugte NACA-Profile und 6 mitgelieferte Koordinatendateien (`public/airfoils/index.json`). Die Liste zeigt zuerst die NACA-Profile, dann die Dateien in der Reihenfolge des Index.
+- Die Bibliothek enthält 17 erzeugte NACA-Profile und 6 mitgelieferte Koordinatendateien (`public/airfoils/index.json`, in die App übersetzt, sodass die Bibliothek keinen Netzzugang braucht). Die Liste zeigt zuerst die NACA-Profile, dann die Dateien in der Reihenfolge des Index.
 - Text unter jedem Namen: NACA-Profil: Kategorie, Verwendung, `generated`. Mitgelieferte Datei: Kategorie, Verwendungstext, Autor, Lizenzkennung.
 - Jeder Eintrag: **Preview** öffnet die Vorschau. NACA-Einträge folgen dem Kontrollkästchen **Closed trailing edge** des NACA-Generators. Eine mitgelieferte Datei wird von `airfoils/<file>` unter der eigenen Adresse der App geladen.
 - **Add to project** speichert bei einer mitgelieferten Datei das Feld **Source / attribution** (vorbelegt mit dem Autor), die Lizenzkennung, die Quelladresse und die Adresse der Bedingungen im Projektprofil (Objekt `source`, [[Dateiformate|Dateiformate]]).

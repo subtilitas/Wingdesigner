@@ -32,7 +32,7 @@ Deutsch: [[Benutzerhandbuch|Benutzerhandbuch]]
 | **Save** | Downloads the project JSON. Same file as **Export** > Project JSON. When the derived NURBS data would take the file above 100 MB, the file leaves it out (section [Export](#export)). A failure shows the red notice `Save failed: <reason>.` |
 | **Export** | Opens the export dialog (section [Export](#export)). |
 | **Undo** / **Redo** | Steps through the edit history, kept in memory only: at most 100 steps and at most 64,000,000 characters of serialized project (undo and redo together); a project above 640,000 characters keeps fewer steps, at least 1. **New** and **Open** are undoable. |
-| **Help** | App version, workflow, controls, links to this wiki and to the source code. |
+| **Help** | App version, workflow, controls, links to this wiki, to the source code and to `LICENSES.txt` (**Licenses of this app and its libraries**: the MIT license of the app and the license texts of three.js and fflate). |
 
 ### Narrow screens
 
@@ -360,7 +360,7 @@ Limits of the project airfoils (section [Project size](#project-size)):
 ### Library
 
 - **Filter library** matches the name, category and use text.
-- The library holds 17 generated NACA sections and 6 bundled coordinate files (`public/airfoils/index.json`). The list shows the NACA sections first, then the files in index order.
+- The library holds 17 generated NACA sections and 6 bundled coordinate files (`public/airfoils/index.json`, compiled into the app, so the library needs no network access). The list shows the NACA sections first, then the files in index order.
 - Text under each name: NACA section: category, use, `generated`. Bundled file: category, use text, author, license identifier.
 - Each entry: **Preview** opens the preview dialog. NACA entries follow the **Closed trailing edge** checkbox of the NACA generator. A bundled file loads from `airfoils/<file>` on the app's own address.
 - **Add to project** on a bundled file stores the **Source / attribution** field (pre-filled with the author), the license identifier, the source address and the terms address in the project airfoil (`source` object, [[File Formats|File-Formats]]).

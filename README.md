@@ -12,7 +12,7 @@ Browser application for designing wings of radio-controlled (RC) model aircraft.
 
 | Resource | Address | Published by |
 | --- | --- | --- |
-| App | <https://subtilitas.github.io/Wingdesigner/> | `ci.yml`, push to `main`, after all other continuous integration (CI) jobs pass; reachability: not verified |
+| App | <https://subtilitas.github.io/Wingdesigner/> | `ci.yml`, push to `main`, after all other continuous integration (CI) jobs pass; HTTP 200 on 2026-09-29 |
 | Wiki start page (English and German) | <https://github.com/subtilitas/Wingdesigner/wiki> | `docs.yml`, push to `main` that changes `docs/wiki/` or `docs.yml`, or manual run; reachability: not verified |
 
 | Topic | English | German |
@@ -179,6 +179,15 @@ Example: `Flügel V2 (neu)` → `Flugel_V2_neu.step`.
 6. **Export**: choose format, wing halves and mesh density, then click **Download**.
    A note gives the triangle count (STL, 3MF) or control point count (STEP) and the file size; above 10,000,000 triangles or 3,000,000 control points **Download** is disabled.
 
+## Offline use
+
+Each GitHub release (tag `v*`) carries `wingdesigner-<tag>-site.zip`, the built site (1.0 MB zipped: 0.75 MB of code with the styles, a 3.7 MB source map, the bundled airfoil files and `LICENSES.txt`).
+
+1. Unzip it.
+2. Open `index.html` in the browser. The app runs from the file without a web server and without network access; the airfoil library is part of the code, and autosave keeps the project across reloads. Tested in Chromium 141; Firefox and Safari: not tested.
+
+A static web server on the unzipped folder works as well, e.g. `python3 -m http.server` and then `http://localhost:8000/`.
+
 ## Development
 
 Requires Node.js 24 (`.nvmrc`; `package.json` engines `>=24`).
@@ -189,11 +198,11 @@ Version history: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # browser for end-to-end (e2e) tests and screenshots (or set PW_CHROMIUM=/path/to/chrome)
 npm run dev              # development server on http://localhost:5173
-npm test                 # 182 unit tests (Vitest)
+npm test                 # 265 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
-npm run e2e              # production build, then 125 Playwright tests on desktop 1280 x 720 and Pixel 7 (250 runs)
+npm run e2e              # production build, then 149 Playwright tests on desktop 1280 x 720 and Pixel 7 (298 runs)
 npm run coverage         # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage tables into README.md and README.de.md
 npm run coverage:check   # exit code 1 when a README coverage table differs from coverage/
@@ -222,3 +231,5 @@ Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/
 ## License
 
 MIT License (named after the Massachusetts Institute of Technology), see [LICENSE](LICENSE). Airfoil coordinate data keeps the terms of its source.
+
+The build writes `LICENSES.txt` next to `index.html`: this license and the license texts of the libraries in the bundle, three.js and fflate (both MIT). **Help** links to it.

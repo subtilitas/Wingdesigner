@@ -12,7 +12,7 @@ Browseranwendung zum Konstruieren von Flügeln für ferngesteuerte Flugmodelle (
 
 | Ressource | Adresse | Veröffentlicht durch |
 | --- | --- | --- |
-| App | <https://subtilitas.github.io/Wingdesigner/> | `ci.yml`, Push auf `main`, nachdem alle anderen CI-Jobs (Continuous Integration) bestanden sind; Erreichbarkeit: nicht geprüft |
+| App | <https://subtilitas.github.io/Wingdesigner/> | `ci.yml`, Push auf `main`, nachdem alle anderen CI-Jobs (Continuous Integration) bestanden sind; HTTP 200 am 2026-09-29 |
 | Wiki-Startseite (Englisch und Deutsch) | <https://github.com/subtilitas/Wingdesigner/wiki> | `docs.yml`, Push auf `main` mit Änderungen in `docs/wiki/` oder `docs.yml`, oder manueller Start; Erreichbarkeit: nicht geprüft |
 
 | Thema | Englisch | Deutsch |
@@ -179,6 +179,15 @@ Beispiel: `Flügel V2 (neu)` → `Flugel_V2_neu.step`.
 6. **Export**: Format, Flügelhälften und Netzdichte wählen, dann **Download** klicken.
    Ein Hinweis nennt die Anzahl der Dreiecke (STL, 3MF) oder der Kontrollpunkte (STEP) und die Dateigröße; über 10 000 000 Dreiecken oder 3 000 000 Kontrollpunkten ist **Download** gesperrt.
 
+## Ohne Internet
+
+Jedes GitHub-Release (Tag `v*`) enthält `wingdesigner-<tag>-site.zip`, die gebaute Website (1,0 MB gepackt: 0,75 MB Code samt Stilen, eine Source Map von 3,7 MB, die mitgelieferten Profildateien und `LICENSES.txt`).
+
+1. Entpacken.
+2. `index.html` im Browser öffnen. Die App läuft aus der Datei ohne Webserver und ohne Netzzugang; die Profilbibliothek ist Teil des Codes, und die automatische Speicherung behält das Projekt über ein Neuladen hinweg. Getestet in Chromium 141; Firefox und Safari: nicht getestet.
+
+Ein statischer Webserver auf dem entpackten Ordner funktioniert ebenso, z. B. `python3 -m http.server` und dann `http://localhost:8000/`.
+
 ## Entwicklung
 
 Benötigt Node.js 24 (`.nvmrc`; `package.json` engines `>=24`).
@@ -189,11 +198,11 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 182 Unit-Tests (Vitest)
+npm test                 # 265 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern
-npm run e2e              # Produktions-Build, dann 125 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (250 Läufe)
+npm run e2e              # Produktions-Build, dann 149 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (298 Läufe)
 npm run coverage         # Unit-Tests mit Abdeckungsbericht in coverage/
 npm run coverage:readme  # Abdeckungstabellen in README.md und README.de.md schreiben
 npm run coverage:check   # Exit-Code 1, wenn eine README-Abdeckungstabelle von coverage/ abweicht
@@ -222,3 +231,5 @@ Unit-Tests (Vitest, V8-Coverage) über `src/`, ohne den DOM-Code in `src/ui/` un
 ## Lizenz
 
 MIT License (benannt nach dem Massachusetts Institute of Technology), siehe [LICENSE](LICENSE). Profilkoordinaten behalten die Bedingungen ihrer Quelle.
+
+Der Build schreibt `LICENSES.txt` neben `index.html`: diese Lizenz und die Lizenztexte der Bibliotheken im Bundle, three.js und fflate (beide MIT). **Help** verlinkt die Datei.

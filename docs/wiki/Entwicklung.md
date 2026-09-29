@@ -7,8 +7,8 @@ English: [[Development|Development]]
 | Eigenschaft | Wert |
 | --- | --- |
 | Sprache | JavaScript-Module ohne Framework. Build-Ziel ES2022 (ECMAScript 2022); ESLint parst ECMAScript 2024 (`ecmaVersion: 2024`). |
-| Build-Werkzeug | Vite `^8.3.1`. Relative Basis `./`, Source Maps. `build.chunkSizeWarningLimit: 900`: Vite warnt, wenn ein Chunk 900 kB überschreitet (Vite-Einheit: 1 kB = 1000 Byte). |
-| Laufzeitabhängigkeiten | three.js `^0.186.1`: 3D-Ansicht, nur in `src/ui/viewer3d.js` importiert. fflate `^0.8.3`: ZIP-Container der Dateien im 3D Manufacturing Format (3MF), nur in `src/export/threemf.js` importiert. |
+| Build-Werkzeug | Vite `^8.3.1`. Relative Basis `./`, Source Maps. `build.chunkSizeWarningLimit: 900`: Vite warnt, wenn ein Chunk 900 kB überschreitet (Vite-Einheit: 1 kB = 1000 Byte). Ausgabe: ein klassisches Skript im Format IIFE (Immediately Invoked Function Expression) mit den Stilen darin, geladen mit `defer` und ohne `crossorigin` (Plugin `classicScript` in `vite.config.js`), weil Chromium Modulskripte und Stylesheets im CORS-Modus (Cross-Origin Resource Sharing) aus Datei-URLs ablehnt; `build.modulePreload: false`. `dist/index.html` läuft daher auch als Datei geöffnet. |
+| Laufzeitabhängigkeiten | three.js `^0.186.1`: 3D-Ansicht, nur in `src/ui/viewer3d.js` importiert. fflate `^0.8.3`: ZIP-Container der Dateien im 3D Manufacturing Format (3MF), nur in `src/export/threemf.js` importiert. Der Build bündelt beide in den Versionen aus `package-lock.json` (`npm ci`). Das Plugin `licenses` in `vite.config.js` schreibt `dist/LICENSES.txt`: `LICENSE` dieser App, dann die Lizenzdatei jedes npm-Pakets mit Code im Bundle (ermittelt aus den gebündelten Modulen, nicht aus einer Liste); ein gebündeltes Paket ohne Lizenzdatei bricht den Build ab. |
 | Node.js | 24 oder neuer (`.nvmrc`: 24; `engines.node`: `>=24`) |
 | Unit-Tests | Vitest `^5.0.2` in Node.js; Zeitlimit 20000 ms je Test (`test.testTimeout` in `vite.config.js`); Testabdeckung (Coverage) mit `@vitest/coverage-v8` |
 | Browsertests | Playwright `^1.63.0` |
@@ -16,7 +16,7 @@ English: [[Development|Development]]
 
 Der Code in `src/geom/`, `src/airfoil/`, `src/export/` und `src/model/` nutzt die Programmierschnittstelle (API, Application Programming Interface) des Document Object Model (DOM) nicht.
 Unit-Tests und Skripte importieren ihn in Node.js.
-`src/airfoil/library.js` lädt `public/airfoils/index.json` mit `fetch`.
+Die mitgelieferte Profilbibliothek braucht keine Netzanfrage: Das Plugin `airfoilLibrary` in `vite.config.js` übersetzt `public/airfoils/index.json` und seine Dateien in das Modul `virtual:airfoil-library`, das `src/airfoil/bundled.js` liest. Vite kopiert `public/airfoils/` außerdem nach `dist/airfoils/`.
 
 | Pfad | Inhalt |
 | --- | --- |
@@ -223,7 +223,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 200 Tests in 9 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 265 Tests in 9 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -264,7 +264,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Zeitlimits | 60000 ms je Test, 60000 ms für den Serverstart |
 | Wiederholungsversuche | 0 |
 
-137 Tests in 10 Spec-Dateien, 274 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+149 Tests in 10 Spec-Dateien, 298 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 30 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 
@@ -429,7 +429,7 @@ Alle aufgeführten Actions laufen auf Node.js 24 (`runs.using: node24`); `upload
 Die CI ändert die Tabellen der Testabdeckung in den READMEs nicht.
 Aktualisieren mit `npm run coverage && npm run coverage:readme`, dann beide READMEs committen.
 
-Nicht verifiziert: Für den Job `deploy` und für `docs.yml` ist kein Lauf auf `main` belegt.
+Der erste Lauf auf `main` (Merge von #1, 2026-09-29): CI-Lauf 36590504445 hat Pages veröffentlicht, Docs-Lauf 36590504459 hat das Wiki gepusht.
 Das Klonen in `docs.yml` setzt ein vorhandenes Repository-Wiki voraus; GitHub legt es mit der ersten Seite an, die in der Weboberfläche gespeichert wird.
 
 ## Release
@@ -447,7 +447,7 @@ Danach läuft `release.yml`:
 | --- | --- |
 | Tag-Prüfung | Schlägt fehl, wenn das Tag nicht `v` + `version` aus `package.json` ist |
 | `npm run lint`, `npm test`, `npm run build` | Schlägt fehl bei Lint-Fehler, fehlgeschlagenem Test oder Build-Fehler |
-| Paket | `wingdesigner-<tag>-site.zip` mit dem Inhalt von `dist/` |
-| GitHub-Release | Titel `Wingdesigner <tag>`, die ZIP-Datei als Anhang. Release-Notes: der Abschnitt von `CHANGELOG.md` ab `## [<version>]` bis zur nächsten Überschrift `## `; `See CHANGELOG.md.`, wenn der Abschnitt fehlt. |
+| Paket | `wingdesigner-<tag>-site.zip` mit dem Inhalt von `dist/`: `index.html`, `LICENSES.txt`, `assets/` (Skript und Source Map), `airfoils/` |
+| GitHub-Release | Titel `Wingdesigner <tag>`, die ZIP-Datei als Anhang. Release-Notes: der Abschnitt von `CHANGELOG.md` ab `## [<version>]` bis zur nächsten Überschrift `## `; `See CHANGELOG.md.`, wenn der Abschnitt fehlt. Danach ein Absatz zur Verwendung (englisch): entpacken, `index.html` öffnen (getestet in Chromium) oder den Ordner mit einem statischen Webserver ausliefern; `LICENSES.txt` enthält die Lizenzen. |
 
 `release.yml` führt keine Prüfung der Testabdeckung, keine Prüfung der Profilbibliothek, keine Dokumentationsprüfung, keine STEP-Validierung, keine 3MF-Validierung und keine Browsertests aus.
