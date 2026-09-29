@@ -232,6 +232,42 @@ test.describe('Airfoils tab', () => {
     expect((await projectList(page))[2].detail).toBe('61 points · E2E generator · unused');
   });
 
+  test('thumbnails fit airfoils of any scale, e.g. percent of chord in a project file', async ({ page }) => {
+    await startSport(page);
+    const saved = await savedProject(page);
+    saved.airfoils[0].points = saved.airfoils[0].points.map(([x, y]) => [100 * x, 100 * y]);
+    await page.evaluate(([key, p]) => localStorage.setItem(key, JSON.stringify(p)), [STORAGE_KEY, saved]);
+    await page.reload();
+    await openTab(page, 'Airfoils');
+    await expect(projectItems(page)).toHaveCount(2);
+    // Bounding box of the drawn pixels of each project thumbnail (canvas pixels). NACA 2412 in percent
+    // and NACA 2410 in unit chord differ by 2 % thickness only, so the boxes nearly match.
+    const inked = () =>
+      projectItems(page).evaluateAll((lis) =>
+        lis.map((li) => {
+          const c = li.querySelector('canvas');
+          const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+          const box = [c.width, c.height, -1, -1];
+          for (let i = 3; i < d.length; i += 4) {
+            if (!d[i]) continue;
+            const x = ((i - 3) / 4) % c.width;
+            const y = Math.floor((i - 3) / 4 / c.width);
+            box[0] = Math.min(box[0], x);
+            box[1] = Math.min(box[1], y);
+            box[2] = Math.max(box[2], x);
+            box[3] = Math.max(box[3], y);
+          }
+          return { left: box[0], right: c.width - 1 - box[2], width: box[2] - box[0] + 1, height: box[3] - box[1] + 1, canvasHeight: c.height };
+        }),
+      );
+    await expect.poll(async () => (await inked())[0].width).toBeGreaterThan(0);
+    const [percent, unit] = await inked();
+    expect(Math.abs(percent.width - unit.width)).toBeLessThanOrEqual(2);
+    expect(Math.abs(percent.left - percent.right)).toBeLessThanOrEqual(2);
+    expect(percent.height).toBeLessThan(0.6 * percent.canvasHeight);
+    expect(Math.abs(percent.height - unit.height)).toBeLessThanOrEqual(0.25 * unit.height);
+  });
+
   test('Lednicer upload is converted to Selig order', async ({ page }) => {
     await startSport(page);
     const surf = naca4('4412', 26);
@@ -513,6 +549,34 @@ test.describe('Airfoils tab', () => {
     await addFromPreview(page, 'NACA 4412');
     expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410', 'NACA 4412']);
     await expect.poll(async () => (await savedIds(page)).airfoils).toEqual(['naca2412', 'naca2410', 'naca-4412']);
+  });
+
+  test('text typed before the library index loads stays in the Upload and NACA fields', async ({ page }) => {
+    let release;
+    const held = new Promise((r) => (release = r));
+    await page.route('**/airfoils/index.json', async (route) => {
+      await held;
+      await route.continue();
+    });
+    await createDesign(page, 'Sport');
+    await openTab(page, 'Airfoils');
+    const draft = 'Draft\n1 0.01\n0 0\n1 -0.01';
+    await page.getByLabel('Paste coordinates').fill(draft);
+    await page.getByLabel('NACA designation').fill('4415');
+    await page.getByLabel('Closed trailing edge').check();
+    const loaded = page.waitForResponse((r) => r.url().endsWith('/airfoils/index.json'));
+    release();
+    await loaded;
+    await expect(sectionOf(page, 'Library').locator('.airfoil-list > li', { hasText: 'S9104' })).toHaveCount(1);
+    await expect(page.getByLabel('Paste coordinates')).toHaveValue(draft);
+    await expect(page.getByLabel('NACA designation')).toHaveValue('4415');
+    await expect(page.getByLabel('Closed trailing edge')).toBeChecked();
+    // A project change re-renders the panel; the drafts stay.
+    await page.getByRole('button', { name: 'Remove unused' }).click();
+    await openTab(page, 'Sections');
+    await openTab(page, 'Airfoils');
+    await expect(page.getByLabel('Paste coordinates')).toHaveValue(draft);
+    await expect(page.getByLabel('NACA designation')).toHaveValue('4415');
   });
 
   test('bundled library files list their source and license and add with their attribution', async ({ page }) => {

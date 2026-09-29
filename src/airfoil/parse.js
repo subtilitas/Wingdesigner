@@ -24,6 +24,8 @@ export const MAX_INPUT = 2_000_000;
 export const MAX_FILE_BYTES = 4 * MAX_INPUT;
 // The self-intersection check compares every segment pair: 5000 points take about 0.2 s.
 export const MAX_POINTS = 5000;
+// Longest airfoil name in characters: the longest name line among 1,964 real files has 179.
+export const MAX_NAME = 200;
 const COLUMN_HEADER = /^(?:[xyz](?:\/c)?[a-z_]*\s*){2,3}$/i;
 
 function issue(severity, code, message) {
@@ -208,6 +210,11 @@ export function parseDat(text, options = {}) {
     if (parsed) {
       if (parsed.decimalComma) decimalComma = true;
       rows.push({ values: parsed.values, line: i + 1 });
+      // A Lednicer file has one counts line besides its points: more rows exceed the point limit in
+      // every format, so reading stops there.
+      if (rows.length > MAX_POINTS + 1) {
+        return { name: (name || fallbackName).slice(0, MAX_NAME), format: 'selig', points: [], issues: [...issues, issue('error', 'too-many-points', `More than ${MAX_POINTS + 1} coordinate lines; the limit is ${MAX_POINTS} points.`)] };
+      }
     } else if (!name && rows.length === 0) {
       name = raw.trim();
     } else if (!COLUMN_HEADER.test(line)) {
@@ -292,9 +299,14 @@ export function parseDat(text, options = {}) {
   );
 }
 
-function finish(name, format, pointsIn, issuesIn) {
+function finish(nameIn, format, pointsIn, issuesIn) {
   const issues = issuesIn.slice();
   let points = pointsIn;
+  let name = nameIn;
+  if (name.length > MAX_NAME) {
+    name = name.slice(0, MAX_NAME);
+    issues.push(issue('info', 'long-name', `The name line has ${nameIn.length} characters; the first ${MAX_NAME} are used.`));
+  }
   if (points.some((p) => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) {
     return { name, format, points: [], issues: [...issues, issue('error', 'non-finite', 'Coordinates contain non-finite values.')] };
   }

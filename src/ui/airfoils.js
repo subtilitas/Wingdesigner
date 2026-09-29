@@ -8,7 +8,7 @@ import { EXTERNAL_SOURCES, NACA_PRESETS, loadLibraryIndex, nacaEntry, suggestAtt
 import { profileCurve, profileProblem } from '../geom/profile.js';
 import { curvePoint } from '../geom/nurbs.js';
 import { addAirfoil, pruneAirfoils } from '../model/edit.js';
-import { LIMITS } from '../model/project.js';
+import { LIMITS, airfoilPoints } from '../model/project.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, download, h, slugFile } from './dom.js';
 
@@ -25,19 +25,25 @@ export function drawThumb(canvas, points, color = cssVar('--ink', '#1d2430')) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, hgt);
   if (!points?.length) return;
+  // Scale and centre from the point bounds: project files may hold any scale, e.g. percent of chord.
+  let xmin = Infinity;
+  let xmax = -Infinity;
   let ymin = Infinity;
   let ymax = -Infinity;
-  for (const [, y] of points) {
+  for (const [x, y] of points) {
+    xmin = Math.min(xmin, x);
+    xmax = Math.max(xmax, x);
     ymin = Math.min(ymin, y);
     ymax = Math.max(ymax, y);
   }
-  const s = Math.min((w - 8) / 1, (hgt - 8) / Math.max(ymax - ymin, 1e-6));
+  const s = Math.min((w - 8) / Math.max(xmax - xmin, 1e-12), (hgt - 8) / Math.max(ymax - ymin, 1e-12));
+  const ox = w / 2 - ((xmax + xmin) / 2) * s;
   const oy = hgt / 2 + ((ymax + ymin) / 2) * s;
   ctx.strokeStyle = color;
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   points.forEach(([x, y], i) => {
-    const px = 4 + x * s;
+    const px = ox + x * s;
     const py = oy - y * s;
     if (i) ctx.lineTo(px, py);
     else ctx.moveTo(px, py);
@@ -73,12 +79,13 @@ export function previewAirfoil(candidate, { title = 'Airfoil preview', allowEdit
     }
     const pts = check.points ?? candidate.points;
     const canvas = h('canvas', { class: 'preview-canvas', 'aria-label': 'Airfoil preview' });
-    const nameInput = h('input', { type: 'text', value: candidate.name, 'aria-label': 'Airfoil name', disabled: !allowEdit });
+    const nameInput = h('input', { type: 'text', value: candidate.name, 'aria-label': 'Airfoil name', maxLength: LIMITS.maxName, disabled: !allowEdit });
     const attrInput = h('input', {
       type: 'text',
       value: candidate.source?.attribution ?? suggestAttribution(candidate.name),
       placeholder: 'Designer / source (kept in the project file)',
       'aria-label': 'Attribution',
+      maxLength: LIMITS.maxText,
       disabled: !allowEdit,
     });
     const showPoints = h('input', { type: 'checkbox', checked: true });
@@ -183,10 +190,12 @@ export class AirfoilsPanel {
     this.onMessage = onMessage ?? (() => {});
     this.library = [];
     this.filter = '';
+    // Text typed into the upload and NACA fields survives re-rendering until it is added.
+    this.drafts = { paste: '', naca: '', closedTE: false };
     this.render();
     loadLibraryIndex().then((lib) => {
       this.library = lib;
-      this.render();
+      this.renderLibraryOnly();
     });
   }
 
@@ -195,19 +204,28 @@ export class AirfoilsPanel {
   }
 
   async addCandidate(candidate, title) {
-    const full = `The project holds ${LIMITS.maxAirfoils} airfoils, the limit; "Remove unused" frees places.`;
-    if (this.store.project.airfoils.length >= LIMITS.maxAirfoils) {
-      this.onMessage(full, true);
+    // The reason an airfoil with `count` points cannot be added, or null.
+    const refusal = (count) => {
+      const p = this.store.project;
+      if (p.airfoils.length >= LIMITS.maxAirfoils) return `The project holds ${LIMITS.maxAirfoils} airfoils, the limit; "Remove unused" frees places.`;
+      const total = airfoilPoints(p) + count;
+      if (total > LIMITS.maxAirfoilPoints) return `With this airfoil the project airfoils hold ${total} points; the limit is ${LIMITS.maxAirfoilPoints}. "Remove unused" frees points.`;
+      return null;
+    };
+    const before = refusal(candidate.points?.length ?? 0);
+    if (before) {
+      this.onMessage(before, true);
       return null;
     }
     const res = await previewAirfoil(candidate, { title, parametrization: this.store.project.settings?.parametrization });
     if (!res) return null;
+    const after = refusal(res.points.length);
     let id = null;
     this.store.update((p) => {
       id = addAirfoil(p, res);
     });
     if (id === null) {
-      this.onMessage(full, true);
+      this.onMessage(after, true);
       return null;
     }
     this.onMessage(`Added airfoil "${res.name}".`);
@@ -276,8 +294,15 @@ export class AirfoilsPanel {
       }),
     );
 
-    const nacaInput = h('input', { type: 'text', placeholder: 'e.g. 2412 or 23012', 'aria-label': 'NACA designation', size: 10 });
-    const closedTE = h('input', { type: 'checkbox' });
+    const nacaInput = h('input', {
+      type: 'text',
+      placeholder: 'e.g. 2412 or 23012',
+      'aria-label': 'NACA designation',
+      size: 10,
+      value: this.drafts.naca,
+      oninput: (e) => (this.drafts.naca = e.target.value),
+    });
+    const closedTE = h('input', { type: 'checkbox', checked: this.drafts.closedTE, onchange: (e) => (this.drafts.closedTE = e.target.checked) });
     const nacaMsg = h('span', { class: 'small muted' });
     const addNaca = async (code) => {
       if (!parseNacaCode(code)) {
@@ -285,7 +310,7 @@ export class AirfoilsPanel {
         return;
       }
       nacaMsg.textContent = '';
-      await this.addCandidate(nacaEntry(code, { closedTE: closedTE.checked }), `NACA ${parseNacaCode(code).code}`);
+      return this.addCandidate(nacaEntry(code, { closedTE: closedTE.checked }), `NACA ${parseNacaCode(code).code}`);
     };
 
     const fileInput = h('input', {
@@ -313,17 +338,24 @@ export class AirfoilsPanel {
       drop.classList.remove('over');
       this.uploadFiles([...e.dataTransfer.files]);
     });
-    const paste = h('textarea', { rows: 4, placeholder: 'Or paste coordinates (Selig, Lednicer or x/upper/lower table)', 'aria-label': 'Paste coordinates' });
+    const paste = h('textarea', {
+      rows: 4,
+      placeholder: 'Or paste coordinates (Selig, Lednicer or x/upper/lower table)',
+      'aria-label': 'Paste coordinates',
+      value: this.drafts.paste,
+      oninput: (e) => (this.drafts.paste = e.target.value),
+    });
     const pasteBtn = h(
       'button',
       {
         type: 'button',
-        onclick: () => {
+        onclick: async () => {
           const r = importAirfoilText(paste.value, 'pasted');
-          this.addCandidate(
+          const id = await this.addCandidate(
             { name: r.name, points: r.points, format: r.format, issues: r.issues, checked: { ok: r.ok, points: r.points, issues: [] }, source: { kind: 'upload' } },
             'Pasted coordinates',
           );
+          if (id !== null) this.drafts.paste = '';
         },
       },
       'Check pasted text',
@@ -360,7 +392,16 @@ export class AirfoilsPanel {
         'section',
         {},
         h('h3', {}, 'NACA generator'),
-        h('div', { class: 'row wrap' }, nacaInput, h('label', { class: 'check' }, closedTE, 'Closed trailing edge'), h('button', { type: 'button', onclick: () => addNaca(nacaInput.value) }, 'Preview'), nacaMsg),
+        h('div', { class: 'row wrap' }, nacaInput, h('label', { class: 'check' }, closedTE, 'Closed trailing edge'), h(
+            'button',
+            {
+              type: 'button',
+              onclick: async () => {
+                if ((await addNaca(nacaInput.value)) != null) this.drafts.naca = '';
+              },
+            },
+            'Preview',
+          ), nacaMsg),
       ),
       h('section', {}, h('h3', {}, 'Library'), search, this.libraryBox),
       h(

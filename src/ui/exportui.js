@@ -3,7 +3,7 @@
 import { wingToStep } from '../export/step.js';
 import { StlPrecisionError, meshToStl } from '../export/stl.js';
 import { meshesTo3mf } from '../export/threemf.js';
-import { concatMeshes, exportMeshes } from '../geom/mesh.js';
+import { MAX_EXPORT_TRIANGLES, concatMeshes, exportMeshes, exportTriangles } from '../geom/mesh.js';
 import { projectToJsonText } from '../model/io.js';
 import { cloneProject } from '../model/project.js';
 import { download, h, slugFile } from './dom.js';
@@ -14,6 +14,10 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
   const build = getBuild();
   const name = project.name || 'wing';
   const blocked = !build?.surface;
+  // Fine density: 4 times the triangles of Normal; beyond MAX_EXPORT_TRIANGLES it is not offered.
+  const vRefine = (dens) => (build?.surface?.degreeV === 1 ? 1 : 3) * dens;
+  const fineTriangles = blocked ? 0 : exportTriangles(build, 'halves', { uRefine: 2, vRefine: vRefine(2) });
+  const fineOff = fineTriangles > MAX_EXPORT_TRIANGLES;
   const radio = (group, value, label, checked, disabled = false) =>
     h('label', { class: 'check' }, h('input', { type: 'radio', name: group, value, checked, disabled }), label);
   const dialog = h(
@@ -46,7 +50,10 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         {},
         h('legend', {}, 'Mesh density (STL, 3MF)'),
         radio('dens', '1', 'Normal', true),
-        radio('dens', '2', 'Fine (4x triangles)', false),
+        radio('dens', '2', 'Fine (4x triangles)', false, fineOff),
+        fineOff
+          ? h('p', { class: 'small muted' }, `Fine: ${(fineTriangles / 1e6).toFixed(1)} million triangles for both halves, above the limit of ${(MAX_EXPORT_TRIANGLES / 1e6).toFixed(0)} million.`)
+          : null,
       ),
       h('p', { class: 'small muted' }, 'Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.'),
       h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close('cancel') }, 'Cancel'), h('button', { value: 'ok', class: 'primary' }, 'Download')),
@@ -71,7 +78,7 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         download(slugFile(name, 'step'), wingToStep(build, { mirror: half !== 'right', name }), 'application/step');
         return;
       }
-      const meshes = exportMeshes(build, half, { uRefine: dens, vRefine: (build.surface.degreeV === 1 ? 1 : 3) * dens });
+      const meshes = exportMeshes(build, half, { uRefine: dens, vRefine: vRefine(dens) });
       if (fmt === 'stl') {
         download(slugFile(name, 'stl'), meshToStl(concatMeshes(meshes.map((m) => m.mesh)), `Wingdesigner ${name}`), 'model/stl');
       } else {

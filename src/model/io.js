@@ -4,7 +4,7 @@
 // and recomputes everything derived.
 
 import { defaultGuides } from '../geom/guide.js';
-import { FORMAT, VERSION, resolveSettings, validateProject } from './project.js';
+import { FORMAT, SOURCE_KEYS, VERSION, resolveSettings, validateProject } from './project.js';
 
 const round = (x) => (Number.isFinite(x) ? Number(x.toPrecision(12)) : x);
 const roundPts = (pts) => pts.map((p) => p.map(round));
@@ -67,6 +67,8 @@ export function projectToJsonText(project, build, meta) {
 /** Largest project file read (bytes): 50 MB holds hundreds of 5000-point airfoils. */
 export const MAX_PROJECT_BYTES = 50_000_000;
 
+const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
 const samePoints = (a, b) => a.length === b.length && a.every((p, i) => Math.abs(p[0] - b[i][0]) <= 1e-9 && Math.abs(p[1] - b[i][1]) <= 1e-9);
 
 export function projectFromJsonText(text) {
@@ -84,8 +86,14 @@ export function projectFromJsonText(text) {
     version: VERSION,
     name: typeof data.name === 'string' ? data.name : 'Imported wing',
     units: 'mm',
-    airfoils: data.airfoils.map((a) => ({ ...a, points: a.points.map((p) => [p[0], p[1]]) })),
-    sections: data.sections.map((s, i) => ({ ...s, id: s.id ?? `s${i + 1}` })),
+    // Known keys only: unknown keys (and their contents) are dropped.
+    airfoils: data.airfoils.map((a) => ({
+      id: a.id,
+      ...(typeof a.name === 'string' ? { name: a.name } : {}),
+      points: a.points.map((p) => [p[0], p[1]]),
+      ...(isObject(a.source) ? { source: Object.fromEntries(SOURCE_KEYS.filter((k) => a.source[k] !== undefined).map((k) => [k, a.source[k]])) } : {}),
+    })),
+    sections: data.sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, airfoil: s.airfoil, x: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist })),
     settings: resolveSettings(data.settings),
   };
   // Fill each missing guide from the section edges.
@@ -101,7 +109,7 @@ export function projectFromJsonText(text) {
     // Files written before guides carried `edited`: points that differ from the section edges were
     // edited, and switching the guide on keeps them.
     const edited = typeof g.edited === 'boolean' ? g.edited : !samePoints(g.points, defaults[key].points);
-    project.guides[key] = { mode: 'fit', degree: 3, ...g, enabled: g.enabled === true, edited };
+    project.guides[key] = { mode: g.mode ?? 'fit', degree: g.degree ?? 3, points: g.points.map((q) => [q[0], q[1]]), enabled: g.enabled === true, edited };
   }
   return { ok: true, project, errors: [] };
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
 import { buildWing } from '../src/geom/wing.js';
-import { concatMeshes, edgeCheck, exportMeshes, meshVolume, mirrorMesh } from '../src/geom/mesh.js';
+import { MAX_EXPORT_TRIANGLES, concatMeshes, edgeCheck, exportMeshes, exportTriangles, meshVolume, mirrorMesh } from '../src/geom/mesh.js';
 import { StlPrecisionError, meshToStl, parseStl } from '../src/export/stl.js';
 import { meshesTo3mf, modelXml, xmlEscape } from '../src/export/threemf.js';
 import { stepReal, stepString, wingToStep } from '../src/export/step.js';
@@ -52,6 +52,20 @@ describe('STL', () => {
     }
     expect(v / meshVolume(mesh)).toBeCloseTo(1, 5);
     for (const t of tris.slice(0, 50)) expect(Math.hypot(...t.normal)).toBeCloseTo(1, 5);
+  });
+
+  it('counts export triangles before meshing, for the Fine density limit', () => {
+    const build = buildWing(sampleProject());
+    for (const mode of ['right', 'halves']) {
+      for (const [uRefine, vRefine] of [[1, 3], [2, 6]]) {
+        const actual = exportMeshes(build, mode, { uRefine, vRefine }).reduce((n, m) => n + m.mesh.indices.length / 3, 0);
+        const estimate = exportTriangles(build, mode, { uRefine, vRefine });
+        // Exact for the surface and trailing edge; the caps are bounded by their ring size.
+        expect(estimate).toBeGreaterThanOrEqual(actual);
+        expect(estimate).toBeLessThan(1.02 * actual);
+      }
+    }
+    expect(MAX_EXPORT_TRIANGLES).toBe(2_000_000);
   });
 
   it('refuses a mesh that 32-bit coordinates collapse', () => {
@@ -233,6 +247,44 @@ describe('project JSON', () => {
     const r = projectFromJsonText(JSON.stringify(json));
     expect(r.ok).toBe(false);
     expect(r.errors[0]).toMatch(/has 5001 points; the limit is 5000/);
+  });
+
+  it('limits names, ids and source texts, and drops unknown keys on import', () => {
+    const base = () => projectToJson(sampleProject(), null);
+    const long = (n) => 'x'.repeat(n);
+    const errorsOf = (edit) => {
+      const j = base();
+      edit(j);
+      return projectFromJsonText(JSON.stringify(j)).errors;
+    };
+    // At the limits the project loads.
+    const ok = base();
+    ok.name = long(200);
+    ok.airfoils[0].name = long(200);
+    ok.airfoils[0].source = { kind: 'upload', attribution: long(2000) };
+    expect(projectFromJsonText(JSON.stringify(ok)).ok).toBe(true);
+    expect(errorsOf((j) => (j.name = long(201)))).toEqual(['name has 201 characters; the limit is 200.']);
+    expect(errorsOf((j) => (j.airfoils[0].name = long(2_000_000)))).toEqual(['Airfoil 1: name has 2000000 characters; the limit is 200.']);
+    expect(errorsOf((j) => (j.airfoils[0].name = 7))).toEqual(['Airfoil 1: name must be a string.']);
+    expect(errorsOf((j) => (j.airfoils[0].source = { url: long(2001) }))).toEqual(['Airfoil 1: source.url has 2001 characters; the limit is 2000.']);
+    expect(errorsOf((j) => (j.sections[0].id = long(201)))).toEqual(['Section 1: id has 201 characters; the limit is 200.']);
+    // A long id is not quoted in the messages.
+    const idErrors = errorsOf((j) => (j.airfoils[0].id = long(100_000)));
+    expect(idErrors[0]).toBe('Airfoil 1: id has 100000 characters; the limit is 200.');
+    expect(Math.max(...idErrors.map((e) => e.length))).toBeLessThan(200);
+    // Unknown keys and their contents are not kept.
+    const extra = base();
+    extra.junk = long(1000);
+    extra.airfoils[0].junk = [long(1000)];
+    extra.airfoils[0].source = { kind: 'upload', junk: long(1000) };
+    extra.sections[0].junk = long(1000);
+    extra.settings.junk = long(1000);
+    extra.settings.tip.junk = long(1000);
+    extra.guides.nose.junk = long(1000);
+    const r = projectFromJsonText(JSON.stringify(extra));
+    expect(r.ok).toBe(true);
+    expect(JSON.stringify(r.project)).not.toContain('junk');
+    expect(r.project.airfoils[0].source).toEqual({ kind: 'upload' });
   });
 
   it('rejects malformed input with messages', () => {

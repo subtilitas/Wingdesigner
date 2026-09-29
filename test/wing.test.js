@@ -3,7 +3,7 @@ import { MAX_GRID_POINTS, OVERSHOOT_LIMIT, buildWing, joinCurves, placeSection, 
 import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nurbs.js';
 import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
-import { blendPoints, blendScalar, spanwiseWeights } from '../src/geom/spanwise.js';
+import { blendPoints, blendScalar, spanwiseBlender, spanwiseWeights } from '../src/geom/spanwise.js';
 import { clampedUniformKnots, defaultGuides, guideCurve, guideProblems, guideXAt, isMonotonicInY } from '../src/geom/guide.js';
 import { edgeCheck, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume, tessellateHalf } from '../src/geom/mesh.js';
 import { earClip, polygonArea } from '../src/geom/triangulate.js';
@@ -49,6 +49,21 @@ describe('spanwise interpolation', () => {
     expect(w(200)).toEqual([0, 0.5, 0.5]);
     expect(w(400)).toEqual([0, 0, 1]);
     expect(spanwiseWeights([5])(3)).toEqual([1]);
+  });
+
+  it('blends point lists from the neighbouring sections as the weighted sum does', () => {
+    // Uneven spacing (0.1 mm next to 100 mm gaps) and values outside the section range.
+    const ys = [0, 0.1, 100, 101, 250, 400, 400.5, 800];
+    const lists = ys.map((y, i) => [[Math.sin(i), Math.cos(3 * i)], [i * i, -i], [0.01 * y, 1]]);
+    for (const mode of ['smooth', 'linear']) {
+      const w = spanwiseWeights(ys, mode);
+      const blend = spanwiseBlender(ys, mode, lists);
+      for (const y of [-20, 0, 0.05, 50, 100.5, 333, 400.2, 799, 900]) {
+        const a = blendPoints(w(y), lists);
+        const b2 = blend(y);
+        for (let k = 0; k < a.length; k++) for (let c = 0; c < 2; c++) expect(b2[k][c]).toBeCloseTo(a[k][c], 9);
+      }
+    }
   });
 
   it('reproduces section values and sums to one in smooth mode', () => {
@@ -734,9 +749,9 @@ describe('smooth spanwise overshoot', () => {
     const b = buildWing(p);
     const ms = performance.now() - t0;
     expect(b.errors).toEqual([]);
-    // floor(160,000 / (401 points x 29 panels)) = 13 stations per panel.
-    expect(b.warnings[0]).toBe('Spanwise stations per panel reduced from 40 to 13: 30 sections with 200 chord samples keep the loft within 160,000 grid points.');
-    expect(b.stations.length - b.extraStations).toBe(29 * 13 + 1);
+    // floor(60,000 / (401 points x 29 panels)) = 5 stations per panel.
+    expect(b.warnings[0]).toBe('Spanwise stations per panel reduced from 40 to 5: 30 sections with 200 chord samples keep the loft within 60,000 grid points.');
+    expect(b.stations.length - b.extraStations).toBe(29 * 5 + 1);
     expect((b.stations.length - b.extraStations) * 401).toBeLessThanOrEqual(MAX_GRID_POINTS);
     expect(ms).toBeLessThan(15000);
   });

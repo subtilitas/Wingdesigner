@@ -1,7 +1,7 @@
 // Pure project edit operations used by the UI (kept free of DOM code so they are testable).
 
 import { defaultGuides, guideXAt } from '../geom/guide.js';
-import { LIMITS, newId } from './project.js';
+import { LIMITS, airfoilPoints, newId } from './project.js';
 
 export function sortedSections(project) {
   return project.sections.slice().sort((a, b) => a.y - b.y);
@@ -194,7 +194,8 @@ export function pruneAirfoils(project) {
 
 /**
  * Add an airfoil unless the project holds the same one (same points, or the same generated NACA
- * section). Returns its id, or null when the project already holds LIMITS.maxAirfoils airfoils.
+ * section). Returns its id, or null when the project already holds LIMITS.maxAirfoils airfoils or
+ * the airfoil would take the points of all airfoils beyond LIMITS.maxAirfoilPoints.
  */
 export function addAirfoil(project, airfoil) {
   const sameNaca = (a) =>
@@ -206,6 +207,7 @@ export function addAirfoil(project, airfoil) {
   );
   if (same) return same.id;
   if (project.airfoils.length >= LIMITS.maxAirfoils) return null;
+  if (airfoilPoints(project) + airfoil.points.length > LIMITS.maxAirfoilPoints) return null;
   const base = slug(airfoil.name) || 'airfoil';
   let id = base;
   let k = 2;

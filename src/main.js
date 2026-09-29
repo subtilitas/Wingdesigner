@@ -21,33 +21,75 @@ const STORAGE_KEY = 'wingdesigner.project.v1';
 const REPO = 'https://github.com/subtilitas/Wingdesigner';
 
 let loadProblem = null;
+// Set when the saved text could not be loaded and not be copied aside: autosave stays off, so the
+// only copy is not overwritten.
+let keepSaved = false;
+// Set while autosave fails (quota, storage unavailable); STALE_KEY then tells the next start that
+// the saved project is older than the last session.
+let autosaveFailed = false;
+const STALE_KEY = `${STORAGE_KEY}.stale`;
+
+/** Keep text that failed to load under the ".rejected" key, or keep it in place if that fails. */
+function keepRejected(text, reason) {
+  try {
+    localStorage.setItem(`${STORAGE_KEY}.rejected`, text);
+    loadProblem = `The saved project could not be loaded (${reason}); it is kept in local storage under "${STORAGE_KEY}.rejected".`;
+  } catch {
+    keepSaved = true;
+    loadProblem = `The saved project could not be loaded (${reason}), and browser storage has no room for a copy: autosave is off, so it stays under "${STORAGE_KEY}". Use Save to keep new work.`;
+  }
+}
 
 function loadSaved() {
+  let text;
+  let stale;
   try {
-    const text = localStorage.getItem(STORAGE_KEY);
-    if (!text) return null;
-    const r = projectFromJsonText(text);
-    if (r.ok) return r.project;
-    // Keep the rejected data instead of overwriting it with the next autosave.
-    localStorage.setItem(`${STORAGE_KEY}.rejected`, text);
-    loadProblem = `The saved project could not be loaded (${r.errors[0]}); it is kept in local storage under "${STORAGE_KEY}.rejected".`;
-    return null;
+    text = localStorage.getItem(STORAGE_KEY);
+    stale = localStorage.getItem(STALE_KEY);
+    localStorage.removeItem(STALE_KEY);
   } catch {
     return null;
   }
+  if (!text) return null;
+  const r = projectFromJsonText(text);
+  if (!r.ok) {
+    keepRejected(text, r.errors[0]);
+    return null;
+  }
+  if (stale) loadProblem = `This is the project as last saved; autosave stopped at ${stale} because browser storage was full, and later edits were not saved.`;
+  return { project: r.project, text };
 }
 
 /**
  * Autosave only projects that load again; an invalid edit keeps the last valid save. Nothing is
- * saved while the first-run wizard is open, so a reload then shows the wizard again.
+ * saved while the first-run wizard is open, so a reload then shows the wizard again. A failed save
+ * (browser storage holds about 5,000,000 characters per site) is reported once and marked for the
+ * next start.
  */
 function save(project) {
-  if (firstRunOpen) return;
+  if (firstRunOpen || keepSaved) return;
+  let length = 0;
   try {
     if (!validateProject(project).ok) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+    const text = JSON.stringify(project);
+    length = text.length;
+    localStorage.setItem(STORAGE_KEY, text);
+    if (autosaveFailed) {
+      autosaveFailed = false;
+      localStorage.removeItem(STALE_KEY);
+      autosaveNote.textContent = '';
+      message('Autosave works again.');
+    }
   } catch {
-    // Storage unavailable (private mode, quota): the project stays in memory only.
+    if (autosaveFailed) return;
+    autosaveFailed = true;
+    try {
+      localStorage.setItem(STALE_KEY, new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC');
+    } catch {
+      // No room for the marker either.
+    }
+    autosaveNote.textContent = ' · Autosave off: use Save';
+    message(`Autosave is off: browser storage refused the project (${length} characters; browsers keep about 5,000,000 per site). Use Save to keep it.`, true);
   }
 }
 
@@ -59,14 +101,24 @@ function safeBuild(project) {
   }
 }
 
-const saved = loadSaved();
+const restored = loadSaved();
+let saved = restored?.project ?? null;
+let store;
+try {
+  store = new Store(saved ?? defaultProject());
+} catch (e) {
+  // A saved project that validates but cannot be restored: start from the sample wing.
+  keepRejected(restored.text, e.message);
+  saved = null;
+  store = new Store(defaultProject());
+}
 let firstRunOpen = !saved;
-const store = new Store(saved ?? defaultProject());
 let build = safeBuild(store.project);
 const getBuild = () => build;
 
 // Layout.
 const statusText = h('span', { class: 'status-text' });
+const autosaveNote = h('span', { class: 'sev-error' });
 const toast = h('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
 const undoBtn = h('button', { type: 'button', title: 'Undo (Ctrl+Z)', onclick: () => store.undo() }, 'Undo');
 const redoBtn = h('button', { type: 'button', title: 'Redo (Ctrl+Shift+Z)', onclick: () => store.redo() }, 'Redo');
@@ -143,7 +195,7 @@ const tabButtons = TABS.map(([k, label]) =>
   h('button', { type: 'button', role: 'tab', id: `tab-${k}`, 'aria-controls': `pane-${k}`, onclick: () => selectTab(k) }, label),
 );
 const panel = h('aside', { class: 'panel' }, h('div', { class: 'tabs', role: 'tablist' }, tabButtons), ...Object.values(panes));
-const statusBar = h('footer', { class: 'statusbar' }, statusText);
+const statusBar = h('footer', { class: 'statusbar' }, statusText, autosaveNote);
 document.getElementById('app').append(header, h('main', { class: 'layout' }, viewWrap, panel), statusBar);
 
 const viewer = new Viewer3D(viewport);

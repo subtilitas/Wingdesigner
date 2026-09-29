@@ -18,11 +18,15 @@ function cross(a, b) {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
 
+/** Largest display mesh in vertices; cubic lofts are refined 3 times in v while they fit. */
+const MAX_DISPLAY_VERTICES = 100_000;
+
 /** Display geometry of the half wing (duplicated edge vertices for crisp creases). */
 export function displayGeometry(build) {
   const S = build.surface;
   const us = build.paramsU;
-  const vs = refine(build.paramsV, S.degreeV === 1 ? 1 : 3);
+  const fit = Math.floor(MAX_DISPLAY_VERTICES / (us.length * build.paramsV.length));
+  const vs = refine(build.paramsV, S.degreeV === 1 ? 1 : Math.max(1, Math.min(3, fit)));
   const M = us.length;
   const V = vs.length;
   const pos = new Float32Array(M * V * 3);

@@ -93,6 +93,76 @@ export function spanwiseWeights(ys, mode = 'linear') {
   };
 }
 
+/**
+ * Blend of equally sized point lists (one per section) at span position y, with the weights of
+ * spanwiseWeights. 'smooth' evaluates the natural cubic spline of every coordinate from its two
+ * neighbouring sections and their second derivatives, computed once here (tridiagonal system per
+ * coordinate): O(points) per position instead of O(sections x points).
+ * @returns {(y: number) => number[][]}
+ */
+export function spanwiseBlender(ys, mode, lists) {
+  const n = ys.length;
+  if (!(mode === 'smooth' && n >= 3)) {
+    const weights = spanwiseWeights(ys, mode);
+    return (y) => blendPoints(weights(y), lists);
+  }
+  const count = lists[0].length;
+  const dim = lists[0][0].length;
+  const size = count * dim;
+  const F = lists.map((L) => {
+    const f = new Float64Array(size);
+    for (let k = 0; k < count; k++) for (let c = 0; c < dim; c++) f[k * dim + c] = L[k][c];
+    return f;
+  });
+  // Natural spline: D[0] = D[n - 1] = 0; rows r = 0..n-3 solve for D[r + 1] (Thomas algorithm, as in
+  // cardinalSecondDerivatives, with vector right-hand sides).
+  const h = [];
+  for (let i = 0; i < n - 1; i++) h.push(ys[i + 1] - ys[i]);
+  const m = n - 2;
+  const D = Array.from({ length: n }, () => new Float64Array(size));
+  const cp = new Array(m);
+  const dp = new Array(m);
+  for (let r = 0; r < m; r++) {
+    const diag = (h[r] + h[r + 1]) / 3;
+    const lower = h[r] / 6;
+    dp[r] = r === 0 ? diag : diag - lower * cp[r - 1];
+    cp[r] = h[r + 1] / 6 / dp[r];
+    const rhs = D[r + 1];
+    const [f0, f1, f2] = [F[r], F[r + 1], F[r + 2]];
+    const prev = r === 0 ? null : D[r];
+    for (let q = 0; q < size; q++) {
+      const v = (f2[q] - f1[q]) / h[r + 1] - (f1[q] - f0[q]) / h[r];
+      rhs[q] = (prev ? v - lower * prev[q] : v) / dp[r];
+    }
+  }
+  for (let r = m - 2; r >= 0; r--) {
+    const cur = D[r + 1];
+    const next = D[r + 2];
+    for (let q = 0; q < size; q++) cur[q] -= cp[r] * next[q];
+  }
+  return (y) => {
+    const yy = Math.min(Math.max(y, ys[0]), ys[n - 1]);
+    let j = 0;
+    while (j < n - 2 && yy > ys[j + 1]) j++;
+    const hj = ys[j + 1] - ys[j];
+    const a = (ys[j + 1] - yy) / hj;
+    const b = (yy - ys[j]) / hj;
+    const ca = ((a ** 3 - a) * hj * hj) / 6;
+    const cb = ((b ** 3 - b) * hj * hj) / 6;
+    const [f0, f1, d0, d1] = [F[j], F[j + 1], D[j], D[j + 1]];
+    const out = new Array(count);
+    for (let k = 0; k < count; k++) {
+      const p = new Array(dim);
+      for (let c = 0; c < dim; c++) {
+        const q = k * dim + c;
+        p[c] = a * f0[q] + b * f1[q] + ca * d0[q] + cb * d1[q];
+      }
+      out[k] = p;
+    }
+    return out;
+  };
+}
+
 /** Weighted sum of scalars. */
 export function blendScalar(weights, values) {
   let s = 0;

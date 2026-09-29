@@ -2,6 +2,7 @@
 
 import { PRESETS, RANGES, wizardProblems, wizardProject } from '../model/wizard.js';
 import { buildWing } from '../geom/wing.js';
+import { LIMITS } from '../model/project.js';
 import { wingStats } from '../geom/stats.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, h } from './dom.js';
@@ -21,7 +22,7 @@ export function openWizard({ firstRun = false } = {}) {
   return new Promise((resolve) => {
     let preset = 'sport';
     let params = { ...PRESETS[preset].params };
-    const nameInput = h('input', { type: 'text', value: PRESETS[preset].label, 'aria-label': 'Project name' });
+    const nameInput = h('input', { type: 'text', value: PRESETS[preset].label, 'aria-label': 'Project name', maxLength: LIMITS.maxName });
     const inputs = {};
     const presetBox = h('div', { class: 'preset-grid', role: 'radiogroup', 'aria-label': 'Design type' });
     const fieldsBox = h('div', { class: 'wizard-fields' });

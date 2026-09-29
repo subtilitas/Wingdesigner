@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { PRESETS, chordAt, wizardProblems, wizardProject } from '../src/model/wizard.js';
 import { buildWing } from '../src/geom/wing.js';
 import { wingStats } from '../src/geom/stats.js';
-import { LIMITS, validateProject } from '../src/model/project.js';
+import { LIMITS, airfoilPoints, validateProject } from '../src/model/project.js';
+import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { edgeCheck, exportMeshes } from '../src/geom/mesh.js';
 import {
   addAirfoil,
@@ -192,6 +193,22 @@ describe('edit operations', () => {
     expect(validateProject(p).ok).toBe(true);
     p.airfoils.push({ ...p.airfoils[0], id: 'extra' });
     expect(validateProject(p).errors).toContain('At most 200 airfoils are supported (found 201).');
+  });
+
+  it('stops adding airfoils at LIMITS.maxAirfoilPoints points together', () => {
+    const p = sampleProject();
+    const dense = nacaAirfoil('4412', { pointsPerSide: 2500 }).points;
+    const start = airfoilPoints(p);
+    let i = 0;
+    while (airfoilPoints(p) + dense.length <= LIMITS.maxAirfoilPoints) {
+      i += 1;
+      expect(addAirfoil(p, { name: `Dense ${i}`, points: dense.map(([x, y]) => [x, y * (1 + i / 1000)]) })).not.toBeNull();
+    }
+    expect(i).toBe(Math.floor((LIMITS.maxAirfoilPoints - start) / dense.length));
+    expect(addAirfoil(p, { name: 'One more', points: dense.map(([x, y]) => [x, y * 0.5]) })).toBeNull();
+    expect(validateProject(p).ok).toBe(true);
+    p.airfoils.push({ id: 'extra', name: 'Extra', points: dense });
+    expect(validateProject(p).errors).toEqual([`The airfoils hold ${airfoilPoints(p)} points together; the limit is 100000.`]);
   });
 
   it('keeps drags within the project limits', () => {

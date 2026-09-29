@@ -90,6 +90,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   50 MB project held 100 copies (5,000 MB).
 - Autosave: an edit committed less than one frame before the page is hidden or left (reload, closing
   the tab, switching apps) is saved on `pagehide` or `visibilitychange`.
+- STL export refuses a mesh whose triangles collapse or turn over at 32-bit coordinate precision
+  (a 1 mm chord at 1,000,000 mm lost 720 of 960 triangles) and names the coordinate spacing.
+- Loft: fitted-curve crossings, surface-row crossings and crossed trailing-edge slivers are ignored
+  up to their chord fraction and at most 0.1 mm; a fixed fraction accepted a 6.19 mm loop at
+  100,000 mm chord.
+- Airfoil import stops reading after 5001 coordinate lines (400,000 short lines: 175 ms and 23 MB of
+  heap instead of 1,051 ms and 175 MB); a name line above 200 characters keeps its first 200.
+- Project files: names and ids at most 200 characters, airfoil source texts at most 2000; only
+  known keys are kept on import (a deeply nested unknown key made every later start fail); the
+  points of all airfoils together at most 100,000 (200 airfoils of 5000 points took 40 s to build).
+- Autosave failures (browser storage holds about 5,000,000 characters per site) show a notice and
+  the status bar note "Autosave off: use Save"; the next start names the time of the last save. A
+  saved project that cannot be loaded and has no room for a copy stays in place with autosave off.
+- Airfoil checks of surfaces that fold back in x use a sweep (5000-point NACA 4412: 25 ms instead of
+  162 ms); the profile cache is keyed by a hash of the points and keeps the resampling per chord
+  sample count, so a Chord samples change reuses the checks; smooth blending evaluates each position
+  from its two neighbouring sections.
+- Loft grid at most 60,000 points before added stations (160,000 took 0.7 s to build and 3.6 s to
+  display at 20 sections); the 3D view refines cubic lofts in v while the display mesh stays at or
+  below 100,000 vertices; mesh exports offer Fine only up to 2,000,000 triangles for both halves.
+- Airfoil thumbnails scale to the point bounds (project files in percent of chord were clipped);
+  text in the paste field and the NACA designation stays when the Airfoils tab re-renders.
 - Airfoil import: files above 5000 points are rejected instead of stalling the checks; the largest
   x is found without spreading all rows into one call; a drawn blunt trailing-edge base is removed in
   both point orders and when the outline starts on the base; a closed trailing edge reached over a

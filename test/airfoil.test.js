@@ -436,6 +436,34 @@ describe('parser robustness', () => {
     expect(codes(checkAirfoil(dense).issues)).toContain('too-many-points');
   });
 
+  it('keeps the first 200 characters of a long name line', () => {
+    const pts = nacaAirfoil('2412', { pointsPerSide: 21 }).points;
+    const r = parseDat([`N${'x'.repeat(2_000)}`, ...pts.map((p) => p.join(' '))].join('\n'));
+    expect(r.name).toBe(`N${'x'.repeat(199)}`);
+    expect(r.issues.find((i) => i.code === 'long-name').message).toBe('The name line has 2001 characters; the first 200 are used.');
+    expect(r.points.length).toBe(pts.length);
+  });
+
+  it('stops reading coordinate lines after the point limit plus a Lednicer counts line', () => {
+    // 400,000 short rows (1.6 MB): reading stops at row 5002.
+    const text = 'Rows\n' + '0 0\n'.repeat(400000);
+    const t0 = performance.now();
+    const r = parseDat(text);
+    expect(performance.now() - t0).toBeLessThan(500);
+    expect(r.points).toEqual([]);
+    expect(r.issues.find((i) => i.code === 'too-many-points').message).toBe('More than 5001 coordinate lines; the limit is 5000 points.');
+    // A Lednicer file of 5001 rows (counts line and 2 x 2500 surface points) is read.
+    const pts = nacaAirfoil('0012', { pointsPerSide: 2500 }).points;
+    const le = pts.findIndex(([x]) => x === 0);
+    const upper = pts.slice(0, le + 1).reverse();
+    const lower = pts.slice(le);
+    const lednicer = ['L', `${upper.length}. ${lower.length}.`, '', ...upper.map((p) => p.join(' ')), '', ...lower.map((p) => p.join(' '))].join('\n');
+    const read = parseDat(lednicer);
+    expect(read.format).toBe('lednicer');
+    expect(read.points.length).toBe(upper.length + lower.length - 1);
+    expect(1 + upper.length + lower.length).toBe(5001);
+  });
+
   it('removes consecutive points closer than DUPLICATE_DISTANCE so the interpolation stays regular', () => {
     // A copy of a point one unit in the last place away: its chord-length parameter rounds to the
     // parameter of its neighbour and the collocation matrix becomes singular.

@@ -19,10 +19,12 @@ import {
   expect,
   expectClosed,
   exportFile,
+  frames,
   openExport,
   openTab,
   parseStl,
   savedProject,
+  sectionField,
   sectionRows,
   sectionValues,
   statusOf as status,
@@ -241,6 +243,19 @@ test.describe('export dialog', () => {
     expect(Math.abs(step.minY + 600)).toBeLessThan(1e-6);
   });
 
+  test('Export writes a value typed into a field and committed by the Export click', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    // Type the tip y without Enter: the click on Export blurs the field, which commits the value.
+    await sectionField(page, 1, 'y').fill('700');
+    const json = JSON.parse((await exportFile(page, 'json')).bytes.toString('utf8'));
+    expect(json.sections.map((s) => s.y)).toEqual([0, 700]);
+    const ys = json.derived.surface.controlPoints.flat().map((p) => p[1]);
+    expect(Math.max(...ys)).toBeCloseTo(700, 6);
+    await sectionField(page, 1, 'y').fill('650');
+    const stl = parseStl((await exportFile(page, 'stl', { half: 'right' })).bytes);
+    expect(yRange(stl.tris).max).toBeCloseTo(650, 4);
+  });
+
   test('project JSON holds the derived surface and opens in a fresh browser context', async ({ page, browser }) => {
     await createDesign(page, 'Glider');
     const sections = await tableOf(page);
@@ -376,6 +391,79 @@ test.describe('project file errors', () => {
     expect(await savedProject(page)).toEqual(before);
     await page.getByRole('button', { name: 'Undo' }).click();
     await expect(status(page)).toHaveText(/^Span 1500 mm/);
+  });
+
+  /** Fills browser storage with a filler key until `free` characters or fewer stay free. */
+  const fillStorage = (page, free = 0) =>
+    page.evaluate((free) => {
+      localStorage.removeItem('filler');
+      let n = 0;
+      for (const step of [1_000_000, 100_000, 10_000, 1000, 10]) {
+        while (true) {
+          try {
+            localStorage.setItem('filler', 'x'.repeat(n + step));
+            n += step;
+          } catch {
+            break;
+          }
+        }
+      }
+      localStorage.setItem('filler', 'x'.repeat(Math.max(0, n - free)));
+    }, free);
+
+  test('a full browser storage turns autosave off with a notice; the next start names the older save', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await openTab(page, 'Settings');
+    const nameField = page.locator('#pane-settings').getByRole('textbox', { name: 'Project name' });
+    const rename = async (name) => {
+      await nameField.fill(name);
+      await nameField.press('Enter');
+    };
+    // About 120 characters stay free: the stale marker fits, a 185 characters longer name does not.
+    await fillStorage(page, 120);
+    await rename(`Sport ${'long '.repeat(37)}`);
+    await expect(toastOf(page)).toHaveText(/^Autosave is off: browser storage refused the project \(\d+ characters; browsers keep about 5,000,000 per site\)\. Use Save to keep it\.$/);
+    await expect(status(page)).toContainText('Autosave off: use Save');
+    expect((await savedProject(page)).name).toBe('Sport');
+    expect(await page.evaluate((key) => localStorage.getItem(`${key}.stale`), STORAGE_KEY)).toMatch(/^\d{4}-\d\d-\d\d \d\d:\d\d UTC$/);
+
+    // The next start opens the last save and says that later edits are missing.
+    await page.reload();
+    await expect(toastOf(page)).toHaveText(/^This is the project as last saved; autosave stopped at .+ UTC because browser storage was full, and later edits were not saved\.$/);
+    await expect(status(page)).not.toContainText('Autosave off');
+    await openTab(page, 'Settings');
+    await expect(nameField).toHaveValue('Sport');
+
+    // With room again, the next save works and clears the notice.
+    await rename(`Sport ${'long '.repeat(37)}`);
+    await expect(status(page)).toContainText('Autosave off: use Save');
+    await page.evaluate(() => localStorage.removeItem('filler'));
+    await rename('Sport renamed');
+    await expect(toastOf(page)).toHaveText('Autosave works again.');
+    await expect(status(page)).not.toContainText('Autosave off');
+    expect((await savedProject(page)).name).toBe('Sport renamed');
+    expect(await page.evaluate((key) => localStorage.getItem(`${key}.stale`), STORAGE_KEY)).toBeNull();
+  });
+
+  test('an unloadable save that has no room for a copy stays in place and autosave stays off', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const bad = JSON.stringify({ format: 'wingdesigner-project', version: 1, name: 'x'.repeat(100_000), airfoils: [], sections: [] });
+    await page.evaluate(([key, text]) => localStorage.setItem(key, text), [STORAGE_KEY, bad]);
+    await fillStorage(page, 0);
+    await page.reload();
+    await expect(toastOf(page)).toHaveText(
+      `The saved project could not be loaded (airfoils must be a non-empty array.), and browser storage has no room for a copy: autosave is off, so it stays under "${STORAGE_KEY}". Use Save to keep new work.`,
+    );
+    const wizard = dialogOf(page);
+    await wizard.getByRole('radio', { name: /^Plank/ }).click();
+    await wizard.getByRole('button', { name: 'Create design' }).click();
+    await expect(status(page)).toHaveText(/^Span 1000 mm/);
+    await page.evaluate(() => localStorage.removeItem('filler'));
+    await openTab(page, 'Settings');
+    await page.locator('#pane-settings').getByRole('textbox', { name: 'Project name' }).fill('Plank 2');
+    await page.locator('#pane-settings').getByRole('textbox', { name: 'Project name' }).press('Enter');
+    await frames(page);
+    expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(bad);
   });
 
   test('a corrupted autosave is kept aside with a message and the wizard opens', async ({ page }) => {

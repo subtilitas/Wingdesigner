@@ -8,7 +8,7 @@ import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
 import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
 import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
-import { blendPoints, blendScalar, spanwiseWeights } from './spanwise.js';
+import { blendScalar, spanwiseBlender, spanwiseWeights } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
 
@@ -37,9 +37,10 @@ export const OVERSHOOT_LIMIT = 2;
 
 /**
  * Largest loft grid before added stations: spanwise stations times profile points (2N + 1). 20
- * sections with 40 stations per panel and 200 chord samples (305,000 points) took 4 s to build.
+ * sections with 40 stations per panel and 200 chord samples: 160,000 points took 0.7 s to build and
+ * 3.6 s to display; the default design has 363.
  */
-export const MAX_GRID_POINTS = 160_000;
+export const MAX_GRID_POINTS = 60_000;
 
 /** Surface rows tested halfway between fitted stations (the widest intervals), besides the sections. */
 const MAX_STATION_ROWS = 64;
@@ -142,35 +143,63 @@ function interpolateAlongV(values, scheme) {
   return { degree: cols[0].degree, knots: cols[0].knots, columns: cols.map((c) => c.points) };
 }
 
-// Profile stage per airfoil (checks, NURBS curve, crossing test, resampling), keyed by the point
-// list and the settings it depends on. Airfoils rarely change between edits.
+// Profile stage per airfoil (checks, NURBS curve, crossing test), keyed by the parametrization and
+// a hash of the points; resampled shapes are kept per chord-sample count N. Airfoils rarely change
+// between edits. A hit is confirmed by comparing the points, so a hash collision only costs a miss.
 const PROFILE_CACHE = new Map();
 const PROFILE_CACHE_SIZE = 32;
 
-function profileStage(a, parametrization, chordStations, N) {
-  const key = `${parametrization}|${N}|${JSON.stringify(a.points)}`;
-  const hit = PROFILE_CACHE.get(key);
-  if (hit) {
-    // Most recently used entries sit at the end of the map (insertion order).
-    PROFILE_CACHE.delete(key);
-    PROFILE_CACHE.set(key, hit);
-    return hit;
-  }
-  let out;
-  const check = checkAirfoil(a.points);
-  if (!check.ok) {
-    out = { error: check.issues.filter((i) => i.severity === 'error').map((i) => i.message).join(' ') };
-  } else {
-    try {
-      const prof = profileCurve(check.points, { parametrization });
-      const problem = profileProblem(prof);
-      out = problem ? { error: problem } : { prof, points: check.points, compat: unitChord(resampleProfile(prof, chordStations), N) };
-    } catch (e) {
-      out = { error: `the NURBS interpolation failed (${e.message}).` };
+const F64 = new Float64Array(1);
+const U32 = new Uint32Array(F64.buffer);
+
+/** Two 32-bit hashes (FNV-1a and a multiplicative mix) over the bits of every coordinate. */
+function pointsHash(points) {
+  let h1 = 0x811c9dc5;
+  let h2 = points.length;
+  for (const p of points) {
+    for (let c = 0; c < 2; c++) {
+      F64[0] = p[c];
+      h1 = Math.imul(h1 ^ U32[0], 0x01000193);
+      h1 = Math.imul(h1 ^ U32[1], 0x01000193);
+      h2 = Math.imul(h2 ^ U32[1], 0x5bd1e995);
+      h2 = Math.imul(h2 ^ U32[0], 0x5bd1e995);
+      h2 ^= h2 >>> 15;
     }
   }
-  PROFILE_CACHE.set(key, out);
-  return out;
+  return `${points.length}:${(h1 >>> 0).toString(36)}:${(h2 >>> 0).toString(36)}`;
+}
+
+const samePoints = (a, b) => a.length === b.length && a.every((p, i) => p[0] === b[i][0] && p[1] === b[i][1]);
+
+function profileStage(a, parametrization, chordStations, N) {
+  const key = `${parametrization}|${pointsHash(a.points)}`;
+  let entry = PROFILE_CACHE.get(key);
+  if (entry && samePoints(entry.source, a.points)) {
+    // Most recently used entries sit at the end of the map (insertion order).
+    PROFILE_CACHE.delete(key);
+  } else {
+    entry = { source: a.points.map((p) => [p[0], p[1]]), compat: new Map() };
+    const check = checkAirfoil(a.points);
+    if (!check.ok) {
+      entry.error = check.issues.filter((i) => i.severity === 'error').map((i) => i.message).join(' ');
+    } else {
+      try {
+        const prof = profileCurve(check.points, { parametrization });
+        const problem = profileProblem(prof);
+        if (problem) entry.error = problem;
+        else Object.assign(entry, { prof, points: check.points });
+      } catch (e) {
+        entry.error = `the NURBS interpolation failed (${e.message}).`;
+      }
+    }
+  }
+  PROFILE_CACHE.set(key, entry);
+  if (!entry.error && !entry.compat.has(N)) {
+    entry.compat.set(N, unitChord(resampleProfile(entry.prof, chordStations), N));
+    // The current and the previous chord-sample count.
+    if (entry.compat.size > 2) entry.compat.delete(entry.compat.keys().next().value);
+  }
+  return entry;
 }
 
 /**
@@ -265,7 +294,7 @@ export function buildWing(project) {
       );
       continue;
     }
-    result.profiles.set(s.airfoil, { ...stage.prof, id: a.id, name: a.name, points: stage.points, compat: stage.compat });
+    result.profiles.set(s.airfoil, { ...stage.prof, id: a.id, name: a.name, points: stage.points, compat: stage.compat.get(N) });
   }
   // Every entry this build used is at the recent end; older ones go beyond the larger of
   // PROFILE_CACHE_SIZE and the number of airfoils the sections use.
@@ -327,6 +356,7 @@ export function buildWing(project) {
   stationYs.push(y1);
 
   const compat = sections.map((s) => result.profiles.get(s.airfoil).compat);
+  const blendCompat = spanwiseBlender(ys, settings.spanwise, compat);
   const vals = (k) => sections.map((s) => s[k]);
   const X = vals('x');
   const Z = vals('z');
@@ -462,7 +492,7 @@ export function buildWing(project) {
     // Blended profile thickness at every chord station (smooth mode can overshoot below zero), then
     // again after the trailing-edge setting, whose linear taper can pull the surfaces through each
     // other where an airfoil is thinner than its trailing-edge gap.
-    const shape = blendPoints(w, compat);
+    const shape = blendCompat(y);
     if (smooth) {
       for (const q of overshootChecks) record(q.name, q.unit, blendScalar(w, q.values), q.range, y);
       for (let k = 1; k < 2 * N; k++) record(profileNames[k], '% chord', shape[k][1], profileRanges[k], y);
@@ -568,6 +598,7 @@ export function buildWing(project) {
   const sub = [0, ...probeK.slice().reverse().map((k) => N - k), N, ...probeK.map((k) => N + k), 2 * N];
   const leSub = probeK.length + 1;
   const subCompat = compat.map((c) => sub.map((i) => c[i]));
+  const blendSub = spanwiseBlender(ys, settings.spanwise, subCompat);
   const pos = [leSub, 0, ...probeK.flatMap((_, q) => [leSub - 1 - q, leSub + 1 + q])];
   const idx = pos.map((j) => sub[j]);
   const probe = (yList, surface, paramsU, closedTE) => {
@@ -583,7 +614,7 @@ export function buildWing(project) {
       if (!(y >= y0 && y <= y1) || !(y1 > y0)) continue;
       const pl = placement(y);
       const v = (y - y0) / (y1 - y0);
-      const shape = finalShape(applyTrailingEdge(blendPoints(pl.w, subCompat), te.mode, teGap(pl.chord), leSub), pl.chord, closedTE, leSub);
+      const shape = finalShape(applyTrailingEdge(blendSub(y), te.mode, teGap(pl.chord), leSub), pl.chord, closedTE, leSub);
       const intended = placeSection([...pos.map((j) => shape[j]), [1, 0]], { ...pl, y }, pivot);
       const axis = intended[idx.length];
       const fitted = idx.map((i) => surfacePoint(surface, paramsU[i], v));
@@ -633,9 +664,9 @@ export function buildWing(project) {
     // Trailing-edge thickness in mm, limited to MAX_GAP_FRACTION of the local chord.
     let limited = 0;
     for (const y of yList) {
-      const { w, xLE, chord, z, twist } = placement(y);
+      const { xLE, chord, z, twist } = placement(y);
       if (te.mode === 'thickness' && te.thickness / chord > MAX_GAP_FRACTION && !(pointed && y > yPrev)) limited++;
-      const shape = applyTrailingEdge(blendPoints(w, compat), te.mode, teGap(chord), N);
+      const shape = applyTrailingEdge(blendCompat(y), te.mode, teGap(chord), N);
       stations.push({ xLE, y, z, chord, twist, v: y1 > y0 ? (y - y0) / (y1 - y0) : 0, shape });
     }
     // Trailing-edge topology: closed when every station is closed, otherwise open with a minimum gap.
