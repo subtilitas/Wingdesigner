@@ -816,6 +816,21 @@ test.describe('Planform tab', () => {
     await expect(guideButton(page, 'nose', 'Remove selected point')).toBeDisabled({ timeout: 2000 });
   });
 
+  test('a guide value committed by clicking Export shows its clamped value in the table', async ({ page }) => {
+    await createDesign(page, 'Glider');
+    await openPlanform(page);
+    const cell = guideRows(page, 'end').nth(1).getByRole('spinbutton').nth(1);
+    await cell.fill('5000');
+    // The click blurs the field: the edit commits and Export builds it at once.
+    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    await expect(page.locator('dialog.modal')).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('dialog.modal')).toHaveCount(0);
+    const y = (await guidePoints(page, 'end'))[1][1];
+    expect(y).toBeLessThan(5000);
+    await expect(cell).toHaveValue(String(y));
+  });
+
   test('clearing a guide x cell keeps the point', async ({ page }) => {
     await createDesign(page, 'Glider');
     await openPlanform(page);

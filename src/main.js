@@ -103,6 +103,7 @@ function currentBuild() {
     build = safeBuild(store.project);
     geometryPending = false;
     viewPending = true;
+    formsPending = true;
   }
   return build;
 }
@@ -315,6 +316,9 @@ let geometryPending = false;
 let viewPending = true;
 // Airfoils added or removed without a section using them: the table and Checks refresh, the wing stays.
 let tablePending = false;
+// The project geometry changed and was built by currentBuild (Save, Export) before the next frame:
+// the planform forms still render the new project there.
+let formsPending = false;
 function rebuild() {
   if (rebuildPending) return;
   rebuildPending = true;
@@ -350,8 +354,9 @@ function rebuild() {
     }
     // The guide point tables change only with the project geometry; a selection or a display change
     // redraws the planform canvas.
-    if (changed) planform.update();
+    if (changed || formsPending) planform.update();
     else planform.pz.redraw();
+    formsPending = false;
     if (refreshPanels) {
       airfoils.update();
       settings.update();
