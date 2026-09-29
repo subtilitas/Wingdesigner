@@ -130,7 +130,7 @@ describe('.dat parser', () => {
   it('reports empty input', () => {
     expect(codes(parseDat('').issues)).toContain('no-points');
     expect(codes(parseDat(null).issues)).toContain('no-points');
-    expect(codes(parseDat('just a name\nand text').issues)).toContain('no-points');
+    expect(codes(parseDat('a name only\nand text').issues)).toContain('no-points');
   });
 
   it('round-trips through Selig text', () => {

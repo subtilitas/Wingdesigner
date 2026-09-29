@@ -19,7 +19,8 @@
     "coverage:readme": "node scripts/coverage-readme.mjs",
     "coverage:check": "node scripts/coverage-readme.mjs --check",
     "airfoils:check": "node scripts/check-airfoils.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "step:cases": "node scripts/export-step-cases.mjs step-check"
   },
   "dependencies": {
     "fflate": "^0.8.3",

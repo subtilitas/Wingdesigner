@@ -14,7 +14,7 @@ export function signedArea(points) {
 
 /**
  * Index of the leading-edge point: the point farthest from the trailing-edge midpoint
- * (ties resolved towards minimum x). Robust for rotated or unnormalized data.
+ * (ties resolved towards minimum x). Works for rotated and unnormalized data.
  */
 export function leadingEdgeIndex(points) {
   const n = points.length;
