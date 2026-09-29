@@ -94,6 +94,19 @@ function save(project) {
   }
 }
 
+/**
+ * The build of the current project. An edit committed by the blur of a Save or Export click is not
+ * yet built: it is built here, and the next frame draws the view and panels from it.
+ */
+function currentBuild() {
+  if (geometryPending) {
+    build = safeBuild(store.project);
+    geometryPending = false;
+    viewPending = true;
+  }
+  return build;
+}
+
 function safeBuild(project) {
   try {
     return buildWing(project);
@@ -172,10 +185,9 @@ const header = h(
       {
         type: 'button',
         title: 'Save the project as JSON',
-        // Build from the current project: an edit committed by this click's blur is not yet in `build`.
         onclick: () => {
           try {
-            const file = projectFileText(store.project, safeBuild(store.project), { generatorVersion: VERSION });
+            const file = projectFileText(store.project, currentBuild(), { generatorVersion: VERSION });
             download(slugFile(store.project.name, 'json'), file.text, 'application/json');
             if (file.omitted) message(OMITTED_NOTE);
           } catch (e) {
@@ -186,7 +198,7 @@ const header = h(
       },
       'Save',
     ),
-    h('button', { type: 'button', class: 'primary', onclick: () => exportDialog(store, () => safeBuild(store.project), VERSION, message) }, 'Export'),
+    h('button', { type: 'button', class: 'primary', onclick: () => exportDialog(store, currentBuild, VERSION, message) }, 'Export'),
     undoBtn,
     redoBtn,
     h('button', { type: 'button', onclick: () => helpDialog() }, 'Help'),

@@ -296,6 +296,23 @@ describe('parser variants', () => {
     expect(codes(r.issues)).toContain('extra-columns');
   });
 
+  it('reads a percent Selig file whose trailing-edge row holds two integers as Selig', () => {
+    const r = parseDat(['sparse', '100 2', '4 3', '0 0', '4 -3', '50 -5', '100 -2'].join('\n'));
+    expect(r.format).toBe('selig');
+    expect(r.points).toEqual([
+      [1, 0.02],
+      [0.04, 0.03],
+      [0, 0],
+      [0.04, -0.03],
+      [0.5, -0.05],
+      [1, -0.02],
+    ]);
+    // A Lednicer file with matching counts still reads as Lednicer.
+    const led = parseDat(['led', '3 3', '0 0', '0.5 0.06', '1 0', '0 0', '0.5 -0.04', '1 0'].join('\n'));
+    expect(led.format).toBe('lednicer');
+    expect(led.points).toHaveLength(5);
+  });
+
   it('reads XML airfoil geometry', () => {
     const xml = `<?xml version="1.0"?><airfoil><name>Test &amp; Co</name><elements><element><coordinates>
       <point><x>1.0</x><y>0.0</y><z>0</z></point><point><x>0.5</x><y>0.06</y><z>0</z></point>
@@ -306,6 +323,9 @@ describe('parser variants', () => {
     expect(r.format).toBe('xml');
     expect(r.name).toBe('Test & Co');
     expect(r.points.length).toBe(5);
+    // All predefined entities and character references as code points, in one pass.
+    const named = parseDat(xml.replace('Test &amp; Co', 'A &apos;B&apos; &#x1F600; &#128512; &amp;lt; &#xD800;'));
+    expect(named.name).toBe("A 'B' \u{1F600} \u{1F600} &lt; &#xD800;");
     expect(codes(r.issues)).toContain('multi-element');
     const unnamed = parseDat('<coordinates><point><x>1</x><y>0</y></point></coordinates>', { fileName: 'q.xml' });
     expect(unnamed.name).toBe('q');

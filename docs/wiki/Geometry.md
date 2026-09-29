@@ -532,7 +532,7 @@ Example: **Sport** preset, N = 60, d = 1, open TE: 242 vertices, 480 triangles p
 | **Wing halves** | Shells |
 | --- | --- |
 | **Both halves as separate bodies** | 2 closed shells, root caps included |
-| **Full wing as one body (mesh formats, root at y = 0)** | root at \|y\| < 1e-9 mm: 1 closed shell, the halves share the root vertices, no root caps; otherwise 2 shells |
+| **Full wing as one body (mesh formats, root at y = 0)** | root at exactly y = 0 mm: 1 closed shell, the halves share the root vertices, no root caps; otherwise 2 shells |
 | **Right half only** | 1 closed shell |
 
 ## 6. STEP topology

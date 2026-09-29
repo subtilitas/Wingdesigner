@@ -71,13 +71,16 @@ export function decodeText(bytes) {
   }
 }
 
+const ENTITIES = { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' };
+
+// One pass: the 5 predefined XML entities and decimal or hexadecimal character references as code
+// points; a reference to no Unicode scalar value stays as written.
 function decodeEntities(s) {
-  return s
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
-    .replace(/&amp;/g, '&');
+  return s.replace(/&(lt|gt|quot|apos|amp|#\d+|#[xX][0-9a-fA-F]+);/g, (m, e) => {
+    if (e[0] !== '#') return ENTITIES[e];
+    const cp = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+    return cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : m;
+  });
 }
 
 /** Content between the first <tag> and its closing tag (case-insensitive), or null. */
@@ -261,34 +264,43 @@ export function parseDat(text, options = {}) {
 
   const first = rows[0].values;
   const isCount = (v) => v >= 2 && Math.abs(v - Math.round(v)) < 1e-9;
-  // Lednicer: a counts line followed by the upper surface starting at the leading edge (x near 0).
-  const xs1 = rows.slice(1).map((r) => r.values[0]);
-  let xs1Max = 1e-12;
-  for (const x of xs1) xs1Max = Math.max(xs1Max, Math.abs(x));
-  const startsAtLE = xs1.length > 0 && xs1[0] <= 0.05 * xs1Max;
-  if (isCount(first[0]) && isCount(first[1]) && rows.length > 1 && startsAtLE) {
+  // Lednicer: a counts line followed by the upper surface starting at the leading edge. The first
+  // data row lies within 1 % of the x range of the smallest x, and either the counts match the rows
+  // or the split at the x reset starts the lower surface at the leading edge too. A percent Selig
+  // file whose trailing-edge row holds two integers ("100 2") fails these tests.
+  let lednicer = null;
+  if (isCount(first[0]) && isCount(first[1]) && rows.length > 2) {
+    const data = rows.slice(1).map((r) => [r.values[0], r.values[1]]);
+    let minX = Infinity;
+    let maxX = -Infinity;
+    for (const [x] of data) {
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+    }
+    const nearLE = (x) => x - minX <= 0.01 * (maxX - minX);
     const nu = Math.round(first[0]);
     const nl = Math.round(first[1]);
-    const data = rows.slice(1).map((r) => [r.values[0], r.values[1]]);
-    let upper;
-    let lower;
-    if (data.length === nu + nl) {
-      upper = data.slice(0, nu);
-      lower = data.slice(nu);
-    } else {
-      issues.push(
-        issue('warning', 'lednicer-count', `Header announces ${nu}+${nl} points but ${data.length} were found; surfaces split at the x reset.`),
-      );
-      let split = data.length;
-      for (let k = 1; k < data.length; k++) {
-        if (data[k][0] < data[k - 1][0] - 0.25 * (Math.abs(data[k - 1][0]) + 1e-12)) {
-          split = k;
-          break;
+    if (nearLE(data[0][0])) {
+      if (data.length === nu + nl) lednicer = { upper: data.slice(0, nu), lower: data.slice(nu) };
+      else {
+        let split = data.length;
+        for (let k = 1; k < data.length; k++) {
+          if (data[k][0] < data[k - 1][0] - 0.25 * (Math.abs(data[k - 1][0]) + 1e-12)) {
+            split = k;
+            break;
+          }
+        }
+        if (split >= 2 && data.length - split >= 2 && nearLE(data[split][0])) {
+          issues.push(
+            issue('warning', 'lednicer-count', `Header announces ${nu}+${nl} points but ${data.length} were found; surfaces split at the x reset.`),
+          );
+          lednicer = { upper: data.slice(0, split), lower: data.slice(split) };
         }
       }
-      upper = data.slice(0, split);
-      lower = data.slice(split);
     }
+  }
+  if (lednicer) {
+    const { upper, lower } = lednicer;
     const up = upper.slice().reverse();
     const points = up.concat(lower.length && up.length && samePoint(lower[0], up[up.length - 1]) ? lower.slice(1) : lower);
     return finish(name, 'lednicer', points, issues);

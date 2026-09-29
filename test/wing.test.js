@@ -924,3 +924,20 @@ describe('span stations', () => {
     expect(b.errors[0]).toMatch(/^Sections 2 and 3 at y = 714063\.9936875999 mm and y = 714063\.9936876 mm lie too close together for the surface parameters/);
   });
 });
+
+describe('guide inversion', () => {
+  it('solves y on a guide spanning less than 1e-12 mm to parameter precision', () => {
+    const curve = { degree: 2, knots: [0, 0, 0, 1, 1, 1], points: [[0, 0], [100, 9e-14], [0, 1e-13]] };
+    // Reference: bisection on y(t) = 5e-14, the span midpoint.
+    let a = 0;
+    let b = 1;
+    for (let i = 0; i < 200; i++) {
+      const m = 0.5 * (a + b);
+      if (curvePoint(curve, m)[1] < 5e-14) a = m;
+      else b = m;
+    }
+    const x = curvePoint(curve, 0.5 * (a + b))[0];
+    expect(x).toBeCloseTo(43.85, 1);
+    expect(guideXAt(curve, 300, 0, 600)).toBeCloseTo(x, 6);
+  });
+});

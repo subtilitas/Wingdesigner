@@ -82,11 +82,12 @@ Lednicer conditions:
 
 - The first numeric line holds 2 integers ≥ 2 (e.g. `61. 61.`).
 - At least 1 more numeric line follows.
-- The x of the next line is at most 5 % of the largest \|x\| of all following lines. The upper surface starts at the LE.
+- The x of the next line lies within 1 % of the x range above the smallest x of all following lines: the upper surface starts at the LE.
+- The counts match the number of following lines, or the split at the first x reset (rule below) leaves at least 2 points per surface and the lower surface also starts within 1 % of the x range of the smallest x. A percent Selig file whose trailing-edge line holds 2 integers, e.g. `100 2`, fails these conditions and reads as Selig.
 
 Further rules:
 
-- HTML: entities decoded are `&lt;` `&gt;` `&quot;` `&amp;` `&#NNN;`. Without `<pre>`, the content of `<head>`, `<title>`, `<script>` and `<style>` is dropped.
+- XML and HTML: entities decoded are `&lt;` `&gt;` `&quot;` `&apos;` `&amp;`, `&#NNN;` and `&#xHHHH;` (as Unicode code points, in one pass, so `&amp;lt;` becomes `&lt;`). A reference to a surrogate or above U+10FFFF stays as written. Without `<pre>`, the content of `<head>`, `<title>`, `<script>` and `<style>` is dropped.
 - Lednicer: when the counts do not match the number of points, the surfaces are split at the first x reset. x reset: x drops by more than 25 % of the previous x.
 - Lines with more than 2 values that do not form a table: columns 1 and 2 are used.
 
@@ -484,7 +485,7 @@ Counts in this file: 161 points per airfoil, 165 profile knots, 121 × 3 surface
 | **Full wing as one body (mesh formats, root at y = 0)** | 2 solids | 1 closed shell | 1 object: `Wing` |
 | **Right half only** | 1 solid | 1 closed shell | 1 object: `Wing right` |
 
-- **Full wing** needs the root section at |y| < 1e-9 mm. Otherwise STL and 3MF contain 2 shells, as with **Both halves**.
+- **Full wing** needs the root section at exactly y = 0 mm. Otherwise STL and 3MF contain 2 shells, as with **Both halves**.
 - **Mesh density (STL, 3MF)**: **Normal** or **Fine (4x triangles)**. **Fine** splits every u interval (chordwise) and every v interval (spanwise) of the **Normal** mesh into 2. Measured triangle count: 3.0 to 3.9 times **Normal** (table "File sizes").
 - Mesh construction and triangle counts: [[Geometry|Geometry]], section 5 "Meshes".
 

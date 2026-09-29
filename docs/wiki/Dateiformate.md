@@ -82,11 +82,12 @@ Lednicer-Bedingungen:
 
 - Die erste Zahlenzeile enthält 2 ganze Zahlen ≥ 2 (z. B. `61. 61.`).
 - Mindestens 1 weitere Zahlenzeile folgt.
-- Das x der nächsten Zeile beträgt höchstens 5 % des größten \|x\| aller folgenden Zeilen. Die Oberseite beginnt an der Profilnase.
+- Das x der nächsten Zeile liegt höchstens 1 % des x-Bereichs über dem kleinsten x aller folgenden Zeilen: Die Oberseite beginnt an der Profilnase.
+- Die Anzahlen stimmen mit der Zahl der folgenden Zeilen überein, oder die Trennung am ersten x-Rücksprung (Regel unten) lässt mindestens 2 Punkte je Seite, und auch die Unterseite beginnt höchstens 1 % des x-Bereichs über dem kleinsten x. Eine Selig-Datei in Prozent, deren Endleistenzeile 2 ganze Zahlen enthält, z. B. `100 2`, erfüllt diese Bedingungen nicht und wird als Selig gelesen.
 
 Weitere Regeln:
 
-- HTML: Dekodiert werden die Entitäten `&lt;` `&gt;` `&quot;` `&amp;` `&#NNN;`. Ohne `<pre>` entfällt der Inhalt von `<head>`, `<title>`, `<script>` und `<style>`.
+- XML und HTML: Dekodiert werden die Entitäten `&lt;` `&gt;` `&quot;` `&apos;` `&amp;`, `&#NNN;` und `&#xHHHH;` (als Unicode-Codepunkte, in einem Durchgang, sodass `&amp;lt;` zu `&lt;` wird). Ein Verweis auf ein Ersatzzeichen (Surrogat) oder über U+10FFFF bleibt wie geschrieben. Ohne `<pre>` entfällt der Inhalt von `<head>`, `<title>`, `<script>` und `<style>`.
 - Lednicer: Passen die Anzahlen nicht zur Punktzahl, werden die Seiten am ersten x-Rücksprung getrennt. x-Rücksprung: x fällt um mehr als 25 % des vorherigen x.
 - Zeilen mit mehr als 2 Werten, die keine Tabelle bilden: Spalten 1 und 2 werden verwendet.
 
@@ -485,7 +486,7 @@ Fläche, 125 Werte in `knotsU`.
 | **Full wing as one body (mesh formats, root at y = 0)** (ganzer Flügel als ein Körper) | 2 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing` |
 | **Right half only** (nur rechte Hälfte) | 1 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing right` |
 
-- **Full wing** setzt den Wurzelschnitt bei |y| < 1e-9 mm voraus. Sonst enthalten STL und 3MF 2 Hüllen, wie bei **Both halves**.
+- **Full wing** setzt den Wurzelschnitt bei genau y = 0 mm voraus. Sonst enthalten STL und 3MF 2 Hüllen, wie bei **Both halves**.
 - **Mesh density (STL, 3MF)** (Netzdichte): **Normal** oder **Fine (4x triangles)** (fein). **Fine** teilt jedes u-Intervall (Tiefenrichtung) und jedes v-Intervall (Spannweitenrichtung) des **Normal**-Netzes in 2. Gemessene Dreieckszahl: 3,0- bis 3,9-fach gegenüber **Normal** (Tabelle „Dateigrößen“).
 - Aufbau der Dreiecksnetze und Dreieckszahlen: [[Geometrie|Geometrie]], Abschnitt 5 „Dreiecksnetze“.
 

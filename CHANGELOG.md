@@ -206,6 +206,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   knot of multiplicity degree + 2); only knots within 4 units in the last place merge.
 - The 3D view draws at most 100,000 control-net segments: above that it keeps every k-th control
   line in each direction, first and last included.
+- Guide curves invert y with a tolerance of 1e-12 of their y extent; Lednicer detection needs the first
+  data row at the leading edge and matching counts or a plausible split, so percent Selig files
+  with an integer trailing-edge row read as Selig; XML and HTML entities include `&apos;` and
+  hexadecimal references, decoded as code points; **Full wing** merges the halves only for a root at
+  exactly y = 0; Save and Export reuse the current build.
 - The build rejects two sections whose span fractions lie within 4 units in the last place (one
   knot would carry both); a project name change saves without rebuilding the wing; the 3D view draws
   at most 100,000 section-outline segments; a Selig name line that reads as coordinates or markup is

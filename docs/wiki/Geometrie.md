@@ -553,7 +553,7 @@ Beispiel: Vorlage **Sport**, N = 60, d = 1, offene Endleiste: 242 Eckpunkte, 480
 | **Wing halves** | Hüllen |
 | --- | --- |
 | **Both halves as separate bodies** (beide Hälften als getrennte Körper) | 2 geschlossene Hüllen, Abschlussflächen an der Wurzel enthalten |
-| **Full wing as one body (mesh formats, root at y = 0)** (ganzer Flügel als ein Körper) | Wurzel bei \|y\| < 1e-9 mm: 1 geschlossene Hülle, die Hälften teilen die Wurzelpunkte, keine Abschlussflächen an der Wurzel; sonst 2 Hüllen |
+| **Full wing as one body (mesh formats, root at y = 0)** (ganzer Flügel als ein Körper) | Wurzel bei genau y = 0 mm: 1 geschlossene Hülle, die Hälften teilen die Wurzelpunkte, keine Abschlussflächen an der Wurzel; sonst 2 Hüllen |
 | **Right half only** (nur rechte Hälfte) | 1 geschlossene Hülle |
 
 ## 6. STEP-Topologie

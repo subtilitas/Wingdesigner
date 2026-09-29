@@ -36,6 +36,12 @@ describe('export meshes', () => {
     const p = sampleProject();
     p.sections.forEach((s) => (s.y += 10));
     expect(exportMeshes(buildWing(p), 'merged').length).toBe(2);
+    // A root 1e-10 mm off the plane is off the plane: two shells, each closed.
+    const q = sampleProject();
+    q.sections[0].y = 1e-10;
+    const near = exportMeshes(buildWing(q), 'merged');
+    expect(near.length).toBe(2);
+    for (const { mesh } of near) expect(edgeCheck(mesh).closed).toBe(true);
   });
 });
 

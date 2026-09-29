@@ -77,7 +77,9 @@ export function guideXAt(curve, y, yRoot, yTip) {
   const y1 = P[P.length - 1][1];
   const f = yTip > yRoot ? (y - yRoot) / (yTip - yRoot) : 0;
   const yg = y0 + Math.min(Math.max(f, 0), 1) * (y1 - y0);
-  const t = solveMonotonic((s) => curvePoint(curve, s)[1], yg, 0, 1, 1e-12);
+  // Tolerance relative to the guide's y extent: an absolute 1e-12 accepted the first estimate on
+  // guides spanning less than 1e-12 mm.
+  const t = solveMonotonic((s) => curvePoint(curve, s)[1], yg, 0, 1, 1e-12 * Math.abs(y1 - y0));
   return curvePoint(curve, t)[0];
 }
 
