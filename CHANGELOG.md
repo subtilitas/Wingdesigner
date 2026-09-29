@@ -206,6 +206,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   knot of multiplicity degree + 2); only knots within 4 units in the last place merge.
 - The 3D view draws at most 100,000 control-net segments: above that it keeps every k-th control
   line in each direction, first and last included.
+- The Sections table accepts a y that differs from every other section y (a y within 1e-6 mm of
+  another section was refused); the airfoil preview view widens to points outside y = ±0.2.
 - The build finds the largest chord per airfoil and the station of each section in one pass instead
   of a scan per airfoil and per section.
 - UI: rejected autosave data is kept under a separate key; keyboard shortcuts are inactive while a

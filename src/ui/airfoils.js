@@ -123,8 +123,19 @@ export function previewAirfoil(candidate, { title = 'Airfoil preview', allowEdit
     );
     document.body.append(dialog);
     const marks = issues.filter((i) => Number.isInteger(i.where)).map((i) => i.where);
+    // View: x -0.05 to 1.05, y -0.2 to 0.2, widened to the points and the curve plus 0.05 chord.
+    const box = [-0.05, -0.2, 1.05, 0.2];
+    const widen = ([x, y]) => {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      box[0] = Math.min(box[0], x - 0.05);
+      box[1] = Math.min(box[1], y - 0.05);
+      box[2] = Math.max(box[2], x + 0.05);
+      box[3] = Math.max(box[3], y + 0.05);
+    };
+    pts.forEach(widen);
+    if (curve) for (let k = 0; k <= 600; k++) widen(curvePoint(curve, k / 600));
     const pz = new PanZoomCanvas(canvas, {
-      bounds: () => [-0.05, -0.2, 1.05, 0.2],
+      bounds: () => box,
       draw: (ctx, view, w, hgt) => {
         view.drawGrid(ctx, w, hgt, cssVar('--grid', '#dde3ea'), cssVar('--axis', '#9aa6b2'));
         if (curve) {

@@ -318,6 +318,10 @@ test.describe('Sections tab', () => {
     await expect(status(page)).not.toHaveClass(/has-error/);
     expect((await savedProject(page)).sections.map((s) => s.y)).toEqual([0, 600, 700]);
 
+    // A y 2e-7 mm from another section is a distinct position and is accepted.
+    await editField(page, 2, 'y', 600.0000002);
+    await expect.poll(async () => (await savedProject(page)).sections.map((s) => s.y)).toEqual([0, 600, 600.0000002]);
+
     await editField(page, 2, 'y', 650);
     await expect(status(page)).not.toHaveClass(/has-error/);
     await expect(status(page)).toContainText('Span 1300 mm');

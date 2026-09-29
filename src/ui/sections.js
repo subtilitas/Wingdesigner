@@ -78,7 +78,7 @@ export class SectionsPanel {
         // Values outside the project limits are clamped to them.
         const f = FIELDS.find((q) => q.key === key);
         const v = Math.min(Math.max(value, f.min), f.max);
-        if (key === 'y' && p.sections.some((o) => o.id !== s.id && Math.abs(o.y - v) < 1e-6)) {
+        if (key === 'y' && p.sections.some((o) => o.id !== s.id && o.y === v)) {
           this.onMessage(`Another section already lies at y = ${v} mm; sections need distinct span positions.`, true);
           this.render();
           return;
