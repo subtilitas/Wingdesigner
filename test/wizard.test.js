@@ -7,6 +7,7 @@ import { edgeCheck, exportMeshes } from '../src/geom/mesh.js';
 import {
   addAirfoil,
   addGuidePoint,
+  chordFromTrailingEdge,
   clampSectionY,
   dragLeadingEdge,
   insertSection,
@@ -176,6 +177,38 @@ describe('edit operations', () => {
       edit(q);
       expect(q.guides.end.edited).toBe(true);
     }
+  });
+
+  it('stops adding airfoils at LIMITS.maxAirfoils', () => {
+    const p = sampleProject();
+    const base = p.airfoils[0].points;
+    for (let i = p.airfoils.length; i < LIMITS.maxAirfoils; i++) {
+      expect(addAirfoil(p, { name: `Foil ${i}`, points: base.map(([x, y]) => [x, y * (1 + i / 1000)]) })).not.toBeNull();
+    }
+    expect(p.airfoils.length).toBe(200);
+    expect(addAirfoil(p, { name: 'One more', points: base.map(([x, y]) => [x, y * 0.5]) })).toBeNull();
+    // An airfoil the project already holds is still found.
+    expect(addAirfoil(p, { name: p.airfoils[0].name, points: base })).toBe(p.airfoils[0].id);
+    expect(validateProject(p).ok).toBe(true);
+    p.airfoils.push({ ...p.airfoils[0], id: 'extra' });
+    expect(validateProject(p).errors).toContain('At most 200 airfoils are supported (found 201).');
+  });
+
+  it('keeps drags within the project limits', () => {
+    expect(chordFromTrailingEdge(250, 50)).toBe(200);
+    expect(chordFromTrailingEdge(50.5, 50)).toBe(LIMITS.minChord);
+    expect(chordFromTrailingEdge(5e6, 0)).toBe(LIMITS.maxChord);
+    const p = sampleProject();
+    const tip = p.sections[2];
+    dragLeadingEdge(p, tip.id, -5e6, 5e6);
+    expect(tip.y).toBe(LIMITS.maxCoordinate);
+    expect(tip.chord).toBe(LIMITS.maxChord);
+    expect(tip.x + tip.chord).toBe(170);
+    moveGuidePoint(p, 'nose', 1, 9e9, 300);
+    expect(p.guides.nose.points[1][0]).toBe(LIMITS.maxCoordinate);
+    moveGuidePoint(p, 'nose', 0, -9e9, 0);
+    expect(p.guides.nose.points[0][0]).toBe(-LIMITS.maxCoordinate);
+    expect(validateProject(p).ok).toBe(true);
   });
 
   it('stops adding guide points at LIMITS.maxGuidePoints and sections at LIMITS.maxSections', () => {

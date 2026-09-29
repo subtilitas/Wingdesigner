@@ -7,6 +7,7 @@ import { meshesTo3mf, modelXml, xmlEscape } from '../src/export/threemf.js';
 import { stepReal, stepString, wingToStep } from '../src/export/step.js';
 import { MAX_PROJECT_BYTES, projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
 import { createProject, validateProject } from '../src/model/project.js';
+import { setGuideEnabled } from '../src/model/edit.js';
 import { sampleProject } from './helpers.js';
 import { stepCases } from './step-cases.js';
 
@@ -173,11 +174,37 @@ describe('project JSON', () => {
     const r = projectFromJsonText(txt);
     expect(r.ok).toBe(true);
     expect(r.project.sections).toEqual(p.sections);
-    expect(r.project.guides).toEqual(p.guides);
+    // Guides read without an `edited` flag get it from their points (section edges: not edited).
+    expect(r.project.guides).toEqual({ nose: { ...p.guides.nose, edited: false }, end: { ...p.guides.end, edited: false } });
     expect(r.project.airfoils[0].points).toEqual(p.airfoils[0].points);
     const b2 = buildWing(r.project);
     expect(b2.errors).toEqual([]);
     expect(b2.surface.points).toEqual(buildWing(p).surface.points);
+  });
+
+  it('marks guides of files without the edited flag as edited when their points differ from the section edges', () => {
+    const p = sampleProject();
+    p.guides.nose.points[1] = [35, 300];
+    const json = projectToJson(p, null);
+    for (const key of ['nose', 'end']) delete json.guides[key].edited;
+    const r = projectFromJsonText(JSON.stringify(json));
+    expect(r.ok).toBe(true);
+    expect(r.project.guides.nose.edited).toBe(true);
+    expect(r.project.guides.end.edited).toBe(false);
+    // Switching the custom guide on keeps its points; the unedited one starts at the section edges.
+    setGuideEnabled(r.project, 'nose', true);
+    expect(r.project.guides.nose.points[1]).toEqual([35, 300]);
+    // An explicit flag is kept as written.
+    json.guides.nose.edited = false;
+    expect(projectFromJsonText(JSON.stringify(json)).project.guides.nose.edited).toBe(false);
+  });
+
+  it('rejects airfoils above the 5000-point file limit in project files', () => {
+    const json = projectToJson(sampleProject(), null);
+    json.airfoils[0].points = Array.from({ length: 5001 }, (_, i) => [Math.abs(Math.cos((2 * Math.PI * i) / 5000)), 0.05 * Math.sin((2 * Math.PI * i) / 5000)]);
+    const r = projectFromJsonText(JSON.stringify(json));
+    expect(r.ok).toBe(false);
+    expect(r.errors[0]).toMatch(/has 5001 points; the limit is 5000/);
   });
 
   it('rejects malformed input with messages', () => {

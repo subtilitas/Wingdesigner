@@ -3,7 +3,7 @@
 
 import { curvePoint, surfacePoint } from '../geom/nurbs.js';
 import { guideCurve } from '../geom/guide.js';
-import { addGuidePoint, dragLeadingEdge, moveGuidePoint, removeGuidePoint, resetGuide, setGuideEnabled, sortedSections, syncGuidesToSpan } from '../model/edit.js';
+import { addGuidePoint, chordFromTrailingEdge, dragLeadingEdge, moveGuidePoint, removeGuidePoint, resetGuide, setGuideEnabled, sortedSections, syncGuidesToSpan } from '../model/edit.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, formatNum, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
@@ -253,7 +253,7 @@ export class PlanformEditor {
             dragLeadingEdge(p, s.id, x, y, b?.guides?.end ?? null);
           } else {
             const le = p.guides?.nose?.enabled && st ? st.xLE : s.x;
-            s.chord = Math.max(LIMITS.minChord, x - le);
+            s.chord = chordFromTrailingEdge(x, le);
           }
           syncGuidesToSpan(p);
         },

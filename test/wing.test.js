@@ -9,7 +9,7 @@ import { edgeCheck, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume
 import { earClip, polygonArea } from '../src/geom/triangulate.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
-import { createProject } from '../src/model/project.js';
+import { createProject, validateProject } from '../src/model/project.js';
 import { naca, sampleProject } from './helpers.js';
 
 describe('profile curves', () => {
@@ -576,21 +576,22 @@ describe('fitted surface between stations', () => {
   });
 
   it('reports a surface that folds between stations', () => {
-    // Zigzag degree-5 control guides that 32 added stations cannot follow.
+    // Zigzag degree-5 control guides that 32 added stations cannot follow. The guides are drawn for
+    // 40 trials from one seeded sequence; trial 37 folds (trials 2, 7, 14, ... turn inside out).
     let seed = 9;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    let fold = null;
-    for (let t = 0; t < 10 && !fold; t++) {
+    let guides = null;
+    for (let t = 0; t <= 37; t++) {
       const n = 20 + Math.floor(rnd() * 70);
       const ys = Array.from({ length: n }, (_, i) => (600 * i) / (n - 1));
       const nose = ys.map((y, i) => [(i % 2 ? 60 : 0) * rnd() + 20 * rnd(), y]);
       const end = ys.map((y, i) => [nose[i][0] + 1 + 100 * rnd() * rnd(), y]);
-      const p = sampleProject();
-      p.guides = { nose: { enabled: true, mode: 'control', degree: 5, points: nose }, end: { enabled: true, mode: 'control', degree: 5, points: end } };
-      const b = buildWing(p);
-      if (/(folds or narrows|turns inside out|has zero thickness) between stations/.test(b.errors[0] ?? '')) fold = b;
+      guides = { nose: { enabled: true, mode: 'control', degree: 5, points: nose }, end: { enabled: true, mode: 'control', degree: 5, points: end } };
     }
-    expect(fold).not.toBeNull();
+    const p = sampleProject();
+    p.guides = guides;
+    const fold = buildWing(p);
+    expect(fold.errors[0]).toMatch(/folds or narrows between stations at y = [\d.]+ mm \(chord -?\d+\.\d\d mm along the intended chord direction, minimum 1 mm/);
     expect(fold.surface).toBeNull();
   });
 });
@@ -705,12 +706,22 @@ describe('smooth spanwise overshoot', () => {
     expect(hit.surface).toBeNull();
   });
 
-  it('rejects non-finite geometry from a twist that overflows the angle conversion', () => {
-    const p = sampleProject();
-    p.sections[1].twist = 1e308;
-    const b = buildWing(p);
-    expect(b.errors[0]).toMatch(/non-finite coordinates at y = /);
-    expect(b.surface).toBeNull();
+  it('stops at values beyond the project limits, which would also block saving', () => {
+    // A twist of 1e308 degrees overflows the angle conversion to NaN coordinates.
+    const cases = [
+      [(p) => (p.sections[1].twist = 1e308), /Section 2: twist must be within ±360 degrees/],
+      [(p) => (p.sections[1].chord = 100_001), /Section 2: chord must be at most 100000 mm/],
+      [(p) => (p.sections[2].x = -1_000_001), /Section 3: x must be within ±1000000 mm/],
+      [(p) => (p.guides.end.points = Array.from({ length: 501 }, (_, i) => [200, (600 * i) / 500])), /guides.end.points: at most 500 points/],
+    ];
+    for (const [mutate, message] of cases) {
+      const p = sampleProject();
+      mutate(p);
+      const b = buildWing(p);
+      expect(b.errors[0]).toMatch(message);
+      expect(b.surface).toBeNull();
+      expect(validateProject(p).errors).toContain(b.errors[0]);
+    }
   });
 });
 

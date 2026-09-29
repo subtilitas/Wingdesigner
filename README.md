@@ -90,7 +90,7 @@ npm run dev            # development server on http://localhost:5173
 npm test               # unit tests (Vitest)
 npm run lint           # ESLint
 npm run build          # production build into dist/
-npm run e2e            # build, then 122 Playwright tests on desktop 1280 x 720 and Pixel 7 (244 runs)
+npm run e2e            # build, then 123 Playwright tests on desktop 1280 x 720 and Pixel 7 (246 runs)
 npm run coverage       # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage table below; CI runs coverage:check and fails on drift
 npm run airfoils:check # validate the bundled airfoil library and NACA presets
@@ -104,7 +104,7 @@ python scripts/validate_3mf.py step-check/cases.json    # needs: pip install lib
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.0 % | 93.1 % | 99.7 % | 98.5 % |
+| 98.0 % | 93.0 % | 99.7 % | 98.5 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

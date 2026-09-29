@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodeText, parseDat, parseNumbers, toSeligDat } from '../src/airfoil/parse.js';
-import { LIMITS, checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
+import { DUPLICATE_DISTANCE, LIMITS, checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
+import { profileCurve } from '../src/geom/profile.js';
 import { nacaAirfoil, parseNacaCode } from '../src/airfoil/naca.js';
 import {
   airfoilStats,
@@ -433,6 +434,25 @@ describe('parser robustness', () => {
     expect(codes(r.issues)).toContain('too-many-points');
     const dense = nacaAirfoil('2412', { pointsPerSide: 2600 }).points;
     expect(codes(checkAirfoil(dense).issues)).toContain('too-many-points');
+  });
+
+  it('removes consecutive points closer than DUPLICATE_DISTANCE so the interpolation stays regular', () => {
+    // A copy of a point one unit in the last place away: its chord-length parameter rounds to the
+    // parameter of its neighbour and the collocation matrix becomes singular.
+    const base = nacaAirfoil('2412').points;
+    const next = (v) => {
+      const b = new Float64Array([v]);
+      new BigInt64Array(b.buffer)[0] += 1n;
+      return b[0];
+    };
+    const pts = base.map((q) => q.slice());
+    pts.splice(6, 0, [pts[5][0], next(pts[5][1])]);
+    const r = checkAirfoil(pts);
+    expect(r.ok).toBe(true);
+    expect(r.points.length).toBe(base.length);
+    expect(r.issues.find((i) => i.code === 'duplicates').message).toMatch(/1 consecutive point\(s\) closer than 1e-9 chord/);
+    for (const parametrization of ['centripetal', 'chord', 'uniform']) expect(() => profileCurve(r.points, { parametrization })).not.toThrow();
+    expect(DUPLICATE_DISTANCE).toBe(1e-9);
   });
 
   it('rejects outlines longer than LIMITS.maxOutlineLength chords before the crossing test', () => {

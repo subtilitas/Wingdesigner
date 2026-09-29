@@ -52,15 +52,31 @@ function reversals(surface) {
  * Check a point list (Selig order, any scale). Returns normalized points and issues.
  * @returns {{ok: boolean, points: number[][], issues: object[], stats: object|null}}
  */
+/** Consecutive points closer than this fraction of the x range count as duplicates. */
+export const DUPLICATE_DISTANCE = 1e-9;
+
 export function checkAirfoil(rawPointsIn) {
   const issues = [];
-  // Consecutive duplicates make the interpolation matrix singular; remove them for every source
-  // (the file parser already does, project JSON and pasted data may not).
+  // Consecutive points closer than DUPLICATE_DISTANCE of the x range make the interpolation matrix
+  // singular (their parameters round to the same value); remove them for every source (the file
+  // parser removes exact duplicates, project JSON and pasted data may not).
   let rawPoints = rawPointsIn;
-  if (Array.isArray(rawPointsIn) && rawPointsIn.length > 1) {
-    rawPoints = rawPointsIn.filter((p, i) => i === 0 || p[0] !== rawPointsIn[i - 1][0] || p[1] !== rawPointsIn[i - 1][1]);
+  if (Array.isArray(rawPointsIn) && rawPointsIn.length > 1 && rawPointsIn.length <= LIMITS.maxPoints) {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    for (const p of rawPointsIn) {
+      x0 = Math.min(x0, p[0]);
+      x1 = Math.max(x1, p[0]);
+    }
+    const tol = DUPLICATE_DISTANCE * (x1 - x0);
+    rawPoints = [rawPointsIn[0]];
+    for (let i = 1; i < rawPointsIn.length; i++) {
+      const q = rawPoints[rawPoints.length - 1];
+      const p = rawPointsIn[i];
+      if (!(Math.hypot(p[0] - q[0], p[1] - q[1]) <= tol)) rawPoints.push(p);
+    }
     const removed = rawPointsIn.length - rawPoints.length;
-    if (removed) issues.push(issue('info', 'duplicates', `${removed} duplicate consecutive point(s) removed.`));
+    if (removed) issues.push(issue('info', 'duplicates', `${removed} consecutive point(s) closer than ${DUPLICATE_DISTANCE} chord to the previous point removed.`));
   }
   if (!rawPoints || rawPoints.length < LIMITS.minPoints) {
     issues.push(issue('error', 'too-few-points', `At least ${LIMITS.minPoints} points are required (found ${rawPoints ? rawPoints.length : 0}).`));

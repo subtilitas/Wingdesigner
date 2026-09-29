@@ -8,6 +8,7 @@ import { EXTERNAL_SOURCES, NACA_PRESETS, loadLibraryIndex, nacaEntry, suggestAtt
 import { profileCurve, profileProblem } from '../geom/profile.js';
 import { curvePoint } from '../geom/nurbs.js';
 import { addAirfoil, pruneAirfoils } from '../model/edit.js';
+import { LIMITS } from '../model/project.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, download, h, slugFile } from './dom.js';
 
@@ -59,8 +60,10 @@ export function previewAirfoil(candidate, { title = 'Airfoil preview', allowEdit
       try {
         prof = profileCurve(check.points, { parametrization });
         curve = prof.curve;
-      } catch {
+      } catch (e) {
         curve = null;
+        issues.push({ severity: 'error', code: 'curve-shape', message: `The NURBS interpolation through the points failed (${e.message}).` });
+        ok = false;
       }
       const problem = prof && profileProblem(prof);
       if (problem) {
@@ -192,12 +195,21 @@ export class AirfoilsPanel {
   }
 
   async addCandidate(candidate, title) {
+    const full = `The project holds ${LIMITS.maxAirfoils} airfoils, the limit; "Remove unused" frees places.`;
+    if (this.store.project.airfoils.length >= LIMITS.maxAirfoils) {
+      this.onMessage(full, true);
+      return null;
+    }
     const res = await previewAirfoil(candidate, { title, parametrization: this.store.project.settings?.parametrization });
     if (!res) return null;
     let id = null;
     this.store.update((p) => {
       id = addAirfoil(p, res);
     });
+    if (id === null) {
+      this.onMessage(full, true);
+      return null;
+    }
     this.onMessage(`Added airfoil "${res.name}".`);
     return id;
   }

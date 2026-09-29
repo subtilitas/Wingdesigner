@@ -6,6 +6,7 @@
 // chord point at `settings.twistPivot`. The half wing spans y >= 0 and is mirrored at the plane y = 0.
 
 import { defaultGuides } from '../geom/guide.js';
+import { MAX_POINTS } from '../airfoil/parse.js';
 
 export const FORMAT = 'wingdesigner-project';
 export const VERSION = 1;
@@ -30,6 +31,8 @@ export const LIMITS = Object.freeze({
   maxCoordinate: 1_000_000,
   maxTwist: 360,
   maxSections: 200,
+  // Every section can use its own airfoil; each project airfoil is a list entry with a thumbnail.
+  maxAirfoils: 200,
   maxGuidePoints: 500,
   tipRatio: [0.001, 0.01],
   chordSamples: [16, 200],
@@ -83,6 +86,35 @@ function isNum(v) {
 }
 
 /**
+ * Section and guide values beyond LIMITS (upper bounds that keep coordinates finite and rebuilds
+ * interactive). validateProject reports them on import and buildWing again, so a project that
+ * cannot be saved cannot be exported either.
+ * @returns {string[]} error messages
+ */
+export function limitErrors(p) {
+  const errors = [];
+  const sections = Array.isArray(p?.sections) ? p.sections : [];
+  sections.forEach((s, i) => {
+    if (!isObject(s)) return;
+    if (isNum(s.chord) && s.chord > LIMITS.maxChord) errors.push(`Section ${i + 1}: chord must be at most ${LIMITS.maxChord} mm.`);
+    for (const k of ['x', 'y', 'z']) {
+      if (isNum(s[k]) && Math.abs(s[k]) > LIMITS.maxCoordinate) errors.push(`Section ${i + 1}: ${k} must be within ±${LIMITS.maxCoordinate} mm.`);
+    }
+    if (isNum(s.twist) && Math.abs(s.twist) > LIMITS.maxTwist) errors.push(`Section ${i + 1}: twist must be within ±${LIMITS.maxTwist} degrees.`);
+  });
+  if (sections.length > LIMITS.maxSections) errors.push(`At most ${LIMITS.maxSections} sections are supported (found ${sections.length}).`);
+  for (const key of ['nose', 'end']) {
+    const g = isObject(p?.guides) ? p.guides[key] : null;
+    if (!isObject(g) || !Array.isArray(g.points)) continue;
+    if (g.points.length > LIMITS.maxGuidePoints) errors.push(`guides.${key}.points: at most ${LIMITS.maxGuidePoints} points.`);
+    if (g.points.some((q) => Array.isArray(q) && (Math.abs(q[0]) > LIMITS.maxCoordinate || Math.abs(q[1]) > LIMITS.maxCoordinate))) {
+      errors.push(`guides.${key}.points must be within ±${LIMITS.maxCoordinate} mm.`);
+    }
+  }
+  return errors;
+}
+
+/**
  * Structural validation of a project object (for imports).
  * Returns { ok, errors: string[] }.
  */
@@ -95,6 +127,7 @@ export function validateProject(p) {
   if (p.guides !== undefined && p.guides !== null && !isObject(p.guides)) errors.push('guides must be an object.');
   if (!Number.isInteger(p.version) || p.version < 1 || p.version > VERSION) errors.push(`Unsupported project version ${p.version}.`);
   if (!Array.isArray(p.airfoils) || p.airfoils.length === 0) errors.push('airfoils must be a non-empty array.');
+  else if (p.airfoils.length > LIMITS.maxAirfoils) errors.push(`At most ${LIMITS.maxAirfoils} airfoils are supported (found ${p.airfoils.length}).`);
   if (!Array.isArray(p.sections) || p.sections.length < 2) errors.push('At least 2 sections are required.');
   if (!errors.length && !p.airfoils.every(isObject)) errors.push('Every airfoil must be an object.');
   if (!errors.length && !p.sections.every(isObject)) errors.push('Every section must be an object.');
@@ -104,9 +137,10 @@ export function validateProject(p) {
     if (typeof a.id !== 'string' || !a.id) errors.push('Every airfoil needs a string id.');
     else if (ids.has(a.id)) errors.push(`Duplicate airfoil id "${a.id}".`);
     else ids.add(a.id);
-    if (!Array.isArray(a.points) || a.points.length < 5 || !a.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) {
-      errors.push(`Airfoil "${a.id}" needs at least 5 numeric [x, y] points.`);
-    }
+    if (!Array.isArray(a.points) || a.points.length < 5) errors.push(`Airfoil "${a.id}" needs at least 5 numeric [x, y] points.`);
+    // The airfoil file limit applies to project files too; the thumbnail draws every point.
+    else if (a.points.length > MAX_POINTS) errors.push(`Airfoil "${a.id}" has ${a.points.length} points; the limit is ${MAX_POINTS}.`);
+    else if (!a.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(`Airfoil "${a.id}" needs at least 5 numeric [x, y] points.`);
   }
   const secIds = new Set();
   p.sections.forEach((s, i) => {
@@ -114,11 +148,6 @@ export function validateProject(p) {
       if (!isNum(s[k])) errors.push(`Section ${i + 1}: ${k} must be a finite number.`);
     }
     if (isNum(s.chord) && s.chord < LIMITS.minChord) errors.push(`Section ${i + 1}: chord must be at least ${LIMITS.minChord} mm.`);
-    if (isNum(s.chord) && s.chord > LIMITS.maxChord) errors.push(`Section ${i + 1}: chord must be at most ${LIMITS.maxChord} mm.`);
-    for (const k of ['x', 'y', 'z']) {
-      if (isNum(s[k]) && Math.abs(s[k]) > LIMITS.maxCoordinate) errors.push(`Section ${i + 1}: ${k} must be within ±${LIMITS.maxCoordinate} mm.`);
-    }
-    if (isNum(s.twist) && Math.abs(s.twist) > LIMITS.maxTwist) errors.push(`Section ${i + 1}: twist must be within ±${LIMITS.maxTwist} degrees.`);
     if (isNum(s.y) && s.y < 0) errors.push(`Section ${i + 1}: y must be >= 0 (the half wing lies on the +y side).`);
     if (!ids.has(s.airfoil)) errors.push(`Section ${i + 1}: unknown airfoil "${s.airfoil}".`);
     // Sections without an id get "s<n>" on import; check the effective id.
@@ -127,7 +156,7 @@ export function validateProject(p) {
     else if (secIds.has(id)) errors.push(`Duplicate section id "${id}".`);
     secIds.add(id);
   });
-  if (p.sections.length > LIMITS.maxSections) errors.push(`At most ${LIMITS.maxSections} sections are supported (found ${p.sections.length}).`);
+  errors.push(...limitErrors(p));
   const ys = p.sections.map((s) => s.y).sort((a, b) => a - b);
   for (let i = 1; i < ys.length; i++) {
     if (!(ys[i] > ys[i - 1])) {
@@ -170,10 +199,6 @@ export function validateProject(p) {
       }
       if (g.enabled !== undefined && typeof g.enabled !== 'boolean') errors.push(`guides.${key}.enabled must be true or false.`);
       if (g.edited !== undefined && typeof g.edited !== 'boolean') errors.push(`guides.${key}.edited must be true or false.`);
-      if (Array.isArray(g.points) && g.points.length > LIMITS.maxGuidePoints) errors.push(`guides.${key}.points: at most ${LIMITS.maxGuidePoints} points.`);
-      if (Array.isArray(g.points) && g.points.some((q) => Array.isArray(q) && (Math.abs(q[0]) > LIMITS.maxCoordinate || Math.abs(q[1]) > LIMITS.maxCoordinate))) {
-        errors.push(`guides.${key}.points must be within ±${LIMITS.maxCoordinate} mm.`);
-      }
       if (!['fit', 'control'].includes(g.mode)) errors.push(`guides.${key}.mode must be "fit" or "control".`);
       if (!Array.isArray(g.points) || g.points.length < 2) errors.push(`guides.${key}.points needs at least 2 points.`);
       else if (!g.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(`guides.${key}.points must be numeric [x, y] pairs.`);

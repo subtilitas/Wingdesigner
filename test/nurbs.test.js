@@ -25,6 +25,7 @@ import {
   surfacePoint,
 } from '../src/geom/nurbs.js';
 import { bandFactor, luFactor, luSolve, solve } from '../src/geom/linalg.js';
+import { sampleCurve } from '../src/geom/profile.js';
 
 const U = [0, 0, 0, 0, 0.2, 0.45, 0.7, 1, 1, 1, 1];
 const n = U.length - 3 - 2; // 6 control points -> n = 5
@@ -367,6 +368,14 @@ describe('band collocation solver', () => {
 
   it('reports a zero pivot', () => {
     expect(() => bandFactor([{ start: 0, values: [0] }])).toThrow(/zero pivot/);
+  });
+
+  it('samples rational curves on the curve', () => {
+    const quarter = { degree: 2, knots: [0, 0, 0, 1, 1, 1], points: [[1, 0], [1, 1], [0, 1]], weights: [1, Math.SQRT1_2, 1] };
+    const { pts, ts } = sampleCurve(quarter, { samplesPerSpan: 16 });
+    expect(pts.length).toBe(17);
+    expect(ts[16]).toBe(1);
+    for (const [x, y] of pts) expect(Math.hypot(x, y)).toBeCloseTo(1, 12);
   });
 
   it('rejects decreasing parameters, for which the band LU without pivoting is not stable', () => {

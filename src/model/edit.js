@@ -13,14 +13,22 @@ export function sortedSections(project) {
  */
 /**
  * Span position for a dragged section: strictly between its neighbours (margin 1 mm, or a quarter of
- * the gap when they are closer than 4 mm). The root section (index 0) keeps its y.
+ * the gap when they are closer than 4 mm), the tip at most LIMITS.maxCoordinate. The root section
+ * (index 0) keeps its y.
  */
 export function clampSectionY(sorted, i, y) {
   if (i <= 0) return sorted[0].y;
   const prev = sorted[i - 1].y;
   const next = i < sorted.length - 1 ? sorted[i + 1].y : Infinity;
   const m = Math.min(1, (next - prev) / 4);
-  return Math.min(Math.max(y, prev + m), next - m);
+  return Math.min(Math.max(y, prev + m), next - m, LIMITS.maxCoordinate);
+}
+
+const clampCoordinate = (v) => Math.min(Math.max(v, -LIMITS.maxCoordinate), LIMITS.maxCoordinate);
+
+/** Chord from a dragged trailing-edge x and the leading-edge x, within LIMITS.minChord..maxChord. */
+export function chordFromTrailingEdge(x, xLE) {
+  return Math.min(Math.max(x - xLE, LIMITS.minChord), LIMITS.maxChord);
 }
 
 /**
@@ -39,7 +47,8 @@ export function dragLeadingEdge(project, id, x, y, endCurve = null) {
     const ys = sorted.map((q) => (q === s ? newY : q.y));
     te = guideXAt(endCurve, newY, Math.min(...ys), Math.max(...ys));
   }
-  s.x = Math.min(x, te - LIMITS.minChord);
+  // Leading edge within the coordinate limit and LIMITS.minChord..maxChord ahead of the trailing edge.
+  s.x = clampCoordinate(Math.min(Math.max(x, te - LIMITS.maxChord), te - LIMITS.minChord));
   s.chord = te - s.x;
   s.y = newY;
 }
@@ -157,11 +166,12 @@ export function removeGuidePoint(project, key, index) {
 /**
  * Move a guide point. End points keep their span position; interior points stay strictly
  * between their neighbours (margin 0.5 mm, or a quarter of the gap when the neighbours are closer
- * than 2 mm).
+ * than 2 mm); x stays within LIMITS.maxCoordinate.
  */
-export function moveGuidePoint(project, key, index, x, y) {
+export function moveGuidePoint(project, key, index, xIn, y) {
   const pts = project.guides[key].points;
   project.guides[key].edited = true;
+  const x = clampCoordinate(xIn);
   const last = pts.length - 1;
   if (index === 0 || index === last) {
     pts[index] = [x, pts[index][1]];
@@ -181,8 +191,10 @@ export function pruneAirfoils(project) {
   return before - project.airfoils.length;
 }
 
-/** Add an airfoil unless an identical one (same name and points) exists; returns its id. */
-/** Add an airfoil unless the project holds the same one (same points, or the same generated NACA section). Returns its id. */
+/**
+ * Add an airfoil unless the project holds the same one (same points, or the same generated NACA
+ * section). Returns its id, or null when the project already holds LIMITS.maxAirfoils airfoils.
+ */
 export function addAirfoil(project, airfoil) {
   const sameNaca = (a) =>
     a.source?.kind === 'naca' && airfoil.source?.kind === 'naca' && a.source.code !== undefined && a.source.code === airfoil.source.code && a.source.closedTE === airfoil.source.closedTE;
@@ -192,6 +204,7 @@ export function addAirfoil(project, airfoil) {
       (a.name === airfoil.name && a.points.length === airfoil.points.length && a.points.every((p, i) => p[0] === airfoil.points[i][0] && p[1] === airfoil.points[i][1])),
   );
   if (same) return same.id;
+  if (project.airfoils.length >= LIMITS.maxAirfoils) return null;
   const base = slug(airfoil.name) || 'airfoil';
   let id = base;
   let k = 2;

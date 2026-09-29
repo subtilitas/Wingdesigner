@@ -10,7 +10,7 @@ import { averagingKnots, collocationFactor, collocationSolve, curvePoint, interp
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
 import { blendPoints, blendScalar, spanwiseWeights } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
-import { LIMITS, resolveSettings } from '../model/project.js';
+import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
 
 /**
  * Deviation (mm) between loft and intended surface above which stations are added and, if it remains,
@@ -186,6 +186,12 @@ export function buildWing(project) {
   const result = { settings, sections, errors, warnings, surface: null, stations: [], profiles: new Map(), guides: {} };
   if (sections.length < 2) {
     errors.push('At least 2 sections are required.');
+    return result;
+  }
+  // The limits of project validation: a project that cannot be saved is not exported either.
+  const limits = limitErrors(project);
+  if (limits.length) {
+    errors.push(...limits);
     return result;
   }
   if (!(sections[0].y >= 0)) {

@@ -3,7 +3,7 @@
 // remove button of airfoils in use.
 //
 // All test airfoils are generated here from the NACA 4-digit equations; no third-party files are used.
-import { createDesign, dialogOf, downloadOf, expect, openTab, savedProject, statusOf, test, toastOf, whenRerendered } from './helpers.js';
+import { STORAGE_KEY, createDesign, dialogOf, downloadOf, expect, openTab, savedProject, statusOf, test, toastOf, whenRerendered } from './helpers.js';
 
 const NACA_MESSAGE = 'Enter a 4-digit (e.g. 2412) or 5-digit (e.g. 23012) designation.';
 // Generated NACA presets of the library as defined in src/airfoil/library.js (NACA_PRESETS), in list order.
@@ -660,5 +660,29 @@ test.describe('Airfoils tab', () => {
     await dlg.getByRole('button', { name: 'Close' }).click();
     await expect(dialogOf(page)).toHaveCount(0);
     expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410']);
+  });
+
+  test('a project with 200 airfoils (the limit) refuses one more before the preview', async ({ page }) => {
+    await startSport(page);
+    // Fill the autosaved project to 200 airfoils (copies of NACA 2410 with scaled thickness), reload.
+    await expect.poll(async () => (await savedProject(page))?.airfoils?.length).toBe(2);
+    await page.evaluate((key) => {
+      const p = JSON.parse(localStorage.getItem(key));
+      const base = p.airfoils[1];
+      for (let i = 2; i < 200; i++) p.airfoils.push({ ...base, id: `copy-${i}`, name: `Copy ${i}`, points: base.points.map(([x, y]) => [x, y * (1 + i / 1000)]) });
+      localStorage.setItem(key, JSON.stringify(p));
+    }, STORAGE_KEY);
+    await page.reload();
+    await openTab(page, 'Airfoils');
+    await expect(sectionOf(page, 'Project airfoils').locator('li')).toHaveCount(200);
+    await nacaPreview(page, '4415');
+    await expect(toastOf(page)).toHaveText('The project holds 200 airfoils, the limit; "Remove unused" frees places.');
+    await expect(dialogOf(page)).toHaveCount(0);
+    // "Remove unused" frees 198 places; adding works again.
+    await clickAndRefresh(page, sectionOf(page, 'Project airfoils').getByRole('button', { name: 'Remove unused' }));
+    expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410']);
+    await nacaPreview(page, '4415');
+    await addFromPreview(page, 'NACA 4415');
+    expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410', 'NACA 4415']);
   });
 });

@@ -49,6 +49,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - B-spline interpolation rejects decreasing parameters instead of returning control points of 1e16 mm
   from the band LU without pivoting.
 - The profile cache keeps the most recently used entries and at least one per airfoil of the project.
+- Project files: at most 200 airfoils and 5000 points per airfoil (the file-import limit); guides
+  written without the `edited` flag count as edited when their points differ from the section edges,
+  so switching them on keeps the points.
+- The build stops with the validation message when a section or guide value exceeds the project
+  limits, so a project that cannot be saved cannot be exported; planform drags keep chords, section
+  positions and guide points within the limits.
+- Airfoil check: consecutive points closer than 1e-9 chord are removed (their interpolation
+  parameters coincide and the collocation matrix is singular); the preview reports an interpolation
+  failure as an error and does not offer "Add to project".
 - Airfoil import: files above 5000 points are rejected instead of stalling the checks; the largest
   x is found without spreading all rows into one call; a drawn blunt trailing-edge base is removed in
   both point orders and when the outline starts on the base; a closed trailing edge reached over a

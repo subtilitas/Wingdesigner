@@ -67,6 +67,8 @@ export function projectToJsonText(project, build, meta) {
 /** Largest project file read (bytes): 50 MB holds hundreds of 5000-point airfoils. */
 export const MAX_PROJECT_BYTES = 50_000_000;
 
+const samePoints = (a, b) => a.length === b.length && a.every((p, i) => Math.abs(p[0] - b[i][0]) <= 1e-9 && Math.abs(p[1] - b[i][1]) <= 1e-9);
+
 export function projectFromJsonText(text) {
   if (String(text).length > MAX_PROJECT_BYTES) return { ok: false, errors: [`The file is larger than ${MAX_PROJECT_BYTES / 1e6} MB.`] };
   let data;
@@ -92,7 +94,14 @@ export function projectFromJsonText(text) {
   project.guides = {};
   for (const key of ['nose', 'end']) {
     const g = guides[key];
-    project.guides[key] = g ? { mode: 'fit', degree: 3, ...g, enabled: g.enabled === true } : defaults[key];
+    if (!g) {
+      project.guides[key] = defaults[key];
+      continue;
+    }
+    // Files written before guides carried `edited`: points that differ from the section edges were
+    // edited, and switching the guide on keeps them.
+    const edited = typeof g.edited === 'boolean' ? g.edited : !samePoints(g.points, defaults[key].points);
+    project.guides[key] = { mode: 'fit', degree: 3, ...g, enabled: g.enabled === true, edited };
   }
   return { ok: true, project, errors: [] };
 }

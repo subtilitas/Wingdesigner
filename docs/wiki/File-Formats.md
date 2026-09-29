@@ -47,7 +47,7 @@ NURBS curve crosses itself or runs back in x ([[Geometry|Geometry]], section 1).
 | spike | warning | outline turns by more than 90 degrees at a point (except within 2 points of the leading edge) |
 | closing-point | warning | drawn trailing-edge base removed (see above) |
 | te-base | warning | closed trailing edge reached over a vertical segment within 1 % chord of the trailing edge: the base is probably read as surface points |
-| duplicates | info | consecutive duplicate points removed |
+| duplicates | info | consecutive points closer than 1e-9 chord to the previous point removed (their interpolation parameters would coincide) |
 | uneven-spacing | info | adjacent segment lengths differ by more than a factor of 25 |
 | stats | info | point count, thickness, camber and their positions, trailing-edge gap. Camber: mean of the surfaces, measured from the chord line (leading edge to trailing-edge midpoint); for NACA sections below the designated value (4415: 3.74 % at 42 %) |
 
@@ -85,9 +85,10 @@ NURBS curve crosses itself or runs back in x ([[Geometry|Geometry]], section 1).
 - Guide points are `[x, y]` in the planform. Section and guide values are in mm and degrees.
 - `enabled`, `edited` and `settings.mirror` are JSON booleans, `settings.trailingEdge` and
   `settings.tip` objects (`null` selects the default); other types are rejected on import.
-- `edited` (optional, default `false`) is `true` once guide points were added, removed or moved.
-  A disabled guide that is not edited follows the section edges; an edited one keeps its points
-  when the sections change or the guide is switched on again. Reset to sections clears it.
+- `edited` is `true` once guide points were added, removed or moved. A disabled guide that is not
+  edited follows the section edges; an edited one keeps its points when the sections change or the
+  guide is switched on again. Reset to sections clears it. A file without `edited` gets it from the
+  points: points that differ from the section edges by more than 1e-9 mm count as edited.
 - Limits on import (the Sections table clamps typed values to the same limits):
 
   | Value | Limit |
@@ -96,10 +97,12 @@ NURBS curve crosses itself or runs back in x ([[Geometry|Geometry]], section 1).
   | section x, y, z and guide point coordinates | within ±1,000,000 mm (y at least 0) |
   | section twist | within ±360 degrees |
   | sections | at most 200 |
+  | airfoils | 1 to 200, each 5 to 5000 points |
   | guide points | 2 to 500 per guide |
 
   The bounds keep every computed coordinate finite (a twist of 1e308 degrees overflows the angle
-  conversion) and every rebuild interactive.
+  conversion) and every rebuild and panel render interactive. The build reports the same limits, so
+  a project that cannot be saved cannot be exported; planform drags stay within them.
 - `derived` is written on export and ignored on import; it is recomputed from the rest.
 - `surface.controlPoints[i][j]` has i along u (around the profile) and j along v (span).
 - Profile curves are in normalized airfoil coordinates (chord 1).
