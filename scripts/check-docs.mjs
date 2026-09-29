@@ -14,43 +14,83 @@ export const PAGE_PAIRS = [
   [`${WIKI}/Development.md`, `${WIKI}/Entwicklung.md`],
 ];
 
-const problems = [];
-for (const [en, de] of PAGE_PAIRS) {
-  for (const f of [en, de]) if (!existsSync(f)) problems.push(`missing page ${f}`);
-}
-for (const f of ['README.md', 'README.de.md']) {
-  if (!existsSync(f)) continue;
-  const t = readFileSync(f, 'utf8');
-  if (!t.includes('<!-- coverage:start -->') || !t.includes('<!-- coverage:end -->')) problems.push(`${f}: coverage markers missing`);
+// Delimiter row of a Markdown table: cells of dashes with optional colons, separated by |.
+const DELIMITER = /^\s*\|?(\s*:?-+:?\s*\|)+\s*(:?-+:?\s*\|?)?\s*$/;
+const FENCE = /^\s*(```|~~~)/;
+
+/**
+ * Indexes of the lines that are table rows (header and body, not the delimiter), outside fenced
+ * code blocks. A table is a header line with a | followed by a delimiter row; its body runs to the
+ * next blank line. Outer pipes are optional.
+ */
+export function tableRows(text) {
+  const lines = text.split('\n');
+  const rows = [];
+  let fence = null;
+  for (let i = 0; i < lines.length; i++) {
+    const f = lines[i].match(FENCE);
+    if (fence) {
+      if (f && f[1] === fence) fence = null;
+      continue;
+    }
+    if (f) {
+      fence = f[1];
+      continue;
+    }
+    if (i === 0 || !DELIMITER.test(lines[i]) || !lines[i - 1].includes('|')) continue;
+    rows.push(i - 1);
+    while (i + 1 < lines.length && lines[i + 1].trim() && !FENCE.test(lines[i + 1])) rows.push(++i);
+  }
+  return rows;
 }
 
-const wikiPages = new Set(readdirSync(WIKI).filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3)));
-const files = [...readdirSync(WIKI).filter((f) => f.endsWith('.md')).map((f) => join(WIKI, f)), 'README.md', 'README.de.md'].filter(existsSync);
-for (const f of files) {
-  const text = readFileSync(f, 'utf8');
-  const base = f.startsWith(WIKI) ? WIKI : '.';
-  // In a table row the | of [[Label|Page]] ends the cell and splits the link: tables use [[Page Name]].
-  text.split('\n').forEach((line, i) => {
-    if (line.startsWith('|') && /\[\[[^\]]*\|[^\]]*\]\]/.test(line)) problems.push(`${f}:${i + 1}: wiki link with | in a table row; in tables a wiki link holds only the page title`);
-  });
-  for (const m of text.matchAll(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)) {
-    const target = (m[2] ?? m[1]).trim().replace(/#.*$/, '');
-    if (/\.(png|jpg|svg)$/i.test(target)) continue;
-    if (!wikiPages.has(target.replace(/ /g, '-'))) problems.push(`${f}: wiki link [[${m[0].slice(2, -2)}]] has no page ${target}`);
-  }
-  for (const m of text.matchAll(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g)) {
-    const src = m[2];
-    if (/^https?:/.test(src)) continue;
-    if (!existsSync(join(base, src))) problems.push(`${f}: image ${src} not found`);
-    if (!m[1].trim()) problems.push(`${f}: image ${src} has no alt text`);
-  }
-  for (const m of text.matchAll(/(?<!!)\[[^\]]+\]\(((?!https?:|#|mailto:)[^)\s]+)\)/g)) {
-    const target = m[1].replace(/#.*$/, '');
-    if (target && !existsSync(join(base, target))) problems.push(`${f}: link ${target} not found`);
-  }
+/** In a table row the | of [[Label|Page]] ends the cell and splits the link: tables use [[Page Name]]. */
+export function tableLinkProblems(text, file) {
+  const lines = text.split('\n');
+  return tableRows(text)
+    .filter((i) => /\[\[[^\]]*\|[^\]]*\]\]/.test(lines[i]))
+    .map((i) => `${file}:${i + 1}: wiki link with | in a table row; in tables a wiki link holds only the page title`);
 }
-if (problems.length) {
-  console.error(problems.join('\n'));
-  process.exit(1);
+
+function main() {
+  const problems = [];
+  for (const [en, de] of PAGE_PAIRS) {
+    for (const f of [en, de]) if (!existsSync(f)) problems.push(`missing page ${f}`);
+  }
+  for (const f of ['README.md', 'README.de.md']) {
+    if (!existsSync(f)) continue;
+    const t = readFileSync(f, 'utf8');
+    if (!t.includes('<!-- coverage:start -->') || !t.includes('<!-- coverage:end -->')) problems.push(`${f}: coverage markers missing`);
+  }
+
+  const wikiPages = new Set(readdirSync(WIKI).filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3)));
+  const files = [...readdirSync(WIKI).filter((f) => f.endsWith('.md')).map((f) => join(WIKI, f)), 'README.md', 'README.de.md'].filter(existsSync);
+  for (const f of files) {
+    const text = readFileSync(f, 'utf8');
+    const base = f.startsWith(WIKI) ? WIKI : '.';
+    problems.push(...tableLinkProblems(text, f));
+    for (const m of text.matchAll(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)) {
+      const target = (m[2] ?? m[1]).trim().replace(/#.*$/, '');
+      if (/\.(png|jpg|svg)$/i.test(target)) continue;
+      if (!wikiPages.has(target.replace(/ /g, '-'))) problems.push(`${f}: wiki link [[${m[0].slice(2, -2)}]] has no page ${target}`);
+    }
+    for (const m of text.matchAll(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g)) {
+      const src = m[2];
+      if (/^https?:/.test(src)) continue;
+      if (!existsSync(join(base, src))) problems.push(`${f}: image ${src} not found`);
+      if (!m[1].trim()) problems.push(`${f}: image ${src} has no alt text`);
+    }
+    for (const m of text.matchAll(/(?<!!)\[[^\]]+\]\(((?!https?:|#|mailto:)[^)\s]+)\)/g)) {
+      const target = m[1].replace(/#.*$/, '');
+      if (target && !existsSync(join(base, target))) problems.push(`${f}: link ${target} not found`);
+    }
+  }
+  if (problems.length) {
+    console.error(problems.join('\n'));
+    process.exit(1);
+  }
+  console.log(`${files.length} documentation files checked.`);
 }
-console.log(`${files.length} documentation files checked.`);
+
+// Runs the check unless Vitest imports the module for test/docs.test.js.
+if (!process.env.VITEST) main();
