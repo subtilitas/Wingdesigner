@@ -32,3 +32,13 @@ describe('airfoil library', () => {
     }
   });
 });
+
+describe('build licenses', () => {
+  it('finds the npm package of a bundled module with / (Vite module ids) and \\ (Windows paths)', async () => {
+    const { packageRoot } = await import('../vite.config.js');
+    expect(packageRoot('C:/w/node_modules/three/build/three.module.js')).toBe('C:/w/node_modules/three');
+    expect(packageRoot('C:\\w\\node_modules\\@scope\\pkg\\lib\\index.js')).toBe('C:/w/node_modules/@scope/pkg');
+    expect(packageRoot('/w/node_modules/a/node_modules/fflate/esm/browser.js')).toBe('/w/node_modules/a/node_modules/fflate');
+    expect(packageRoot('C:/w/src/main.js')).toBeNull();
+  });
+});

@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, join, sep } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
@@ -33,13 +33,16 @@ function airfoilLibrary() {
   };
 }
 
-/** Root folder of the npm package that contains `file`, or null outside node_modules. */
-function packageRoot(file) {
-  const parts = file.split(sep);
+/**
+ * Root folder of the npm package that contains `file`, or null outside node_modules. Vite writes
+ * module ids with / on every platform, Node paths use \ on Windows: both separate.
+ */
+export function packageRoot(file) {
+  const parts = file.split(/[\\/]/);
   const at = parts.lastIndexOf('node_modules');
   if (at < 0) return null;
   const depth = parts[at + 1]?.startsWith('@') ? 3 : 2;
-  return parts.slice(0, at + depth).join(sep);
+  return parts.slice(0, at + depth).join('/');
 }
 
 /**
