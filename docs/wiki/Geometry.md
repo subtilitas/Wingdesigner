@@ -67,7 +67,7 @@ The surface passes through every station point; the leading edge lies on the iso
 
 The surface is sampled at the u parameters of the stations and 1 (linear) or 3 (cubic) samples per
 v interval. Triangles are oriented outward (S_v × S_u). A closed trailing edge shares its vertices; an
-open one gets a strip of triangles. Root and tip caps are triangulated by ear clipping in the x-z plane.
+open one gets a strip of triangles. Root and tip caps pair the upper and lower point of each chord station into quads (2 triangles each, linear time); ear clipping in the x-z plane is the fallback when a strip triangle is not counterclockwise.
 The left half is the mirror image (y → −y, reversed winding). With the root at y = 0 the full-wing mesh
 shares the root vertices and has no root caps.
 

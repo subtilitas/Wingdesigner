@@ -75,8 +75,10 @@ describe('wing statistics', () => {
     // Trapezoid: MAC = 2/3 c_r (1 + l + l^2) / (1 + l), y = b/6 (1 + 2l) / (1 + l).
     expect(s.mac).toBeCloseTo((2 / 3) * 200 * (1.75 / 1.5), 6);
     expect(s.macY).toBeCloseTo((1000 / 6) * (2 / 1.5), 6);
-    const half = buildWing({ ...p, settings: { ...p.settings, mirror: false } });
-    expect(wingStats(half).span).toBeCloseTo(500, 9);
+    // The display setting "Show mirrored half" does not change the statistics.
+    const hidden = buildWing({ ...p, settings: { ...p.settings, mirror: false } });
+    expect(wingStats(hidden).span).toBeCloseTo(1000, 9);
+    expect(wingStats(hidden).area).toBeCloseTo(1000 * 150, 3);
   });
 });
 

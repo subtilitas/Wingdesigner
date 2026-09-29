@@ -3,7 +3,8 @@
 
 /**
  * @returns {{span: number, area: number, aspectRatio: number, mac: number, macY: number, macXLE: number, rootChord: number, tipChord: number}}
- *   span and lengths in mm, area in mm^2 (both halves), macY = span position of the MAC on one half.
+ *   span and lengths in mm, area in mm^2 (both halves; with the root off y = 0 the gap between the
+ *   halves counts to the span but not to the area), macY = span position of the MAC on one half.
  */
 export function wingStats(build) {
   const st = build.stations;
@@ -22,10 +23,9 @@ export function wingStats(build) {
     CY += lin(a.chord, b.chord, a.y, b.y);
     CX += lin(a.chord, b.chord, a.xLE, b.xLE);
   }
-  const half = st.length ? st[st.length - 1].y - st[0].y : 0;
-  const mirrored = build.settings?.mirror !== false;
-  const span = mirrored ? 2 * st[st.length - 1].y : half;
-  const area = mirrored ? 2 * A : A;
+  // Full wing (both halves) regardless of the display setting "Show mirrored half".
+  const span = st.length ? 2 * st[st.length - 1].y : 0;
+  const area = 2 * A;
   return {
     span,
     area,

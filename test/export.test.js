@@ -206,6 +206,8 @@ describe('project JSON', () => {
       (p) => (p.guides.end.degree = 9),
       (p) => (p.settings.tip = { mode: 'round', ratio: 0.005 }),
       (p) => (p.settings.tip = { mode: 'pointed', ratio: 0.5 }),
+      (p) => (p.settings.mirror = 'false'),
+      (p) => (p.version = 0),
     ];
     for (const mutate of cases) {
       const p = base();

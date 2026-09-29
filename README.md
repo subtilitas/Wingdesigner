@@ -99,7 +99,7 @@ python scripts/validate_step.py step-check/cases.json   # needs: pip install cad
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.3 % | 94.0 % | 99.7 % | 98.9 % |
+| 98.4 % | 94.0 % | 100.0 % | 99.0 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

@@ -11,7 +11,7 @@ Last updated: 2026-09-29
 | Area | State | Verified by |
 | --- | --- | --- |
 | NURBS core (`src/geom/nurbs.js`) | Basis functions, curve and surface evaluation, global interpolation, knot insertion, splitting | `test/nurbs.test.js` |
-| Airfoil import (`src/airfoil/`) | Selig, Lednicer, x/upper/lower tables, XML, HTML tables, decimal commas, Windows-1252; sanity checks; NACA 4/5-digit | `test/airfoil.test.js`; 191 real files from aerodesign.de, mh-aerotools.de and UIUC parsed locally, 190 accepted, 1 (UIUC `mh150.dat`) rejected for a real upper/lower crossing. The files are not committed (license). |
+| Airfoil import (`src/airfoil/`) | Selig, Lednicer, x/upper/lower tables, XML, HTML tables, decimal commas, Windows-1252; sanity checks; NACA 4/5-digit | `test/airfoil.test.js`; 247 real files (Selig, percent tables, XML, HTML pages) from aerodesign.de, mh-aerotools.de and UIUC parsed locally on 2026-09-29, 246 accepted, 1 (UIUC `mh150.dat`) rejected for a real upper/lower crossing. The files are not committed (license). |
 | Wing loft (`src/geom/wing.js`) | Sections, linear or smooth spanwise blending, nose and end guide curves, trailing-edge modes | `test/wing.test.js` |
 | Meshes (`src/geom/mesh.js`) | Closed outward meshes, mirror, merged full wing | Edge-manifold and volume tests |
 | STEP export (`src/export/step.js`) | AP214 B-rep solids with exact B-spline faces | `scripts/validate_step.py` with OpenCascade (cadquery-ocp 8.0.1): 7 cases including 2 pointed tips, all valid and closed, volume within 8e-5 of the mesh |

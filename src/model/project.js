@@ -85,7 +85,7 @@ export function validateProject(p) {
   if (p.units !== undefined && p.units !== 'mm') errors.push(`units must be "mm" (found "${p.units}").`);
   if (p.settings !== undefined && !isObject(p.settings)) errors.push('settings must be an object.');
   if (p.guides !== undefined && p.guides !== null && !isObject(p.guides)) errors.push('guides must be an object.');
-  if (!Number.isInteger(p.version) || p.version > VERSION) errors.push(`Unsupported project version ${p.version}.`);
+  if (!Number.isInteger(p.version) || p.version < 1 || p.version > VERSION) errors.push(`Unsupported project version ${p.version}.`);
   if (!Array.isArray(p.airfoils) || p.airfoils.length === 0) errors.push('airfoils must be a non-empty array.');
   if (!Array.isArray(p.sections) || p.sections.length < 2) errors.push('At least 2 sections are required.');
   if (!errors.length && !p.airfoils.every(isObject)) errors.push('Every airfoil must be an object.');
@@ -137,6 +137,7 @@ export function validateProject(p) {
     errors.push(`settings.panelStations must be an integer within ${LIMITS.panelStations.join('..')}.`);
   }
   if (!['uniform', 'chord', 'centripetal'].includes(st.parametrization)) errors.push('settings.parametrization must be uniform, chord or centripetal.');
+  if (typeof st.mirror !== 'boolean') errors.push('settings.mirror must be true or false.');
   if (p.guides) {
     for (const key of ['nose', 'end']) {
       const g = p.guides[key];

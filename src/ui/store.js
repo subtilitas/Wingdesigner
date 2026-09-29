@@ -45,6 +45,7 @@ export class Store {
 
   replace(project, reason = 'load') {
     this.undoStack.push(JSON.stringify(this.project));
+    if (this.undoStack.length > HISTORY) this.undoStack.shift();
     this.redoStack.length = 0;
     this.project = cloneProject(project);
     this.lastKey = null;
