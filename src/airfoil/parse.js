@@ -375,6 +375,11 @@ function samePoint(a, b) {
 export function toSeligDat(name, points, digits = 6) {
   // The name is the first line only: line breaks in a name would start coordinate rows.
   const lines = [String(name).replace(/[\r\n]+/g, ' ')];
-  for (const [x, y] of points) lines.push(`${x.toFixed(digits).padStart(digits + 3)} ${y.toFixed(digits).padStart(digits + 3)}`);
+  // Fixed decimals for the usual unit-chord and millimetre outlines; significant digits for outlines
+  // smaller than 1e-3, which fixed decimals would round to zero.
+  let scale = 0;
+  for (const [x, y] of points) scale = Math.max(scale, Math.abs(x), Math.abs(y));
+  const num = scale >= 1e-3 ? (v) => v.toFixed(digits) : (v) => v.toPrecision(digits);
+  for (const [x, y] of points) lines.push(`${num(x).padStart(digits + 3)} ${num(y).padStart(digits + 3)}`);
   return lines.join('\n') + '\n';
 }

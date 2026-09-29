@@ -4,6 +4,7 @@
 // and recomputes everything derived.
 
 import { defaultGuides } from '../geom/guide.js';
+import { syncGuidesToSpan } from './edit.js';
 import { FORMAT, SOURCE_KEYS, VERSION, resolveSettings, validateProject } from './project.js';
 
 const round = (x) => (Number.isFinite(x) ? Number(x.toPrecision(12)) : x);
@@ -185,5 +186,8 @@ export function projectFromJsonText(text) {
     const edited = typeof g.edited === 'boolean' ? g.edited : !samePoints(g.points, defaults[key].points);
     project.guides[key] = { mode: g.mode ?? 'fit', degree: g.degree ?? 3, points: g.points.map((q) => [q[0], q[1]]), enabled: g.enabled === true, edited };
   }
+  // The build stretches a guide onto the root-to-tip span; the stored points take that span too, so
+  // the planform draws and edits them where the wing uses them.
+  syncGuidesToSpan(project);
   return { ok: true, project, errors: [] };
 }

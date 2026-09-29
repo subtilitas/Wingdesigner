@@ -513,6 +513,19 @@ describe('import hardening', () => {
     expect(projectFromJsonText(' '.repeat(MAX_PROJECT_BYTES + 1)).errors[0]).toBe('The file is larger than 100 MB.');
   });
 
+  it('fits imported guide curves to the root-to-tip span', () => {
+    const j = projectToJson(sampleProject(), null);
+    const ys = j.sections.map((s) => s.y).sort((a, b) => a - b);
+    j.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[200, 100], [190, 150], [150, 200]] };
+    const r = projectFromJsonText(JSON.stringify(j));
+    expect(r.ok).toBe(true);
+    const pts = r.project.guides.end.points;
+    expect(pts[0][1]).toBe(ys[0]);
+    expect(pts[2][1]).toBeCloseTo(ys[ys.length - 1], 9);
+    expect(pts[1][1]).toBeCloseTo((ys[0] + ys[ys.length - 1]) / 2, 9);
+    expect(pts.map((p) => p[0])).toEqual([200, 190, 150]);
+  });
+
   it('counts file size in UTF-8 bytes', () => {
     expect(utf8Length('abc')).toBe(3);
     expect(utf8Length('é')).toBe(2);

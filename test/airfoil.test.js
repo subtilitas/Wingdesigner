@@ -450,6 +450,13 @@ describe('parser robustness', () => {
     expect(d.issues.find((i) => i.code === 'many-points').message).toMatch(/^5,199 points \(warning above 5,000\): the checks and the first build of a wing that uses the airfoil take (under 1 s|about [\d.]+ s)\.$/);
   });
 
+  it('writes outlines smaller than 1e-3 with significant digits', () => {
+    const pts = nacaAirfoil('2412', { pointsPerSide: 21 }).points.map(([x, y]) => [x * 1e-8, y * 1e-8]);
+    const r = importAirfoilText(toSeligDat('tiny', pts, 7), 'tiny.dat');
+    expect(r.ok).toBe(true);
+    expect(r.points).toHaveLength(pts.length);
+  });
+
   it('writes a Selig file whose name stays on the first line', () => {
     const pts = nacaAirfoil('0012', { pointsPerSide: 11 }).points;
     const text = toSeligDat('foil\n0.25 9\r\nend', pts);
