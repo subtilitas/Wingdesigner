@@ -3,6 +3,7 @@
 // both guide curves, the spanwise stations and the wing surface. Import reads the project part
 // and recomputes everything derived.
 
+import { defaultGuides } from '../geom/guide.js';
 import { FORMAT, VERSION, resolveSettings, validateProject } from './project.js';
 
 const round = (x) => (Number.isFinite(x) ? Number(x.toPrecision(12)) : x);
@@ -78,16 +79,16 @@ export function projectFromJsonText(text) {
     name: typeof data.name === 'string' ? data.name : 'Imported wing',
     units: 'mm',
     airfoils: data.airfoils.map((a) => ({ ...a, points: a.points.map((p) => [p[0], p[1]]) })),
-    sections: data.sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, ...s })),
-    guides: data.guides,
+    sections: data.sections.map((s, i) => ({ ...s, id: s.id ?? `s${i + 1}` })),
     settings: resolveSettings(data.settings),
   };
-  if (!project.guides) {
-    const sorted = project.sections.slice().sort((a, b) => a.y - b.y);
-    project.guides = {
-      nose: { enabled: false, mode: 'fit', degree: 3, points: sorted.map((s) => [s.x, s.y]) },
-      end: { enabled: false, mode: 'fit', degree: 3, points: sorted.map((s) => [s.x + s.chord, s.y]) },
-    };
+  // Fill each missing guide from the section edges.
+  const defaults = defaultGuides(project.sections);
+  const guides = data.guides ?? {};
+  project.guides = {};
+  for (const key of ['nose', 'end']) {
+    const g = guides[key];
+    project.guides[key] = g ? { mode: 'fit', degree: 3, ...g, enabled: g.enabled === true } : defaults[key];
   }
   return { ok: true, project, errors: [] };
 }

@@ -84,7 +84,13 @@ function parseXml(text) {
 function htmlToText(text) {
   const title = decodeEntities((text.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? '').trim());
   const pres = [...text.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/gi)].map((m) => decodeEntities(m[1].replace(/<[^>]+>/g, '')));
-  const body = pres.length ? pres.join('\n') : decodeEntities(text.replace(/<[^>]+>/g, '\n'));
+  // Without <pre> blocks: table cells become spaces, rows and line breaks become newlines.
+  const flat = text
+    .replace(/<(head|title|script|style)[\s>][\s\S]*?<\/\1\s*>/gi, '\n')
+    .replace(/<\/t[dh]\s*>/gi, ' ')
+    .replace(/<br\s*\/?>|<\/(tr|p|div|li|h\d)\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, '');
+  const body = pres.length ? pres.join('\n') : decodeEntities(flat);
   return { title, body };
 }
 
@@ -101,6 +107,9 @@ export function parseDat(text, options = {}) {
 
   if (/<coordinates>/i.test(src)) {
     const xml = parseXml(src);
+    if (!xml) {
+      return { name: fallbackName, format: 'xml', points: [], issues: [issue('error', 'xml-malformed', 'The XML has a <coordinates> element without a closing tag.')] };
+    }
     return finish(xml.name || fallbackName, 'xml', xml.points, [...xml.issues, ...(xml.name ? [] : [issue('info', 'no-name', 'No name found; the file name is used.')])]);
   }
   let htmlTitle = '';

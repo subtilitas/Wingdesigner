@@ -37,12 +37,17 @@ export function cloneProject(p) {
 }
 
 /** Merge settings with defaults (deep for trailingEdge). */
-export function resolveSettings(settings = {}) {
+export function resolveSettings(settings) {
+  const s = isObject(settings) ? settings : {};
   return {
     ...DEFAULT_SETTINGS,
-    ...settings,
-    trailingEdge: { ...DEFAULT_SETTINGS.trailingEdge, ...(settings.trailingEdge ?? {}) },
+    ...s,
+    trailingEdge: { ...DEFAULT_SETTINGS.trailingEdge, ...(isObject(s.trailingEdge) ? s.trailingEdge : {}) },
   };
+}
+
+function isObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
 /**
@@ -74,9 +79,14 @@ export function validateProject(p) {
   const errors = [];
   if (!p || typeof p !== 'object') return { ok: false, errors: ['Project is not an object.'] };
   if (p.format !== FORMAT) errors.push(`format must be "${FORMAT}".`);
+  if (p.units !== undefined && p.units !== 'mm') errors.push(`units must be "mm" (found "${p.units}").`);
+  if (p.settings !== undefined && !isObject(p.settings)) errors.push('settings must be an object.');
+  if (p.guides !== undefined && p.guides !== null && !isObject(p.guides)) errors.push('guides must be an object.');
   if (!Number.isInteger(p.version) || p.version > VERSION) errors.push(`Unsupported project version ${p.version}.`);
   if (!Array.isArray(p.airfoils) || p.airfoils.length === 0) errors.push('airfoils must be a non-empty array.');
   if (!Array.isArray(p.sections) || p.sections.length < 2) errors.push('At least 2 sections are required.');
+  if (!errors.length && !p.airfoils.every(isObject)) errors.push('Every airfoil must be an object.');
+  if (!errors.length && !p.sections.every(isObject)) errors.push('Every section must be an object.');
   if (errors.length) return { ok: false, errors };
   const ids = new Set();
   for (const a of p.airfoils) {
@@ -95,10 +105,11 @@ export function validateProject(p) {
     if (isNum(s.chord) && s.chord < LIMITS.minChord) errors.push(`Section ${i + 1}: chord must be at least ${LIMITS.minChord} mm.`);
     if (isNum(s.y) && s.y < 0) errors.push(`Section ${i + 1}: y must be >= 0 (the half wing lies on the +y side).`);
     if (!ids.has(s.airfoil)) errors.push(`Section ${i + 1}: unknown airfoil "${s.airfoil}".`);
-    if (s.id !== undefined) {
-      if (secIds.has(s.id)) errors.push(`Duplicate section id "${s.id}".`);
-      secIds.add(s.id);
-    }
+    // Sections without an id get "s<n>" on import; check the effective id.
+    const id = s.id ?? `s${i + 1}`;
+    if (typeof id !== 'string' || !id) errors.push(`Section ${i + 1}: id must be a non-empty string.`);
+    else if (secIds.has(id)) errors.push(`Duplicate section id "${id}".`);
+    secIds.add(id);
   });
   const ys = p.sections.map((s) => s.y).sort((a, b) => a - b);
   for (let i = 1; i < ys.length; i++) {
@@ -122,7 +133,11 @@ export function validateProject(p) {
   if (p.guides) {
     for (const key of ['nose', 'end']) {
       const g = p.guides[key];
-      if (!g) continue;
+      if (g === undefined || g === null) continue;
+      if (!isObject(g)) {
+        errors.push(`guides.${key} must be an object.`);
+        continue;
+      }
       if (!['fit', 'control'].includes(g.mode)) errors.push(`guides.${key}.mode must be "fit" or "control".`);
       if (!Array.isArray(g.points) || g.points.length < 2) errors.push(`guides.${key}.points needs at least 2 points.`);
       else if (!g.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(`guides.${key}.points must be numeric [x, y] pairs.`);

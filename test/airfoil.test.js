@@ -327,3 +327,21 @@ describe('parser variants', () => {
     expect(parseNumbers('x 1')).toBeNull();
   });
 });
+
+describe('parser hardening', () => {
+  it('reads HTML tables with one cell per value', () => {
+    const rows = [[1, 0], [0.5, 0.06], [0, 0], [0.5, -0.04], [1, 0]];
+    const html = `<html><title>T</title><table>${rows.map(([x, y]) => `<tr><td>${x}</td><td>${y}</td></tr>`).join('')}</table></html>`;
+    const r = parseDat(html);
+    expect(r.points).toEqual(rows);
+    const br = parseDat('<body>1 0<br/>0 0<br>1 -0.01</body>');
+    expect(br.points.length).toBe(3);
+  });
+
+  it('reports malformed XML instead of throwing', () => {
+    const r = parseDat('<airfoil><coordinates><point><x>1</x>', { fileName: 'bad.xml' });
+    expect(r.name).toBe('bad');
+    expect(codes(r.issues)).toEqual(['xml-malformed']);
+    expect(importAirfoilText('<coordinates>', 'x.xml').ok).toBe(false);
+  });
+});

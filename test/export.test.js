@@ -222,3 +222,65 @@ describe('project JSON', () => {
     expect(validateProject(p).ok).toBe(true);
   });
 });
+
+describe('import hardening', () => {
+  const base = () => projectToJson(sampleProject(), null);
+
+  it('fills each missing guide independently', () => {
+    const p = base();
+    delete p.guides.end;
+    p.guides.nose.enabled = true;
+    const r = projectFromJsonText(JSON.stringify(p));
+    expect(r.ok).toBe(true);
+    expect(r.project.guides.nose.enabled).toBe(true);
+    expect(r.project.guides.end).toMatchObject({ enabled: false, mode: 'fit', degree: 3 });
+    expect(r.project.guides.end.points).toEqual([[200, 0], [190, 300], [170, 600]]);
+    const q = base();
+    q.guides = null;
+    expect(projectFromJsonText(JSON.stringify(q)).project.guides.nose.points.length).toBe(3);
+  });
+
+  it('rejects units other than mm', () => {
+    const p = base();
+    p.units = 'in';
+    const r = projectFromJsonText(JSON.stringify(p));
+    expect(r.ok).toBe(false);
+    expect(r.errors[0]).toMatch(/units must be "mm"/);
+  });
+
+  it('checks effective section ids', () => {
+    const p = base();
+    delete p.sections[0].id;
+    p.sections[1].id = 's1';
+    expect(projectFromJsonText(JSON.stringify(p)).errors).toContain('Duplicate section id "s1".');
+    const q = base();
+    q.sections[0].id = 7;
+    expect(validateProject(q).ok).toBe(false);
+    const n = base();
+    n.sections[0].id = null;
+    const r = projectFromJsonText(JSON.stringify(n));
+    expect(r.ok).toBe(true);
+    expect(r.project.sections[0].id).toBe('s1');
+  });
+
+  it('returns errors instead of throwing on malformed containers', () => {
+    const cases = [
+      (p) => (p.settings = null),
+      (p) => (p.settings = 5),
+      (p) => (p.guides = 'x'),
+      (p) => (p.guides.nose = 3),
+      (p) => (p.sections[0] = null),
+      (p) => (p.airfoils[0] = null),
+    ];
+    for (const mutate of cases) {
+      const p = base();
+      mutate(p);
+      const r = projectFromJsonText(JSON.stringify(p));
+      expect(r.ok).toBe(false);
+      expect(r.errors.length).toBeGreaterThan(0);
+    }
+    const t = base();
+    t.settings.trailingEdge = null;
+    expect(projectFromJsonText(JSON.stringify(t)).project.settings.trailingEdge).toEqual({ mode: 'asis', thickness: 0.4 });
+  });
+});
