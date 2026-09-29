@@ -424,7 +424,7 @@ Der Kasten **More airfoils (external, not bundled)** verlinkt 3 Sammlungen. Die 
 | Resolution | **Spanwise stations per panel with guides or smooth mode** (Stationen je Feld) | 3 bis 40 | 8 | Intervalle je Feld, Kosinusverteilung; nur wirksam mit eingeschalteter Leitkurve oder mit Smooth. Weniger Intervalle erst über 5 000 000 Gitterpunkten des Lofts (Abschnitt [Leitkurven](#leitkurven)). |
 | Resolution | **Profile parametrization** (Parametrisierung der Profile) | **Centripetal (recommended)** (zentripetal), **Chord length** (Sehnenlänge), **Uniform** (gleichabständig) | Centripetal | Parameterverteilung der NURBS-Interpolation der Profile, im Flügelaufbau und in der Profilvorschau |
 | Display | **Show mirrored half (y < 0)** (gespiegelte Hälfte zeigen) | an, aus | an | Nur 3D-Ansicht. Checks, Statusleiste und Assistent nennen immer beide Hälften. Wird im Projekt gespeichert. |
-| Display | **Show NURBS control net** (NURBS-Kontrollnetz zeigen) | an, aus | aus | Nur 3D-Ansicht; wird nicht gespeichert |
+| Display | **Show NURBS control net** (NURBS-Kontrollnetz zeigen) | an, aus | aus | Nur 3D-Ansicht; wird nicht gespeichert. Über 100 000 Netzsegmenten zeichnet die Ansicht jede k-te Kontrolllinie in jeder Richtung, erste und letzte eingeschlossen. |
 | Display | **Show section outlines** (Schnittkonturen zeigen) | an, aus | an | Nur 3D-Ansicht; wird nicht gespeichert |
 
 Unter **Spanwise stations per panel** nennt ein Hinweis die Gitterpunkte des Lofts bei den aktuellen Einstellungen (Abschnitt [Leitkurven](#leitkurven)), z. B. Vorlage Glider: `Loft grid: 2,057 points.`

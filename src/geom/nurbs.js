@@ -542,11 +542,17 @@ export function surfaceBoundaryV(surf, atEnd) {
 }
 
 /** Compress a knot vector into distinct values and multiplicities (STEP form). */
-export function knotMultiplicities(U, tol = 1e-12) {
+/**
+ * Distinct knots and their multiplicities. Without `tol`, knots within 4 units in the last place
+ * count as one (round-off of one computed value); distinct knots closer than an absolute tolerance
+ * stay distinct, e.g. a section 1e-10 mm from the root of a 600 mm span (v = 1.7e-13).
+ */
+export function knotMultiplicities(U, tol) {
   const knots = [];
   const mults = [];
+  const same = (a, b) => Math.abs(a - b) <= (tol ?? 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b)));
   for (const t of U) {
-    if (knots.length && Math.abs(t - knots[knots.length - 1]) <= tol) mults[mults.length - 1]++;
+    if (knots.length && same(t, knots[knots.length - 1])) mults[mults.length - 1]++;
     else {
       knots.push(t);
       mults.push(1);

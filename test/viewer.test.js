@@ -3,7 +3,7 @@ import { buildWing } from '../src/geom/wing.js';
 import { createProject } from '../src/model/project.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { surfacePoint } from '../src/geom/nurbs.js';
-import { displayGeometry } from '../src/ui/viewer3d.js';
+import { MAX_NET_SEGMENTS, controlNetSegments, displayGeometry } from '../src/ui/viewer3d.js';
 
 describe('3D view geometry', () => {
   it('rebases a small wing near the coordinate limit, so 32-bit positions keep its shape', () => {
@@ -39,6 +39,24 @@ describe('3D view geometry', () => {
     expect(error(displayGeometry(build), [0, 0, 0])).toBeGreaterThan(0.01);
     expect(error(displayGeometry(build, origin), origin)).toBeLessThan(1e-5);
   });
+  it('draws the whole control net up to 100,000 segments and every k-th line above', () => {
+    const net = (nI, nJ) => Array.from({ length: nI }, (_, i) => Array.from({ length: nJ }, (_, j) => [i, j, 0]));
+    const small = controlNetSegments(net(3, 4), [1, 0, 0]);
+    expect(small.step).toBe(1);
+    // 3 rows x 3 segments + 4 columns x 2 segments.
+    expect(small.positions.length).toBe(17 * 6);
+    expect(Array.from(small.positions.slice(0, 6))).toEqual([-1, 0, 0, -1, 1, 0]);
+    const big = controlNetSegments(net(401, 1000));
+    // 800,599 segments: every 9th line, 46 rows x 999 + 112 columns x 400 = 90,754 segments.
+    expect(big.step).toBe(9);
+    expect(big.positions.length / 6).toBe(90_754);
+    expect(big.positions.length / 6).toBeLessThanOrEqual(MAX_NET_SEGMENTS);
+    // First and last lines are kept in both directions.
+    const ends = new Set();
+    for (let k = 0; k < big.positions.length; k += 3) ends.add(`${big.positions[k]},${big.positions[k + 1]}`);
+    for (const corner of ['0,0', '400,0', '0,999', '400,999']) expect(ends.has(corner)).toBe(true);
+  });
+
   it('keeps the display mesh within 100,000 vertices when the loft grid alone is larger', () => {
     const build = buildWing(
       createProject({

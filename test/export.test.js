@@ -209,6 +209,29 @@ describe('STEP', () => {
     expect(stepString('\u{1F600}')).toBe("'\\X4\\0001F600\\X0\\'");
   });
 
+  it('keeps a knot 1e-10 mm from the root distinct: no end knot above multiplicity degree + 1', () => {
+    const build = buildWing(
+      createProject({
+        airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }],
+        sections: [0, 1e-10, 600].map((y) => ({ airfoil: 'a', x: 0, y, z: 0, chord: 200, twist: 0 })),
+      }),
+    );
+    expect(build.errors).toEqual([]);
+    const txt = wingToStep(build, { name: 'Test', timestamp: '2026-01-01T00:00:00' });
+    const surfaces = [...txt.matchAll(/B_SPLINE_SURFACE_WITH_KNOTS\('',(\d+),(\d+),.*\.F\.,\.F\.,\.F\.,\(([^)]*)\),\(([^)]*)\),\(([^)]*)\),\(([^)]*)\)/g)];
+    expect(surfaces.length).toBe(6);
+    for (const [, du, dv, mu, mv, ku, kv] of surfaces) {
+      for (const [degree, mults, knots] of [
+        [Number(du), mu.split(',').map(Number), ku.split(',').map(Number)],
+        [Number(dv), mv.split(',').map(Number), kv.split(',').map(Number)],
+      ]) {
+        expect(Math.max(...mults)).toBeLessThanOrEqual(degree + 1);
+        expect(mults.length).toBe(knots.length);
+        for (let i = 1; i < knots.length; i++) expect(knots[i]).toBeGreaterThan(knots[i - 1]);
+      }
+    }
+  });
+
   it('writes a structurally complete AP214 file', () => {
     const build = buildWing(sampleProject());
     const txt = wingToStep(build, { name: 'Test', timestamp: '2026-01-01T00:00:00' });

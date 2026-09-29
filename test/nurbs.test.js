@@ -284,6 +284,10 @@ describe('surfaces', () => {
 describe('utilities', () => {
   it('compresses knot vectors', () => {
     expect(knotMultiplicities([0, 0, 0, 0.5, 0.5, 1, 1, 1])).toEqual({ knots: [0, 0.5, 1], mults: [3, 2, 3] });
+    // Round-off of one value (0.1 + 0.2 is 1 unit in the last place above 0.3) counts as one knot;
+    // a distinct knot 1.7e-13 from 0 stays distinct.
+    expect(knotMultiplicities([0, 0.3, 0.1 + 0.2, 1])).toEqual({ knots: [0, 0.3, 1], mults: [1, 2, 1] });
+    expect(knotMultiplicities([0, 0, 1.7e-13, 1, 1])).toEqual({ knots: [0, 1.7e-13, 1], mults: [2, 1, 2] });
     expect(normalizeKnots([2, 2, 3, 4, 4])).toEqual([0, 0, 0.5, 1, 1]);
   });
 

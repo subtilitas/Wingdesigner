@@ -202,6 +202,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   1 mm keeps its span position when edited.
 - CI: runs on `main` queue instead of cancelling a running Pages deployment; 3MF files are validated
   with lib3mf.
+- STEP export keeps knots closer than 1e-12 distinct (a section 1e-10 mm from the root wrote an end
+  knot of multiplicity degree + 2); only knots within 4 units in the last place merge.
+- The 3D view draws at most 100,000 control-net segments: above that it keeps every k-th control
+  line in each direction, first and last included.
+- The build finds the largest chord per airfoil and the station of each section in one pass instead
+  of a scan per airfoil and per section.
 - UI: rejected autosave data is kept under a separate key; keyboard shortcuts are inactive while a
   dialog is open; input focus survives a rebuild; empty or invalid number fields restore their
   value; export formats are disabled while the wing has errors; equal section span positions are

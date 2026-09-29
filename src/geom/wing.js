@@ -275,6 +275,9 @@ export function buildWing(project) {
   const chordStations = cosineStations(N);
   const airfoils = new Map(project.airfoils.map((a) => [a.id, a]));
   const checkedAirfoils = new Set();
+  // Largest chord per airfoil in one pass (a scan of all sections per airfoil took sections x airfoils).
+  const chordMaxOf = new Map();
+  for (const s of sections) chordMaxOf.set(s.airfoil, Math.max(chordMaxOf.get(s.airfoil) ?? 0, s.chord));
   for (const s of sections) {
     // Each airfoil is checked once, also when it fails: one message per airfoil, not per section.
     if (checkedAirfoils.has(s.airfoil)) continue;
@@ -293,7 +296,7 @@ export function buildWing(project) {
     }
     // The crossing tolerance of the profile stage is a fraction of the chord; above 200 mm chord
     // the loop is measured against CROSSING_LIMIT mm at the largest chord using this airfoil.
-    const chordMax = Math.max(...sections.filter((q) => q.airfoil === s.airfoil).map((q) => q.chord));
+    const chordMax = chordMaxOf.get(s.airfoil);
     const cross = CROSSING_TOLERANCE * chordMax > CROSSING_LIMIT ? stageCrossing(stage, CROSSING_LIMIT / chordMax) : null;
     if (cross) {
       errors.push(
@@ -733,7 +736,12 @@ export function buildWing(project) {
 
     const paramsV = stations.map((st) => st.v);
     const panelIdx = [];
-    for (let i = 0; i < ys.length - 1; i++) panelIdx.push([yList.indexOf(ys[i]), yList.indexOf(ys[i + 1])]);
+    // Station index of each section y (a map: indexOf per section took time quadratic in the sections).
+    const stationOf = new Map();
+    yList.forEach((y, i) => {
+      if (!stationOf.has(y)) stationOf.set(y, i);
+    });
+    for (let i = 0; i < ys.length - 1; i++) panelIdx.push([stationOf.get(ys[i]), stationOf.get(ys[i + 1])]);
     const scheme =
       settings.spanwise === 'smooth'
         ? { kind: 'global', params: paramsV, degree: degreeV }

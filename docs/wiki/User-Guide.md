@@ -423,7 +423,7 @@ The box **More airfoils (external, not bundled)** links to 3 collections. The ap
 | Resolution | **Spanwise stations per panel with guides or smooth mode** | 3 to 40 | 8 | Intervals per panel, cosine spacing; used only with a guide curve on or with Smooth. Fewer intervals only above 5,000,000 loft grid points (section [Guide curves](#guide-curves)). |
 | Resolution | **Profile parametrization** | **Centripetal (recommended)**, **Chord length**, **Uniform** | Centripetal | Parameter spacing of the airfoil NURBS interpolation, in the wing build and in the airfoil preview |
 | Display | **Show mirrored half (y < 0)** | on, off | on | Display only (3D view). Checks, status bar and wizard always report both halves. Stored in the project. |
-| Display | **Show NURBS control net** | on, off | off | 3D view only; not stored |
+| Display | **Show NURBS control net** | on, off | off | 3D view only; not stored. Above 100,000 net segments the view draws every k-th control line in each direction, first and last included. |
 | Display | **Show section outlines** | on, off | on | 3D view only; not stored |
 
 Below **Spanwise stations per panel** a note gives the loft grid points of the current settings (section [Guide curves](#guide-curves)), e.g. Glider preset: `Loft grid: 2,057 points.`

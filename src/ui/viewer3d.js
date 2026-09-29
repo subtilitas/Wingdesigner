@@ -21,6 +21,37 @@ function cross(a, b) {
 /** Largest display mesh in vertices; cubic lofts are refined 3 times in v while they fit. */
 const MAX_DISPLAY_VERTICES = 100_000;
 
+/** Largest displayed control net in line segments (the net of a 5,000,000-point loft has 10 million). */
+export const MAX_NET_SEGMENTS = 100_000;
+
+/**
+ * Line segments of the control net P[i][j], relative to `origin`. Above `maxSegments` the net keeps
+ * every step-th control line in each direction (first and last kept), each line complete.
+ */
+export function controlNetSegments(P, origin = [0, 0, 0], maxSegments = MAX_NET_SEGMENTS) {
+  const nI = P.length;
+  const nJ = P[0].length;
+  const lines = (n, step) => Math.floor((n - 1) / step) + 1 + ((n - 1) % step ? 1 : 0);
+  const segments = (step) => lines(nI, step) * (nJ - 1) + lines(nJ, step) * (nI - 1);
+  let step = Math.max(1, Math.ceil(segments(1) / maxSegments));
+  while (step > 1 && segments(step) > maxSegments && step < Math.max(nI, nJ)) step++;
+  const keep = (n) => Array.from({ length: n }, (_, k) => k).filter((k) => k % step === 0 || k === n - 1);
+  const rows = keep(nI);
+  const cols = keep(nJ);
+  const pos = new Float32Array((rows.length * (nJ - 1) + cols.length * (nI - 1)) * 6);
+  let at = 0;
+  const seg = (A, B) => {
+    for (let c = 0; c < 3; c++) {
+      pos[at + c] = A[c] - origin[c];
+      pos[at + 3 + c] = B[c] - origin[c];
+    }
+    at += 6;
+  };
+  for (const i of rows) for (let j = 0; j + 1 < nJ; j++) seg(P[i][j], P[i][j + 1]);
+  for (const j of cols) for (let i = 0; i + 1 < nI; i++) seg(P[i][j], P[i + 1][j]);
+  return { positions: pos, step };
+}
+
 /**
  * Display geometry of the half wing (duplicated edge vertices for crisp creases), with coordinates
  * relative to `origin`: 32-bit floats keep 0.06 mm near 1,000,000 mm, so the view rebases the wing
@@ -234,15 +265,8 @@ export class Viewer3D {
     surfacePointGrid(S, [0, build.uLE, 1], vs, (k, j, P) => edges[j].push(P));
     for (const e of edges) lines.add(new THREE.Line(polyline(e, origin), this.edgeMaterial));
     if (this.options.controlNet) {
-      const segs = [];
-      const P = S.points;
-      for (let i = 0; i < P.length; i++) for (let j = 0; j < P[i].length; j++) {
-        if (i + 1 < P.length) segs.push(...P[i][j], ...P[i + 1][j]);
-        if (j + 1 < P[i].length) segs.push(...P[i][j], ...P[i][j + 1]);
-      }
-      for (let k = 0; k < segs.length; k++) segs[k] -= origin[k % 3];
       const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segs), 3));
+      g.setAttribute('position', new THREE.BufferAttribute(controlNetSegments(S.points, origin).positions, 3));
       lines.add(new THREE.LineSegments(g, this.netMaterial));
     }
     half.add(lines);
