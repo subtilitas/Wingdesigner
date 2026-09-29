@@ -8,6 +8,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ### Added
 
+- Language: the app switches between English and German in the Settings tab (**Language / Sprache**)
+  without a reload and starts in German for a German browser; the choice is kept in the browser.
+  Everything a user reads follows the language (menus, labels, tooltips, messages, Checks tab, build
+  errors and warnings, airfoil check messages, export notices) and German numbers use the decimal
+  comma. File contents, airfoil names, attributions and licenses are not translated. The English text
+  is unchanged, with one exception: the `<noscript>` line of `index.html` names both languages, because
+  JavaScript cannot translate it. The Playwright specs run with the locale `en-US`. File names of
+  **Save**, **Export** and `.dat` downloads write German umlauts out (`Sportflügel` becomes
+  `Sportfluegel`); other accents are dropped as before.
 - Bundled airfoil library: Clark Y, USA 35B, NACA M-6 and NACA 8-H-12 from NACA report tables, RAF 34
   from a Royal Aircraft Establishment table reprinted by NACA, and S9104 (CC BY 4.0, Michael Selig).
   `public/airfoils/NOTICE.md` gives source, legal basis, conditions and attribution per file; the

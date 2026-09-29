@@ -2,7 +2,7 @@
 
 # Wingdesigner
 
-![Desktop window with the Glider preset: top bar, 3D view, Sections tab, status bar / Desktop-Fenster mit der Vorlage Glider: Kopfleiste, 3D-Ansicht, Registerkarte Sections, Statusleiste](images/main-desktop.png)
+![Desktop window with the Glider preset: top bar, 3D view, Sections tab, status bar / Desktop-Fenster mit dem Entwurfstyp Segelflugmodell: Kopfleiste, 3D-Ansicht, Registerkarte Sections, Statusleiste](images/main-desktop.png)
 
 ## English
 
@@ -35,8 +35,8 @@ Wingdesigner ist eine Browseranwendung, die einen Halbflügel eines ferngesteuer
 
 | Seite | Inhalt |
 | --- | --- |
-| [[Benutzerhandbuch|Benutzerhandbuch]] | Bildschirmaufbau, Speicherung, Bedienung, Assistent, Profilschnitte, Grundriss und Leitkurven, Profile, Einstellungen, Prüfungen, Export |
-| [[Geometrie|Geometrie]] | Profilkurve, Neuabtastung in Tiefenrichtung, Stationen in Spannweitenrichtung, Leitkurven, Flügelende, Fläche, Dreiecksnetze, STEP-Topologie, Grundrisskennwerte |
+| [[Benutzerhandbuch|Benutzerhandbuch]] | Bildschirmaufbau, Speicherung, Bedienung, Assistent, Schnitte, Grundriss und Leitkurven, Profile, Einstellungen, Prüfungen, Export |
+| [[Geometrie|Geometrie]] | Profilkurve, Neuabtastung in Profiltiefenrichtung, Stationen in Spannweitenrichtung, Leitkurven, Flügelende, Fläche, Dreiecksnetze, STEP-Topologie, Grundrisskennwerte |
 | [[Dateiformate|Dateiformate]] | Profilimport und Plausibilitätsprüfungen, Profilexport als `.dat`, Projekt-JSON, STEP, STL, 3MF, Dateigrößen |
 | [[Profilquellen|Profilquellen]] | Externe Profilquellen, ihre Nutzungsbedingungen, Quellenangabe, die 6 mitgelieferten Profildateien und ihre Rechtsgrundlage, Regeln für mitgelieferte Profile |
 | [[Entwicklung|Entwicklung]] | Architektur, Befehle, Unit- und Browsertests, STEP- und 3MF-Validierung, Continuous Integration (CI), Release |

@@ -70,6 +70,8 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/ui/exportui.js` | **Export** dialog |
 | `src/ui/dom.js` | DOM helpers |
 | `src/ui/styles.css` | Styles |
+| `src/i18n/index.js` | Language (`language`, `setLanguage`, `initialLanguage`), `tr()` and the number formats `fixed`, `count`, `whole`, `plain` |
+| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`; `index.js` merges them |
 
 ### Scripts
 
@@ -83,6 +85,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `scripts/screenshots.mjs` | Wiki screenshots |
 | `scripts/check-docs.mjs` | Documentation check |
 | `scripts/check-test-counts.mjs` | Test count check |
+| `scripts/check-i18n.mjs` | Translation check |
 
 ### Data flow
 
@@ -199,6 +202,20 @@ First build (`firstBuildSeconds`): the time of a change plus 4.4 ms per airfoil 
 
 The export memory adds the base of 15 MB. Tests: `test/budget.test.js` (thresholds, estimates, loft grid as the build computes it, shortened names), `e2e/limits.spec.js` (warning above 200 sections and the title of the **+** button, airfoil lists of large sections tables, export dialog note and the hard limit).
 
+## Translations
+
+The app speaks English or German (`src/i18n/index.js`). The language is English in Node.js and in the tests; the browser starts in German when its first language is German or when the user chose German (setting **Language / Sprache**, key `wingdesigner.language`).
+
+- `tr(text, params)` returns `text` in the current language. The key is the English text that the code produces, with `{name}` placeholders: `tr('Created "{name}".', { name })`. The first argument is a string literal, and a text is a whole sentence: no English fragments glued together.
+- The German text is the entry with the same key in the file of its area: `src/i18n/de/shell.js` (`src/main.js`, wizard, **Settings**), `panels.js` (**Airfoils** tab, **Export** dialog, library), `editors.js` (**Sections** table, **Planform**), `model.js` (project, size warnings, wizard), `geom.js` (build, export), `airfoil.js` (parser and checks). A key without a German entry shows the English text.
+- A plural is two keys, or a German entry that is a function of the params (`({ n }) => …`) and compares the printed number with `'1'`.
+- Numbers inside a text go through `fixed(value, digits)`, `count(value)`, `whole(value)` or `plain(value)`: German writes a decimal comma and dot groups (`1.234,5`). `whole()` is for counts and limits that can have 4 or more digits: English prints `String(value)`, German groups an integer and never rounds. Data numbers (values of input fields, attributes, file contents) stay unformatted.
+- Data is not translated: file contents (STEP, STL, 3MF, JSON, `.dat`), project JSON, airfoil names, attributions, licenses, file names, CSS classes, `data-*` values, option values and developer console output.
+- Code never compares message text. It compares a code or a recorded field (`issue.code`, `build.sizeWarning`), because the same message reads differently in German.
+- The texts of the bundled library (`category`, `use` in `public/airfoils/index.json` and the notes of the external sources) are data of the index, shown through `libraryText()` in `src/ui/airfoils.js`. A new text needs a `case` there with its own `tr()` literal and a German entry in `src/i18n/de/panels.js`; an unknown text is shown as it is.
+- `npm run i18n:check` (`scripts/check-i18n.mjs`, job `test` of `ci.yml`) fails when a key has no German entry, a German entry is unused, key and entry differ in their placeholders, two areas translate one key differently, or a `tr()` call does not start with a string literal.
+- `changeLanguage()` in `src/main.js` switches without a reload: it stores the choice, sets the `lang` attribute, relabels the shell and marks the build, so that the next frame builds the wing again and draws the view and every panel from that build. With no other message than the size warning, only that warning is written again.
+
 ## Test data policy
 
 | Data | Source |
@@ -224,7 +241,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 278 tests in 10 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 356 tests in 14 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -235,6 +252,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 12 Portable Network Graphics (PNG) files in `docs/wiki/images/` |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
+| `npm run i18n:check` | `node scripts/check-i18n.mjs` | Checks in [Translations](#translations); exit code 1 on a problem |
 
 | Environment variable | Used by | Effect |
 | --- | --- | --- |
@@ -265,9 +283,10 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Server | `npm run preview -- --port 4173 --strictPort`; every run starts its own server (`reuseExistingServer: false`) |
 | Timeouts | 60000 ms per test, 60000 ms for server start |
 | Retries | 0 |
+| Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` sets its own locale where a test needs one |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-149 tests in 10 spec files, 298 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+160 tests in 11 spec files, 320 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 30 tests run in one project only (`test.skip` in the other project):
 
@@ -360,7 +379,7 @@ On the next run, pages edited in the wiki web interface are overwritten, and pag
 
 `npm run screenshots` regenerates all images in `docs/wiki/images/`.
 It builds the site, serves it on port 4175 and drives Chromium with Playwright.
-Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. Light color scheme.
+Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. Light color scheme. English interface (locale `en-US`), because a German browser starts the app in German.
 
 | File | State | Size (px) |
 | --- | --- | --- |
@@ -428,7 +447,7 @@ The `docs.yml` job `wiki` only checks out.
 
 | `ci.yml` job | Name | Steps | Permissions | Runs on |
 | --- | --- | --- | --- | --- |
-| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`; uploads artifact `coverage` | `contents: read` | Every trigger |
+| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`, `i18n:check`; uploads artifact `coverage` | `contents: read` | Every trigger |
 | `step` | STEP and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`; uploads artifact `step-files` (STEP, 3MF, `cases.json`) | `contents: read` | Every trigger |
 | `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (build, then all specs in `e2e/`, both projects), `counts:check -- --e2e-report playwright-report/results.json`; on failure uploads artifact `playwright-results` (`test-results/`) | `contents: read` | Every trigger |
 | `build` | Build site | `build`; on push to `main` also `configure-pages` and `upload-pages-artifact` with `dist/` | `contents: read`, `pages: read` | Every trigger |

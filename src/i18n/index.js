@@ -7,7 +7,7 @@
 // English text; `npm run i18n:check` reports such keys, unused entries and placeholder mismatches.
 // The first argument of tr() is always a string literal, so the check finds every key.
 //
-// Numbers inside text go through fixed(), count() and plain(): German writes a decimal comma and
+// Numbers inside text go through fixed(), count(), whole() and plain(): German writes a decimal comma and
 // groups thousands with a dot (1.234,5), English a decimal point and a comma (1,234.5).
 //
 // Pure modules (geometry, parser, model) call tr() as well: a build or a check made after
@@ -49,15 +49,26 @@ export function tr(text, params = {}) {
   return fill(entry ?? text, params);
 }
 
-/** Decimal number with `digits` decimals: "1.5" in English, "1,5" in German. */
+/** Decimal number with `digits` decimals: "1200.5" in English, "1.200,5" in German (dot groups, decimal comma). */
 export function fixed(value, digits) {
   const s = value.toFixed(digits);
-  return current === 'de' ? s.replace('.', ',') : s;
+  if (current !== 'de') return s;
+  const [int, frac] = s.split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+$)/g, '.');
+  return frac === undefined ? grouped : `${grouped},${frac}`;
 }
 
 /** Whole number with digit grouping: "20,000" in English, "20.000" in German. */
 export function count(value) {
   return Math.round(value).toLocaleString(current === 'de' ? 'de-DE' : 'en');
+}
+
+/**
+ * Whole number as JavaScript prints it in English ("5000000"), with digit grouping in German
+ * ("5.000.000"). A value that is not an integer is printed as plain() does, never rounded.
+ */
+export function whole(value) {
+  return current === 'de' && Number.isInteger(value) ? count(value) : plain(value);
 }
 
 /** Number as JavaScript prints it (shortest round trip), with a decimal comma in German. */

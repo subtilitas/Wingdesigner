@@ -87,7 +87,7 @@ export function modelXml(objects, options = {}) {
  * distinct corners of a triangle
  */
 export function meshesTo3mf(objects, options = {}) {
-  for (const o of objects) checkPrecision(o.mesh.positions, o.mesh.indices, (x) => Math.fround(Number(num(x))), '3MF readers store');
+  for (const o of objects) checkPrecision(o.mesh.positions, o.mesh.indices, (x) => Math.fround(Number(num(x))), '3MF');
   const out = [];
   let total = 0;
   let failure = null;

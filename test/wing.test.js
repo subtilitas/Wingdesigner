@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { OVERSHOOT_LIMIT, buildWing, interpolateAlongV, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { syncGuidesToSpan } from '../src/model/edit.js';
 import { curvePoint, dist, interpolateCurve, knotMultiplicities, surfacePoint } from '../src/geom/nurbs.js';
@@ -14,6 +14,7 @@ import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { LIMITS, createProject, validateProject } from '../src/model/project.js';
 import { loftGrid } from '../src/model/budget.js';
 import { naca, sampleProject } from './helpers.js';
+import { setLanguage, tr } from '../src/i18n/index.js';
 
 describe('profile curves', () => {
   const pts = nacaAirfoil('2412', { pointsPerSide: 61 }).points;
@@ -1119,5 +1120,256 @@ describe('added stations', () => {
     expect(b.errors).toEqual([]);
     expect(b.fits).toBe(2);
     expect(b.extraStations).toBeGreaterThan(0);
+  });
+});
+
+describe('German build messages', () => {
+  afterEach(() => setLanguage('en'));
+  const german = (project) => {
+    setLanguage('de');
+    return buildWing(project);
+  };
+  const coarse = [[1, 0.002], [0.9422, 0.0062], [0.4103, 0.1048], [0.3764, 0.0957], [0, 0], [0.2163, -0.0488], [0.4749, -0.0296], [0.9349, -0.0728], [1, -0.002]];
+  const symmetric = (codes, ys, chord = () => 100, settings = { spanwise: 'smooth' }) =>
+    createProject({
+      airfoils: codes.map((c, i) => naca(c, `a${i}`, { closedTE: true })),
+      sections: ys.map((y, i) => ({ airfoil: `a${i}`, x: 0, y, z: 0, chord: chord(i), twist: 0 })),
+      settings,
+    });
+
+  it('names section and guide errors in German with decimal commas', () => {
+    const one = sampleProject();
+    one.sections = one.sections.slice(0, 1);
+    expect(german(one).errors).toEqual(['Mindestens 2 Schnitte sind erforderlich.']);
+    const dup = sampleProject();
+    dup.sections[1].y = 0;
+    expect(german(dup).errors).toEqual(['Die Schnitte 1 und 2 haben dieselbe Spannweitenposition y = 0 mm.']);
+    const unknown = sampleProject();
+    unknown.sections[0].airfoil = 'nope';
+    expect(german(unknown).errors).toEqual(['Der Schnitt bei y = 0 mm verwendet das unbekannte Profil „nope“.']);
+    const mirrored = sampleProject();
+    mirrored.sections[0].y = -5.5;
+    expect(german(mirrored).errors).toEqual(['Der Schnitt bei y = -5,5 mm liegt auf der gespiegelten Seite; der Halbflügel erstreckt sich über y >= 0.']);
+    const back = sampleProject();
+    back.guides.nose.enabled = true;
+    back.guides.nose.points = [[0, 0], [0, 300], [0, 200]];
+    expect(german(back).errors).toEqual(['Nasenlinie: Leitkurvenpunkte müssen eine streng aufsteigende Spannweitenposition y haben.']);
+    back.guides.nose.enabled = false;
+    back.guides.end.enabled = true;
+    back.guides.end.points = [[200, 0]];
+    expect(german(back).errors).toEqual(['Endlinie: Eine Leitkurve braucht mindestens 2 Punkte.']);
+    setLanguage('en');
+    expect(guideProblems({ points: [[0, 0], [1, 1], [2, Infinity]] })).toEqual(['Guide points must be finite [x, y] pairs.']);
+    setLanguage('de');
+    expect(guideProblems({ points: [[0, 0], [1, 1], [2, Infinity]] })).toEqual(['Leitkurvenpunkte müssen endliche [x, y]-Paare sein.']);
+  });
+
+  it('names close sections and guide points with their span positions', () => {
+    const ys = [169026.8951015743, 714063.9936875999, 714063.9936876, 816583.3893996814];
+    const b = german(createProject({ airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }], sections: ys.map((y, i) => ({ airfoil: 'a', x: 10 * i, y, z: 0, chord: 200, twist: 0 })) }));
+    expect(b.errors[0]).toMatch(/^Die Schnitte 2 und 3 bei y = 714063,9936875999 mm und y = 714063,9936876 mm liegen für die Flächenparameter zu dicht beieinander \(Spannweitenanteile 0,\d+ und 0,\d+\); die Schnitte auseinanderschieben\.$/);
+    const guide = { enabled: true, mode: 'fit', degree: 3, points: ys.map((y, i) => [10 * i, y]) };
+    expect(guideProblems(guide)).toEqual([
+      'Die Punkte 2 und 3 bei y = 714063,9936875999 mm und y = 714063,9936876 mm liegen für die Kurvenparameter zu dicht beieinander; die Punkte auseinanderschieben.',
+    ]);
+  });
+
+  it('reports a section 1e-200 mm apart as a singular fit', () => {
+    const p = symmetric(['0012', '0012', '0012'], [0, 1e-200, 600], () => 150);
+    expect(german(p).errors).toEqual(['Die Flächenanpassung ist singulär: Die Schnitte 1 und 2 bei y = 0 mm und y = 1e-200 mm liegen zu dicht beieinander; die Schnitte auseinanderschieben.']);
+  });
+
+  it('translates the chord error with its hint and the pointed-tip warnings', () => {
+    const p = sampleProject();
+    p.guides.nose.enabled = true;
+    p.guides.end.enabled = true;
+    p.guides.end.points = [[200, 0], [100, 300], [60, 600]];
+    expect(german(p).errors).toEqual([
+      'Die Profiltiefe sinkt bei y = 600,0 mm auf 0,00 mm; Nasenlinie und Endlinie dürfen sich nicht berühren oder kreuzen. Für ein Flügelende, das in einer Spitze endet, Einstellungen > Flügelende auf „Spitz“ setzen.',
+    ]);
+    const tip = sampleProject({ settings: { tip: { mode: 'pointed', ratio: 0.01 } } });
+    tip.guides.nose.enabled = true;
+    tip.guides.end.enabled = true;
+    expect(german(tip).warnings.find((w) => w.startsWith('Spitzes Flügelende'))).toMatch(
+      /^Spitzes Flügelende: Nasenlinie und Endlinie enden \d+,\d mm voneinander entfernt, daher beträgt die Randtiefe \d+,\d mm statt 1,70 mm; ihre letzten Punkte zusammenschieben, um das Flügelende zu schließen\.$/,
+    );
+  });
+
+  it('translates the smooth blend error and the smooth overshoot errors', () => {
+    const blend = sampleProject({ settings: { spanwise: 'smooth' } });
+    blend.sections = [{ y: 0, chord: 1 }, { y: 500, chord: 1 }, { y: 600, chord: 5 }, { y: 1000, chord: 5 }].map((s, i) => ({ id: `s${i}`, airfoil: 'root', x: 0, z: 0, twist: 0, ...s }));
+    expect(german(blend).errors[0]).toMatch(/^Die Profiltiefe sinkt bei y = \d+,\d mm auf -?\d+,\d\d mm; die glatte Interpolation der Profiltiefen der Schnitte fällt unter das Minimum von 1 mm; lineare Interpolation verwenden oder Schnitte hinzufügen\.$/);
+    const chords = [200, 150, 20];
+    const chord = german(symmetric(['0012', '0012', '0012'], [0, 500, 510], (i) => chords[i]));
+    expect(chord.errors[0]).toMatch(/^Die glatte Interpolation in Spannweitenrichtung schwingt bei y = \d+,\d mm über: Profiltiefe 1\.[34]\d\d,\d\d mm, während die Schnitte nur von 20,00 bis 200,00 mm reichen\. /);
+    expect(chord.errors[0]).toMatch(/ Die Schnitte sind ungleichmäßig verteilt \(kleinster Abstand 10,00 mm\)\. Lineare Interpolation verwenden, die Schnitte gleichmäßiger verteilen oder dicht beieinanderliegende Schnitte entfernen\.$/);
+    const profile = german(symmetric(['0007', '0004', '0005', '0002', '0002', '0016'], [0, 0.1, 0.11, 100, 100.1, 101]));
+    expect(profile.errors[0]).toMatch(/^Die glatte Interpolation in Spannweitenrichtung schwingt bei y = \d+,\d mm über: Höhe der (Ober|Unter)seite bei x = \d+,\d % der Profiltiefe -?\d+,\d\d % der Profiltiefe, während die Schnitte nur von -?\d+,\d\d bis -?\d+,\d\d % der Profiltiefe reichen\. /);
+    expect(profile.errors[0]).toMatch(/kleinster Abstand 0,01 mm/);
+  });
+
+  it('translates thickness errors of the blend and of the trailing-edge setting', () => {
+    const p = sampleProject({ settings: { spanwise: 'smooth' } });
+    p.airfoils = [naca('0024', 'thick'), naca('0006', 'thin')];
+    p.sections = [
+      { id: 'a', airfoil: 'thick', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+      { id: 'b', airfoil: 'thin', x: 0, y: 60, z: 0, chord: 200, twist: 0 },
+      { id: 'c', airfoil: 'thick', x: 0, y: 600, z: 0, chord: 200, twist: 0 },
+    ];
+    expect(german(p).errors[0]).toMatch(
+      /^Das interpolierte Profil hat bei y = \d+,\d mm, x = \d+,\d % der Profiltiefe eine negative Dicke \(-\d+,\d\d\d % der Profiltiefe\); die glatte Interpolation in Spannweitenrichtung schwingt zwischen ungleichmäßig verteilten Schnitten über\. Lineare Interpolation verwenden oder Schnitte hinzufügen\.$/,
+    );
+    const xs = Array.from({ length: 61 }, (_, i) => (1 - Math.cos((Math.PI * i) / 60)) / 2);
+    const outline = (t) => [...xs.slice().reverse().map((x) => [x, t(x) / 2]), ...xs.slice(1).map((x) => [x, -t(x) / 2])];
+    const project = (mode, t) => {
+      const q = sampleProject({ settings: { trailingEdge: { mode, thickness: 0.3 } } });
+      q.airfoils = [{ id: 'w', name: 'waisted', points: outline(t) }];
+      for (const s of q.sections) s.airfoil = 'w';
+      return q;
+    };
+    const waisted = (x) => 0.1 * Math.sqrt(x) * (1 - x) ** 3 + 0.03 * x ** 4;
+    expect(german(project('closed', waisted)).errors[0]).toMatch(
+      /^Die Endleisteneinstellung zieht die Oberseite bei y = 0,0 mm unter die Unterseite \(-\d+,\d\d % der Profiltiefe\); das Profil ist innen dünner als seine Endleistendicke\. Die Einstellung „Wie in den Profildateien“ oder eine größere Endleistendicke verwenden\.$/,
+    );
+    const touching = (x) => 0.03 * x + 0.1 * Math.sqrt(x) * (1 - x) * (x - 0.5) ** 2;
+    expect(german(project('closed', touching)).errors[0]).toMatch(
+      /^Die Endleisteneinstellung lässt Ober- und Unterseite sich bei y = 0,0 mm, x = 50,0 % der Profiltiefe berühren \(Dicke \d,\d+ % der Profiltiefe\); der Flügel hätte dort die Dicke null\. Die Einstellung „Wie in den Profildateien“/,
+    );
+  });
+
+  it('translates airfoil errors, and a cached airfoil error follows the language', () => {
+    const p = sampleProject();
+    p.airfoils = [{ id: 'c', name: 'coarse', points: coarse }];
+    for (const s of p.sections) s.airfoil = 'c';
+    const en = buildWing(p).errors[0];
+    expect(en).toMatch(/^Airfoil "coarse": the NURBS curve through the points crosses itself near x = 10\d\.\d % chord/);
+    // The same points hit the profile cache: the message is made again in the current language.
+    expect(german(p).errors[0]).toMatch(/^Profil „coarse“: Die NURBS-Kurve durch die Punkte überschneidet sich selbst nahe x = 10\d,\d % der Profiltiefe; die Datei hat dort zu wenige Punkte\. Eine Datei mit mehr Punkten/);
+    setLanguage('en');
+    expect(buildWing(p).errors[0]).toBe(en);
+    // A centripetal-less parametrization adds the hint.
+    p.settings.parametrization = 'uniform';
+    expect(german(p).errors[0]).toMatch(/ Die Einstellung „Zentripetal“ unter Einstellungen > Parametrisierung der Profile folgt den Punkten genauer\.$/);
+    // profileProblem serves the airfoil preview, which capitalizes the first letter.
+    setLanguage('de');
+    const hook = [[1, 0.003], [0.8, 0.04], [0.66, 0.06], [0.58, 0.075], [0.62, 0.085], [0.4, 0.09], [0.2, 0.07], [0.05, 0.035], [0, 0], [0.05, -0.02], [0.2, -0.03], [0.5, -0.03], [0.8, -0.015], [1, -0.003]];
+    expect(profileProblem(profileCurve(checkAirfoil(hook).points))).toMatch(/^Die Profilseite läuft in x um \d+,\d\d\d % der Profiltiefe zurück, nahe x = \d+,\d % der Profiltiefe; /);
+  });
+
+  it('keeps the profile stage of a good airfoil across a language switch', () => {
+    const p = sampleProject();
+    const first = buildWing(p);
+    expect(first.errors).toEqual([]);
+    const id = p.sections[0].airfoil;
+    // Only entries with an error hold text; the fitted curve and the resampled shape are not made again.
+    const fromGerman = german(p);
+    expect(fromGerman.errors).toEqual([]);
+    expect(fromGerman.profiles.get(id).compat).toBe(first.profiles.get(id).compat);
+    setLanguage('en');
+    expect(buildWing(p).profiles.get(id).compat).toBe(first.profiles.get(id).compat);
+  });
+
+  it('formats the loft grid limit with German digit grouping', () => {
+    const p = sampleProject({ settings: { chordSamples: 200 } });
+    const base = p.sections[0];
+    const n = Math.ceil(LIMITS.maxGridPoints / 401) + 1;
+    p.sections = Array.from({ length: n }, (_, i) => ({ ...base, id: `s${i}`, y: i }));
+    const de = (v) => v.toLocaleString('de-DE');
+    expect(de(1234)).toBe('1.234');
+    expect(german(p).errors[0]).toBe(
+      `Das Flächengitter braucht ${de(n * 401)} Punkte bei einer Station je Feld (${de(n)} Schnitte, 200 Stationen je Profilseite); die Grenze liegt bei ${de(LIMITS.maxGridPoints)}. Die Stationen je Profilseite verringern oder Schnitte entfernen.`,
+    );
+  });
+
+  it('translates limit and non-finite errors', () => {
+    const far = sampleProject({ settings: { spanwise: 'smooth' } });
+    far.sections = [
+      { id: 'a', airfoil: 'root', x: 0, y: 0, z: 0, chord: 100, twist: 0 },
+      { id: 'b', airfoil: 'root', x: 1_000_000, y: 100, z: 0, chord: 100, twist: 0 },
+      { id: 'c', airfoil: 'root', x: 0, y: 1000, z: 0, chord: 100, twist: 0 },
+    ];
+    expect(german(far).errors[0]).toMatch(
+      /^Bei y = \d+,\d mm verlässt der Flügel die Projektgrenzen \(x der Profilnase \d\.\d{3}\.\d{3} mm, z -?\d+ mm, Profiltiefe 100 mm; Grenzen ±1.200.000 mm und 100.000 mm Profiltiefe\)\. Die Leitkurven prüfen oder lineare Interpolation verwenden\.$/,
+    );
+    const guide = sampleProject();
+    guide.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[0, 0], [1_000_000, 0.1], [-1_000_000, 0.11], [1_000_000, 599.9], [0, 600]] };
+    expect(german(guide).errors[0]).toMatch(/^Endlinie: Die Kurve durch die Punkte erreicht x = 7,\d\de\+13 mm, jenseits von ±1.200.000 mm; die Punkte in y gleichmäßiger verteilen oder den Modus „Kontrollpunkte“ verwenden\.$/);
+    const twist = symmetric(['0012', '0012', '0012'], [0, 1e-300, 2e-300]);
+    twist.sections[1].twist = 90;
+    expect(german(twist).errors[0]).toMatch(/^Die Schnittwerte ergeben bei y = 0,0 mm nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen\.$/);
+  });
+
+  it('translates the trailing-edge warnings', () => {
+    const thick = german(sampleProject({ settings: { trailingEdge: { mode: 'thickness', thickness: 8.5 } } }));
+    expect(thick.warnings).toEqual(['Die Endleistendicke 8,5 mm übersteigt 5 % der Profiltiefe an 1 Station; dort wird sie auf 5 % begrenzt.']);
+    const mixed = sampleProject();
+    mixed.airfoils[1] = naca('0010', 'tip', { closedTE: true });
+    expect(german(mixed).warnings).toEqual(['Die Endleiste ist an manchen Stationen geschlossen und an anderen offen; 1 Station wurde auf 0,01 mm geöffnet.']);
+  });
+
+  it('puts the station warnings in the singular and the plural', () => {
+    setLanguage('de');
+    const thick = (stations) =>
+      tr('Trailing-edge thickness {thickness} mm exceeds {percent} % of the chord at {stations} station(s); it is limited to {percent} % there.', { thickness: '8,5', percent: '5', stations });
+    expect([thick('1'), thick('4')]).toEqual([
+      'Die Endleistendicke 8,5 mm übersteigt 5 % der Profiltiefe an 1 Station; dort wird sie auf 5 % begrenzt.',
+      'Die Endleistendicke 8,5 mm übersteigt 5 % der Profiltiefe an 4 Stationen; dort wird sie auf 5 % begrenzt.',
+    ]);
+    const opened = (stations) => tr('The trailing edge is closed on some stations and open on others; {stations} station(s) were opened to {gap} mm.', { stations, gap: '0,01' });
+    expect([opened('1'), opened('3')]).toEqual([
+      'Die Endleiste ist an manchen Stationen geschlossen und an anderen offen; 1 Station wurde auf 0,01 mm geöffnet.',
+      'Die Endleiste ist an manchen Stationen geschlossen und an anderen offen; 3 Stationen wurden auf 0,01 mm geöffnet.',
+    ]);
+    const added = (stations) => tr('The loft deviates up to {dev} mm from the intended surface at y = {y} mm after {stations} added station(s); raise the spanwise stations per panel.', { dev: '3,1', y: '713,0', stations });
+    expect([added('1'), added('32')]).toEqual([
+      'Die Fläche weicht nach 1 hinzugefügten Station bei y = 713,0 mm um bis zu 3,1 mm von der vorgesehenen Fläche ab; die Stationen je Feld erhöhen.',
+      'Die Fläche weicht nach 32 hinzugefügten Stationen bei y = 713,0 mm um bis zu 3,1 mm von der vorgesehenen Fläche ab; die Stationen je Feld erhöhen.',
+    ]);
+  });
+
+  it('translates the fitted-surface errors and the deviation warning', () => {
+    // Zigzag degree-5 control guides that 32 added stations cannot follow: trial 26 folds, trial 2 turns inside out.
+    const zigzag = (trial) => {
+      let seed = 9;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      let guides = null;
+      for (let t = 0; t <= trial; t++) {
+        const n = 20 + Math.floor(rnd() * 70);
+        const ys = Array.from({ length: n }, (_, i) => (600 * i) / (n - 1));
+        const nose = ys.map((y, i) => [(i % 2 ? 60 : 0) * rnd() + 20 * rnd(), y]);
+        const end = ys.map((y, i) => [nose[i][0] + 1 + 100 * rnd() * rnd(), y]);
+        guides = { nose: { enabled: true, mode: 'control', degree: 5, points: nose }, end: { enabled: true, mode: 'control', degree: 5, points: end } };
+      }
+      const p = sampleProject();
+      p.guides = guides;
+      return p;
+    };
+    expect(german(zigzag(26)).errors[0]).toMatch(
+      /^Die angepasste Fläche faltet sich oder schnürt sich zwischen den Stationen bei y = \d+,\d mm ein \(Profiltiefe -?\d+,\d\d mm in der vorgesehenen Profiltiefenrichtung, Minimum 1 mm\): Schränkung oder Leitkurven ändern sich schneller, als 32 hinzugefügte Stationen auflösen\. Schnitte hinzufügen, den Schränkungsunterschied verringern oder die Leitkurven glätten\.$/,
+    );
+    expect(german(zigzag(2)).errors[0]).toMatch(
+      /^Die angepasste Fläche stülpt sich zwischen den Stationen bei y = \d+,\d mm um \(örtliche Dicke -\d+,\d\d\d % der Profiltiefe\): Die Fläche durch die Stationen schwingt zwischen ihnen aus \(schnell veränderliche Leitkurven oder ungleichmäßig verteilte Schnitte bei glatter Interpolation\)\. Die Leitkurven glätten, /,
+    );
+    // A nose line with a bump 4 mm high and 0.06 mm wide at y = 713 mm.
+    const p = createProject({ airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }], sections: [0, 1000].map((y) => ({ airfoil: 'a', x: 0, y, z: 0, chord: 200, twist: 0 })) });
+    p.guides = defaultGuides(p.sections);
+    const line = [];
+    for (let y = 0; y <= 1000; y += 50) if (y < 712 || y > 714) line.push([0, y]);
+    const bump = [[0, 712.97], [1, 712.98], [3, 712.99], [4, 713], [3, 713.01], [1, 713.02], [0, 713.03]];
+    p.guides.nose = { enabled: true, mode: 'control', degree: 3, points: [...line, ...bump].sort((a, b) => a[1] - b[1]) };
+    const b = german(p);
+    expect(b.errors).toEqual([]);
+    expect(b.warnings.find((w) => w.startsWith('Die Fläche weicht'))).toMatch(/^Die Fläche weicht (ohne hinzugefügte Stationen|nach \d+ hinzugefügten Stationen) bei y = 713,0 mm um bis zu 3,\d\d mm von der vorgesehenen Fläche ab; die Stationen je Feld erhöhen\.$/);
+  });
+
+  it('gives the same English messages after a round trip through German', () => {
+    const p = sampleProject();
+    p.sections[0].y = -5.5;
+    const en = buildWing(p).errors;
+    setLanguage('de');
+    buildWing(p);
+    setLanguage('en');
+    expect(buildWing(p).errors).toEqual(en);
+    expect(en).toEqual(['Section at y = -5.5 mm lies on the mirrored side; the half wing spans y >= 0.']);
   });
 });

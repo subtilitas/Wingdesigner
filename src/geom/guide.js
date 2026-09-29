@@ -6,6 +6,7 @@
 // mode 'control': the points are the control polygon of a clamped uniform B-spline.
 
 import { curvePoint, interpolateCurve, paramsApart, solveMonotonic } from './nurbs.js';
+import { plain, tr } from '../i18n/index.js';
 
 export function clampedUniformKnots(nPoints, degree) {
   const n = nPoints - 1;
@@ -21,18 +22,18 @@ export function clampedUniformKnots(nPoints, degree) {
 export function guideProblems(guide) {
   const out = [];
   if (!guide || !Array.isArray(guide.points) || guide.points.length < 2) {
-    out.push('A guide curve needs at least 2 points.');
+    out.push(tr('A guide curve needs at least 2 points.'));
     return out;
   }
   for (const p of guide.points) {
     if (!Array.isArray(p) || p.length < 2 || !p.every(Number.isFinite)) {
-      out.push('Guide points must be finite [x, y] pairs.');
+      out.push(tr('Guide points must be finite [x, y] pairs.'));
       return out;
     }
   }
   for (let i = 1; i < guide.points.length; i++) {
     if (!(guide.points[i][1] > guide.points[i - 1][1])) {
-      out.push('Guide points must have strictly increasing span position y.');
+      out.push(tr('Guide points must have strictly increasing span position y.'));
       return out;
     }
   }
@@ -46,7 +47,7 @@ export function guideProblems(guide) {
       const a = (P[i - 1][1] - ya) / (yb - ya);
       const b = (P[i][1] - ya) / (yb - ya);
       if (!paramsApart(a, b)) {
-        out.push(`Points ${i} and ${i + 1} at y = ${P[i - 1][1]} mm and y = ${P[i][1]} mm lie too close together for the curve parameters; move them apart.`);
+        out.push(tr('Points {a} and {b} at y = {y1} mm and y = {y2} mm lie too close together for the curve parameters; move them apart.', { a: plain(i), b: plain(i + 1), y1: plain(P[i - 1][1]), y2: plain(P[i][1]) }));
         break;
       }
     }

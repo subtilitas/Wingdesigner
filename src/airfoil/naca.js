@@ -1,6 +1,8 @@
 // NACA 4-digit and 5-digit airfoil generator (Abbott & von Doenhoff, "Theory of Wing Sections", 1959;
 // NACA Report 824). Coordinates are computed from the published equations.
 
+import { tr } from '../i18n/index.js';
+
 const FIVE_STANDARD = {
   1: { m: 0.058, k1: 361.4 },
   2: { m: 0.126, k1: 51.64 },
@@ -82,7 +84,7 @@ function camber5(x, d) {
  */
 export function nacaAirfoil(code, { pointsPerSide = 81, closedTE = false } = {}) {
   const d = parseNacaCode(code);
-  if (!d) throw new Error(`Unsupported NACA designation: ${code}`);
+  if (!d) throw new Error(tr('Unsupported NACA designation: {code}', { code }));
   const upper = [];
   const lower = [];
   for (let i = 0; i < pointsPerSide; i++) {

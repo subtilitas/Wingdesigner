@@ -232,12 +232,12 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | Bedingung | Stationen je Feld | Verteilung im Feld | Grad der Fläche entlang v |
 | --- | --- | --- | --- |
 | **Linear**, keine Leitkurve eingeschaltet | 1 (der Profilschnitt) | – | 1 |
-| **Linear**, eine Leitkurve eingeschaltet | K (der Profilschnitt und K − 1 Zwischenstationen) | kosinusförmig | min(3, K): 3 bei K ≥ 3; 2 oder 1, wenn die Gittergrenze des Lofts K auf 2 oder 1 senkt |
+| **Linear**, eine Leitkurve eingeschaltet | K (der Profilschnitt und K − 1 Zwischenstationen) | kosinusförmig | min(3, K): 3 bei K ≥ 3; 2 oder 1, wenn die Grenze des Flächengitters K auf 2 oder 1 senkt |
 | **Smooth** | K (der Profilschnitt und K − 1 Zwischenstationen) | kosinusförmig | 3 (Stationen − 1 bei weniger als 4 Stationen) |
 
 Der Randschnitt ist die letzte Station. Anzahl der Stationen bei K je Feld: (Profilschnitte − 1) · K + 1,
 dazu die zusätzlichen Stationen unten (in jedem Modus).
-Beispiel: Vorlage **Glider** (Segelflugmodell), 3 Profilschnitte, K = 8: 17 Stationen.
+Beispiel: Entwurfstyp **Glider** (Segelflugmodell), 3 Profilschnitte, K = 8: 17 Stationen.
 
 ```
 y_(i,k) = y_i + (y_(i+1) − y_i) (1 − cos(π k / K)) / 2          k = 0 … K − 1
@@ -246,7 +246,7 @@ y_(i,k) = y_i + (y_(i+1) − y_i) (1 − cos(π k / K)) / 2          k = 0 … K
 Unterscheidbare Spannweitenanteile: a < b sind unterscheidbar, wenn b − a > max(4 ε · max(|a|, |b|), 2^-1021),
 ε = 2^-52 (`paramsApart` in `src/geom/nurbs.js`). Zwei nicht unterscheidbare Profilschnitte sind ein Fehler;
 eine Zwischenstation, die von der letzten behaltenen Station oder vom Rand nicht unterscheidbar ist, entfällt;
-Leitkurven im Modus Durchgangspunkte wenden dieselbe Regel auf das normierte y ihrer Punkte an.
+Leitkurven im Modus „Durch Punkte“ wenden dieselbe Regel auf das normierte y ihrer Punkte an.
 
 Flächengitter (`loftGrid` in `src/model/budget.js`): Stationen mal Konturpunkte vor dem Einfügen
 zusätzlicher Stationen, ((Profilschnitte − 1) · K + 1) · (2N + 1) Punkte. **Linear** ohne Leitkurve
@@ -254,7 +254,7 @@ verwendet K_set = 1. Die Grenzen gelten in jedem Modus.
 
 | Größe | Wert |
 | --- | --- |
-| Warnschwelle | über 60 000 Gitterpunkten (`WARN.gridPoints`): Der Aufbau ergänzt die Warnung „Large project: …“ mit „… loft grid points (warning above 60,000)“ und der erwarteten Zeit und dem Browser-Speicher jeder Änderung. **Settings** zeigt unter den Auflösungsfeldern „Loft grid: … points.“, über 60 000 mit Zeit und Speicher. |
+| Warnschwelle | über 60 000 Gitterpunkten (`WARN.gridPoints`): Der Aufbau ergänzt die Warnung „Large project: …“ mit „… loft grid points (warning above 60,000)“ und der erwarteten Zeit und dem Arbeitsspeicher jeder Änderung. **Settings** zeigt unter den Auflösungsfeldern „Loft grid: … points.“, über 60 000 mit Zeit und Speicher. |
 | Grenze | 5 000 000 Gitterpunkte (`LIMITS.maxGridPoints` in `src/model/project.js`); darüber geht einem Browser-Tab auf einem Desktop-Rechner der Speicher aus |
 | Verwendetes K | max(1, min(K_set, floor((5 000 000 / (2N + 1) − 1) / (Profilschnitte − 1)))), das größte K, dessen Gitter ((Profilschnitte − 1) · K + 1) · (2N + 1) höchstens 5 000 000 Punkte hat; K_set = Wert in **Settings**. K < K_set nur über 5 000 000 Gitterpunkten. |
 | Warnung (K < K_set) | „Spanwise stations per panel reduced from K_set to K: S sections with N chord samples keep the loft within 5,000,000 grid points.“ |
@@ -276,19 +276,19 @@ vergleicht der Aufbau Flächenpunkte mit den Punkten einer bei y platzierten Sta
 | Abweichung bei y | Maximum über j von \|S(u_j, v) − P_j\|, Abstand im Raum; u_j = Flächenparameter des Konturpunkts j (Abschnitt 4), P_j = Punkt j der bei y platzierten Station |
 | Toleranz | min(0,5 mm; 0,1 · c(y)) |
 | Einfügen | Abweichung an jeder Prüfposition y aus Abschnitt 3.6; je eine Station an jedem lokalen Maximum von Abweichung / Toleranz, an dem die Abweichung die Toleranz überschreitet (die Toleranz schrumpft mit der Profiltiefe, sodass die größte Abweichung unter ihrer Toleranz liegen kann, während kleinere weiter außen ihre überschreiten); eine neue Station hält mindestens 1e-6 · (y_tip − y_root) Abstand zu jeder anderen Station |
-| Grenze | 6 Durchläufe, insgesamt 32 zusätzliche Stationen; über 60 000 Gitterpunkten (`WARN.gridPoints`) 1 Durchlauf, denn jeder Durchlauf passt den ganzen Loft neu an |
+| Grenze | 6 Durchläufe, insgesamt 32 zusätzliche Stationen; über 60 000 Gitterpunkten (`WARN.gridPoints`) 1 Durchlauf, denn jeder Durchlauf passt die ganze Fläche neu an |
 | Behaltene Anpassung | von den Anpassungen vor und nach jedem Durchlauf die mit dem kleinsten Maximum über die Prüfpositionen von Abweichung / Toleranz; bei Gleichstand die frühere. Dicht beieinander hinzugefügte Stationen können die kubische Anpassung ausschwingen lassen: 2 Profilschnitte, Nasenlinie mit einer Beule von 4 mm Höhe und 0,06 mm Breite (Kontrollpunkte): 3,67 mm ohne zusätzliche Stationen, 18 797 mm nach 32 zusätzlichen Stationen; der Aufbau behält die erste Anpassung und warnt |
 | Nach der letzten Anpassung | Profiltiefe und örtliche Dicke der angepassten Fläche (Abschnitt 3.6) zusätzlich bei 0,25, 0,5 und 0,75 jedes Stationsintervalls (Viertelpunkte); sie gehen nur in die Fehler aus Abschnitt 3.6 ein: Dort wird keine Station eingefügt, und die Abweichung dort geht nicht in die Warnung ein |
 | Abweichung über der Toleranz an einer Prüfposition | Warnung mit der größten Abweichung an den Prüfpositionen, deren y und Anzahl der zusätzlichen Stationen; Abhilfe: K erhöhen |
 
 Derselbe Vergleich liefert die Profiltiefe und die örtliche Dicke der angepassten Fläche (Abschnitt 3.6).
 
-Beispiel: Vorlage **Swept flying wing** (3 Profilschnitte, **Linear**, Schränkung am Rand −4°):
-2 zusätzliche Stationen bei y = 150,0 mm und y = 450,0 mm. Dieselbe Vorlage mit Schränkung am Rand 0°:
+Beispiel: Entwurfstyp **Swept flying wing** (3 Profilschnitte, **Linear**, Schränkung am Rand −4°):
+2 zusätzliche Stationen bei y = 150,0 mm und y = 450,0 mm. Derselbe Entwurfstyp mit Schränkung am Rand 0°:
 keine zusätzliche Station.
 
 Spitze elliptische Flügelenden (Assistent: **Planform** = **Elliptic (guide curves)**, **Tip** =
-**Pointed (1/200 scale)**), jede Vorlage: 5 bis 9 zusätzliche Stationen. Größte Abweichung an den
+**Pointed (1/200 scale)**), jeder Entwurfstyp: 5 bis 9 zusätzliche Stationen. Größte Abweichung an den
 Prüfpositionen: 0,077 mm (**Tail surface**) bis 0,371 mm (**Swept flying wing**), unter der
 Toleranz; keine Warnung. Nasenlinie und Endlinie enden ein Viertel und drei Viertel der Randtiefe um
 die Pfeillinie, sodass der Randschnitt seinen Viertelpunkt auf dieser Linie behält. Innerhalb von
@@ -344,9 +344,9 @@ Abschnitt `guides.nose`, `guides.end`). x eines Leitkurvenpunkts ist auf ±1 100
 (`LIMITS.maxGuideCoordinate`): x eines Profilschnitts bis 1 000 000 mm plus eine Profiltiefe bis
 100 000 mm.
 
-![Grundriss-Editor, Vorlage Glider: Nasenlinie und Endlinie eingeschaltet; Kasten der Nasenlinie mit Use guide curve, Mode Through points, Degree 3, Reset to sections und Punkttabelle](images/planform.png)
+![Grundriss-Editor, Entwurfstyp Segelflugmodell: Nasenlinie und Endlinie eingeschaltet; Kasten der Nasenlinie mit Use guide curve, Mode Through points, Degree 3, Reset to sections und Punkttabelle](images/planform.png)
 
-Registerkarte **Planform** (Grundriss), Vorlage **Glider**. Bedienelemente: [[Benutzerhandbuch|Benutzerhandbuch]],
+Registerkarte **Planform** (Grundriss), Entwurfstyp **Glider**. Bedienelemente: [[Benutzerhandbuch|Benutzerhandbuch]],
 Abschnitt Grundriss.
 
 ### 3.4 Lage der Profilnase und Profiltiefe je Station
@@ -382,7 +382,7 @@ c_tip = max(r · c(y_prev), 1 mm)
 | Letztes Feld | eine Profiltiefe unter c_tip und über −0,01 mm wird auf c_tip angehoben |
 | Warnung | beide Leitkurven eingeschaltet und die Randtiefe (x der Endlinie − x der Nasenlinie bei y_tip) größer als c_tip + 0,5 mm; der Flügel endet dann mit dieser Profiltiefe; die Meldung nennt beide Werte |
 
-Beispiel: Vorlage **Glider** (Leitkurven enden 90 mm voneinander entfernt) mit **Wing tip** =
+Beispiel: Entwurfstyp **Glider** (Leitkurven enden 90 mm voneinander entfernt) mit **Wing tip** =
 **Pointed**: c_tip = 1 mm, Randtiefe 90 mm, Warnung „nose line and end line end 90.0 mm apart, so the
 tip chord is 90.0 mm instead of 1.00 mm“.
 
@@ -436,7 +436,7 @@ Prüfungen in der Reihenfolge des Codes. Jede Zeile ist ein Fehler; es wird kein
 | Profiltiefe, Hinweis | wie oben, Minimum am Rand, Profiltiefe > −0,01 mm, **Wing tip** = **Flat**: die Meldung ergänzt „set Settings > Wing tip to Pointed“ (**Settings** > **Wing tip** auf **Pointed** stellen) |
 | Angepasste Fläche, endlich | nach der Flächenanpassung und den zusätzlichen Stationen (Abschnitt 4): eine Koordinate eines Kontrollpunkts ist keine endliche Zahl. Meldung: „The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections.“ |
 | Dicke der angepassten Fläche | an jeder Position der angepassten Fläche: örtliche Dicke < −1e-9 (hinter 99 % der Profiltiefe: < −min(1e-4, 0,1 mm / c)) an einer verglichenen Tiefenstation („The fitted surface turns inside out between stations“), oder ≤ 1e-5 (0,001 % der Profiltiefe) an einer verglichenen Tiefenstation von 1 % bis 99 % der Profiltiefe („The fitted surface has zero thickness between stations“). Die Meldung nennt y und die Dicke. Ursache laut Meldung: Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven oder ungleich verteilte Profilschnitte im Modus **Smooth**). Abhilfe laut Meldung: Leitkurven glätten, Profilschnitte gleichmäßiger verteilen oder Profilschnitte hinzufügen. |
-| Profiltiefe der angepassten Fläche | an jeder Position der angepassten Fläche: c_fit < 0,9 mm (1 mm Mindesttiefe abzüglich 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)), in der x-z-Ebene auf die vorgesehene Tiefenrichtung der Station bei y projiziert. Meldung: „The fitted surface folds or narrows between stations“ |
+| Profiltiefe der angepassten Fläche | an jeder Position der angepassten Fläche: c_fit < 0,9 mm (1 mm Mindesttiefe abzüglich 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)), in der x-z-Ebene auf die vorgesehene Profiltiefenrichtung der Station bei y projiziert. Meldung: „The fitted surface folds or narrows between stations“ |
 | Selbstüberschneidung der Fläche | eine Flächenzeile an einem Profilschnitt, in der Mitte zwischen 2 benachbarten Profilschnitten oder in der Mitte zwischen den 2 Stationen eines der 64 breitesten Stationsintervalle (zusätzliche Stationen eingeschlossen) überschneidet sich in der x-z-Ebene mit einer Schleifengröße (mittlere Breite) über 5e-4 · c; 4 Abtastwerte je Knotenintervall (Abschnitt 1.4) |
 
 ### 3.7 Endleiste
@@ -502,7 +502,7 @@ Tensorprodukt-B-Spline-Fläche S(u, v) durch das Stationsgitter Q (2N + 1 Punkte
 | Richtung | Parameter | Grad | Knotenvektor |
 | --- | --- | --- | --- |
 | u (um das Profil) | Mittel der Parametrisierungen aller Stationen; u_0 = 0, u_2N = 1 | 3 | geklemmt, durch Mittelwertbildung |
-| v (Spannweite), **Linear** | v = (y − y_root) / (y_tip − y_root) | 1 ohne Leitkurven; mit einer Leitkurve min(3, K) (2 oder 1, wenn die Gittergrenze des Lofts K senkt, Abschnitt 3.2) | eine Interpolation je Feld; Felder an den Profilschnitten mit innerer Knotenvielfachheit p verbunden (C0: stetig in der Lage, Knicke an den Profilschnitten) |
+| v (Spannweite), **Linear** | v = (y − y_root) / (y_tip − y_root) | 1 ohne Leitkurven; mit einer Leitkurve min(3, K) (2 oder 1, wenn die Grenze des Flächengitters K senkt, Abschnitt 3.2) | eine Interpolation je Feld; Felder an den Profilschnitten mit innerer Knotenvielfachheit p verbunden (C0: stetig in der Lage, Knicke an den Profilschnitten) |
 | v (Spannweite), **Smooth** | ebenso | 3 (Stationen − 1 bei weniger als 4 Stationen) | eine Interpolation über alle Stationen, Mittelwertbildung (C2: stetig bis zur zweiten Ableitung) |
 
 Ablauf:
@@ -520,13 +520,13 @@ Eigenschaften:
   der Mitte zwischen den Stationen der 64 breitesten Stationsintervalle werden auf
   Selbstüberschneidung geprüft (Abschnitt 1.4).
 
-![3D-Ansicht der Vorlage Swept flying wing mit dem NURBS-Kontrollnetz](images/flying-wing-control-net.png)
+![3D-Ansicht des Entwurfstyps Pfeilnurflügel mit dem NURBS-Kontrollnetz](images/flying-wing-control-net.png)
 
-Vorlage **Swept flying wing** (Pfeilnurflügel; 3 Profilschnitte, 2 zusätzliche Stationen, **Linear**,
+Entwurfstyp **Swept flying wing** (Pfeilnurflügel; 3 Profilschnitte, 2 zusätzliche Stationen, **Linear**,
 keine Leitkurve) mit **Settings** > **Show NURBS control net**. Die 121 Netzlinien entlang der Spannweite liegen in diesem
 Maßstab so dicht, dass sie als Schattierung erscheinen.
 
-| Vorlage des Assistenten (N = 60, K = 8) | Stationen | Kontrollpunkte je Halbflügel | Grad u × v |
+| Entwurfstyp des Assistenten (N = 60, K = 8) | Stationen | Kontrollpunkte je Halbflügel | Grad u × v |
 | --- | --- | --- | --- |
 | **Sport** (Sportmodell) | 2 | 121 × 2 | 3 × 1 |
 | **Swept flying wing** (Pfeilnurflügel) | 5 (2 zusätzlich, Abschnitt 3.2) | 121 × 5 | 3 × 1 |
@@ -555,7 +555,7 @@ Anzahlen je Halbflügel (n_u = 2N · d, V = Anzahl der Abtastwerte in v):
 | Dreiecke des Endleistenstreifens | 2 (V − 1) | 0 |
 | Dreiecke je Abschlussfläche (Wurzel, Rand) | n_u − 1 | n_u − 2 |
 
-Beispiel: Vorlage **Sport**, N = 60, d = 1, offene Endleiste: 242 Eckpunkte, 480 Dreiecke je Halbflügel.
+Beispiel: Entwurfstyp **Sport**, N = 60, d = 1, offene Endleiste: 242 Eckpunkte, 480 Dreiecke je Halbflügel.
 
 - Orientierung: Jedes Dreieck zeigt nach außen (Normale S_v × S_u).
 - Abschlussflächen: Die Konturen an Wurzel und Rand werden in der x-z-Ebene trianguliert. Oberer Punkt k
@@ -708,9 +708,9 @@ innerhalb des Fehlers der Mittelpunktregel selbst):
 | **Surface** (Fläche) | Grad u × Grad v; Kontrollpunkte (2N + 1) × Stationen | – |
 | **Trailing edge** (Endleiste) | `closed` oder `open` (Abschnitt 3.7) | – |
 
-Beispiel: Vorlage **Glider** (**Tip** = **Flat**, N = 60, K = 8): **Span** 2000,0 mm, **Wing area**
+Beispiel: Entwurfstyp **Glider** (**Tip** = **Flat**, N = 60, K = 8): **Span** 2000,0 mm, **Wing area**
 33,73 dm², **Aspect ratio** 11,86, **MAC** 174,2 mm, **MAC position** y 450,6 mm, x 6,5 mm,
 **25 % MAC** x 50,0 mm, **Root / tip chord** 200,0 / 90,0 mm, **Surface** Grad 3 × 3,
 121 × 17 Kontrollpunkte, **Trailing edge** `open`.
 
-![Registerkarte Checks, Vorlage Glider: Spannweite, Flügelfläche, Streckung, MAC, Lage der MAC, 25 % MAC, Wurzel- und Randtiefe, Grad der Fläche und Kontrollpunkte, Endleiste](images/checks.png)
+![Registerkarte Checks, Entwurfstyp Segelflugmodell: Spannweite, Flügelfläche, Streckung, MAC, Lage der MAC, 25 % MAC, Wurzel- und Randtiefe, Grad der Fläche und Kontrollpunkte, Endleiste](images/checks.png)

@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLanguage } from '../src/i18n/index.js';
 import { PRESETS, chordAt, wizardProblems, wizardProject } from '../src/model/wizard.js';
 import { buildWing } from '../src/geom/wing.js';
 import { wingStats } from '../src/geom/stats.js';
-import { LIMITS, airfoilPoints, validateProject } from '../src/model/project.js';
+import { LIMITS, airfoilPoints, createProject, limitErrors, validateProject } from '../src/model/project.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { edgeCheck, exportMeshes } from '../src/geom/mesh.js';
 import {
@@ -25,6 +26,7 @@ import {
   syncGuidesToSpan,
 } from '../src/model/edit.js';
 import { defaultProject } from '../src/model/defaults.js';
+import { MAX_PROJECT_BYTES, omittedNote, projectFileText, projectFromJsonText, projectToJson } from '../src/model/io.js';
 import { sampleProject } from './helpers.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { guideProblems } from '../src/geom/guide.js';
@@ -568,5 +570,195 @@ describe('wizard planform, edits and estimates at the edges', () => {
     expect(sizeWarning(q)).toMatch(/loft grid points/);
     expect(formatMegabytes(996)).toBe('about 1 GB');
     expect(formatMegabytes(994)).toBe('about 990 MB');
+  });
+});
+
+describe('wizard in German', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('names the design types and their descriptions in the language read', () => {
+    expect([PRESETS.sport.label, PRESETS.flyingWing.label, PRESETS.tail.label]).toEqual(['Sport', 'Swept flying wing', 'Tail surface']);
+    setLanguage('de');
+    expect([PRESETS.trainer.label, PRESETS.sport.label, PRESETS.glider.label]).toEqual(['Trainer', 'Sportmodell', 'Segelflugmodell']);
+    expect([PRESETS.flyingWing.label, PRESETS.plank.label, PRESETS.tail.label]).toEqual(['Pfeilnurflügel', 'Brettnurflügel', 'Leitwerk']);
+    expect(PRESETS.tail.description).toBe('Symmetrisches Höhenleitwerk.');
+    // Every type has a German label and description.
+    for (const preset of Object.values(PRESETS)) {
+      expect(preset.label).toMatch(/[A-Za-zÄÖÜäöüß]/);
+      expect(preset.description).toMatch(/[.]$/);
+    }
+    setLanguage('en');
+    expect(PRESETS.tail.description).toBe('Symmetric horizontal stabilizer.');
+  });
+
+  it('words the problems with the parameters, with decimal commas', () => {
+    const bad = { ...PRESETS.sport.params, span: 10, taper: 3, sections: 2.5, planform: 'round', tip: 'round', rootAirfoil: 'MH45' };
+    expect(wizardProblems(bad)).toEqual([
+      'span must be between 100 and 20000.',
+      'taper must be between 0.1 and 1.5.',
+      'sections must be an integer.',
+      'planform must be "straight" or "elliptic".',
+      'tip must be "flat" or "pointed".',
+      'rootAirfoil must be a NACA 4- or 5-digit designation.',
+    ]);
+    setLanguage('de');
+    expect(wizardProblems(bad)).toEqual([
+      'Spannweite muss zwischen 100 und 20.000 liegen.',
+      'Zuspitzung muss zwischen 0,1 und 1,5 liegen.',
+      'Anzahl der Schnitte muss eine ganze Zahl sein.',
+      'Grundriss muss "straight" oder "elliptic" sein.',
+      'Flügelende muss "flat" oder "pointed" sein.',
+      'Wurzelprofil muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern sein.',
+    ]);
+    expect(wizardProblems({ ...PRESETS.glider.params, taper: 1, washout: -20, tipAirfoil: '' })).toEqual([
+      'Schränkung am Rand muss zwischen -15 und 15 liegen.',
+      'Ein elliptischer Grundriss braucht eine Zuspitzung < 1.',
+      'Randprofil muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern sein.',
+    ]);
+    // The error of wizardProject carries the same sentences.
+    expect(() => wizardProject(bad)).toThrow(/^Spannweite muss zwischen 100 und 20\.000 liegen\. Zuspitzung muss /);
+  });
+
+  it('gives a project the default name of the language', () => {
+    expect(wizardProject(PRESETS.sport.params).name).toBe('1200 mm wing');
+    expect(defaultProject().name).toBe('Sport wing 1500');
+    expect(createProject({ airfoils: sampleProject().airfoils, sections: sampleProject().sections }).name).toBe('Untitled wing');
+    setLanguage('de');
+    expect(wizardProject({ ...PRESETS.sport.params, span: 1500.5 }).name).toBe('Flügel 1500,5 mm');
+    expect(wizardProject(PRESETS.sport.params, 'Mein Flügel').name).toBe('Mein Flügel');
+    expect(defaultProject().name).toBe('Sportflügel 1500');
+    expect(createProject({ airfoils: sampleProject().airfoils, sections: sampleProject().sections }).name).toBe('Unbenannter Flügel');
+  });
+});
+
+describe('project validation in German', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('words the limits with the digit groups of the language', () => {
+    const p = sampleProject();
+    p.sections[0].x = 2e6;
+    p.sections[1].chord = 100_001;
+    p.sections[2].twist = 400;
+    p.guides.nose.points[1] = [1_200_000, 100];
+    const en = limitErrors(p);
+    expect(en).toEqual([
+      'Section 1: x must be within ±1000000 mm.',
+      'Section 2: chord must be at most 100000 mm.',
+      'Section 3: twist must be within ±360 degrees.',
+      'guides.nose.points: x must be within ±1100000 mm and y within ±1000000 mm.',
+    ]);
+    setLanguage('de');
+    expect(limitErrors(p)).toEqual([
+      'Schnitt 1: x muss innerhalb von ±1.000.000 mm liegen.',
+      'Schnitt 2: Profiltiefe darf höchstens 100.000 mm betragen.',
+      'Schnitt 3: Schränkung muss innerhalb von ±360 Grad liegen.',
+      'guides.nose.points: x muss innerhalb von ±1.100.000 mm und y innerhalb von ±1.000.000 mm liegen.',
+    ]);
+    expect(limitErrors({ sections: new Array(LIMITS.maxSections + 1) })).toEqual(['Höchstens 20.000 Schnitte werden unterstützt (20.001 gefunden).']);
+    const manyPoints = { sections: [], guides: { end: { points: new Array(LIMITS.maxGuidePoints + 5).fill([0, 0]) } } };
+    expect(limitErrors(manyPoints)).toEqual(['guides.end.points: höchstens 20.000 Punkte (20.005 gefunden).']);
+  });
+
+  it('words the structural errors of a project', () => {
+    const p = sampleProject();
+    p.airfoils.push({ ...p.airfoils[0] });
+    p.sections[1].airfoil = 'nope';
+    p.sections[2].twist = 'x';
+    p.settings = { tip: { mode: 'flat', ratio: 0.5 }, chordSamples: 5, spanwise: 'cubic' };
+    const en = validateProject(p).errors;
+    expect(en).toEqual([
+      'Duplicate airfoil id "root".',
+      'Section 2: unknown airfoil "nope".',
+      'Section 3: twist must be a finite number.',
+      'settings.spanwise must be "linear" or "smooth".',
+      'settings.tip.ratio must be within 0.001..0.01 (1/1000 to 1/100).',
+      'settings.chordSamples must be an integer within 16..200.',
+    ]);
+    setLanguage('de');
+    expect(validateProject(p).errors).toEqual([
+      'Doppelte Profil-ID „root“.',
+      'Schnitt 2: unbekanntes Profil „nope“.',
+      'Schnitt 3: Schränkung muss eine endliche Zahl sein.',
+      'settings.spanwise muss "linear" oder "smooth" sein.',
+      'settings.tip.ratio muss innerhalb von 0,001..0,01 liegen (1/1000 bis 1/100).',
+      'settings.chordSamples muss eine ganze Zahl innerhalb von 16..200 sein.',
+    ]);
+    expect(validateProject(null).errors).toEqual(['Das Projekt ist kein Objekt.']);
+    const inches = sampleProject();
+    inches.units = 'in';
+    inches.version = 2;
+    expect(validateProject(inches).errors).toEqual(['units muss "mm" sein (gefunden: "in").', 'Nicht unterstützte Projektversion 2.']);
+    const few = sampleProject();
+    few.sections.pop();
+    few.sections.pop();
+    few.airfoils = [];
+    expect(validateProject(few).errors).toEqual(['airfoils muss eine nichtleere Liste sein.', 'Mindestens 2 Schnitte sind erforderlich.']);
+    const q = sampleProject();
+    q.name = 'x'.repeat(10_001);
+    q.airfoils[0].points = [[0, 0]];
+    q.sections[0].y = -5;
+    q.sections[1].chord = 0.5;
+    expect(validateProject(q).errors).toEqual([
+      'name hat 10.001 Zeichen; die Grenze liegt bei 10.000.',
+      'Profil 1 braucht mindestens 5 numerische [x, y]-Punkte.',
+      'Schnitt 1: y muss >= 0 sein (der Halbflügel liegt auf der +y-Seite).',
+      'Schnitt 2: Profiltiefe muss mindestens 1 mm betragen.',
+    ]);
+  });
+
+  it('words the errors of reading a project file', () => {
+    const text = JSON.stringify(projectToJson(sampleProject(), null));
+    const bad = JSON.stringify({ ...JSON.parse(text), format: 'other' });
+    expect(projectFromJsonText(bad).errors).toEqual(['format must be "wingdesigner-project".']);
+    const unnamed = JSON.parse(text);
+    delete unnamed.name;
+    expect(projectFromJsonText(JSON.stringify(unnamed)).project.name).toBe('Imported wing');
+    setLanguage('de');
+    expect(projectFromJsonText(bad).errors).toEqual(['format muss "wingdesigner-project" sein.']);
+    expect(projectFromJsonText(JSON.stringify(unnamed)).project.name).toBe('Importierter Flügel');
+    const broken = projectFromJsonText('{"format":');
+    expect(broken.ok).toBe(false);
+    expect(broken.errors[0]).toBe('Ungültiges JSON.');
+    // Only the position of the engine's English message is kept.
+    expect(projectFromJsonText('{"a" 1}').errors[0]).toMatch(/^Ungültiges JSON in Zeile 1, Spalte \d+\.$/);
+    expect(projectFromJsonText(' '.repeat(MAX_PROJECT_BYTES + 1)).errors).toEqual(['Die Datei ist größer als 100 MB.']);
+  });
+
+  it('words the notice for a file without derived data and the failure of a file that is too large', () => {
+    expect(omittedNote()).toBe(
+      'The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.',
+    );
+    setLanguage('de');
+    expect(omittedNote()).toBe(
+      'Die Datei lässt die abgeleiteten NURBS-Daten weg: Mit ihnen wäre sie größer als die 100 MB, die „Öffnen“ höchstens liest. „Öffnen“ berechnet sie neu; der STEP-Export schreibt die exakten Flächen.',
+    );
+    // Names near their limits make the file itself larger than Open reads: 100.1 MB.
+    const p = sampleProject();
+    p.name = 'x'.repeat(MAX_PROJECT_BYTES + 100_000);
+    expect(() => projectFileText(p, null)).toThrow('Das Projekt belegt als Datei 100,1 MB, mehr als die 100 MB, die „Öffnen“ liest');
+    setLanguage('en');
+    expect(() => projectFileText(p, null)).toThrow('the project takes 100.1 MB as a file, above the 100 MB that Open reads');
+  });
+});
+
+describe('edit messages in German', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('words why no section can be inserted, with decimal commas', () => {
+    const at = (ys) => sampleProject({ sections: ys.map((y) => ({ airfoil: 'root', x: 0, y, z: 0, chord: 200, twist: 0 })) });
+    // Two span positions with no number between them.
+    const tight = at([0, 100, 100 + 2 ** -44, 200]);
+    expect(insertProblem(tight, 1)).toBe('No span position lies between y = 100 mm and y = 100.00000000000006 mm. Move the two sections apart first.');
+    setLanguage('de');
+    expect(insertProblem(tight, 1)).toBe('Zwischen y = 100 mm und y = 100,00000000000006 mm liegt keine Spannweitenposition. Zuerst die beiden Schnitte auseinanderschieben.');
+    const full = sampleProject();
+    full.sections = Array.from({ length: LIMITS.maxSections }, (_, i) => ({ ...full.sections[0], id: `s${i}`, y: i }));
+    expect(insertProblem(full, 0)).toBe('Höchstens 20.000 Schnitte.');
+    setLanguage('en');
+    expect(insertProblem(full, 0)).toBe('At most 20,000 sections.');
+    const beyond = at([0, 100, LIMITS.maxCoordinate]);
+    expect(insertProblem(beyond, 2)).toBe('A section beyond the tip would lie beyond y = 1000000 mm.');
+    setLanguage('de');
+    expect(insertProblem(beyond, 2)).toBe('Ein Schnitt weiter außen als der Randschnitt läge jenseits von y = 1.000.000 mm.');
   });
 });

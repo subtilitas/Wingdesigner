@@ -9,6 +9,7 @@
 // server CPU, JavaScript time without drawing the 3D view (RECORD.md lists the measurements). The
 // 3D view adds the drawing time of the graphics card; phones compute slower (not measured).
 
+import { count, plain, tr } from '../i18n/index.js';
 import { LIMITS, resolveSettings } from './project.js';
 
 /** Sizes above which a warning names the expected time and memory. */
@@ -151,47 +152,45 @@ export function exportCost(triangles, format) {
   return { seconds: c.s * triangles, megabytes: COST.base.mb + c.mb * triangles, fileMB: c.fileMB * triangles };
 }
 
-const group = (n) => Math.round(n).toLocaleString('en');
-
 /** "about 3 s", "under 1 s", "about 40 s". */
 export function formatSeconds(s) {
-  if (s < 1) return 'under 1 s';
-  return `about ${s < 10 ? Math.round(s * 2) / 2 : Math.round(s)} s`;
+  if (s < 1) return tr('under 1 s');
+  return tr('about {n} s', { n: plain(s < 10 ? Math.round(s * 2) / 2 : Math.round(s)) });
 }
 
 /** "about 250 MB", "about 1.2 GB" (two significant digits). */
 export function formatMegabytes(mb) {
   // Rounded before the unit is chosen: 996 MB reads "about 1 GB", not "about 1000 MB".
   const v = Number(Math.max(mb, 1).toPrecision(2));
-  if (v >= 1000) return `about ${Number((v / 1000).toPrecision(2))} GB`;
-  return `about ${v} MB`;
+  if (v >= 1000) return tr('about {n} GB', { n: plain(Number((v / 1000).toPrecision(2))) });
+  return tr('about {n} MB', { n: plain(v) });
 }
 
 /** Time and memory of one change: "each change takes about 3 s and about 250 MB of browser memory". */
 export function costPhrase(size) {
   const c = changeCost(size);
-  return `each change takes ${formatSeconds(c.seconds)} and ${formatMegabytes(c.megabytes)} of browser memory`;
+  return tr('each change takes {time} and {memory} of browser memory', { time: formatSeconds(c.seconds), memory: formatMegabytes(c.megabytes) });
 }
 
 /** costPhrase as a sentence. */
 export function costSentence(size) {
-  const t = costPhrase(size);
-  return `${t[0].toUpperCase()}${t.slice(1)}.`;
+  const c = changeCost(size);
+  return tr('Each change takes {time} and {memory} of browser memory.', { time: formatSeconds(c.seconds), memory: formatMegabytes(c.megabytes) });
 }
 
 /** Sizes above their WARN thresholds: [{ key, text }]. */
 export function largeSizes(size) {
   const out = [];
   const add = (key, limit, text) => {
-    if (size[key] > limit) out.push({ key, text: `${text(group(size[key]))} (warning above ${group(limit)})` });
+    if (size[key] > limit) out.push({ key, text: text(count(size[key]), count(limit)) });
   };
-  add('sections', WARN.sections, (v) => `${v} sections`);
-  add('airfoils', WARN.airfoils, (v) => `${v} airfoils`);
-  add('largestAirfoil', WARN.pointsPerAirfoil, (v) => `an airfoil of ${v} points`);
-  add('airfoilPoints', WARN.airfoilPoints, (v) => `${v} airfoil points in all`);
-  add('guidePoints', WARN.guidePoints, (v) => `a guide curve of ${v} points`);
-  add('gridPoints', WARN.gridPoints, (v) => `${v} loft grid points`);
-  add('longestName', WARN.name, (v) => `a name of ${v} characters`);
+  add('sections', WARN.sections, (n, limit) => tr('{n} sections (warning above {limit})', { n, limit }));
+  add('airfoils', WARN.airfoils, (n, limit) => tr('{n} airfoils (warning above {limit})', { n, limit }));
+  add('largestAirfoil', WARN.pointsPerAirfoil, (n, limit) => tr('an airfoil of {n} points (warning above {limit})', { n, limit }));
+  add('airfoilPoints', WARN.airfoilPoints, (n, limit) => tr('{n} airfoil points in all (warning above {limit})', { n, limit }));
+  add('guidePoints', WARN.guidePoints, (n, limit) => tr('a guide curve of {n} points (warning above {limit})', { n, limit }));
+  add('gridPoints', WARN.gridPoints, (n, limit) => tr('{n} loft grid points (warning above {limit})', { n, limit }));
+  add('longestName', WARN.name, (n, limit) => tr('a name of {n} characters (warning above {limit})', { n, limit }));
   return out;
 }
 
@@ -199,11 +198,11 @@ export function largeSizes(size) {
 export function sizeWarning(project, size = projectSize(project)) {
   const large = largeSizes(size).map((q) => q.text);
   if (!large.length) return null;
-  const list = large.length === 1 ? large[0] : `${large.slice(0, -1).join(', ')} and ${large[large.length - 1]}`;
+  const list = large.length === 1 ? large[0] : tr('{list} and {last}', { list: large.slice(0, -1).join(', '), last: large[large.length - 1] });
   // The first build names its own time when it takes at least 1 s more than a change.
   const first = firstBuildSeconds(size);
-  const open = first - changeCost(size).seconds >= 1 ? ` Opening it or changing the profile parametrization takes ${formatSeconds(first)}.` : '';
-  return `Large project: ${list}. ${costSentence(size)}${open}`;
+  const open = first - changeCost(size).seconds >= 1 ? ` ${tr('Opening it or changing the profile parametrization takes {time}.', { time: formatSeconds(first) })}` : '';
+  return `${tr('Large project: {list}.', { list })} ${costSentence(size)}${open}`;
 }
 
 /** A name for lists and messages: at most WARN.name characters. */

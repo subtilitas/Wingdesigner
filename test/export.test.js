@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
 import { buildWing } from '../src/geom/wing.js';
 import { concatMeshes, edgeCheck, exportMeshes, exportTriangles, meshVolume, mirrorMesh } from '../src/geom/mesh.js';
@@ -13,6 +13,7 @@ import { sampleProject } from './helpers.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { defaultProject } from '../src/model/defaults.js';
 import { stepCases } from './step-cases.js';
+import { setLanguage } from '../src/i18n/index.js';
 
 describe('export meshes', () => {
   const build = buildWing(sampleProject());
@@ -640,5 +641,75 @@ describe('project file precision', () => {
     for (let i = 1; i < vs.length; i++) expect(vs[i]).toBeGreaterThan(vs[i - 1]);
     expect(j.derived.surface.knotsV).toEqual(build.surface.knotsV);
     expect(j.derived.surface.controlPoints).toEqual(build.surface.points);
+  });
+});
+
+describe('German export messages', () => {
+  afterEach(() => setLanguage('en'));
+
+  const wing = (x, z, chord, settings) =>
+    buildWing(
+      createProject({
+        airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }],
+        sections: [0, 10].map((y) => ({ airfoil: 'a', x, y, z, chord, twist: 0 })),
+        settings,
+      }),
+    );
+
+  it('names the coordinate precision of STL and 3MF in German, with decimal commas', () => {
+    // 7.41 mm chord near the coordinate limit: 4 triangles turn over at 32-bit precision.
+    const far = concatMeshes(exportMeshes(wing(801579, 955903, 7.41, { chordSamples: 16 }), 'halves', { uRefine: 1, vRefine: 1 }).map((m) => m.mesh));
+    setLanguage('de');
+    expect(() => meshToStl(far)).toThrow('STL speichert 32-Bit-Koordinaten: Bei 955.903 mm beträgt ihr Rasterabstand 0,063 mm, und 4 von 256 Dreiecken fallen zusammen oder kehren sich um. Den Flügel zum Ursprung hin verschieben oder als STEP exportieren.');
+    expect(() => meshesTo3mf([{ name: 'w', mesh: far }])).toThrow(
+      '3MF-Leseprogramme speichern 32-Bit-Koordinaten: Bei 955.903 mm beträgt ihr Rasterabstand 0,063 mm, und 4 von 256 Dreiecken fallen zusammen oder kehren sich um. Den Flügel zum Ursprung hin verschieben oder als STEP exportieren.',
+    );
+    expect(() => meshToStl(far)).toThrow(MeshPrecisionError);
+    setLanguage('en');
+    expect(() => meshToStl(far)).toThrow(/^STL stores 32-bit coordinates: at 955903 mm their spacing is 0\.063 mm/);
+  });
+
+  it('names sections that lie closer together than the coordinate spacing', () => {
+    const close = sampleProject();
+    close.sections.push({ id: 'd', airfoil: 'root', x: 20, y: 300.00001, z: 10, chord: 170, twist: -1 });
+    const build = buildWing(close);
+    expect(build.errors).toEqual([]);
+    const mesh = concatMeshes(exportMeshes(build, 'halves').map((m) => m.mesh));
+    setLanguage('de');
+    for (const write of [() => meshToStl(mesh), () => meshesTo3mf([{ name: 'w', mesh }])]) {
+      expect(write).toThrow(
+        /^(STL speichert|3MF-Leseprogramme speichern) 32-Bit-Koordinaten: Bei 300 mm beträgt ihr Rasterabstand 0,000031 mm, und [\d.]+ von [\d.]+ Dreiecken fallen zusammen oder kehren sich um\. Schnitte oder Stationen nahe y = 300(,00001)? mm liegen dichter beieinander als der Rasterabstand dort \(0,000031 mm\); sie auseinanderschieben oder als STEP exportieren\.$/,
+      );
+    }
+    const offset = [0, 1e6, 0, 1, 1e6, 0, 0, 1e6 + 0.01, 0];
+    expect(() => checkPrecision(offset, [0, 1, 2], Math.fround, 'STL')).toThrow(/\. Den Flügel zum Ursprung hin verschieben oder als STEP exportieren\.$/);
+    // One damaged triangle takes the singular verb.
+    expect(() => checkPrecision(offset, [0, 1, 2], Math.fround, 'STL')).toThrow(/, und 1 von 1 Dreiecken fällt zusammen oder kehrt sich um\. /);
+    expect(() => checkPrecision(offset, [0, 1, 2], Math.fround, '3MF')).toThrow(/^3MF-Leseprogramme speichern 32-Bit-Koordinaten: Bei 1\.000\.000 mm .*, und 1 von 1 Dreiecken fällt zusammen oder kehrt sich um\. /);
+  });
+
+  it('names STEP export errors in German', () => {
+    setLanguage('de');
+    expect(() => wingToStep({ surface: null })).toThrow('Der Flügel hat keine Fläche; zuerst die gemeldeten Fehler beheben.');
+    expect(() => stepReal(NaN)).toThrow('Nicht endlicher Wert im STEP-Export: NaN');
+    expect(() => stepReal(-Infinity)).toThrow('Nicht endlicher Wert im STEP-Export: -Infinity');
+    setLanguage('en');
+    expect(() => wingToStep({ surface: null })).toThrow('The wing has no surface; fix the reported errors first.');
+    expect(() => stepReal(NaN)).toThrow('Non-finite value in STEP export: NaN');
+  });
+
+  it('keeps STEP, STL and 3MF file content English', () => {
+    const build = buildWing(sampleProject());
+    const mesh = concatMeshes(exportMeshes(build, 'halves').map((m) => m.mesh));
+    const files = () => ({
+      step: wingToStep(build, { timestamp: '2026-01-01T00:00:00', name: 'Flügel' }),
+      stl: Array.from(meshToStl(mesh)).join(','),
+      threemf: modelXml(exportMeshes(build, 'halves'), { title: 'Flügel' }),
+    });
+    const english = files();
+    setLanguage('de');
+    expect(files()).toEqual(english);
+    expect(english.step).toContain("FILE_DESCRIPTION(('Wingdesigner wing')");
+    expect(english.threemf).toContain('name="Wing right"');
   });
 });

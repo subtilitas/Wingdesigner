@@ -4,6 +4,7 @@
 // and recomputes everything derived.
 
 import { defaultGuides } from '../geom/guide.js';
+import { fixed, plain, tr } from '../i18n/index.js';
 import { syncGuidesToSpan } from './edit.js';
 import { FORMAT, SOURCE_KEYS, VERSION, resolveSettings, validateProject } from './project.js';
 
@@ -152,12 +153,16 @@ export function projectFileText(project, build, meta) {
   let text = formatJson(json);
   if (utf8Length(text) > MAX_PROJECT_BYTES) text = JSON.stringify(json);
   const bytes = utf8Length(text);
-  if (bytes > MAX_PROJECT_BYTES) throw new Error(`the project takes ${(bytes / 1e6).toFixed(1)} MB as a file, above the ${MAX_PROJECT_BYTES / 1e6} MB that Open reads`);
+  if (bytes > MAX_PROJECT_BYTES) throw new Error(tr('the project takes {size} MB as a file, above the {max} MB that Open reads', { size: fixed(bytes / 1e6, 1), max: plain(MAX_PROJECT_BYTES / 1e6) }));
   return { text, derived: false, omitted: !!build?.surface };
 }
 
-/** The message after writing a file without its derived data. */
-export const OMITTED_NOTE = `The file leaves out the derived NURBS data: with it, the file would exceed ${MAX_PROJECT_BYTES / 1e6} MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`;
+/** The message after writing a file without its derived data, in the current language. */
+export function omittedNote() {
+  return tr('The file leaves out the derived NURBS data: with it, the file would exceed {max} MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.', {
+    max: plain(MAX_PROJECT_BYTES / 1e6),
+  });
+}
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
@@ -168,19 +173,19 @@ const samePoints = (a, b) => a.length === b.length && a.every((p, i) => Math.abs
  * @returns {{ok: boolean, project?: object, errors: string[]}}
  */
 export function projectFromJsonText(text) {
-  if (String(text).length > MAX_PROJECT_BYTES) return { ok: false, errors: [`The file is larger than ${MAX_PROJECT_BYTES / 1e6} MB.`] };
+  if (String(text).length > MAX_PROJECT_BYTES) return { ok: false, errors: [tr('The file is larger than {max} MB.', { max: plain(MAX_PROJECT_BYTES / 1e6) })] };
   let data;
   try {
     data = JSON.parse(text);
   } catch (e) {
-    return { ok: false, errors: [`Invalid JSON: ${e.message}`] };
+    return { ok: false, errors: [tr('Invalid JSON: {message}', { message: e.message })] };
   }
   const v = validateProject(data);
   if (!v.ok) return { ok: false, errors: v.errors };
   const project = {
     format: FORMAT,
     version: VERSION,
-    name: typeof data.name === 'string' ? data.name : 'Imported wing',
+    name: typeof data.name === 'string' ? data.name : tr('Imported wing'),
     units: 'mm',
     // Known keys only: unknown keys (and their contents) are dropped.
     airfoils: data.airfoils.map((a) => ({

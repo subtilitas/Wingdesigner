@@ -4,7 +4,7 @@ English: [[File Formats|File-Formats]]
 
 | Richtung | Inhalt | Format | Endung | Bedienelement |
 | --- | --- | --- | --- | --- |
-| Import | Profilkoordinaten | Selig, Lednicer, x/oben/unten-Tabelle, XML, HTML | `.dat` `.txt` `.cor` `.xml` `.htm` `.html` `.csv` | **Airfoils** > **Upload** (Hochladen): **Choose files** (Dateien wählen), Ablagefläche oder **Check pasted text** (eingefügten Text prüfen) |
+| Import | Profilkoordinaten | Selig, Lednicer, Tabelle x/Oberseite/Unterseite, XML, HTML | `.dat` `.txt` `.cor` `.xml` `.htm` `.html` `.csv` | **Airfoils** > **Upload** (Hochladen): **Choose files** (Dateien wählen), Ablagefläche oder **Check pasted text** (eingefügten Text prüfen) |
 | Import | Projekt | JSON | `.json` | **Open** (Öffnen) |
 | Export | Projekt | JSON | `.json` | **Save** (Speichern), **Export** |
 | Export | Flügel, exakte NURBS-Flächen | STEP, AP214 | `.step` | **Export** |
@@ -62,7 +62,7 @@ Name in STEP-, STL- und 3MF-Dateien, unten `<name>` geschrieben: Projektname; le
 | Trennzeichen | Leerzeichen, Tabulator, Komma, Semikolon |
 | Dezimalkomma | `0,125  1,250` wird als `0.125  1.250` gelesen. Bedingungen: Mindestens 2 Werte. Trennzeichen: Leerzeichen, Tabulatoren oder Semikolons. Jeder Wert ist eine Dezimalkommazahl oder eine ganze Zahl, jeweils mit optionalem Exponent (`e`, `E`, `d` oder `D`), z. B. `1,25e-1`. Mindestens 1 Wert enthält ein Komma. Eine Zeile mit 1 Feld, z. B. `0,5`, wird am Komma getrennt: Werte `0` und `5`. |
 | Zahlenschreibweise | Vorzeichen optional, Dezimalpunkt, Exponent mit `e`, `E`, `d` oder `D` (`1.0D-3`). Werte in XML-`<x>` und `<y>` folgen derselben Schreibweise und der Regel für Dezimalkommas; anderer Text, z. B. `0x1`, ist keine Zahl (Fehler `non-finite`). |
-| Name | Erste Nicht-Zahlenzeile vor der ersten Zahlenzeile. Die Namenszeile behält einen `#`-Kommentar: `NACA 0012 # from UIUC` → Name `NACA 0012 # from UIUC`. HTML: der `<title>`, wenn er nicht leer ist. XML: das erste `<name>`-Element. Kein Name gefunden: Dateiname ohne Endung; eingefügter Text: `pasted`. Ein Name mit mehr als 10 000 Zeichen wird auf die ersten 10 000 gekürzt (Info `long-name`). |
+| Name | Erste Nicht-Zahlenzeile vor der ersten Zahlenzeile. Die Namenszeile behält einen `#`-Kommentar: `NACA 0012 # from UIUC` → Name `NACA 0012 # from UIUC`. HTML: der `<title>`, wenn er nicht leer ist. XML: das erste `<name>`-Element. Kein Name gefunden: Dateiname ohne Endung; eingefügter Text: `pasted` (deutsche Oberfläche: „Eingefügtes Profil“). Ein Name mit mehr als 10 000 Zeichen wird auf die ersten 10 000 gekürzt (Info `long-name`). |
 | Spaltenkopfzeilen | 2 oder 3 Wörter, die mit `x`, `y` oder `z` beginnen, getrennt durch Leerzeichen, Tabulatoren, Kommas oder Semikolons (`x y`, `x;y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). Nach der Namenszeile: ohne Meldung übersprungen. Als erste Nicht-Zahlenzeile vor der ersten Zahlenzeile: wird als Name übernommen (z. B. `X Yo Yu`), keine Info `no-name`. |
 | Andere Nicht-Zahlenzeilen | Übersprungen, Warnung `ignored-lines` |
 
@@ -138,7 +138,7 @@ Ein Fehler beim Einlesen bricht den Import ab. Die Plausibilitätsprüfungen lau
 | `reversed` | Warnung | Punkte im Uhrzeigersinn; Reihenfolge umgedreht |
 | `xml` | Info | als XML gelesen |
 | `html` | Info | aus einer HTML-Seite gelesen |
-| `table` | Info | als x/oben/unten-Tabelle gelesen |
+| `table` | Info | als Tabelle x/Oberseite/Unterseite gelesen |
 | `decimal-comma` | Info | Dezimalkommas als Dezimalpunkte gelesen |
 | `duplicates` | Info | aufeinanderfolgende doppelte Punkte entfernt |
 | `no-name` | Info | kein Name gefunden; der Dateiname wird verwendet |
@@ -159,7 +159,7 @@ Die Prüfungen laufen:
 - beim Hochladen einer Datei;
 - bei **Check pasted text**;
 - in der Vorschau eines Bibliotheks- oder NACA-Profils (National Advisory Committee for Aeronautics);
-- bei **View** (Ansicht) eines Projektprofils (**Airfoils** > **Project airfoils**);
+- bei **View** (Anzeigen) eines Projektprofils (**Airfoils** > **Project airfoils**);
 - beim Flügelaufbau für jedes Profil, das ein Profilschnitt verwendet.
 
 | Begriff | Definition |
@@ -280,13 +280,13 @@ Von der App erzeugte IDs:
 
 - Gleicher Name und identische Punkte wie ein Profil im Projekt: Die vorhandene ID wird verwendet; kein neuer Eintrag.
 - Assistent und Beispielflügel: `naca<code>`.
-- Erzeugtes NACA-Profil (`source.code` gesetzt) mit derselben Kennung und demselben `source.closedTE` wie ein Profil im Projekt, dessen gespeicherte Punkte dieses Profil sind (Punkte des Generators auf 1e-9 genau, oder dieselben Punkte wie beim hinzugefügten Profil): Die vorhandene ID wird verwendet, unabhängig vom Namen; kein neuer Eintrag. Gespeicherte Punkte, die von beiden abweichen (z. B. in einer geöffneten Datei bearbeitet): neuer Eintrag.
+- Erzeugtes NACA-Profil (`source.code` gesetzt) mit derselben Bezeichnung und demselben `source.closedTE` wie ein Profil im Projekt, dessen gespeicherte Punkte dieses Profil sind (Punkte des Generators auf 1e-9 genau, oder dieselben Punkte wie beim hinzugefügten Profil): Die vorhandene ID wird verwendet, unabhängig vom Namen; kein neuer Eintrag. Gespeicherte Punkte, die von beiden abweichen (z. B. in einer geöffneten Datei bearbeitet): neuer Eintrag.
 - Projekt mit 10 000 Profilen (`LIMITS.maxAirfoils`): kein neuer Eintrag. Die Registerkarte **Airfoils** lehnt das nächste Profil vor der Vorschau ab, mit der Meldung `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.`
 - Profil, mit dem die Punkte aller Profile 1 000 000 überschreiten würden (`LIMITS.maxAirfoilPoints`): kein neuer Eintrag. Meldung: `With this airfoil the project airfoils hold <n> points; the limit is 1,000,000. "Remove unused" frees points.`
 
 | `source.kind` | Weitere Schlüssel |
 | --- | --- |
-| `naca` | NACA-Generator, Bibliothek, Assistent: `license`, `url`, `code` (Kennung, z. B. `"2412"`), `closedTE` (`true` oder `false`). Beispielflügel: `note`. |
+| `naca` | NACA-Generator, Bibliothek, Assistent: `license`, `url`, `code` (Bezeichnung, z. B. `"2412"`), `closedTE` (`true` oder `false`). Beispielflügel: `note`. |
 | `upload` | `file` (nur bei Dateien), `attribution` |
 | `library` | `id`, `attribution`, `license`, `url`, `terms`, übernommen aus dem Eintrag im mitgelieferten Bibliotheksindex `public/airfoils/index.json` (`attribution`: `source.author` des Eintrags, angezeigt und änderbar im Feld **Source / attribution** der Vorschau). Index: 6 Dateien. `public-domain` (in den Vereinigten Staaten; Status außerhalb der Vereinigten Staaten nicht geklärt): Clark Y, NACA 8-H-12, NACA M-6, RAF 34, USA 35B. `CC-BY-4.0`: S9104. Herkunft, Rechtsgrundlage, Bedingungen und Quellenangabe je Datei: `public/airfoils/NOTICE.md`. |
 
@@ -343,7 +343,7 @@ Unbekannte Schlüssel in `settings` entfallen bei **Open**. **Save** schreibt di
 | `profiles[]` | ein Eintrag je Profil, das ein Profilschnitt verwendet: `airfoil` (ID), `name`, `curve`, `leadingEdgeParameter` (Kurvenparameter an der Profilnase) |
 | `guides.nose`, `guides.end` | Leitkurve, Kontrollpunkte `[x, y]` in mm; `null` bei ausgeschalteter Leitkurve |
 | `stations[]` | jede Station in Spannweitenrichtung: `y` (mm), `v` (Spannweitenanteil 0–1), `xLE`, `z`, `chord` (mm), `twist` (°) |
-| `surface` | Fläche des rechten Halbflügels: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` ohne Leitkurven; `"linear"` mit eingeschalteter Leitkurve: 3, oder 2 bzw. 1, wenn die Gittergrenze des Lofts die Stationen je Feld auf 2 oder 1 senkt; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
+| `surface` | Fläche des rechten Halbflügels: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` ohne Leitkurven; `"linear"` mit eingeschalteter Leitkurve: 3, oder 2 bzw. 1, wenn die Grenze des Flächengitters die Stationen je Feld auf 2 oder 1 senkt; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
 
 - Kurvenobjekt: `degree`, `knots` (Knotenvektor), `controlPoints`. Alle Kurven und die Fläche sind nicht-rational; ein Schlüssel `weights` wird nicht geschrieben.
 - `profiles[].curve.controlPoints`: `[x, y]` in normierten Profilkoordinaten (Profiltiefe 1).
@@ -488,7 +488,7 @@ Fläche, 125 Werte in `knotsU`.
 | **Right half only** (nur rechte Hälfte) | 1 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing right` |
 
 - **Full wing** setzt den Wurzelschnitt bei genau y = 0 mm voraus. Sonst enthalten STL und 3MF 2 Hüllen, wie bei **Both halves**.
-- **Mesh density (STL, 3MF)** (Netzdichte): **Normal** oder **Fine (4x triangles)** (fein). **Fine** teilt jedes u-Intervall (Tiefenrichtung) und jedes v-Intervall (Spannweitenrichtung) des **Normal**-Netzes in 2. Gemessene Dreieckszahl: 3,0- bis 3,9-fach gegenüber **Normal** (Tabelle „Dateigrößen“).
+- **Mesh density (STL, 3MF)** (Netzdichte): **Normal** oder **Fine (4x triangles)** (fein). **Fine** teilt jedes u-Intervall (Profiltiefenrichtung) und jedes v-Intervall (Spannweitenrichtung) des **Normal**-Netzes in 2. Gemessene Dreieckszahl: 3,0- bis 3,9-fach gegenüber **Normal** (Tabelle „Dateigrößen“).
 - Aufbau der Dreiecksnetze und Dreieckszahlen: [[Geometrie|Geometrie]], Abschnitt 5 „Dreiecksnetze“.
 
 ![Exportdialog: Format, Flügelhälften, Netzdichte](images/export-dialog.png)
@@ -546,10 +546,10 @@ Abschnitt 6 „STEP-Topologie“.
 ## Dateigrößen
 
 Gemessen am 29.09.2026 mit **Both halves as separate bodies** und Vorgabeauflösung (60 Stationen je
-Profilseite in Tiefenrichtung). 1 KB = 1024 Byte. Dreieckszahlen in Klammern.
+Profilseite in Profiltiefenrichtung). 1 KB = 1024 Byte. Dreieckszahlen in Klammern.
 
 | Projekt | Schnitte | Stationen in Spannweitenrichtung | STEP | STL **Normal** | STL **Fine** | 3MF **Normal** | 3MF **Fine** | JSON |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Beispielflügel `Sport wing 1500` | 3 | 3 | 122 KB | 71 KB (1444) | 235 KB (4812) | 20 KB | 61 KB | 63 KB |
-| Vorlage **Sport** im Assistenten | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 11 KB | 38 KB | 56 KB |
-| Vorlage **Glider** im Assistenten, elliptische Leitkurven | 3 | 17 | 444 KB | 1158 KB (23708) | 4566 KB (93500) | 279 KB | 1099 KB | 175 KB |
+| Entwurfstyp **Sport** im Assistenten | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 11 KB | 38 KB | 56 KB |
+| Entwurfstyp **Glider** im Assistenten, elliptische Leitkurven | 3 | 17 | 444 KB | 1158 KB (23708) | 4566 KB (93500) | 279 KB | 1099 KB | 175 KB |

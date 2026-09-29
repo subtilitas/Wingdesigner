@@ -1,5 +1,7 @@
 // Minimal DOM helpers.
 
+import { plain } from '../i18n/index.js';
+
 /**
  * Create an element. attrs: properties or attributes; keys starting with "on" add listeners.
  * children: strings, nodes, arrays, null/false (skipped).
@@ -87,14 +89,18 @@ export function inputText(v) {
   return Number.isFinite(v) ? String(v) : '';
 }
 
+/** A number for a label or readout (at most `digits` decimals): a decimal comma in German. */
 export function formatNum(v, digits = 3) {
   if (!Number.isFinite(v)) return '';
-  return String(Number(v.toFixed(digits)));
+  return plain(Number(v.toFixed(digits)));
 }
 
+/** A file name from a project or airfoil name: German umlauts are written out (ü as ue), other accents dropped. */
 export function slugFile(name, ext) {
   const base =
     String(name || 'wing')
+      .normalize('NFC')
+      .replace(/[äöüÄÖÜß]/g, (c) => ({ ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue', ß: 'ss' })[c])
       .normalize('NFKD')
       .replace(/[̀-ͯ]/g, '')
       .replace(/[^A-Za-z0-9._-]+/g, '_')

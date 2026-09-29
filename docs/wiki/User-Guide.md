@@ -44,7 +44,7 @@ At a window width of 860 px or less:
 - **Enlarge** appears in the 3D view. It hides the side panel and gives the 3D view the full height; a second tap restores the side panel.
 - The section table turns into one card per section (3 columns, label above each value).
 - The planform canvas is 260 px high.
-- At a window width of 420 px or less, the 7 top-bar buttons stay in 1 row. The row scrolls sideways when it is wider than the window.
+- At a window width of 420 px or less, the 7 top-bar buttons of the English interface stay in 1 row. The row scrolls sideways when it is wider than the window. The German interface has longer labels: its top bar wraps to a second row, its status bar takes at most 2 lines (**Checks** shows the whole text), and the buttons of a project airfoil move below its name.
 
 ![Phone layout of the planform editor with the end line on](images/mobile-planform.png)
 
@@ -56,6 +56,7 @@ On touch screens (coarse pointer), buttons and input fields are at least 40 px h
 - Only projects that pass the **Open** validation are saved. Otherwise the last valid project stays stored.
 - A stored project that fails to load is kept under `wingdesigner.project.v1.rejected`. An error notice shows, and the wizard opens as on a first visit. Without room for that copy, the project stays under `wingdesigner.project.v1` and autosave stays off for the session; the status bar shows `Autosave off: use Save` from the start.
 - The active tab is stored under `wingdesigner.tab`.
+- The language is stored under `wingdesigner.language` (`en` or `de`) as soon as the user chooses one in **Settings**. Without it, the app starts in German when the first language of the browser is German (`de`, `de-AT`, …), otherwise in English.
 - Without a stored project (first visit), the wizard opens. Nothing is stored while this first-run wizard is open; a reload shows the wizard again.
 - With blocked storage (private window), the project exists only in the open browser tab. Use **Save** to keep it.
 - When the browser refuses the project (browsers keep about 5,000,000 characters per site), the red notice `Autosave is off: browser storage refused the project (… characters; browsers keep about 5,000,000 per site). Use Save to keep it.` shows once. The status bar shows `Autosave off: use Save` until an autosave succeeds again; then the notice `Autosave works again.` shows.
@@ -420,10 +421,11 @@ The box **More airfoils (external, not bundled)** links to 3 collections. The ap
 
 ## Settings
 
-![Settings tab: Geometry group with Wing tip, Resolution group](images/settings.png)
+![Settings tab: Language group, Geometry group with Wing tip, Resolution group](images/settings.png)
 
 | Group | Setting | Values | Default | Effect |
 | --- | --- | --- | --- | --- |
+| Language | **Language / Sprache** | English, Deutsch | German when the first language of the browser is German, otherwise English | Switches every text without a reload: menus, labels, tooltips, notices, **Checks**, build errors and warnings, airfoil check messages. The project, the selection and the undo history stay. Numbers follow the language (German `1.234,5`); values in input fields keep the plain number. Data is not translated: file contents, airfoil names, attributions and file names. A notice that is showing disappears when the language changes, except an error notice, which stays until its timer ends. Stored in the browser under `wingdesigner.language`. |
 | Geometry | **Project name** | text | preset name | Name in the project file; base of the file names of **Save** and **Export**. `.dat` downloads use the airfoil name. A name above 200 characters adds `a name of … characters (warning above 200)` to the `Large project` warning as soon as the name is committed; a shorter name removes it. |
 | Geometry | **Spanwise interpolation** | **Linear between sections (straight panels)**, **Smooth (natural cubic spline through sections)** | Linear | Blending of section values along the span. See the list below. |
 | Geometry | **Twist pivot (fraction of chord)** | 0 to 1, step 0.05 | 0.25 | Chord point the twist rotates about |

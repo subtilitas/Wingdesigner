@@ -45,7 +45,7 @@ async function shoot(target, name) {
 
 // Desktop.
 {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, colorScheme: 'light' });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, colorScheme: 'light', locale: 'en-US' });
   const page = await ctx.newPage();
   const wizard = await createDesign(page, 'Glider');
   await shoot(wizard, 'wizard');
@@ -91,7 +91,7 @@ async function shoot(target, name) {
 
 // Swept flying wing with the NURBS control net.
 {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, colorScheme: 'light' });
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, colorScheme: 'light', locale: 'en-US' });
   const page = await ctx.newPage();
   const wizard = await createDesign(page, 'Swept flying wing');
   await wizard.getByRole('button', { name: 'Create design' }).click();
@@ -106,7 +106,7 @@ async function shoot(target, name) {
 
 // Phone.
 {
-  const ctx = await browser.newContext({ ...devices['Pixel 7'], colorScheme: 'light' });
+  const ctx = await browser.newContext({ ...devices['Pixel 7'], colorScheme: 'light', locale: 'en-US' });
   const page = await ctx.newPage();
   const wizard = await createDesign(page, 'Sport');
   await wizard.getByRole('button', { name: 'Create design' }).click();

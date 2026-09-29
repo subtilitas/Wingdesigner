@@ -3,7 +3,7 @@
 import './ui/styles.css';
 import { buildWing } from './geom/wing.js';
 import { wingStats } from './geom/stats.js';
-import { MAX_PROJECT_BYTES, OMITTED_NOTE, projectFileText, projectFromJsonText } from './model/io.js';
+import { MAX_PROJECT_BYTES, omittedNote, projectFileText, projectFromJsonText } from './model/io.js';
 import { displayName, largeSizes, projectSize, sizeWarning } from './model/budget.js';
 import { defaultProject } from './model/defaults.js';
 import { validateProject } from './model/project.js';
@@ -16,6 +16,7 @@ import { SettingsPanel } from './ui/settings.js';
 import { exportDialog } from './ui/exportui.js';
 import { openWizard } from './ui/wizard.js';
 import { clear, download, h, slugFile } from './ui/dom.js';
+import { LANGUAGES, fixed, initialLanguage, language, plain, setLanguage, tr, whole } from './i18n/index.js';
 
 const VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0';
 const STORAGE_KEY = 'wingdesigner.project.v1';
@@ -29,15 +30,46 @@ let keepSaved = false;
 // the saved project is older than the last session.
 let autosaveFailed = false;
 const STALE_KEY = `${STORAGE_KEY}.stale`;
+const LANGUAGE_KEY = 'wingdesigner.language';
+
+/** The stored language choice (null without one or without browser storage). */
+function storedLanguage() {
+  try {
+    return localStorage.getItem(LANGUAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+// The language is set before the first message or panel is made: a stored choice, else German for a
+// German browser, else English.
+setLanguage(initialLanguage(storedLanguage(), navigator.languages ?? []));
+document.documentElement.lang = language();
+
+// Static elements of the shell (top bar, tabs, view buttons, status bar) are made once. Each one
+// registers how its text, tooltip and aria-label read; labelShell() sets them at the start and after a
+// change of language.
+const shellLabels = [];
+function localized(el, { text, title, label } = {}) {
+  shellLabels.push(() => {
+    if (text) el.textContent = text();
+    if (title) el.title = title();
+    if (label) el.setAttribute('aria-label', label());
+  });
+  return el;
+}
+function labelShell() {
+  for (const set of shellLabels) set();
+}
 
 /** Keep text that failed to load under the ".rejected" key, or keep it in place if that fails. */
 function keepRejected(text, reason) {
   try {
     localStorage.setItem(`${STORAGE_KEY}.rejected`, text);
-    loadProblem = `The saved project could not be loaded (${reason}); it is kept in local storage under "${STORAGE_KEY}.rejected".`;
+    loadProblem = tr('The saved project could not be loaded ({reason}); it is kept in local storage under "{key}.rejected".', { reason, key: STORAGE_KEY });
   } catch {
     keepSaved = true;
-    loadProblem = `The saved project could not be loaded (${reason}), and browser storage has no room for a copy: autosave is off, so it stays under "${STORAGE_KEY}". Use Save to keep new work.`;
+    loadProblem = tr('The saved project could not be loaded ({reason}), and browser storage has no room for a copy: autosave is off, so it stays under "{key}". Use Save to keep new work.', { reason, key: STORAGE_KEY });
   }
 }
 
@@ -57,7 +89,7 @@ function loadSaved() {
     keepRejected(text, r.errors[0]);
     return null;
   }
-  if (stale) loadProblem = `This is the project as last saved; autosave stopped at ${stale} because browser storage was full, and later edits were not saved.`;
+  if (stale) loadProblem = tr('This is the project as last saved; autosave stopped at {time} because browser storage was full, and later edits were not saved.', { time: stale });
   return { project: r.project, text };
 }
 
@@ -78,8 +110,8 @@ function save(project) {
     if (autosaveFailed) {
       autosaveFailed = false;
       localStorage.removeItem(STALE_KEY);
-      autosaveNote.textContent = '';
-      message('Autosave works again.');
+      renderAutosaveNote();
+      message(tr('Autosave works again.'));
     }
   } catch {
     if (autosaveFailed) return;
@@ -89,8 +121,8 @@ function save(project) {
     } catch {
       // No room for the marker either.
     }
-    autosaveNote.textContent = ' · Autosave off: use Save';
-    message(`Autosave is off: browser storage refused the project (${length} characters; browsers keep about 5,000,000 per site). Use Save to keep it.`, true);
+    renderAutosaveNote();
+    message(tr('Autosave is off: browser storage refused the project ({length} characters; browsers keep about 5,000,000 per site). Use Save to keep it.', { length: whole(length) }), true);
   }
 }
 
@@ -112,7 +144,7 @@ function safeBuild(project) {
   try {
     return buildWing(project);
   } catch (e) {
-    return { errors: [`Internal error: ${e.message}`], warnings: [], stations: [], surface: null, sections: [], profiles: new Map(), guides: {}, settings: project.settings };
+    return { errors: [tr('Internal error: {message}', { message: e.message })], warnings: [], stations: [], surface: null, sections: [], profiles: new Map(), guides: {}, settings: project.settings };
   }
 }
 
@@ -134,11 +166,15 @@ const getBuild = () => build;
 // Layout.
 const statusText = h('span', { class: 'status-text' });
 const autosaveNote = h('span', { class: 'sev-error' });
-// A saved project that could not be loaded nor copied aside keeps autosave off for the session.
-if (keepSaved) autosaveNote.textContent = ' · Autosave off: use Save';
+// Autosave is off after a failed save, and for the session when a saved project could neither be
+// loaded nor copied aside.
+function renderAutosaveNote() {
+  autosaveNote.textContent = keepSaved || autosaveFailed ? ` · ${tr('Autosave off: use Save')}` : '';
+}
+shellLabels.push(renderAutosaveNote);
 const toast = h('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
-const undoBtn = h('button', { type: 'button', title: 'Undo (Ctrl+Z)', onclick: () => store.undo() }, 'Undo');
-const redoBtn = h('button', { type: 'button', title: 'Redo (Ctrl+Shift+Z)', onclick: () => store.redo() }, 'Redo');
+const undoBtn = localized(h('button', { type: 'button', onclick: () => store.undo() }), { text: () => tr('Undo'), title: () => tr('Undo (Ctrl+Z)') });
+const redoBtn = localized(h('button', { type: 'button', onclick: () => store.redo() }), { text: () => tr('Redo'), title: () => tr('Redo (Ctrl+Shift+Z)') });
 // Each Open choice gets a number; a read that finishes after a newer choice is dropped.
 let openRequest = 0;
 const openInput = h('input', {
@@ -151,26 +187,26 @@ const openInput = h('input', {
     if (!f) return;
     const request = ++openRequest;
     if (f.size > MAX_PROJECT_BYTES) {
-      message(`Cannot open ${f.name}: ${(f.size / 1e6).toFixed(1)} MB; project files are limited to ${MAX_PROJECT_BYTES / 1e6} MB.`, true);
+      message(tr('Cannot open {name}: {size} MB; project files are limited to {limit} MB.', { name: f.name, size: fixed(f.size / 1e6, 1), limit: plain(MAX_PROJECT_BYTES / 1e6) }), true);
       return;
     }
     let text;
     try {
       text = await f.text();
     } catch (err) {
-      if (request === openRequest) message(`Cannot open ${f.name}: the browser could not read the file (${err?.name ?? 'Error'}).`, true);
+      if (request === openRequest) message(tr('Cannot open {name}: the browser could not read the file ({error}).', { name: f.name, error: err?.name ?? 'Error' }), true);
       return;
     }
     if (request !== openRequest) return;
     const r = projectFromJsonText(text);
     if (!r.ok) {
-      message(`Cannot open ${f.name}: ${r.errors.slice(0, 3).join(' ')}`, true);
+      message(tr('Cannot open {name}: {problems}', { name: f.name, problems: r.errors.slice(0, 3).join(' ') }), true);
       return;
     }
     store.replace(r.project);
     viewer.hasFitted = false;
     planform.pz.fitted = false;
-    message(`Opened ${f.name}.`);
+    message(tr('Opened {name}.', { name: f.name }));
   },
 });
 
@@ -178,34 +214,35 @@ const header = h(
   'header',
   { class: 'topbar' },
   h('div', { class: 'brand' }, h('span', { class: 'logo', 'aria-hidden': 'true' }), 'Wingdesigner'),
-  h(
-    'nav',
-    { class: 'actions', 'aria-label': 'Project' },
-    h('button', { type: 'button', onclick: () => newDesign(false) }, 'New'),
-    h('button', { type: 'button', onclick: () => openInput.click() }, 'Open'),
+  localized(
     h(
-      'button',
-      {
-        type: 'button',
-        title: 'Save the project as JSON',
-        onclick: () => {
-          try {
-            const file = projectFileText(store.project, currentBuild(), { generatorVersion: VERSION });
-            download(slugFile(store.project.name, 'json'), file.text, 'application/json');
-            if (file.omitted) message(OMITTED_NOTE);
-          } catch (e) {
-            // String length and memory limits of the browser end here.
-            message(`Save failed: ${e.message}.`, true);
-          }
-        },
-      },
-      'Save',
+      'nav',
+      { class: 'actions' },
+      localized(h('button', { type: 'button', onclick: () => newDesign(false) }), { text: () => tr('New') }),
+      localized(h('button', { type: 'button', onclick: () => openInput.click() }), { text: () => tr('Open') }),
+      localized(
+        h('button', {
+          type: 'button',
+          onclick: () => {
+            try {
+              const file = projectFileText(store.project, currentBuild(), { generatorVersion: VERSION });
+              download(slugFile(store.project.name, 'json'), file.text, 'application/json');
+              if (file.omitted) message(omittedNote());
+            } catch (e) {
+              // String length and memory limits of the browser end here.
+              message(tr('Save failed: {reason}.', { reason: e.message }), true);
+            }
+          },
+        }),
+        { text: () => tr('Save'), title: () => tr('Save the project as JSON') },
+      ),
+      localized(h('button', { type: 'button', class: 'primary', onclick: () => exportDialog(store, currentBuild, VERSION, message) }), { text: () => tr('Export') }),
+      undoBtn,
+      redoBtn,
+      localized(h('button', { type: 'button', onclick: () => helpDialog() }), { text: () => tr('Help') }),
+      openInput,
     ),
-    h('button', { type: 'button', class: 'primary', onclick: () => exportDialog(store, currentBuild, VERSION, message) }, 'Export'),
-    undoBtn,
-    redoBtn,
-    h('button', { type: 'button', onclick: () => helpDialog() }, 'Help'),
-    openInput,
+    { label: () => tr('Project') },
   ),
 );
 
@@ -213,32 +250,40 @@ const viewport = h('div', { class: 'viewport' });
 const viewTools = h(
   'div',
   { class: 'view-tools' },
-  ...['iso', 'top', 'front', 'side'].map((v) => h('button', { type: 'button', onclick: () => viewer.view(v) }, v[0].toUpperCase() + v.slice(1))),
-  h('button', { type: 'button', onclick: () => viewer.fit(), title: 'Fit the wing into the view' }, 'Fit'),
-  h('button', { type: 'button', class: 'expand', onclick: () => document.body.classList.toggle('view-max'), title: 'Enlarge or shrink the 3D view' }, 'Enlarge'),
+  ...[
+    ['iso', () => tr('Iso')],
+    ['top', () => tr('Top')],
+    ['front', () => tr('Front')],
+    ['side', () => tr('Side')],
+  ].map(([v, label]) => localized(h('button', { type: 'button', onclick: () => viewer.view(v) }), { text: label })),
+  localized(h('button', { type: 'button', onclick: () => viewer.fit() }), { text: () => tr('Fit'), title: () => tr('Fit the wing into the view') }),
+  localized(h('button', { type: 'button', class: 'expand', onclick: () => document.body.classList.toggle('view-max') }), { text: () => tr('Enlarge'), title: () => tr('Enlarge or shrink the 3D view') }),
 );
 const viewWrap = h('div', { class: 'view-wrap' }, viewport, viewTools, toast);
 
 const TABS = [
-  ['sections', 'Sections'],
-  ['planform', 'Planform'],
-  ['airfoils', 'Airfoils'],
-  ['settings', 'Settings'],
-  ['checks', 'Checks'],
+  ['sections', () => tr('Sections')],
+  ['planform', () => tr('Planform')],
+  ['airfoils', () => tr('Airfoils')],
+  ['settings', () => tr('Settings')],
+  ['checks', () => tr('Checks')],
 ];
 const panes = Object.fromEntries(TABS.map(([k]) => [k, h('div', { class: 'pane', id: `pane-${k}`, role: 'tabpanel', hidden: true })]));
 const tabButtons = TABS.map(([k, label]) =>
-  h('button', { type: 'button', role: 'tab', id: `tab-${k}`, 'aria-controls': `pane-${k}`, onclick: () => selectTab(k) }, label),
+  localized(h('button', { type: 'button', role: 'tab', id: `tab-${k}`, 'aria-controls': `pane-${k}`, onclick: () => selectTab(k) }), { text: label }),
 );
 const panel = h('aside', { class: 'panel' }, h('div', { class: 'tabs', role: 'tablist' }, tabButtons), ...Object.values(panes));
 const statusBar = h('footer', { class: 'statusbar' }, statusText, autosaveNote);
 document.getElementById('app').append(header, h('main', { class: 'layout' }, viewWrap, panel), statusBar);
+shellLabels.push(() => document.querySelector('meta[name="description"]')?.setAttribute('content', tr('Design RC model aircraft wings in the browser: airfoil sections, NURBS loft, guide curves, STEP, STL and 3MF export.')));
+labelShell();
 
 const viewer = new Viewer3D(viewport);
+shellLabels.push(() => viewer.updateLabels());
 const sectionsPanel = new SectionsPanel(panes.sections, store, getBuild, { onMessage: (m, e) => message(m, e) });
 const planform = new PlanformEditor(panes.planform, store, getBuild);
 const airfoils = new AirfoilsPanel(panes.airfoils, store, { onMessage: (m, e) => message(m, e) });
-const settings = new SettingsPanel(panes.settings, store, viewer);
+const settings = new SettingsPanel(panes.settings, store, viewer, { onLanguage: (code) => changeLanguage(code) });
 
 let activeTab = 'sections';
 try {
@@ -262,12 +307,12 @@ function selectTab(key) {
 
 function renderChecks() {
   const items = [];
-  for (const e of build.errors) items.push(h('li', { class: 'sev-error' }, h('strong', {}, 'Error: '), e));
-  for (const w of build.warnings) items.push(h('li', { class: 'sev-warning' }, h('strong', {}, 'Warning: '), w));
+  for (const e of build.errors) items.push(h('li', { class: 'sev-error' }, h('strong', {}, `${tr('Error')}: `), e));
+  for (const w of build.warnings) items.push(h('li', { class: 'sev-warning' }, h('strong', {}, `${tr('Warning')}: `), w));
   const stats = build.surface ? wingStats(build) : null;
   clear(panes.checks).append(
-    h('h3', {}, 'Geometry checks'),
-    items.length ? h('ul', { class: 'issues' }, items) : h('p', {}, 'No errors or warnings.'),
+    h('h3', {}, tr('Geometry checks')),
+    items.length ? h('ul', { class: 'issues' }, items) : h('p', {}, tr('No errors or warnings.')),
     stats
       ? h(
           'table',
@@ -276,23 +321,40 @@ function renderChecks() {
             'tbody',
             {},
             [
-              ['Span', `${stats.span.toFixed(1)} mm`],
-              ['Wing area', `${(stats.area / 1e4).toFixed(2)} dm²`],
-              ['Aspect ratio', stats.aspectRatio.toFixed(2)],
-              ['Mean aerodynamic chord (MAC)', `${stats.mac.toFixed(1)} mm`],
-              ['MAC position', `y ${stats.macY.toFixed(1)} mm, leading edge x ${stats.macXLE.toFixed(1)} mm`],
-              ['25 % MAC (geometric reference)', `x ${(stats.macXLE + 0.25 * stats.mac).toFixed(1)} mm`],
-              ['Root / tip chord', `${stats.rootChord.toFixed(1)} / ${stats.tipChord.toFixed(1)} mm`],
-              ['Surface', `degree ${build.surface.degreeU} x ${build.surface.degreeV}, ${build.surface.points.length} x ${build.surface.points[0].length} control points`],
-              ['Trailing edge', build.closedTE ? 'closed' : 'open'],
+              [tr('Span'), `${fixed(stats.span, 1)} mm`],
+              [tr('Wing area'), `${fixed(stats.area / 1e4, 2)} dm²`],
+              [tr('Aspect ratio'), fixed(stats.aspectRatio, 2)],
+              [tr('Mean aerodynamic chord (MAC)'), `${fixed(stats.mac, 1)} mm`],
+              [tr('MAC position'), tr('y {y} mm, leading edge x {x} mm', { y: fixed(stats.macY, 1), x: fixed(stats.macXLE, 1) })],
+              [tr('25 % MAC (geometric reference)'), `x ${fixed(stats.macXLE + 0.25 * stats.mac, 1)} mm`],
+              [tr('Root / tip chord'), `${fixed(stats.rootChord, 1)} / ${fixed(stats.tipChord, 1)} mm`],
+              [
+                tr('Surface'),
+                tr('degree {degreeU} x {degreeV}, {rows} x {columns} control points', {
+                  degreeU: plain(build.surface.degreeU),
+                  degreeV: plain(build.surface.degreeV),
+                  rows: whole(build.surface.points.length),
+                  columns: whole(build.surface.points[0].length),
+                }),
+              ],
+              [tr('Trailing edge'), build.closedTE ? tr('closed') : tr('open')],
             ].map(([k, v]) => h('tr', {}, h('th', { scope: 'row' }, k), h('td', {}, v))),
           ),
         )
-      : null,
-    h('p', { class: 'small muted' }, 'The 25 % MAC point is a geometric reference only; it is not an aerodynamic neutral-point or centre-of-gravity calculation.'),
+      : '',
+    h('p', { class: 'small muted' }, tr('The 25 % MAC point is a geometric reference only; it is not an aerodynamic neutral-point or centre-of-gravity calculation.')),
   );
-  const s = stats ? `Span ${stats.span.toFixed(0)} mm · area ${(stats.area / 1e4).toFixed(2)} dm² · AR ${stats.aspectRatio.toFixed(2)} · MAC ${stats.mac.toFixed(1)} mm` : '';
-  statusText.textContent = build.errors.length ? `${build.errors.length} error(s): ${build.errors[0]}` : s + (build.warnings.length ? ` · ${build.warnings.length} warning(s)` : '');
+  const s = stats
+    ? tr('Span {span} mm · area {area} dm² · AR {ar} · MAC {mac} mm', {
+        span: fixed(stats.span, 0),
+        area: fixed(stats.area / 1e4, 2),
+        ar: fixed(stats.aspectRatio, 2),
+        mac: fixed(stats.mac, 1),
+      })
+    : '';
+  statusText.textContent = build.errors.length
+    ? tr('{n} error(s): {first}', { n: plain(build.errors.length), first: build.errors[0] })
+    : s + (build.warnings.length ? ` · ${tr('{n} warning(s)', { n: plain(build.warnings.length) })}` : '');
   statusBar.classList.toggle('has-error', build.errors.length > 0);
 }
 
@@ -424,7 +486,12 @@ function message(text, isError = false) {
   toast.classList.add('show');
   clearTimeout(message.t);
   // Long messages (size warnings) stay longer: 60 ms per character, at least 4 s.
-  message.t = setTimeout(() => toast.classList.remove('show'), Math.max(4000, 60 * text.length));
+  // An error notice that outlived a language switch leaves no text in the old language behind.
+  message.lang = language();
+  message.t = setTimeout(() => {
+    toast.classList.remove('show');
+    if (message.lang !== language()) toast.textContent = '';
+  }, Math.max(4000, 60 * text.length));
 }
 
 async function newDesign(firstRun) {
@@ -439,7 +506,7 @@ async function newDesign(firstRun) {
     viewer.hasFitted = false;
     planform.pz.fitted = false;
     selectTab('sections');
-    message(`Created "${displayName(p.name)}".`);
+    message(tr('Created "{name}".', { name: displayName(p.name) }));
   }
 }
 
@@ -451,49 +518,84 @@ function helpDialog() {
       'form',
       { method: 'dialog' },
       h('h2', {}, 'Wingdesigner'),
-      h('p', {}, `Version ${VERSION}. Designs one half of a wing from airfoil sections and mirrors it at y = 0.`),
-      h('h3', {}, 'Workflow'),
+      h('p', {}, tr('Version {version}. Designs one half of a wing from airfoil sections and mirrors it at y = 0.', { version: VERSION })),
+      h('h3', {}, tr('Workflow')),
       h(
         'ol',
         {},
-        h('li', {}, 'New: pick a design type in the wizard, or edit the sample wing.'),
-        h('li', {}, 'Airfoils: add NACA sections, library entries, or upload .dat files (checked and previewed before use).'),
-        h('li', {}, 'Sections: set span position y, leading edge x and z, chord and twist for each section.'),
-        h('li', {}, 'Planform: switch on the nose line and end line to shape the leading and trailing edge between sections.'),
-        h('li', {}, 'Export: STEP (exact NURBS solids), STL or 3MF (meshes), and the project JSON.'),
+        h('li', {}, tr('New: pick a design type in the wizard, or edit the sample wing.')),
+        h('li', {}, tr('Airfoils: add NACA sections, library entries, or upload .dat files (checked and previewed before use).')),
+        h('li', {}, tr('Sections: set span position y, leading edge x and z, chord and twist for each section.')),
+        h('li', {}, tr('Planform: switch on the nose line and end line to shape the leading and trailing edge between sections.')),
+        h('li', {}, tr('Export: STEP (exact NURBS solids), STL or 3MF (meshes), and the project JSON.')),
       ),
-      h('h3', {}, 'Controls'),
+      h('h3', {}, tr('Controls')),
       h(
         'ul',
         {},
-        h('li', {}, '3D view: drag to rotate, pinch or scroll to zoom, two fingers or right mouse button to pan.'),
-        h('li', {}, 'Planform and previews: drag points to edit, drag the background to pan, pinch or scroll to zoom, double-click to fit.'),
-        h('li', {}, 'Undo and redo: Ctrl+Z and Ctrl+Shift+Z.'),
+        h('li', {}, tr('3D view: drag to rotate, pinch or scroll to zoom, two fingers or right mouse button to pan.')),
+        h('li', {}, tr('Planform and previews: drag points to edit, drag the background to pan, pinch or scroll to zoom, double-click to fit.')),
+        h('li', {}, tr('Undo and redo: Ctrl+Z and Ctrl+Shift+Z.')),
       ),
-      h('h3', {}, 'Coordinates and units'),
-      h('p', {}, 'Millimetres. x runs chordwise towards the trailing edge, y spanwise towards the right tip, z up. Twist is positive with the leading edge up.'),
-      h('h3', {}, 'Airfoil data'),
+      h('h3', {}, tr('Coordinates and units')),
+      h('p', {}, tr('Millimetres. x runs chordwise towards the trailing edge, y spanwise towards the right tip, z up. Twist is positive with the leading edge up.')),
+      h('h3', {}, tr('Airfoil data')),
       h(
         'p',
         {},
-        'NACA sections are computed from their published equations. Uploaded airfoils keep their name and attribution in the project file; respect the terms of the source you downloaded them from.',
+        tr('NACA sections are computed from their published equations. Uploaded airfoils keep their name and attribution in the project file; respect the terms of the source you downloaded them from.'),
       ),
       h(
         'p',
         {},
-        h('a', { href: `${REPO}/wiki`, target: '_blank', rel: 'noopener' }, 'Documentation (wiki)'),
+        // The wiki opens on its English home page: the German guide is a page of its own.
+        h('a', { href: language() === 'de' ? `${REPO}/wiki/Benutzerhandbuch` : `${REPO}/wiki`, target: '_blank', rel: 'noopener' }, tr('Documentation (wiki)')),
         ' · ',
-        h('a', { href: REPO, target: '_blank', rel: 'noopener' }, 'Source code (MIT license)'),
+        h('a', { href: REPO, target: '_blank', rel: 'noopener' }, tr('Source code (MIT license)')),
         ' · ',
         // Written by the build (vite.config.js): this app's license and those of the bundled libraries.
-        h('a', { href: 'LICENSES.txt', target: '_blank', rel: 'noopener' }, 'Licenses of this app and its libraries'),
+        h('a', { href: 'LICENSES.txt', target: '_blank', rel: 'noopener' }, tr('Licenses of this app and its libraries')),
       ),
-      h('div', { class: 'row end' }, h('button', { value: 'close', class: 'primary' }, 'Close')),
+      h('div', { class: 'row end' }, h('button', { value: 'close', class: 'primary' }, tr('Close'))),
     ),
   );
   document.body.append(dialog);
   dialog.addEventListener('close', () => dialog.remove());
   dialog.showModal();
+}
+
+/**
+ * Switch the language without a reload: store the choice, label the shell, and build the wing again
+ * so its messages speak the new language; the next frame draws the view and every panel from that
+ * build. The project, the selection and the undo history stay.
+ */
+function changeLanguage(code) {
+  if (!Object.hasOwn(LANGUAGES, code) || code === language()) return;
+  setLanguage(code);
+  try {
+    localStorage.setItem(LANGUAGE_KEY, code);
+  } catch {
+    // The choice then lasts until the page is closed.
+  }
+  document.documentElement.lang = language();
+  labelShell();
+  // A notice would stay in the old language until it fades. The Checks tab repeats the size warnings and the panels show
+  // what a plain notice reports, so it is dropped with its text (a screen reader would still find the text in the page).
+  // An error notice can be the only place that tells the user, so it stays until its timer ends.
+  if (!(toast.classList.contains('error') && toast.classList.contains('show'))) {
+    clearTimeout(message.t);
+    toast.classList.remove('show');
+    toast.textContent = '';
+  }
+  // Only the size warning is a text of the build that a refresh can reword: with no other warning and no
+  // error, the Sections table, the size warning, the planform and the Checks are relabelled without a new loft fit.
+  if (build.errors.length || build.warnings.some((w) => w !== build.sizeWarning)) geometryPending = true;
+  else {
+    tablePending = true;
+    formsPending = true;
+  }
+  refreshPanels = true;
+  rebuild();
 }
 
 window.addEventListener('keydown', (e) => {

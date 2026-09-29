@@ -56,7 +56,7 @@ Registerkarte **Airfoils** (Profile), Kasten **More airfoils (external, not bund
 2. **Airfoils** > **Upload** (Hochladen): Datei auf die Ablagefläche ziehen oder **Choose files** (Dateien wählen) verwenden.
 3. Vorschau und Feld **Source / attribution** (Quellenangabe) prüfen, dann **Add to project** (zum Projekt hinzufügen) klicken.
 
-Über 200 Profilen zeigt die Registerkarte **Checks** (Prüfungen) eine Warnung `Large project: …`. Sie nennt `N airfoils (warning above 200)` mit jeder anderen Größe über ihrer Schwelle sowie die erwartete Rechenzeit und den Browserspeicher je Änderung. Steigt die Zahl über 200, zeigt die Kurzmeldung nach **Add to project** auch diese Warnung. Ein Projekt enthält höchstens 10 000 Profile. Bei 10 000 Profilen öffnet **Upload** keine Vorschau und zeigt `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.` Ein Profil, das die Punkte aller Projektprofile über 1 000 000 bringt, wird mit `With this airfoil the project airfoils hold N points; the limit is 1,000,000. "Remove unused" frees points.` abgelehnt.
+Über 200 Profilen zeigt die Registerkarte **Checks** (Prüfungen) eine Warnung `Large project: …`. Sie nennt `N airfoils (warning above 200)` mit jeder anderen Größe über ihrer Schwelle sowie die erwartete Rechenzeit und den Arbeitsspeicher je Änderung. Steigt die Zahl über 200, zeigt die Kurzmeldung nach **Add to project** auch diese Warnung. Ein Projekt enthält höchstens 10 000 Profile. Bei 10 000 Profilen öffnet **Upload** keine Vorschau und zeigt `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.` Ein Profil, das die Punkte aller Projektprofile über 1 000 000 bringt, wird mit `With this airfoil the project airfoils hold N points; the limit is 1,000,000. "Remove unused" frees points.` abgelehnt.
 
 ### Einlesetest
 
@@ -136,7 +136,7 @@ Jedes Profil im Projekt trägt ein Objekt `source`:
 | --- | --- |
 | Liste der Projektprofile (Registerkarte **Airfoils**) | Ja, nach der Punktanzahl. NACA-Profile ohne Quellenangabe zeigen `NACA equations`. |
 | Projektdatei, JSON (JavaScript Object Notation): **Save** oder **Export** > Project JSON | Ja |
-| Automatische Speicherung im lokalen Speicher des Browsers (Schlüssel `wingdesigner.project.v1`) | Ja |
+| Automatische Sicherung im Browserspeicher (Schlüssel `wingdesigner.project.v1`) | Ja |
 | `.dat`-Download eines Projektprofils | Nein: nur Namenszeile und Punkte |
 | STEP (Standard for the Exchange of Product model data), STL (Stereolithografie), 3MF (3D Manufacturing Format) | Nein |
 
@@ -149,7 +149,7 @@ Die App sendet keine Profildaten an einen Server. Ihre einzigen Netzwerkanfragen
   - aerodesign.de: 0 von 43 HS-Dateien (`hs*.dat`, `hs*.txt`).
 - Hochgeladene Datei und Bibliothekseintrag: Wird ein vorbelegtes Feld **Source / attribution** geleert, bleibt der vorbelegte Text gespeichert. Zum Ersetzen anderen Text eingeben.
 - Eingefügter Text: Wird das Feld geleert, wird keine Quellenangabe gespeichert.
-- Nach **Add to project** ist die Quellenangabe in der App schreibgeschützt. **View** (Ansicht) zeigt sie in einem deaktivierten Feld. Änderungen nur in der Projektdatei (JSON).
+- Nach **Add to project** ist die Quellenangabe in der App schreibgeschützt. **View** (Anzeigen) zeigt sie in einem deaktivierten Feld. Änderungen nur in der Projektdatei (JSON).
 - Ohne gespeicherte Quellenangabe zeigt **View** die aus dem Namen abgeleitete Vorbelegung (HS/MH-Regel). Dieser Text ist nicht gespeichert.
 - Gleicher Name und identische Punkte wie ein Projektprofil, oder erzeugtes NACA-Profil mit demselben `code` und `closedTE` wie ein Projektprofil (Name beliebig): **Add to project** behält den vorhandenen Eintrag und dessen `source`. Die neue Quellenangabe wird verworfen. Die Meldung `Added airfoil "<name>".` erscheint trotzdem. Quellenangabe ändern: Profil entfernen (**×** nur verfügbar, solange kein Schnitt es verwendet) und neu hinzufügen, oder die Projektdatei (JSON) bearbeiten.
 - Exportierte STEP-, STL-, 3MF- und `.dat`-Dateien enthalten keine Quellenangabe. Die HS-Bedingungen verlangen Namen und Quelle bei jeder Nutzung. CC BY 4.0 (S9104) verlangt eine Quellenangabe bei der Weitergabe; wer eine solche mit S9104 erstellte Datei weitergibt, fügt den Text der Quellenangabe aus `public/airfoils/NOTICE.md` hinzu.

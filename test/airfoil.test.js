@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLanguage, tr } from '../src/i18n/index.js';
+import { airfoilFirstUseSeconds, formatSeconds } from '../src/model/budget.js';
 import { MAX_INPUT, MAX_NAME, MAX_POINTS, decodeText, parseDat, parseNumbers, toSeligDat } from '../src/airfoil/parse.js';
 import { DUPLICATE_DISTANCE, LIMITS, checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
 import { profileCurve } from '../src/geom/profile.js';
@@ -853,5 +855,219 @@ describe('parser time, tables and round trips', () => {
     const t0 = performance.now();
     expect(selfIntersections(pts)).toEqual([]);
     expect(performance.now() - t0).toBeLessThan(1500);
+  });
+});
+
+describe('German airfoil messages', () => {
+  afterEach(() => setLanguage('en'));
+  const message = (issues, code) => issues.find((i) => i.code === code).message;
+  const both = (make) => {
+    const en = make();
+    setLanguage('de');
+    const de = make();
+    setLanguage('en');
+    return { en, de };
+  };
+
+  it('translates the parser messages, with a decimal comma and dot groups', () => {
+    setLanguage('de');
+    const pct = parseDat('Profil\nfree text\nmore text\n100,0 0,0\n50,0 5,0\n0,0 0,0\n50,0 -5,0\n100,0 0,0\n');
+    expect(message(pct.issues, 'decimal-comma')).toBe('Dezimalkommas wurden als Dezimalpunkte gelesen.');
+    expect(message(pct.issues, 'ignored-lines')).toBe('2 nichtnumerische Zeilen nach der Namenszeile wurden ignoriert.');
+    expect(message(pct.issues, 'percent')).toBe('Die Koordinaten sehen nach Prozent der Profiltiefe aus und wurden durch 100 geteilt.');
+    expect(message(parseDat('Profil\nfree text\n1 0\n0.5 0.06\n0 0\n0.5 -0.04\n1 0\n').issues, 'ignored-lines')).toBe('1 nichtnumerische Zeile nach der Namenszeile wurde ignoriert.');
+    expect(message(parseDat('').issues, 'no-points')).toBe('Keine Koordinatenzeilen gefunden.');
+    expect(message(parseDat('100 0\n50 6\n0 0\n50 -4\n100 0\n', { fileName: 'f.dat' }).issues, 'no-name')).toBe('Keine Namenszeile gefunden; der Dateiname wird als Profilname verwendet.');
+    expect(message(parseDat('rev\n1 0\n0.5 -0.04\n0.5 -0.04\n0 0\n0.5 0.06\n1 0\n').issues, 'duplicates')).toBe('1 doppelter aufeinanderfolgender Punkt wurde entfernt.');
+    expect(message(parseDat('rev\n1 0\n0.5 -0.04\n0.5 -0.04\n0.5 -0.04\n0 0\n0.5 0.06\n1 0\n').issues, 'duplicates')).toBe('2 doppelte aufeinanderfolgende Punkte wurden entfernt.');
+    // A count that reaches four digits gets dot groups like every other number of the text.
+    expect(message(parseDat('rev\n1 0\n0.5 -0.04\n' + '0.5 -0.04\n'.repeat(1200) + '0 0\n0.5 0.06\n1 0\n').issues, 'duplicates')).toBe('1.200 doppelte aufeinanderfolgende Punkte wurden entfernt.');
+    expect(message(parseDat('rev\n1 0\n0.5 -0.04\n0 0\n0.5 0.06\n1 0\n').issues, 'reversed')).toBe(
+      'Die Punkte laufen im Uhrzeigersinn (Unterseite zuerst); die Reihenfolge wurde in die Selig-Reihenfolge umgedreht.',
+    );
+    expect(message(parseDat('X\n 4. 4.\n0 0\n0.5 0.08\n1 0\n0 0\n0.5 -0.03\n1 0\n').issues, 'lednicer-count')).toBe(
+      'Die Kopfzeile nennt 4+4 Punkte, gefunden wurden aber 6; Ober- und Unterseite werden am x-Rücksprung getrennt.',
+    );
+    const table = parseDat('1 0.002 -0.002\n0.8 0.04 -0.02\n0.5 0.07 -0.03\n0.2 0.06 -0.03\n0.05 0.03 -0.015\n0 0 0\n');
+    expect(message(table.issues, 'table')).toBe('Als dreispaltige Tabelle gelesen (x, y Oberseite, y Unterseite).');
+    expect(message(parseDat('Foil\n1 0 5\n0.5 0.06 5\n0 0 5\n0.5 -0.04 5\n1 0 5\n').issues, 'extra-columns')).toBe('Zeilen mit mehr als zwei Werten gefunden; nur die ersten beiden Spalten werden verwendet.');
+  });
+
+  it('translates the messages about the size of the input', () => {
+    setLanguage('de');
+    expect(message(parseDat('x'.repeat(MAX_INPUT + 1)).issues, 'too-large')).toBe('Die Eingabe hat 5.000.001 Zeichen; die Grenze liegt bei 5.000.000.');
+    const pts = nacaAirfoil('2412', { pointsPerSide: 21 }).points;
+    const named = parseDat([`N${'x'.repeat(MAX_NAME + 1000)}`, ...pts.map((p) => p.join(' '))].join('\n'));
+    expect(message(named.issues, 'long-name')).toBe('Die Namenszeile hat 11.001 Zeichen; die ersten 10.000 werden verwendet.');
+    const rows = parseDat('Rows\n' + '0 0\n'.repeat(MAX_POINTS + 1000));
+    expect(message(rows.issues, 'too-many-points')).toBe('Mehr als 100.001 Koordinatenzeilen; die Grenze liegt bei 100.000 Punkten.');
+    const many = `<airfoil><name>T</name><coordinates>${'<point><x>0</x><y>0</y></point>'.repeat(MAX_POINTS + 50)}</coordinates></airfoil>`;
+    expect(message(parseDat(many).issues, 'too-many-points')).toBe('100.001 oder mehr Punkte; die Grenze liegt bei 100.000.');
+  });
+
+  it('translates the messages about XML and HTML', () => {
+    setLanguage('de');
+    const xml =
+      '<airfoil><name>T</name><coordinates><point><x>1</x><y>0</y></point><point><x>0.5</x><y>0.06</y></point><point><x>0</x><y>0</y></point>' +
+      '<point><x>0.5</x><y>-0.04</y></point><point><x>1</x><y>0</y></point></coordinates><coordinates><point><x>1</x><y>0</y></point></coordinates></airfoil>';
+    const r = parseDat(xml);
+    expect(message(r.issues, 'xml')).toBe('Als XML-Profilgeometrie gelesen.');
+    expect(message(r.issues, 'multi-element')).toBe('2 Elemente gefunden; nur das erste wird verwendet.');
+    expect(message(parseDat('<coordinates><point><x>1</x><y>0</y></point></coordinates>', { fileName: 'q.xml' }).issues, 'no-name')).toBe('Kein Name gefunden; der Dateiname wird verwendet.');
+    expect(message(parseDat('<coordinates>').issues, 'xml-malformed')).toBe('Das XML enthält ein Element <coordinates> ohne schließendes Tag.');
+    expect(message(parseDat('<coordinates><point><x>a</x><y>0</y></point></coordinates>').issues, 'non-finite')).toBe('Die Koordinaten enthalten nicht endliche Werte.');
+    expect(message(parseDat('<coordinates></coordinates>').issues, 'no-points')).toBe('Keine Koordinatenpunkte gefunden.');
+    expect(message(parseDat('<html><body><pre>Foil\n1 0\n0.5 0.06\n0 0\n0.5 -0.04\n1 0\n</pre></body></html>').issues, 'html')).toBe('Koordinaten aus einer HTML-Seite gelesen.');
+  });
+
+  it('translates the closing point messages', () => {
+    const blunt = nacaAirfoil('2412', { pointsPerSide: 31 }).points;
+    const text = (pts) => `Blunt\n${pts.map(([x, y]) => `${x} ${y}`).join('\n')}\n`;
+    // Clockwise, closed by repeating the lower trailing-edge point after the upper one.
+    const cw = blunt.slice().reverse();
+    cw.push(cw[0].slice());
+    // Starts and ends on the drawn base at the trailing-edge midpoint.
+    const mid = [blunt[0][0], (blunt[0][1] + blunt[blunt.length - 1][1]) / 2];
+    setLanguage('de');
+    expect(message(parseDat(text(cw)).issues, 'closing-point')).toBe('Die Kontur wiederholt ihren ersten Punkt nach einer stumpfen Endleiste; der wiederholte Punkt wurde entfernt.');
+    expect(message(parseDat(text([mid, ...blunt, mid])).issues, 'closing-point')).toBe(
+      'Die Kontur beginnt und endet auf der gezeichneten Endleistenbasis; der Basispunkt wurde an beiden Enden entfernt.',
+    );
+    expect(message(checkAirfoil([mid, ...blunt, mid]).issues, 'te-base')).toBe(
+      'Die Kontur erreicht die Endleiste über ein senkrechtes Segment; die Endleistenbasis wurde vermutlich als Punkte der Profilseite gelesen.',
+    );
+  });
+
+  it('translates the checks of an outline, with a decimal comma', () => {
+    setLanguage('de');
+    expect(message(checkAirfoil([[0, 0]]).issues, 'too-few-points')).toBe('Mindestens 5 Punkte sind erforderlich (1 gefunden).');
+    expect(message(checkAirfoil(null).issues, 'too-few-points')).toBe('Mindestens 5 Punkte sind erforderlich (0 gefunden).');
+    expect(message(checkAirfoil(Array.from({ length: 6 }, (_, i) => [0.5, i])).issues, 'zero-chord')).toBe('Alle Punkte haben dieselbe x-Koordinate.');
+    const coarse = checkAirfoil(nacaAirfoil('0012', { pointsPerSide: 8 }).points.map(([x, y]) => [x * 150, y * 150]));
+    expect(message(coarse.issues, 'coarse')).toBe('Nur 15 Punkte; die NURBS-Interpolation trifft die beabsichtigte Form möglicherweise nicht.');
+    expect(message(coarse.issues, 'not-normalized')).toBe('x reicht von 0,0000 bis 150,0000; die Koordinaten werden auf die Profiltiefe 1 skaliert.');
+    const a = 0.2;
+    const rot = nacaAirfoil('0012').points.map(([x, y]) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)]);
+    const rotated = checkAirfoil(rot);
+    expect(message(rotated.issues, 'rotated')).toBe(
+      'Die Linie von der Profilnase zur Endleiste ist um 11,46 Grad geneigt; die Koordinaten bleiben erhalten, daher bezieht sich die Schränkung auf die x-Achse der Datei.',
+    );
+    expect(message(rotated.issues, 'non-monotonic')).toBe('x steigt nicht monoton von der Profilnase zur Endleiste an (Umkehrungen: Oberseite 1, Unterseite 0).');
+    expect(message(checkAirfoil(setTrailingEdgeGap(nacaAirfoil('0012').points, 0.05)).issues, 'te-gap')).toBe('Die Endleistendicke beträgt 5,00 % der Profiltiefe.');
+    const crossed = checkAirfoil(setTrailingEdgeGap(nacaAirfoil('0012').points, -0.01));
+    expect(message(crossed.issues, 'te-crossed')).toBe('Die Endleiste ist gekreuzt (Endleistendicke -1,000 % der Profiltiefe).');
+    expect(message(crossed.issues, 'crossed-surfaces')).toBe('Die Oberseite liegt an einer Position entlang der Profiltiefe unter der Unterseite.');
+    expect(message(checkAirfoil(nacaAirfoil('0005').points.map(([x, y]) => [x, y / 10])).issues, 'thin')).toBe('Die maximale Dicke beträgt 0,50 % der Profiltiefe.');
+    expect(message(checkAirfoil(nacaAirfoil('0035').points).issues, 'thick')).toMatch(/^Die maximale Dicke beträgt 3\d,\d % der Profiltiefe\.$/);
+    const spiky = nacaAirfoil('2412').points.map((p) => p.slice());
+    spiky[20][1] += 0.05;
+    expect(message(checkAirfoil(spiky).issues, 'spike')).toBe('An 1 Punkt knickt die Kontur um mehr als 90 Grad.');
+    expect(tr('{n} point(s) turn the outline by more than {angle} degrees.', { n: '3', angle: '90' })).toBe('An 3 Punkten knickt die Kontur um mehr als 90 Grad.');
+    const pts = nacaAirfoil('0012').points;
+    const le = pts.findIndex(([x]) => x === 0);
+    const truncated = pts.slice(0, le + 1 + Math.floor((pts.length - le) / 2));
+    const tail = 'nicht an der Endleiste; die Punktreihenfolge ist vermutlich nicht Selig, oder eine Profilseite ist unvollständig.';
+    expect(message(checkAirfoil(truncated).issues, 'te-missing')).toMatch(new RegExp(`^Der letzte Punkt liegt bei \\d+,\\d % der Profiltiefe, ${tail}$`));
+    const rolled = pts.slice(40).concat(pts.slice(0, 40));
+    expect(message(checkAirfoil(rolled).issues, 'te-missing')).toBe(`Der erste Punkt liegt bei 50,0 % der Profiltiefe, ${tail}`);
+  });
+
+  it('translates the report of an outline that crosses itself or touches', () => {
+    setLanguage('de');
+    const pts = nacaAirfoil('0012').points.map((p) => p.slice());
+    pts[leadingEdgeIndex(pts) + 40][1] = 0.2;
+    expect(message(checkAirfoil(pts).issues, 'self-intersection')).toBe('Die Kontur überschneidet sich selbst (2 Kreuzungen).');
+    expect(tr('The outline crosses itself ({n} crossing(s)).', { n: '1' })).toBe('Die Kontur überschneidet sich selbst (1 Kreuzung).');
+    expect(tr('The outline crosses itself ({n} crossing(s)).', { n: '10+' })).toBe('Die Kontur überschneidet sich selbst (10+ Kreuzungen).');
+    const folded = [
+      [1, 0.002], [0.9, 0.02], [0.75, 0.03], [0.6, 0.015], [0.54, 0], [0.46, 0], [0.56, 0.02], [0.4, 0.03], [0.25, 0.05], [0.1, 0.04], [0, 0],
+      [0.1, -0.03], [0.25, -0.04], [0.4, -0.02], [0.5, 0], [0.6, -0.015], [0.75, -0.03], [0.9, -0.02], [1, -0.002],
+    ];
+    expect(message(checkAirfoil(folded).issues, 'surfaces-touch')).toBe(
+      'Ober- und Unterseite berühren sich bei x = 50,0 % der Profiltiefe (Dicke 0,0000 % der Profiltiefe); der Flügel hätte dort die Dicke null.',
+    );
+    const serpentine = [];
+    for (let row = 0; row < 50; row++) for (let i = 0; i < 100; i++) serpentine.push([row % 2 ? 1 - i / 99 : i / 99, row * 0.02]);
+    expect(message(checkAirfoil(serpentine).issues, 'outline-length')).toMatch(/^Die Kontur ist 5\d,\d Profiltiefen lang; eine Profilkontur ist etwa 2 Profiltiefen lang\.$/);
+    expect(message(checkAirfoil(nacaAirfoil('2412').points).issues, 'stats')).toBe(
+      '161 Punkte, Dicke 12,00 % bei 30,1 %, Wölbung 2,00 % bei 40,6 %, Endleistendicke 0,251 %.',
+    );
+    // A point 1e-3 of the way along a segment: the two new segments differ in length by about 1,000.
+    const uneven = nacaAirfoil('0012').points.map((q) => q.slice());
+    const [q0, q1] = [uneven[30], uneven[31]];
+    uneven.splice(31, 0, [q0[0] + 1e-3 * (q1[0] - q0[0]), q0[1] + 1e-3 * (q1[1] - q0[1])]);
+    expect(message(checkAirfoil(uneven).issues, 'uneven-spacing')).toMatch(/^Benachbarte Segmente unterscheiden sich in der Länge um einen Faktor von bis zu \d+\.$/);
+  });
+
+  it('translates the surface checks with one message per surface', () => {
+    // NACA 0012 with alternating x offsets on one surface: many points where x runs back.
+    const jitter = (which) => {
+      const base = nacaAirfoil('0012', { pointsPerSide: 300 }).points;
+      const le = base.findIndex(([x]) => x === 0);
+      const out = base.map((p) => p.slice());
+      const range = which === 'upper' ? [le - 200, le - 60] : [le + 60, le + 200];
+      for (let i = range[0]; i < range[1]; i++) out[i][0] += i % 2 ? 0.01 : -0.01;
+      return out;
+    };
+    expect(message(checkAirfoil(jitter('upper')).issues, 'folds')).toMatch(/^The upper surface runs back in x at \d+ points; the limit is 50\.$/);
+    setLanguage('de');
+    expect(message(checkAirfoil(jitter('upper')).issues, 'folds')).toMatch(/^Die Oberseite läuft an \d+ Punkten in x zurück; die Grenze liegt bei 50\.$/);
+    expect(message(checkAirfoil(jitter('lower')).issues, 'folds')).toMatch(/^Die Unterseite läuft an \d+ Punkten in x zurück; die Grenze liegt bei 50\.$/);
+  });
+
+  it('translates the numbers of the point limits and of the first-use warning', () => {
+    setLanguage('de');
+    const lines = Array.from({ length: MAX_POINTS + 1 }, (_, i) => [Math.cos((2 * Math.PI * i) / MAX_POINTS), 0]);
+    expect(message(checkAirfoil(lines).issues, 'too-many-points')).toBe('100.001 Punkte; die Grenze liegt bei 100.000.');
+    const d = checkAirfoil(nacaAirfoil('2412', { pointsPerSide: 2600 }).points);
+    expect(message(d.issues, 'many-points')).toBe(
+      `5.199 Punkte (Warnung über 5.000): Die Prüfungen und der erste Aufbau eines Flügels, der das Profil verwendet, dauern ${formatSeconds(airfoilFirstUseSeconds(5199))}.`,
+    );
+    expect(formatSeconds(airfoilFirstUseSeconds(5199))).not.toMatch(/about/);
+    const base = nacaAirfoil('2412').points;
+    const next = (v) => {
+      const b = new Float64Array([v]);
+      new BigInt64Array(b.buffer)[0] += 1n;
+      return b[0];
+    };
+    const dup = base.map((q) => q.slice());
+    dup.splice(6, 0, [dup[5][0], next(dup[5][1])]);
+    expect(message(checkAirfoil(dup).issues, 'duplicates')).toBe('1 Punkt, der dem vorherigen Punkt näher als das 1e-9-Fache der Profiltiefe lag, wurde entfernt.');
+  });
+
+  it('writes the statistics line with a decimal comma', () => {
+    const { en, de } = both(() => message(checkAirfoil(nacaAirfoil('2412').points).issues, 'stats'));
+    expect(en).toMatch(/^161 points, t\/c 12\.00 % at \d+\.\d %, camber 2\.00 % at 40\.\d %, TE gap 0\.\d{3} %\.$/);
+    expect(de).toMatch(/^161 Punkte, Dicke 12,00 % bei \d+,\d %, Wölbung 2,00 % bei 40,\d %, Endleistendicke 0,\d{3} %\.$/);
+  });
+
+  it('gives the same issue codes and severities in both languages', () => {
+    const inputs = [
+      () => importAirfoilText('Profil\nfree text\n100,0 0,0\n50,0 5,0\n0,0 0,0\n50,0 -5,0\n100,0 0,0\n', 'p.dat'),
+      () => importAirfoilText('rev\n1 0\n0.5 -0.04\n0.5 -0.04\n0 0\n0.5 0.06\n1 0\n', 'rev.dat'),
+      () => checkAirfoil(nacaAirfoil('0035').points),
+      () => checkAirfoil(nacaAirfoil('0012', { pointsPerSide: 8 }).points.map(([x, y]) => [x * 150, y * 150])),
+    ];
+    for (const make of inputs) {
+      const { en, de } = both(() => make());
+      expect(de.issues.map((i) => [i.severity, i.code, i.where])).toEqual(en.issues.map((i) => [i.severity, i.code, i.where]));
+      expect(de.issues.map((i) => i.message)).not.toEqual(en.issues.map((i) => i.message));
+    }
+  });
+
+  it('translates the error for an unsupported NACA designation', () => {
+    expect(() => nacaAirfoil('2400')).toThrow('Unsupported NACA designation: 2400');
+    setLanguage('de');
+    expect(() => nacaAirfoil('2400')).toThrow('Nicht unterstützte NACA-Bezeichnung: 2400');
+  });
+
+  it('keeps the English texts as they are after switching back', () => {
+    const text = 'Profil\nfree text\n100,0 0,0\n50,0 5,0\n0,0 0,0\n50,0 -5,0\n100,0 0,0\n';
+    const before = parseDat(text).issues.map((i) => i.message);
+    setLanguage('de');
+    parseDat(text);
+    setLanguage('en');
+    expect(parseDat(text).issues.map((i) => i.message)).toEqual(before);
+    expect(before).toContain('1 non-numeric line(s) after the name line were ignored.');
   });
 });

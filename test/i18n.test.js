@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { count, fixed, initialLanguage, language, plain, setLanguage, tr } from '../src/i18n/index.js';
+import { count, fixed, initialLanguage, language, plain, setLanguage, tr, whole } from '../src/i18n/index.js';
 import { AREAS } from '../src/i18n/de/index.js';
 import { checkI18n, extractKeys, sourceFiles } from '../scripts/check-i18n.mjs';
 
@@ -36,6 +36,24 @@ describe('language', () => {
     expect([fixed(1.25, 1), count(20000), plain(0.5), plain(1e-7)]).toEqual(['1.3', '20,000', '0.5', '1e-7']);
     setLanguage('de');
     expect([fixed(1.25, 1), count(20000), plain(0.5), count(999.6)]).toEqual(['1,3', '20.000', '0,5', '1.000']);
+  });
+
+  it('groups the integer part of fixed() in German only, without changing the rounding', () => {
+    expect([fixed(1200, 1), fixed(-1176.36, 2), fixed(1211902, 0), fixed(999.95, 1), fixed(-0.5, 0)]).toEqual(['1200.0', '-1176.36', '1211902', '1000.0', '-1']);
+    setLanguage('de');
+    expect([fixed(1200, 1), fixed(-1176.36, 2), fixed(1211902, 0), fixed(999.95, 1), fixed(-176.5, 1), fixed(NaN, 1)]).toEqual(['1.200,0', '-1.176,36', '1.211.902', '1.000,0', '-176,5', 'NaN']);
+  });
+
+  it('groups large whole numbers in German only; English prints them as JavaScript does', () => {
+    expect([whole(5000000), whole(999), whole(-1200000), whole(0)]).toEqual(['5000000', '999', '-1200000', '0']);
+    setLanguage('de');
+    expect([whole(5000000), whole(999), whole(-1200000), whole(0)]).toEqual(['5.000.000', '999', '-1.200.000', '0']);
+  });
+
+  it('never rounds in whole(): a value with decimals prints as plain() does', () => {
+    expect([whole(1.5), whole(0.1)]).toEqual(['1.5', '0.1']);
+    setLanguage('de');
+    expect([whole(1.5), whole(0.1), whole(20000)]).toEqual(['1,5', '0,1', '20.000']);
   });
 });
 

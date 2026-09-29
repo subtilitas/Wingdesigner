@@ -38,7 +38,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | --- | --- |
 | `src/geom/nurbs.js` | Grundfunktionen für Non-Uniform Rational B-Splines (NURBS, nicht-uniforme rationale B-Splines) |
 | `src/geom/linalg.js` | Band-LU-Zerlegung (Lower-Upper, untere und obere Dreiecksmatrix) ohne Pivotsuche (B-Spline-Interpolation, verwendet von `src/geom/nurbs.js`); LU-Zerlegung dichter Matrizen mit Spaltenpivotsuche (nur Unit-Tests) |
-| `src/geom/profile.js` | Profil als NURBS-Kurve; Neuabtastung in Tiefenrichtung |
+| `src/geom/profile.js` | Profil als NURBS-Kurve; Neuabtastung in Profiltiefenrichtung |
 | `src/geom/spanwise.js` | Interpolation der Schnittwerte in Spannweitenrichtung (`linear`, `smooth`) |
 | `src/geom/guide.js` | Leitkurven (Nasenlinie, Endlinie) |
 | `src/geom/wing.js` | Flügel-Loft: `buildWing`; Profil-Cache |
@@ -54,15 +54,15 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/export/stl.js` | Export als binäres STL (Stereolithografie) |
 | `src/export/threemf.js` | 3MF-Export |
 | `src/model/project.js` | Projektmodell, Vorgaben, Grenzen, Validierung |
-| `src/model/budget.js` | Warnschwellen, Loft-Gitter, Schätzung von Rechenzeit und Speicher |
+| `src/model/budget.js` | Warnschwellen, Flächengitter, Schätzung von Rechenzeit und Speicher |
 | `src/model/io.js` | Import und Export der Projekt-JSON |
 | `src/model/edit.js` | Bearbeitungsoperationen |
-| `src/model/wizard.js` | Vorlagen und Wertebereiche des Assistenten |
+| `src/model/wizard.js` | Entwurfstypen und Wertebereiche des Assistenten |
 | `src/model/defaults.js` | Projekt beim ersten Laden |
 | `src/ui/store.js` | Store mit Rückgängig und Wiederholen |
 | `src/ui/viewer3d.js` | 3D-Ansicht |
 | `src/ui/panzoom.js` | 2D-Canvas mit Verschieben und Zoom |
-| `src/ui/sections.js` | Registerkarte **Sections** (Profilschnitte) |
+| `src/ui/sections.js` | Registerkarte **Sections** (Schnitte) |
 | `src/ui/planform.js` | Registerkarte **Planform** (Grundriss) |
 | `src/ui/airfoils.js` | Registerkarte **Airfoils** (Profile), Vorschau beim Hochladen |
 | `src/ui/settings.js` | Registerkarte **Settings** (Einstellungen) |
@@ -70,6 +70,8 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/exportui.js` | Dialog **Export** |
 | `src/ui/dom.js` | DOM-Hilfsfunktionen |
 | `src/ui/styles.css` | Stile |
+| `src/i18n/index.js` | Sprache (`language`, `setLanguage`, `initialLanguage`), `tr()` und die Zahlenformate `fixed`, `count`, `whole`, `plain` |
+| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`; `index.js` fasst sie zusammen |
 
 ### Skripte
 
@@ -83,6 +85,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `scripts/screenshots.mjs` | Screenshots für das Wiki |
 | `scripts/check-docs.mjs` | Dokumentationsprüfung |
 | `scripts/check-test-counts.mjs` | Prüfung der Testanzahlen |
+| `scripts/check-i18n.mjs` | Übersetzungsprüfung |
 
 ### Datenfluss
 
@@ -122,10 +125,10 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 
 | Fall | **Chordwise stations per surface** (Stationen je Profilseite) | `buildWing`, Profile im Cache | Dreiecksnetz (zusammengeführt) | STEP schreiben | STEP-Größe |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Vorlage **Sport** (Sportmodell), 2 Schnitte | 60 | 17 ms | 1 ms | 3 ms | 99 KB |
-| Vorlage **Sport** (Sportmodell), 2 Schnitte | 200 | 40 ms | 1 ms | 4 ms | 303 KB |
-| Vorlage **Glider** (Segelflugmodell), elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 60 | 36 ms | 12 ms | 6 ms | 445 KB |
-| Vorlage **Glider** (Segelflugmodell), elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 200 | 89 ms | 42 ms | 19 ms | 1398 KB |
+| Entwurfstyp **Sport** (Sportmodell), 2 Schnitte | 60 | 17 ms | 1 ms | 3 ms | 99 KB |
+| Entwurfstyp **Sport** (Sportmodell), 2 Schnitte | 200 | 40 ms | 1 ms | 4 ms | 303 KB |
+| Entwurfstyp **Glider** (Segelflugmodell), elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 60 | 36 ms | 12 ms | 6 ms | 445 KB |
+| Entwurfstyp **Glider** (Segelflugmodell), elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 200 | 89 ms | 42 ms | 19 ms | 1398 KB |
 
 Große Projekte im Browser:
 
@@ -149,7 +152,7 @@ Große Projekte im Browser:
 - 20 000 Schnitte, **Linear**: 57 s Seitenzeit je Änderung mit Software-Rendering. Öffnen des Projekts: 24 s JavaScript-Zeit, 59 s Seitenzeit, danach 496 MB Heap.
 - Auswahl eines Schnitts: 2 bis 100 ms JavaScript-Zeit bei 200 bis 20 000 Schnitten.
 - Profile mit je 20 001 Punkten: 100 Profile öffnen in 17 s, eine Änderung dauert 2,3 s, Heap 546 MB; 200 Profile öffnen in 35 s, eine Änderung dauert 5,8 bis 7,9 s, Heap 1,1 GB.
-- Export als Dreiecksnetz, 16 Schnitte × 40 Stationen, 200 **Chordwise stations per surface**: STL mit 8,5 Millionen Dreiecken in 6,9 s, Datei 423 MB, Browserspeicher in der Spitze 2,7 GB. STL mit 20 Millionen Dreiecken schlägt fehl; 80 Millionen Dreiecke bringen den Tab zum Absturz. 3MF mit 8,5 Millionen Dreiecken in 49 s, Datei 97 MB.
+- Export als Dreiecksnetz, 16 Schnitte × 40 Stationen, 200 **Chordwise stations per surface**: STL mit 8,5 Millionen Dreiecken in 6,9 s, Datei 423 MB, Arbeitsspeicher in der Spitze 2,7 GB. STL mit 20 Millionen Dreiecken schlägt fehl; 80 Millionen Dreiecke bringen den Tab zum Absturz. 3MF mit 8,5 Millionen Dreiecken in 49 s, Datei 97 MB.
 - STEP-Export: 81 MB in 2,2 s (1041 Stationen), 330 MB in 8,4 s (4161 Stationen).
 - Node.js 24, 5000 Schnitte, **Linear**: `buildWing` 5,1 s, Flügelkennwerte 20 ms, 363 MB Heap behalten.
 - Node.js 24, Leitkurve mit 50 000 Punkten: 5,1 bis 6,1 s je Aufbau. Die Registerkarte **Planform** öffnet mit 10 000 Leitkurvenpunkten in 6 s und mit 50 000 in 36 s bei 3,4 GB.
@@ -168,21 +171,21 @@ Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt
 | Punkte eines Profils | 5000 | 100 000 |
 | Profilpunkte insgesamt | 100 000 | 1 000 000 |
 | Punkte einer Leitkurve | 500 (eingeschaltete Leitkurven) | 20 000 |
-| Punkte des Loft-Gitters | 60 000 | 5 000 000 |
+| Punkte im Flächengitter | 60 000 | 5 000 000 |
 | Dreiecke beim Export (STL, 3MF) | 2 000 000 | 10 000 000 |
 | Kontrollpunkte beim Export (STEP) | 1 000 000 | 3 000 000 |
 | Zeichen eines Namens (Projekt, Profile) | 200 | 10 000 |
 
 - Wo die Warnungen erscheinen: Punkte eines Profils in der Profilvorschau (`many-points`); Dreiecke und STEP-Kontrollpunkte beim Export im Exportdialog, der **Download** über 10 000 000 Dreiecken oder 3 000 000 Kontrollpunkten sperrt; alle anderen Größen in der Warnung `Large project`. Die Registerkarte **Settings** zeigt unter den Feldern der Auflösung `Loft grid: N points.`, über 60 000 Punkten mit Rechenzeit und Speicher.
 - Weitere harte Grenzen: IDs 200 Zeichen; Quellentexte eines Profils 2000 Zeichen; Profileingabe 5 000 000 Zeichen (`MAX_INPUT` in `src/airfoil/parse.js`); Profildateien über 20 MB werden nicht gelesen; der Parser hört nach 100 001 Koordinatenzeilen auf (`MAX_POINTS`); **Open** weist Projektdateien über 100 MB ungelesen ab (`MAX_PROJECT_BYTES` in `src/model/io.js`).
-- Loft-Gitter: Stationen in Spannweitenrichtung × (2N + 1) Profilpunkte vor dem Einfügen zusätzlicher Stationen, N = **Chordwise stations per surface** (`loftGrid` in `src/model/budget.js`). Bis 5 000 000 Gitterpunkte verwendet der Aufbau die Einstellungen wie eingegeben. Darüber verwendet er weniger Stationen je Feld und warnt `Spanwise stations per panel reduced from K to k: S sections with N chord samples keep the loft within 5,000,000 grid points.` Überschreitet schon 1 Station je Feld die Grenze, bricht der Aufbau ab mit `The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.`
+- Flächengitter: Stationen in Spannweitenrichtung × (2N + 1) Profilpunkte vor dem Einfügen zusätzlicher Stationen, N = **Chordwise stations per surface** (`loftGrid` in `src/model/budget.js`). Bis 5 000 000 Gitterpunkte verwendet der Aufbau die Einstellungen wie eingegeben. Darüber verwendet er weniger Stationen je Feld und warnt `Spanwise stations per panel reduced from K to k: S sections with N chord samples keep the loft within 5,000,000 grid points.` Überschreitet schon 1 Station je Feld die Grenze, bricht der Aufbau ab mit `The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.`
 
 Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit ohne das Zeichnen der 3D-Ansicht. Die 3D-Ansicht kommt mit der Zeichenzeit der Grafikkarte hinzu. Smartphones: nicht gemessen. Die Koeffizienten stehen in `COST` (jede Änderung) und `EXPORT` (Export) in `src/model/budget.js`. Einheiten: 1 MB = 1000 KB = 1 000 000 Byte.
 
 | Einheit (`COST`) | Zeit | Speicher |
 | --- | ---: | ---: |
 | Grundwert jeder Änderung | 0,2 s | 15 MB |
-| Punkt des Loft-Gitters | 11,5 µs | 0,65 KB |
+| Punkt im Flächengitter | 11,5 µs | 0,65 KB |
 | Eintrag einer Profilliste in der Tabelle **Sections**: Schnitte × Profile bis 20 000 Einträge (`LAZY_OPTIONS`), darüber 1 je Schnitt | 8,5 µs | 0,5 KB |
 | Profilpunkt | 1,5 µs | 0,2 KB |
 | Punkt einer eingeschalteten Leitkurve | 110 µs | 50 KB |
@@ -195,9 +198,23 @@ Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit o
 | 3MF | 5,8 µs | 110 Byte | 11,5 Byte |
 | STEP, je Kontrollpunkt | 2,5 µs | 620 Byte | 98 Byte |
 
-Erster Aufbau (`firstBuildSeconds`): die Zeit einer Änderung plus 4,4 ms je Profil, das ein Schnitt verwendet, plus 30 µs je Punkt dieser Profile. Grundlage: 7,4 ms je Profil mit 99 Punkten in Node.js 24 bei 1000 und 2000 Profilen, davon 3 ms durch den Punktanteil; im Browser nicht gemessen. Beispiel: 20 000 Schnitte (**Linear**, 16 **Chordwise stations per surface**: 660 000 Punkte des Loft-Gitters) und 10 000 Profile mit 99 Punkten: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
+Erster Aufbau (`firstBuildSeconds`): die Zeit einer Änderung plus 4,4 ms je Profil, das ein Schnitt verwendet, plus 30 µs je Punkt dieser Profile. Grundlage: 7,4 ms je Profil mit 99 Punkten in Node.js 24 bei 1000 und 2000 Profilen, davon 3 ms durch den Punktanteil; im Browser nicht gemessen. Beispiel: 20 000 Schnitte (**Linear**, 16 **Chordwise stations per surface**: 660 000 Punkte im Flächengitter) und 10 000 Profile mit 99 Punkten: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
 
-Der Speicher beim Export enthält zusätzlich den Grundwert von 15 MB. Tests: `test/budget.test.js` (Schwellen, Schätzungen, Loft-Gitter wie im Aufbau, gekürzte Namen), `e2e/limits.spec.js` (Warnung über 200 Schnitten und Titel der Schaltfläche **+**, Profillisten großer Schnitttabellen, Hinweis im Exportdialog und harte Grenze).
+Der Speicher beim Export enthält zusätzlich den Grundwert von 15 MB. Tests: `test/budget.test.js` (Schwellen, Schätzungen, Flächengitter wie im Aufbau, gekürzte Namen), `e2e/limits.spec.js` (Warnung über 200 Schnitten und Titel der Schaltfläche **+**, Profillisten großer Schnitttabellen, Hinweis im Exportdialog und harte Grenze).
+
+## Übersetzungen
+
+Die App spricht Englisch oder Deutsch (`src/i18n/index.js`). In Node.js und in den Tests ist die Sprache Englisch; der Browser startet auf Deutsch, wenn seine erste Sprache Deutsch ist oder wenn die Nutzerin oder der Nutzer Deutsch gewählt hat (Einstellung **Language / Sprache**, Schlüssel `wingdesigner.language`).
+
+- `tr(text, params)` liefert `text` in der aktuellen Sprache. Der Schlüssel ist der englische Text, den der Code erzeugt, mit Platzhaltern `{name}`: `tr('Created "{name}".', { name })`. Das erste Argument ist ein Zeichenkettenliteral, und ein Text ist ein ganzer Satz: keine englischen Bruchstücke, die zusammengesetzt werden.
+- Der deutsche Text ist der Eintrag mit demselben Schlüssel in der Datei seines Bereichs: `src/i18n/de/shell.js` (`src/main.js`, Assistent, **Settings**), `panels.js` (Registerkarte **Airfoils**, Dialog **Export**, Bibliothek), `editors.js` (Tabelle **Sections**, **Planform**), `model.js` (Projekt, Größenwarnungen, Assistent), `geom.js` (Aufbau, Export), `airfoil.js` (Parser und Prüfungen). Ein Schlüssel ohne deutschen Eintrag zeigt den englischen Text.
+- Ein Plural besteht aus zwei Schlüsseln oder aus einem deutschen Eintrag, der eine Funktion der Parameter ist (`({ n }) => …`) und die gedruckte Zahl mit `'1'` vergleicht.
+- Zahlen in einem Text laufen über `fixed(value, digits)`, `count(value)`, `whole(value)` oder `plain(value)`: Deutsch schreibt ein Dezimalkomma und Punkte als Tausendertrenner (`1.234,5`). `whole()` ist für Anzahlen und Grenzen mit 4 oder mehr Stellen: Englisch druckt `String(value)`, Deutsch gruppiert eine ganze Zahl und rundet nie. Zahlen als Daten (Werte von Eingabefeldern, Attribute, Dateiinhalte) bleiben unformatiert.
+- Daten werden nicht übersetzt: Dateiinhalte (STEP, STL, 3MF, JSON, `.dat`), Projekt-JSON, Profilnamen, Quellenangaben, Lizenzen, Dateinamen, CSS-Klassen, `data-*`-Werte, Optionswerte und die Ausgabe in der Entwicklerkonsole.
+- Der Code vergleicht nie Meldungstexte. Er vergleicht einen Code oder ein aufgezeichnetes Feld (`issue.code`, `build.sizeWarning`), weil dieselbe Meldung auf Deutsch anders lautet.
+- Die Texte der mitgelieferten Bibliothek (`category`, `use` in `public/airfoils/index.json` und die Hinweise zu den externen Quellen) sind Daten des Index und erscheinen über `libraryText()` in `src/ui/airfoils.js`. Ein neuer Text braucht dort einen `case` mit eigenem `tr()`-Literal und einen deutschen Eintrag in `src/i18n/de/panels.js`; ein unbekannter Text erscheint unverändert.
+- `npm run i18n:check` (`scripts/check-i18n.mjs`, Job `test` in `ci.yml`) schlägt fehl, wenn ein Schlüssel keinen deutschen Eintrag hat, ein deutscher Eintrag unbenutzt ist, Schlüssel und Eintrag verschiedene Platzhalter haben, zwei Bereiche einen Schlüssel verschieden übersetzen oder ein `tr()`-Aufruf nicht mit einem Zeichenkettenliteral beginnt.
+- `changeLanguage()` in `src/main.js` wechselt ohne Neuladen: Es speichert die Wahl, setzt das Attribut `lang`, beschriftet die Bedienoberfläche neu und markiert den Aufbau, sodass der nächste Frame den Flügel neu aufbaut und die Ansicht und jede Registerkarte aus diesem Aufbau zeichnet. Gibt es außer der Größenwarnung keine Meldung, wird nur diese Warnung neu geschrieben.
 
 ## Regeln für Testdaten
 
@@ -224,7 +241,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 278 Tests in 10 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 356 Tests in 14 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -235,6 +252,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 12 Dateien im Format Portable Network Graphics (PNG) in `docs/wiki/images/` |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Prüfungen unter [Prüfung der Testanzahlen](#prüfung-der-testanzahlen); Exit-Code 1 bei einer Abweichung |
+| `npm run i18n:check` | `node scripts/check-i18n.mjs` | Prüfungen unter [Übersetzungen](#übersetzungen); Exit-Code 1 bei einem Problem |
 
 | Umgebungsvariable | Genutzt von | Wirkung |
 | --- | --- | --- |
@@ -265,9 +283,10 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Server | `npm run preview -- --port 4173 --strictPort`; jeder Lauf startet einen eigenen Server (`reuseExistingServer: false`) |
 | Zeitlimits | 60000 ms je Test, 60000 ms für den Serverstart |
 | Wiederholungsversuche | 0 |
+| Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` setzt eigene Sprachen, wo ein Test sie braucht |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-149 Tests in 10 Spec-Dateien, 298 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+160 Tests in 11 Spec-Dateien, 320 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 30 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 
@@ -293,7 +312,7 @@ python scripts/validate_3mf.py step-check/cases.json
 ```
 
 `cases.json` enthält je Testfall: STEP-Datei, 3MF-Datei, erwartete Volumen, Toleranz `5e-4`, Dreieckszahl je Netzobjekt.
-Erwartetes Volumen: Volumen des Dreiecksnetzes des Halbflügels `tessellateHalf(build, { uRefine: 4, vRefine: 8 })`; jedes Intervall in Tiefenrichtung ist 4-fach, jedes Intervall in Spannweitenrichtung 8-fach unterteilt.
+Erwartetes Volumen: Volumen des Dreiecksnetzes des Halbflügels `tessellateHalf(build, { uRefine: 4, vRefine: 8 })`; jedes Intervall in Profiltiefenrichtung ist 4-fach, jedes Intervall in Spannweitenrichtung 8-fach unterteilt.
 Beide Skripte geben einen JSON-Bericht aus.
 
 | STEP-Prüfung je Datei (`validate_step.py`) | Bestanden, wenn |
@@ -360,11 +379,11 @@ Beim nächsten Lauf werden im Wiki bearbeitete Seiten überschrieben und dort an
 
 `npm run screenshots` erzeugt alle Bilder in `docs/wiki/images/` erneut.
 Das Skript baut die Website, liefert sie auf Port 4175 aus und steuert Chromium mit Playwright.
-Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräteskalierung 2,625. Helles Farbschema.
+Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräteskalierung 2,625. Helles Farbschema. Englische Oberfläche (Sprache `en-US`), weil die App auf einem deutschen Browser auf Deutsch startet.
 
 | Datei | Zustand | Größe (Pixel) |
 | --- | --- | --- |
-| `wizard.png` | Assistent, Vorlage **Glider** | 960 x 784 |
+| `wizard.png` | Assistent, Entwurfstyp **Glider** | 960 x 784 |
 | `main-desktop.png` | Ganzes Fenster nach dem Anlegen des **Glider** | 1280 x 800 |
 | `sections.png` | Registerkarte **Sections**, **Glider**, 3 Schnitte | 600 x 730 |
 | `planform.png` | Registerkarte **Planform**, **Glider**, Nasenlinie und Endlinie eingeschaltet | 600 x 730 |
@@ -374,7 +393,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | `settings.png` | Registerkarte **Settings**, **Glider** | 600 x 730 |
 | `checks.png` | Registerkarte **Checks**, **Glider** | 600 x 730 |
 | `flying-wing-control-net.png` | 3D-Ansicht, **Swept flying wing** (Pfeilnurflügel), **Show NURBS control net** (Kontrollnetz zeigen) an | 680 x 730 |
-| `mobile-main.png` | Smartphone, Vorlage **Sport** | 1082 x 2202 |
+| `mobile-main.png` | Smartphone, Entwurfstyp **Sport** | 1082 x 2202 |
 | `mobile-planform.png` | Smartphone, **Planform**, **Sport**, Endlinie eingeschaltet | 1082 x 2202 |
 
 ### Dokumentationsprüfung
@@ -428,7 +447,7 @@ Der Job `wiki` in `docs.yml` checkt nur aus.
 
 | Job in `ci.yml` | Name | Schritte | Berechtigungen | Läuft bei |
 | --- | --- | --- | --- | --- |
-| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`; lädt Artefakt `coverage` hoch | `contents: read` | Jedem Auslöser |
+| `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`, `i18n:check`; lädt Artefakt `coverage` hoch | `contents: read` | Jedem Auslöser |
 | `step` | STEP and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`; lädt Artefakt `step-files` hoch (STEP, 3MF, `cases.json`) | `contents: read` | Jedem Auslöser |
 | `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (Build, dann alle Specs in `e2e/`, beide Projekte), `counts:check -- --e2e-report playwright-report/results.json`; bei einem Fehlschlag Upload des Artefakts `playwright-results` (`test-results/`) | `contents: read` | Jedem Auslöser |
 | `build` | Build site | `build`; bei Push auf `main` zusätzlich `configure-pages` und `upload-pages-artifact` mit `dist/` | `contents: read`, `pages: read` | Jedem Auslöser |

@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLanguage } from '../src/i18n/index.js';
 import {
   LAZY_OPTIONS,
   WARN,
   changeCost,
+  costPhrase,
   costSentence,
   displayName,
   exportCost,
@@ -157,5 +159,66 @@ describe('STEP export size', () => {
     expect(c.fileMB).toBeCloseTo(323, 0);
     expect(c.seconds).toBeCloseTo(8.25, 1);
     expect(W.stepPoints).toBeLessThan(L.maxStepPoints);
+  });
+});
+
+describe('size warnings in German', () => {
+  afterEach(() => setLanguage('en'));
+
+  it('writes time and memory with the words and the decimal comma of the language', () => {
+    expect([formatSeconds(0.4), formatSeconds(3.26), formatMegabytes(247), formatMegabytes(1240)]).toEqual(['under 1 s', 'about 3.5 s', 'about 250 MB', 'about 1.2 GB']);
+    setLanguage('de');
+    expect(formatSeconds(0.4)).toBe('unter 1 s');
+    expect(formatSeconds(3.26)).toBe('etwa 3,5 s');
+    expect(formatSeconds(42.4)).toBe('etwa 42 s');
+    expect(formatMegabytes(0.2)).toBe('etwa 1 MB');
+    expect(formatMegabytes(247)).toBe('etwa 250 MB');
+    expect(formatMegabytes(996)).toBe('etwa 1 GB');
+    expect(formatMegabytes(1240)).toBe('etwa 1,2 GB');
+  });
+
+  it('words the cost of a change as a phrase and as a sentence', () => {
+    const size = projectSize(withSections(1000));
+    const c = changeCost(size);
+    expect(costPhrase(size)).toBe(`each change takes ${formatSeconds(c.seconds)} and ${formatMegabytes(c.megabytes)} of browser memory`);
+    setLanguage('de');
+    expect(costPhrase(size)).toBe(`Jede Änderung dauert ${formatSeconds(c.seconds)} und belegt ${formatMegabytes(c.megabytes)} Arbeitsspeicher`);
+    expect(costSentence(size)).toBe(`${costPhrase(size)}.`);
+    expect(costSentence(size)).toMatch(/^Jede Änderung dauert etwa [\d,]+ s und belegt etwa \d+ (MB|GB) Arbeitsspeicher\.$/);
+  });
+
+  it('names the sizes above their thresholds with digit groups of the language', () => {
+    const p = withSections(1000);
+    p.name = 'x'.repeat(WARN.name + 1);
+    const size = projectSize(p);
+    const en = sizeWarning(p);
+    setLanguage('de');
+    const de = sizeWarning(p);
+    expect(de).toBe(
+      `Großes Projekt: 1.000 Schnitte (Warnung über 200), 121.000 Punkte im Flächengitter (Warnung über 60.000) und ein Name mit 201 Zeichen (Warnung über 200). ${costSentence(size)}`,
+    );
+    expect(de).not.toBe(en);
+    // The build carries the warning in the language it runs in.
+    expect(buildWing(p).warnings[0]).toBe(de);
+    setLanguage('en');
+    expect(buildWing(p).warnings[0]).toBe(en);
+  });
+
+  it('words each size, two sizes, and the time of the first build', () => {
+    setLanguage('de');
+    const base = projectSize(sampleProject());
+    expect(largeSizes({ ...base, guidePoints: 501 })[0].text).toBe('eine Leitkurve mit 501 Punkten (Warnung über 500)');
+    expect(largeSizes({ ...base, largestAirfoil: 6000, airfoilPoints: 120_000, airfoils: 250 }).map((q) => q.text)).toEqual([
+      '250 Profile (Warnung über 200)',
+      'ein Profil mit 6.000 Punkten (Warnung über 5.000)',
+      '120.000 Profilpunkte insgesamt (Warnung über 100.000)',
+    ]);
+    const two = sizeWarning(withSections(1000), { ...base, sections: 1000, airfoils: 250 });
+    expect(two).toMatch(/^Großes Projekt: 1\.000 Schnitte \(Warnung über 200\) und 250 Profile \(Warnung über 200\)\. Jede Änderung /);
+    // 10,000 airfoils used by 20,000 sections: the first build takes 10 s longer than a change.
+    const size = { sections: 20_000, airfoils: 10_000, airfoilPoints: 990_000, usedAirfoils: 10_000, usedAirfoilPoints: 990_000, largestAirfoil: 99, guidePoints: 0, gridPoints: 20_000 * 33, longestName: 10 };
+    expect(sizeWarning(withSections(1000), size)).toMatch(
+      /Jede Änderung dauert etwa 9,5 s und belegt etwa 650 MB Arbeitsspeicher\. Das Öffnen des Projekts oder eine Änderung der Parametrisierung der Profile dauert etwa 83 s\.$/,
+    );
   });
 });

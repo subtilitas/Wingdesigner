@@ -13,6 +13,7 @@
 // Output points are in Selig order with the chord along +x.
 
 import { runsClockwise } from './geometry.js';
+import { count, plain, tr, whole } from '../i18n/index.js';
 
 // The point is required before fraction digits: with an optional point, \d+ and \d* split a long
 // digit run in as many ways as it has digits (quadratic time).
@@ -128,8 +129,8 @@ function parseXml(text) {
     points.push([xmlNumber(pt.content, 'x'), xmlNumber(pt.content, 'y')]);
     at = pt.end;
   }
-  const issues = [issue('info', 'xml', 'Read as XML airfoil geometry.')];
-  if (blocks > 1) issues.push(issue('warning', 'multi-element', `${blocks} elements found; only the first one is used.`));
+  const issues = [issue('info', 'xml', tr('Read as XML airfoil geometry.'))];
+  if (blocks > 1) issues.push(issue('warning', 'multi-element', tr('{n} elements found; only the first one is used.', { n: plain(blocks) })));
   return { name, points, issues };
 }
 
@@ -215,23 +216,23 @@ export function parseDat(text, options = {}) {
   let src = String(text ?? '').replace(/^\uFEFF/, '');
   const issues = [];
   if (src.length > MAX_INPUT) {
-    return { name: options.fileName ?? 'airfoil', format: 'selig', points: [], issues: [issue('error', 'too-large', `Input is ${src.length} characters; the limit is ${MAX_INPUT}.`)] };
+    return { name: options.fileName ?? 'airfoil', format: 'selig', points: [], issues: [issue('error', 'too-large', tr('Input is {n} characters; the limit is {limit}.', { n: whole(src.length), limit: whole(MAX_INPUT) }))] };
   }
   const fallbackName = (options.fileName ?? 'airfoil').replace(/\.[^.]+$/, '');
 
   if (/<coordinates>/i.test(src)) {
     const xml = parseXml(src);
     if (!xml) {
-      return { name: fallbackName, format: 'xml', points: [], issues: [issue('error', 'xml-malformed', 'The XML has a <coordinates> element without a closing tag.')] };
+      return { name: fallbackName, format: 'xml', points: [], issues: [issue('error', 'xml-malformed', tr('The XML has a <coordinates> element without a closing tag.'))] };
     }
-    return finish(xml.name || fallbackName, 'xml', xml.points, [...xml.issues, ...(xml.name ? [] : [issue('info', 'no-name', 'No name found; the file name is used.')])]);
+    return finish(xml.name || fallbackName, 'xml', xml.points, [...xml.issues, ...(xml.name ? [] : [issue('info', 'no-name', tr('No name found; the file name is used.'))])]);
   }
   let htmlTitle = '';
   if (/<(html|pre|body)[\s>]/i.test(src)) {
     const h = htmlToText(src);
     src = h.body;
     htmlTitle = h.title;
-    issues.push(issue('info', 'html', 'Read coordinates from an HTML page.'));
+    issues.push(issue('info', 'html', tr('Read coordinates from an HTML page.')));
   }
 
   const lines = src.split(/\r\n|\r|\n/);
@@ -253,7 +254,7 @@ export function parseDat(text, options = {}) {
       // A Lednicer file has one counts line besides its points: more rows exceed the point limit in
       // every format, so reading stops there.
       if (rows.length > MAX_POINTS + 1) {
-        return { name: (name || fallbackName).slice(0, MAX_NAME), format: 'selig', points: [], issues: [...issues, issue('error', 'too-many-points', `More than ${(MAX_POINTS + 1).toLocaleString('en')} coordinate lines; the limit is ${MAX_POINTS.toLocaleString('en')} points.`)] };
+        return { name: (name || fallbackName).slice(0, MAX_NAME), format: 'selig', points: [], issues: [...issues, issue('error', 'too-many-points', tr('More than {n} coordinate lines; the limit is {limit} points.', { n: count(MAX_POINTS + 1), limit: count(MAX_POINTS) }))] };
       }
     } else if (!name && rows.length === 0) {
       name = raw.trim();
@@ -263,12 +264,12 @@ export function parseDat(text, options = {}) {
   }
   if (!name) {
     name = fallbackName;
-    issues.push(issue('info', 'no-name', 'No name line found; the file name is used as the airfoil name.'));
+    issues.push(issue('info', 'no-name', tr('No name line found; the file name is used as the airfoil name.')));
   }
-  if (decimalComma) issues.push(issue('info', 'decimal-comma', 'Decimal commas were read as decimal points.'));
-  if (ignored > 0) issues.push(issue('warning', 'ignored-lines', `${ignored} non-numeric line(s) after the name line were ignored.`));
+  if (decimalComma) issues.push(issue('info', 'decimal-comma', tr('Decimal commas were read as decimal points.')));
+  if (ignored > 0) issues.push(issue('warning', 'ignored-lines', tr('{n} non-numeric line(s) after the name line were ignored.', { n: whole(ignored) })));
   if (rows.length === 0) {
-    return { name, format: 'selig', points: [], issues: [...issues, issue('error', 'no-points', 'No coordinate lines found.')] };
+    return { name, format: 'selig', points: [], issues: [...issues, issue('error', 'no-points', tr('No coordinate lines found.'))] };
   }
 
   // Three-column table: x strictly increasing or strictly decreasing (read from the leading edge on),
@@ -288,13 +289,13 @@ export function parseDat(text, options = {}) {
       const upper = ordered.map((r) => [r.values[0], r.values[1]]);
       const lower = ordered.map((r) => [r.values[0], r.values[2]]);
       const points = upper.reverse().concat(samePoint(lower[0], upper[upper.length - 1]) ? lower.slice(1) : lower);
-      issues.push(issue('info', 'table', 'Read as a three-column table (x, upper y, lower y).'));
+      issues.push(issue('info', 'table', tr('Read as a three-column table (x, upper y, lower y).')));
       return finish(name, 'table', points, issues);
     }
   }
   if (rows.some((r) => r.values.length > 2)) extraColumns = true;
   if (extraColumns) {
-    issues.push(issue('warning', 'extra-columns', 'Lines with more than two values found; only the first two columns are used.'));
+    issues.push(issue('warning', 'extra-columns', tr('Lines with more than two values found; only the first two columns are used.')));
   }
 
   const first = rows[0].values;
@@ -328,7 +329,11 @@ export function parseDat(text, options = {}) {
         }
         if (split >= 2 && data.length - split >= 2 && nearLE(data[split][0])) {
           issues.push(
-            issue('warning', 'lednicer-count', `Header announces ${nu}+${nl} points but ${data.length} were found; surfaces split at the x reset.`),
+            issue(
+              'warning',
+              'lednicer-count',
+              tr('Header announces {upper}+{lower} points but {found} were found; surfaces split at the x reset.', { upper: whole(nu), lower: whole(nl), found: whole(data.length) }),
+            ),
           );
           lednicer = { upper: data.slice(0, split), lower: data.slice(split) };
         }
@@ -355,15 +360,18 @@ function finish(nameIn, format, pointsIn, issuesIn) {
   let name = nameIn;
   if (name.length > MAX_NAME) {
     name = name.slice(0, MAX_NAME);
-    issues.push(issue('info', 'long-name', `The name line has ${nameIn.length.toLocaleString('en')} characters; the first ${MAX_NAME.toLocaleString('en')} are used.`));
+    issues.push(issue('info', 'long-name', tr('The name line has {n} characters; the first {limit} are used.', { n: count(nameIn.length), limit: count(MAX_NAME) })));
   }
   if (points.some((p) => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) {
-    return { name, format, points: [], issues: [...issues, issue('error', 'non-finite', 'Coordinates contain non-finite values.')] };
+    return { name, format, points: [], issues: [...issues, issue('error', 'non-finite', tr('Coordinates contain non-finite values.'))] };
   }
-  if (points.length === 0) return { name, format, points, issues: [...issues, issue('error', 'no-points', 'No coordinate points found.')] };
+  if (points.length === 0) return { name, format, points, issues: [...issues, issue('error', 'no-points', tr('No coordinate points found.'))] };
   if (points.length > MAX_POINTS) {
-    const n = `${points.length.toLocaleString('en')}${format === 'xml' && points.length === MAX_POINTS + 1 ? ' or more' : ''}`;
-    return { name, format, points: [], issues: [...issues, issue('error', 'too-many-points', `${n} points; the limit is ${MAX_POINTS.toLocaleString('en')}.`)] };
+    // The XML reader stops one point past the limit, so that count is a lower bound.
+    const n = count(points.length);
+    const limit = count(MAX_POINTS);
+    const message = format === 'xml' && points.length === MAX_POINTS + 1 ? tr('{n} or more points; the limit is {limit}.', { n, limit }) : tr('{n} points; the limit is {limit}.', { n, limit });
+    return { name, format, points: [], issues: [...issues, issue('error', 'too-many-points', message)] };
   }
 
   // Exact duplicates go first, so a closing point written twice reaches the test below once.
@@ -373,7 +381,7 @@ function finish(nameIn, format, pointsIn, issuesIn) {
     if (dedup.length && samePoint(p, dedup[dedup.length - 1])) dups++;
     else dedup.push(p);
   }
-  if (dups > 0) issues.push(issue('info', 'duplicates', `${dups} duplicate consecutive point(s) removed.`));
+  if (dups > 0) issues.push(issue('info', 'duplicates', tr('{n} duplicate consecutive point(s) removed.', { n: whole(dups) })));
   points = dedup;
 
   // A blunt trailing edge drawn as a closed outline (CAD polylines) repeats the first point after a
@@ -396,10 +404,10 @@ function finish(nameIn, format, pointsIn, issuesIn) {
     const nearTE = (p) => xmax - p[0] <= 0.01 * scale;
     if (steep(a, b) && steep(b, c) && nearTE(a) && nearTE(c) && (b[1] - a[1]) * (c[1] - b[1]) > 0) {
       points = points.slice(1, -1);
-      issues.push(issue('warning', 'closing-point', 'The outline starts and ends on the drawn trailing-edge base; the base point was removed at both ends.'));
+      issues.push(issue('warning', 'closing-point', tr('The outline starts and ends on the drawn trailing-edge base; the base point was removed at both ends.')));
     } else if (steep(a, b) && nearTE(a)) {
       points = points.slice(0, -1);
-      issues.push(issue('warning', 'closing-point', 'The outline repeats its first point after a blunt trailing edge; the repeated point was removed.'));
+      issues.push(issue('warning', 'closing-point', tr('The outline repeats its first point after a blunt trailing edge; the repeated point was removed.')));
     }
   }
 
@@ -407,12 +415,12 @@ function finish(nameIn, format, pointsIn, issuesIn) {
   for (const p of points) if (p[0] > xmax) xmax = p[0];
   if (xmax > 5 && xmax <= 110) {
     points = points.map(([x, y]) => [x / 100, y / 100]);
-    issues.push(issue('warning', 'percent', 'Coordinates look like percent of chord and were divided by 100.'));
+    issues.push(issue('warning', 'percent', tr('Coordinates look like percent of chord and were divided by 100.')));
   }
 
   if (points.length >= 3 && runsClockwise(points)) {
     points = points.slice().reverse();
-    issues.push(issue('warning', 'reversed', 'Points run clockwise (lower surface first); order reversed to Selig order.'));
+    issues.push(issue('warning', 'reversed', tr('Points run clockwise (lower surface first); order reversed to Selig order.')));
   }
   return { name, format, points, issues };
 }

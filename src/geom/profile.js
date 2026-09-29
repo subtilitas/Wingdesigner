@@ -5,6 +5,7 @@
 
 import { basisFuns, curveDerivatives, curvePoint, interpolateCurve, solveMonotonic } from './nurbs.js';
 import { selfIntersections } from '../airfoil/geometry.js';
+import { fixed, tr } from '../i18n/index.js';
 
 /** Chord fractions 0..1 with cosine clustering at LE and TE (N+1 values). */
 export function cosineStations(N) {
@@ -284,17 +285,16 @@ export function curveReversal(curve, tLE, { tolerance = 0, samples } = {}) {
 export function profileProblem({ curve, tLE }, samples = sampleCurve(curve)) {
   const cross = curveCrossing(curve, { tolerance: CROSSING_TOLERANCE, samples });
   if (cross) {
-    return (
-      `the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
-      'the file has too few points there. Use a file with more points or finer spacing near that position.'
-    );
+    return tr('the NURBS curve through the points crosses itself near x = {x} % chord; the file has too few points there. Use a file with more points or finer spacing near that position.', {
+      x: fixed(cross.x * 100, 1),
+    });
   }
   const back = curveReversal(curve, tLE, { tolerance: REVERSAL_TOLERANCE, samples });
   if (back) {
-    return (
-      `the surface runs back in x by ${(back.size * 100).toFixed(3)} % chord near x = ${(back.x * 100).toFixed(1)} % chord; ` +
-      'every surface point needs its own chord position, since the loft resamples by chord position.'
-    );
+    return tr('the surface runs back in x by {size} % chord near x = {x} % chord; every surface point needs its own chord position, since the loft resamples by chord position.', {
+      size: fixed(back.size * 100, 3),
+      x: fixed(back.x * 100, 1),
+    });
   }
   return null;
 }

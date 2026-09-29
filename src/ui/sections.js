@@ -4,6 +4,7 @@ import { insertProblem, insertSection, removeSection, sortedSections, syncGuides
 import { clear, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
 import { LAZY_OPTIONS, WARN, costPhrase, displayName, loftGrid, projectSize } from '../model/budget.js';
+import { count, fixed, plain, tr } from '../i18n/index.js';
 
 const C = LIMITS.maxCoordinate;
 
@@ -18,13 +19,27 @@ export function stationAt(stations, y) {
   }
   return stations.length && stations[lo].y === y ? stations[lo] : undefined;
 }
-const FIELDS = [
-  { key: 'y', label: 'y', unit: 'mm', title: 'Span position of the section plane', step: 5, min: 0, max: C },
-  { key: 'x', label: 'x', unit: 'mm', title: 'Leading-edge position, chordwise (positive aft = sweep back)', step: 1, min: -C, max: C },
-  { key: 'z', label: 'z', unit: 'mm', title: 'Leading-edge height (dihedral)', step: 1, min: -C, max: C },
-  { key: 'chord', label: 'Chord', unit: 'mm', title: 'Chord length (profile scale)', step: 1, min: LIMITS.minChord, max: LIMITS.maxChord },
-  { key: 'twist', label: 'Twist', unit: 'deg', title: 'Twist about the pivot; positive = leading edge up', step: 0.1, min: -LIMITS.maxTwist, max: LIMITS.maxTwist },
-];
+
+/** The number columns of the table (label, unit and tooltip in the current language, so made per render). */
+export function sectionFields() {
+  return [
+    { key: 'y', label: 'y', unit: 'mm', title: tr('Span position of the section plane'), step: 5, min: 0, max: C },
+    { key: 'x', label: 'x', unit: 'mm', title: tr('Leading-edge position, chordwise (positive aft = sweep back)'), step: 1, min: -C, max: C },
+    { key: 'z', label: 'z', unit: 'mm', title: tr('Leading-edge height (dihedral)'), step: 1, min: -C, max: C },
+    { key: 'chord', label: tr('Chord'), unit: 'mm', title: tr('Chord length (profile scale)'), step: 1, min: LIMITS.minChord, max: LIMITS.maxChord },
+    { key: 'twist', label: tr('Twist'), unit: tr('deg'), title: tr('Twist about the pivot; positive = leading edge up'), step: 0.1, min: -LIMITS.maxTwist, max: LIMITS.maxTwist },
+  ];
+}
+
+/** Tooltip of the insert button: the hard limit, or above the warning threshold the time and memory with one more section. */
+export function insertTitle(project) {
+  const guides = project.guides ?? {};
+  const more = { ...projectSize(project), sections: project.sections.length + 1 };
+  more.gridPoints = loftGrid(more.sections, project.settings, guides.nose?.enabled || guides.end?.enabled).points;
+  if (project.sections.length >= LIMITS.maxSections) return tr('At most {n} sections: more run a desktop browser tab out of memory.', { n: count(LIMITS.maxSections) });
+  if (more.sections > WARN.sections) return tr('Insert a section after this one. With {n} sections, {cost}.', { n: count(more.sections), cost: costPhrase(more) });
+  return tr('Insert a section after this one');
+}
 
 export class SectionsPanel {
   constructor(root, store, getBuild, { onMessage } = {}) {
@@ -42,7 +57,7 @@ export class SectionsPanel {
   /** Mark the selected row without rendering the table again. */
   markSelected() {
     const sel = this.store.selection.section;
-    for (const tr of this.root.querySelectorAll('tr[data-section]')) tr.classList.toggle('selected', tr.dataset.section === sel);
+    for (const row of this.root.querySelectorAll('tr[data-section]')) row.classList.toggle('selected', row.dataset.section === sel);
   }
 
   render() {
@@ -51,6 +66,7 @@ export class SectionsPanel {
     const guides = p.guides ?? {};
     const sel = this.store.selection.section;
     const sections = sortedSections(p);
+    const columns = sectionFields();
     const overridden = (key) => (key === 'x' && (guides.nose?.enabled || guides.end?.enabled)) || (key === 'chord' && guides.nose?.enabled && guides.end?.enabled);
     const stations = build?.stations ?? [];
     // One option per section and airfoil: 1,000 sections with 200 airfoils took 1.7 s per render.
@@ -66,22 +82,15 @@ export class SectionsPanel {
       el.value = chosen;
     };
     // Above the warning threshold the insert button names the time and memory with one more section.
-    const more = { ...projectSize(p), sections: sections.length + 1 };
-    more.gridPoints = loftGrid(more.sections, p.settings, guides.nose?.enabled || guides.end?.enabled).points;
-    const insertTitle =
-      sections.length >= LIMITS.maxSections
-        ? `At most ${LIMITS.maxSections.toLocaleString('en')} sections: more run a desktop browser tab out of memory.`
-        : more.sections > WARN.sections
-          ? `Insert a section after this one. With ${more.sections.toLocaleString('en')} sections, ${costPhrase(more)}.`
-          : 'Insert a section after this one';
+    const insertText = insertTitle(p);
     const rows = sections.map((s, i) => {
       const st = stationAt(stations, s.y);
       const commit = (key) => (value) => {
         // Values outside the project limits are clamped to them.
-        const f = FIELDS.find((q) => q.key === key);
+        const f = columns.find((q) => q.key === key);
         const v = Math.min(Math.max(value, f.min), f.max);
         if (key === 'y' && p.sections.some((o) => o.id !== s.id && o.y === v)) {
-          this.onMessage(`Another section already lies at y = ${v} mm; sections need distinct span positions.`, true);
+          this.onMessage(tr('Another section already lies at y = {y} mm; sections need distinct span positions.', { y: plain(v) }), true);
           this.render();
           return;
         }
@@ -99,14 +108,14 @@ export class SectionsPanel {
       return h(
         'tr',
         { class: s.id === sel ? 'selected' : '', dataset: { section: s.id }, onclick: (e) => (e.target.closest('input, select, button') ? null : this.store.select(s.id)) },
-        h('th', { scope: 'row', class: 'sec-num' }, h('span', { class: 'sec-word' }, 'Section '), String(i + 1)),
+        h('th', { scope: 'row', class: 'sec-num' }, h('span', { class: 'sec-word' }, tr('Section'), ' '), String(i + 1)),
         h(
           'td',
-          { class: 'sec-airfoil', dataset: { label: 'Airfoil' } },
+          { class: 'sec-airfoil', dataset: { label: tr('Airfoil') } },
           h(
             'select',
             {
-              'aria-label': `Airfoil of section ${i + 1}`,
+              'aria-label': tr('Airfoil of section {n}', { n: plain(i + 1) }),
               dataset: { focusKey: `sec:${s.id}:airfoil` },
               onchange: (e) =>
                 this.store.update((q) => {
@@ -118,7 +127,7 @@ export class SectionsPanel {
             (lazyLists ? [airfoilById.get(s.airfoil)].filter(Boolean) : p.airfoils).map((a) => option(a, s.airfoil)),
           ),
         ),
-        FIELDS.map((f) => {
+        columns.map((f) => {
           const eff = overridden(f.key) && st ? (f.key === 'x' ? st.xLE : st.chord) : null;
           const tipChord = f.key === 'chord' && i === sections.length - 1 && build?.tipChord ? build.tipChord : null;
           return h(
@@ -128,11 +137,11 @@ export class SectionsPanel {
             tipChord !== null
               ? h(
                   'div',
-                  { class: 'muted small', title: `Pointed tip: chord scaled from the previous section, at least ${LIMITS.minChord} mm` },
-                  `tip: ${tipChord.toFixed(2)}${build.tipChordLimited ? ' (min.)' : ''}`,
+                  { class: 'muted small', title: tr('Pointed tip: chord scaled from the previous section, at least {min} mm', { min: plain(LIMITS.minChord) }) },
+                  build.tipChordLimited ? tr('tip: {chord} (min.)', { chord: fixed(tipChord, 2) }) : tr('tip: {chord}', { chord: fixed(tipChord, 2) }),
                 )
               : eff !== null && Math.abs(eff - s[f.key]) > 0.05
-                ? h('div', { class: 'muted small', title: 'Value set by the guide curve' }, `guide: ${eff.toFixed(1)}`)
+                ? h('div', { class: 'muted small', title: tr('Value set by the guide curve') }, tr('guide: {value}', { value: fixed(eff, 1) }))
                 : null,
           );
         }),
@@ -144,8 +153,8 @@ export class SectionsPanel {
             {
               type: 'button',
               class: 'icon',
-              title: insertTitle,
-              'aria-label': `Insert section after ${i + 1}`,
+              title: insertText,
+              'aria-label': tr('Insert section after {n}', { n: plain(i + 1) }),
               dataset: { focusKey: `sec:${s.id}:insert` },
               disabled: sections.length >= LIMITS.maxSections,
               onclick: () => {
@@ -167,8 +176,8 @@ export class SectionsPanel {
             {
               type: 'button',
               class: 'icon',
-              title: 'Delete section',
-              'aria-label': `Delete section ${i + 1}`,
+              title: tr('Delete section'),
+              'aria-label': tr('Delete section {n}', { n: plain(i + 1) }),
               dataset: { focusKey: `sec:${s.id}:delete` },
               disabled: sections.length <= 2,
               onclick: () => this.store.update((q) => removeSection(q, s.id)),
@@ -192,8 +201,8 @@ export class SectionsPanel {
               'tr',
               {},
               h('th', {}, '#'),
-              h('th', {}, 'Airfoil'),
-              FIELDS.map((f) => h('th', { title: f.title }, `${f.label} `, h('span', { class: 'unit' }, f.unit))),
+              h('th', {}, tr('Airfoil')),
+              columns.map((f) => h('th', { title: f.title }, `${f.label} `, h('span', { class: 'unit' }, f.unit))),
               h('th', {}, ''),
             ),
           ),
@@ -203,8 +212,9 @@ export class SectionsPanel {
       h(
         'p',
         { class: 'muted small' },
-        'Each section places its airfoil with the leading edge at (x, y, z), scaled to the chord and twisted about the pivot set in Settings. ',
-        'The half wing lies on the +y side and is mirrored at y = 0.',
+        tr('Each section places its airfoil with the leading edge at (x, y, z), scaled to the chord and twisted about the pivot set in Settings.'),
+        ' ',
+        tr('The half wing lies on the +y side and is mirrored at y = 0.'),
       ),
     );
   }

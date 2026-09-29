@@ -8,10 +8,11 @@
 // Every edge is the exact boundary iso-curve of the adjacent B-spline surface.
 
 import { knotMultiplicities, splitSurfaceU, surfaceBoundaryU, surfaceBoundaryV, surfacePoint } from '../geom/nurbs.js';
+import { plain, tr } from '../i18n/index.js';
 
 /** STEP real: always with a decimal point, upper-case exponent. */
 export function stepReal(x) {
-  if (!Number.isFinite(x)) throw new Error(`Non-finite value in STEP export: ${x}`);
+  if (!Number.isFinite(x)) throw new Error(tr('Non-finite value in STEP export: {value}', { value: plain(x) }));
   if (Object.is(x, -0) || x === 0) return '0.';
   let s = String(x);
   const e = s.indexOf('e');
@@ -220,7 +221,7 @@ function writeHalfWing(w, build, name, mirrored) {
  * @param {{mirror?: boolean, name?: string, timestamp?: string, author?: string}} [options]
  */
 export function wingToStep(build, { mirror = true, name = 'Wing', timestamp, author = '' } = {}) {
-  if (!build.surface) throw new Error('The wing has no surface; fix the reported errors first.');
+  if (!build.surface) throw new Error(tr('The wing has no surface; fix the reported errors first.'));
   const w = new StepWriter();
   const appCtx = w.add(`APPLICATION_CONTEXT('core data for automotive mechanical design processes')`);
   w.add(`APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2000,${appCtx})`);

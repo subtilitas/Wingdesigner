@@ -10,18 +10,33 @@ import { stationAt } from './sections.js';
 import { edgeParams } from '../geom/sampling.js';
 import { LIMITS } from '../model/project.js';
 import { WARN, costPhrase, projectSize } from '../model/budget.js';
+import { count, language, plain, tr } from '../i18n/index.js';
 
 /** Title of "Add point": the hard limit, or above the warning threshold the time and memory with one more point. */
-function addPointTitle(project, guide) {
+export function addPointTitle(project, guide) {
   const n = guide.points.length + 1;
-  if (n > LIMITS.maxGuidePoints) return `At most ${LIMITS.maxGuidePoints.toLocaleString('en')} points per guide curve.`;
-  if (n <= WARN.guidePoints) return 'Add a point in the widest gap';
+  if (n > LIMITS.maxGuidePoints) return tr('At most {n} points per guide curve.', { n: count(LIMITS.maxGuidePoints) });
+  if (n <= WARN.guidePoints) return tr('Add a point in the widest gap');
   const size = projectSize(project);
   size.guidePoints = Math.max(size.guidePoints, n);
-  return `Add a point in the widest gap. With ${n.toLocaleString('en')} points, ${costPhrase(size)}.`;
+  return tr('Add a point in the widest gap. With {n} points, {cost}.', { n: count(n), cost: costPhrase(size) });
 }
 
-const GUIDE_LABEL = { nose: 'Nose line (leading edge)', end: 'End line (trailing edge)' };
+/** Name of a guide curve ('nose' or 'end') in the current language. */
+export function guideLabel(key) {
+  return key === 'nose' ? tr('Nose line (leading edge)') : tr('End line (trailing edge)');
+}
+
+/** The readout while a guide point is dragged; `index` counts from 0, `pt` is [x, y]. */
+export function guidePointReadout(key, index, pt) {
+  const params = { n: plain(index + 1), x: formatNum(pt[0], 1), y: formatNum(pt[1], 1) };
+  return key === 'nose' ? tr('Nose line (leading edge) point {n}: x {x} mm, y {y} mm', params) : tr('End line (trailing edge) point {n}: x {x} mm, y {y} mm', params);
+}
+
+/** The readout while a section edge is dragged. */
+export function sectionReadout(s) {
+  return tr('Section at y {y} mm: x {x} mm, chord {chord} mm', { y: formatNum(s.y, 1), x: formatNum(s.x, 1), chord: formatNum(s.chord, 1) });
+}
 
 // Outline per build: repaints (pan, zoom, drag feedback) reuse it.
 const outlines = new WeakMap();
@@ -115,16 +130,23 @@ export class PlanformEditor {
         if (this.pz?.drag?.handle) this.pz.drag = null;
       }
     });
-    this.readout = h('div', { class: 'readout', 'aria-live': 'polite' }, 'Drag points to edit. Pinch or scroll to zoom, drag the background to pan, double-click to fit.');
-    this.canvas = h('canvas', { class: 'planform-canvas', 'aria-label': 'Planform editor' });
+    // The texts made once (readout, tooltips, labels) are set again by labelStatic() when the language changes.
+    this.readout = h('div', { class: 'readout', 'aria-live': 'polite' });
+    this.canvas = h('canvas', { class: 'planform-canvas' });
+    this.fitButton = h('button', { type: 'button', onclick: () => this.pz.fit() });
+    this.zoomInButton = h('button', { type: 'button', onclick: () => this.pz.zoomBy(1.25) }, '+');
+    this.zoomOutButton = h('button', { type: 'button', onclick: () => this.pz.zoomBy(0.8) }, '−');
+    this.mirrorLabel = document.createTextNode('');
     const tools = h(
       'div',
       { class: 'toolbar' },
-      h('button', { type: 'button', onclick: () => this.pz.fit(), title: 'Fit view' }, 'Fit'),
-      h('button', { type: 'button', onclick: () => this.pz.zoomBy(1.25), title: 'Zoom in' }, '+'),
-      h('button', { type: 'button', onclick: () => this.pz.zoomBy(0.8), title: 'Zoom out' }, '−'),
-      h('label', { class: 'check' }, (this.ghost = h('input', { type: 'checkbox', checked: true, onchange: () => this.pz.redraw() })), 'Mirror'),
+      this.fitButton,
+      this.zoomInButton,
+      this.zoomOutButton,
+      h('label', { class: 'check' }, (this.ghost = h('input', { type: 'checkbox', checked: true, onchange: () => this.pz.redraw() })), this.mirrorLabel),
     );
+    this.setReadout(() => tr('Drag points to edit. Pinch or scroll to zoom, drag the background to pan, double-click to fit.'));
+    this.labelStatic();
     this.form = h('div', { class: 'guide-forms' });
     clear(root).append(h('div', { class: 'canvas-wrap' }, this.canvas, tools), this.readout, this.form);
     this.pz = new PanZoomCanvas(this.canvas, {
@@ -139,6 +161,24 @@ export class PlanformEditor {
       bounds: () => this.bounds(),
     });
     this.renderForm();
+  }
+
+  /** Show a readout: `text` makes it in the current language, and makes it again after a change of language. */
+  setReadout(text) {
+    this.readoutText = text;
+    this.readout.textContent = text();
+  }
+
+  /** Set the tooltips and labels of the toolbar and the canvas, and the readout, in the current language. */
+  labelStatic() {
+    this.lang = language();
+    this.canvas.setAttribute('aria-label', tr('Planform editor'));
+    this.fitButton.title = tr('Fit view');
+    this.fitButton.textContent = tr('Fit');
+    this.zoomInButton.title = tr('Zoom in');
+    this.zoomOutButton.title = tr('Zoom out');
+    this.mirrorLabel.data = tr('Mirror');
+    this.readout.textContent = this.readoutText();
   }
 
   bounds() {
@@ -172,6 +212,7 @@ export class PlanformEditor {
   }
 
   update() {
+    if (language() !== this.lang) this.labelStatic();
     this.renderForm();
     this.pz.redraw();
   }
@@ -187,7 +228,7 @@ export class PlanformEditor {
     const step = view.drawGrid(ctx, w, hgt, grid, axis);
     ctx.fillStyle = axis;
     ctx.font = '11px system-ui, sans-serif';
-    ctx.fillText(`grid ${formatNum(step)} mm`, 8, hgt - 8);
+    ctx.fillText(tr('grid {step} mm', { step: formatNum(step) }), 8, hgt - 8);
 
     const p = this.store.project;
     const build = this.getBuild();
@@ -353,7 +394,8 @@ export class PlanformEditor {
       const gy = still ? y : guideSpan(this.store.project, this.store.project.guides[hnd.key]).toGuide(y);
       this.store.update((p) => moveGuidePoint(p, hnd.key, hnd.index, x, gy), { key, session: true });
       const pt = this.store.project.guides[hnd.key].points[hnd.index];
-      this.readout.textContent = `${GUIDE_LABEL[hnd.key]} point ${hnd.index + 1}: x ${formatNum(pt[0], 1)} mm, y ${formatNum(pt[1], 1)} mm`;
+      const [key0, index0, point] = [hnd.key, hnd.index, [pt[0], pt[1]]];
+      this.setReadout(() => guidePointReadout(key0, index0, point));
     } else {
       this.store.update(
         (p) => {
@@ -375,7 +417,10 @@ export class PlanformEditor {
         { key, session: true },
       );
       const s = this.store.project.sections.find((q) => q.id === hnd.id);
-      if (s) this.readout.textContent = `Section at y ${formatNum(s.y, 1)} mm: x ${formatNum(s.x, 1)} mm, chord ${formatNum(s.chord, 1)} mm`;
+      if (s) {
+        const shown = { y: s.y, x: s.x, chord: s.chord };
+        this.setReadout(() => sectionReadout(shown));
+      }
     }
   }
 
@@ -412,7 +457,7 @@ export class PlanformEditor {
                     'td',
                     {},
                     i === 0 || i === gd.points.length - 1
-                      ? h('span', { class: 'muted', title: 'End points follow the root and tip span positions' }, formatNum(y, 1))
+                      ? h('span', { class: 'muted', title: tr('End points follow the root and tip span positions') }, formatNum(y, 1))
                       : numberInput({
                           value: y,
                           step: 1,
@@ -428,7 +473,7 @@ export class PlanformEditor {
       return h(
         'fieldset',
         { class: 'guide' },
-        h('legend', {}, GUIDE_LABEL[key]),
+        h('legend', {}, guideLabel(key)),
         h(
           'div',
           { class: 'row wrap' },
@@ -445,23 +490,25 @@ export class PlanformEditor {
                 this.store.update((q) => setGuideEnabled(q, key, e.target.checked));
               },
             }),
-            'Use guide curve',
+            tr('Use guide curve'),
           ),
           h(
             'label',
             {},
-            'Mode ',
+            tr('Mode'),
+            ' ',
             h(
               'select',
               { onchange: (e) => upd((g) => (g.mode = e.target.value)), disabled: !gd.enabled, dataset: { focusKey: `guide:${key}:mode` } },
-              h('option', { value: 'fit', selected: gd.mode === 'fit' }, 'Through points'),
-              h('option', { value: 'control', selected: gd.mode === 'control' }, 'Control points'),
+              h('option', { value: 'fit', selected: gd.mode === 'fit' }, tr('Through points')),
+              h('option', { value: 'control', selected: gd.mode === 'control' }, tr('Control points')),
             ),
           ),
           h(
             'label',
             {},
-            'Degree ',
+            tr('Degree'),
+            ' ',
             h(
               'select',
               { onchange: (e) => upd((g) => (g.degree = Number(e.target.value))), disabled: !gd.enabled, dataset: { focusKey: `guide:${key}:degree` } },
@@ -486,7 +533,7 @@ export class PlanformEditor {
                       if (i >= 0) this.selectedGuide = { key, index: i };
                     }),
                 },
-                'Add point',
+                tr('Add point'),
               ),
               h(
                 'button',
@@ -501,7 +548,7 @@ export class PlanformEditor {
                     });
                   },
                 },
-                'Remove selected point',
+                tr('Remove selected point'),
               ),
               h(
                 'button',
@@ -515,10 +562,10 @@ export class PlanformEditor {
                     this.update();
                   },
                 },
-                'Reset to sections',
+                tr('Reset to sections'),
               ),
             )
-          : h('p', { class: 'muted' }, key === 'nose' ? 'Off: the leading edge follows the section x positions.' : 'Off: the trailing edge follows the section chords.'),
+          : h('p', { class: 'muted' }, key === 'nose' ? tr('Off: the leading edge follows the section x positions.') : tr('Off: the trailing edge follows the section chords.')),
         rows,
       );
     });

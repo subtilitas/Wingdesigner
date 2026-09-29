@@ -1,6 +1,7 @@
 // Project shown on first load.
 
 import { nacaAirfoil } from '../airfoil/naca.js';
+import { tr } from '../i18n/index.js';
 import { createProject } from './project.js';
 
 function naca(code) {
@@ -16,7 +17,7 @@ function naca(code) {
 /** 1.5 m span, three-section tapered wing with washout and 2.5 degrees dihedral at the tip. */
 export function defaultProject() {
   return createProject({
-    name: 'Sport wing 1500',
+    name: tr('Sport wing 1500'),
     airfoils: [naca('2412'), naca('2410')],
     sections: [
       { id: 'root', airfoil: 'naca2412', x: 0, y: 0, z: 0, chord: 240, twist: 0 },

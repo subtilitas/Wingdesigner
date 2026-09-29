@@ -4,6 +4,7 @@
 import { airfoilStats, bounds, leadingEdgeIndex, normalize, selfIntersections, splitSurfaces } from './geometry.js';
 import { MAX_POINTS, parseDat } from './parse.js';
 import { WARN, airfoilFirstUseSeconds, formatSeconds } from '../model/budget.js';
+import { count, fixed, plain, tr, whole } from '../i18n/index.js';
 
 export const LIMITS = {
   minPoints: 5,
@@ -80,14 +81,16 @@ export function checkAirfoil(rawPointsIn) {
       if (!(Math.hypot(p[0] - q[0], p[1] - q[1]) <= tol)) rawPoints.push(p);
     }
     const removed = rawPointsIn.length - rawPoints.length;
-    if (removed) issues.push(issue('info', 'duplicates', `${removed} consecutive point(s) closer than ${DUPLICATE_DISTANCE} chord to the previous point removed.`));
+    if (removed) issues.push(
+        issue('info', 'duplicates', tr('{n} consecutive point(s) closer than {distance} chord to the previous point removed.', { n: whole(removed), distance: plain(DUPLICATE_DISTANCE) })),
+      );
   }
   if (!rawPoints || rawPoints.length < LIMITS.minPoints) {
-    issues.push(issue('error', 'too-few-points', `At least ${LIMITS.minPoints} points are required (found ${rawPoints ? rawPoints.length : 0}).`));
+    issues.push(issue('error', 'too-few-points', tr('At least {min} points are required (found {found}).', { min: plain(LIMITS.minPoints), found: plain(rawPoints ? rawPoints.length : 0) })));
     return { ok: false, points: rawPoints ?? [], issues, stats: null };
   }
   if (rawPoints.length > LIMITS.maxPoints) {
-    issues.push(issue('error', 'too-many-points', `${rawPoints.length.toLocaleString('en')} points; the limit is ${LIMITS.maxPoints.toLocaleString('en')}.`));
+    issues.push(issue('error', 'too-many-points', tr('{n} points; the limit is {limit}.', { n: count(rawPoints.length), limit: count(LIMITS.maxPoints) })));
     return { ok: false, points: rawPoints, issues, stats: null };
   }
   if (rawPoints.length > WARN.pointsPerAirfoil) {
@@ -96,24 +99,28 @@ export function checkAirfoil(rawPointsIn) {
       issue(
         'warning',
         'many-points',
-        `${n.toLocaleString('en')} points (warning above ${WARN.pointsPerAirfoil.toLocaleString('en')}): the checks and the first build of a wing that uses the airfoil take ${formatSeconds(airfoilFirstUseSeconds(n))}.`,
+        tr('{n} points (warning above {limit}): the checks and the first build of a wing that uses the airfoil take {time}.', {
+          n: count(n),
+          limit: count(WARN.pointsPerAirfoil),
+          time: formatSeconds(airfoilFirstUseSeconds(n)),
+        }),
       ),
     );
   }
   if (rawPoints.length < LIMITS.coarsePoints) {
-    issues.push(issue('warning', 'coarse', `Only ${rawPoints.length} points; the NURBS interpolation may not match the intended shape.`));
+    issues.push(issue('warning', 'coarse', tr('Only {n} points; the NURBS interpolation may not match the intended shape.', { n: plain(rawPoints.length) })));
   }
 
   const b = bounds(rawPoints);
   const chord = b.xmax - b.xmin;
   if (!(chord > 0)) {
-    issues.push(issue('error', 'zero-chord', 'All points share the same x coordinate.'));
+    issues.push(issue('error', 'zero-chord', tr('All points share the same x coordinate.')));
     return { ok: false, points: rawPoints, issues, stats: null };
   }
   const leIdx = leadingEdgeIndex(rawPoints);
   if (Math.abs(b.xmin) > LIMITS.normTolerance || Math.abs(b.xmax - 1) > LIMITS.normTolerance) {
     issues.push(
-      issue('warning', 'not-normalized', `x spans ${b.xmin.toFixed(4)} to ${b.xmax.toFixed(4)}; coordinates are scaled to unit chord.`),
+      issue('warning', 'not-normalized', tr('x spans {from} to {to}; coordinates are scaled to unit chord.', { from: fixed(b.xmin, 4), to: fixed(b.xmax, 4) })),
     );
   }
   const n0 = rawPoints.length;
@@ -125,7 +132,7 @@ export function checkAirfoil(rawPointsIn) {
       issue(
         'warning',
         'rotated',
-        `The line from the leading edge to the trailing edge is inclined by ${incl.toFixed(2)} degrees; the coordinates are kept, so twist refers to the file's x axis.`,
+        tr("The line from the leading edge to the trailing edge is inclined by {angle} degrees; the coordinates are kept, so twist refers to the file's x axis.", { angle: fixed(incl, 2) }),
         leIdx,
       ),
     );
@@ -134,11 +141,14 @@ export function checkAirfoil(rawPointsIn) {
   // a surface that stops short would give a trailing-edge face across the chord.
   const endX = Math.min(rawPoints[0][0], rawPoints[n0 - 1][0]);
   if (endX < b.xmax - 0.05 * chord) {
+    const pos = fixed(((endX - b.xmin) / chord) * 100, 1);
     issues.push(
       issue(
         'error',
         'te-missing',
-        `The ${rawPoints[0][0] <= rawPoints[n0 - 1][0] ? 'first' : 'last'} point lies at ${(((endX - b.xmin) / chord) * 100).toFixed(1)} % chord, not at the trailing edge; the point order is probably not Selig, or a surface is incomplete.`,
+        rawPoints[0][0] <= rawPoints[n0 - 1][0]
+          ? tr('The first point lies at {pos} % chord, not at the trailing edge; the point order is probably not Selig, or a surface is incomplete.', { pos })
+          : tr('The last point lies at {pos} % chord, not at the trailing edge; the point order is probably not Selig, or a surface is incomplete.', { pos }),
       ),
     );
   }
@@ -149,7 +159,7 @@ export function checkAirfoil(rawPointsIn) {
   let outline = 0;
   for (let i = 1; i < points.length; i++) outline += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
   if (outline > LIMITS.maxOutlineLength) {
-    issues.push(issue('error', 'outline-length', `The outline is ${outline.toFixed(1)} chords long; an airfoil outline is about 2 chords long.`));
+    issues.push(issue('error', 'outline-length', tr('The outline is {length} chords long; an airfoil outline is about 2 chords long.', { length: fixed(outline, 1) })));
     return { ok: false, points, issues, stats: null };
   }
 
@@ -165,55 +175,71 @@ export function checkAirfoil(rawPointsIn) {
   const fu = folds(halves.upper);
   const fl = folds(halves.lower);
   if (fu > LIMITS.maxFolds || fl > LIMITS.maxFolds) {
-    issues.push(issue('error', 'folds', `The ${fu >= fl ? 'upper' : 'lower'} surface runs back in x at ${Math.max(fu, fl)} points; the limit is ${LIMITS.maxFolds}.`));
+    const params = { n: whole(Math.max(fu, fl)), limit: plain(LIMITS.maxFolds) };
+    issues.push(
+      issue(
+        'error',
+        'folds',
+        fu >= fl ? tr('The upper surface runs back in x at {n} points; the limit is {limit}.', params) : tr('The lower surface runs back in x at {n} points; the limit is {limit}.', params),
+      ),
+    );
     return { ok: false, points, issues, stats: null };
   }
 
   const hits = selfIntersections(points);
   if (hits.length) {
-    issues.push(issue('error', 'self-intersection', `The outline crosses itself (${hits.length}${hits.length >= 10 ? '+' : ''} crossing(s)).`, hits[0][0]));
+    issues.push(issue('error', 'self-intersection', tr('The outline crosses itself ({n} crossing(s)).', { n: plain(hits.length) + (hits.length >= 10 ? '+' : '') }), hits[0][0]));
   }
 
   const { upper, lower } = splitSurfaces(points);
   if (upper.length < 3 || lower.length < 3) {
-    issues.push(issue('error', 'one-surface', 'Upper or lower surface has fewer than 3 points; the point order is probably not Selig or Lednicer.'));
+    issues.push(issue('error', 'one-surface', tr('Upper or lower surface has fewer than 3 points; the point order is probably not Selig or Lednicer.')));
     return { ok: false, points, issues, stats: null };
   }
   const ru = reversals(upper);
   const rl = reversals(lower);
   if (ru.count || rl.count) {
     issues.push(
-      issue('warning', 'non-monotonic', `x does not increase monotonically from LE to TE (upper: ${ru.count}, lower: ${rl.count} reversal(s)).`),
+      issue(
+        'warning',
+        'non-monotonic',
+        tr('x does not increase monotonically from LE to TE (upper: {upper}, lower: {lower} reversal(s)).', { upper: whole(ru.count), lower: whole(rl.count) }),
+      ),
     );
   }
 
   const stats = airfoilStats(points);
   if (stats.minInteriorThickness < -1e-4) {
-    issues.push(issue('error', 'crossed-surfaces', 'The upper surface lies below the lower surface at some chord position.'));
+    issues.push(issue('error', 'crossed-surfaces', tr('The upper surface lies below the lower surface at some chord position.')));
   } else if (stats.minCoreThickness <= LIMITS.touchThickness) {
     issues.push(
       issue(
         'error',
         'surfaces-touch',
-        `Upper and lower surface touch at x = ${(stats.minCoreThicknessX * 100).toFixed(1)} % chord (thickness ${(stats.minCoreThickness * 100).toFixed(4)} % chord); the wing would have zero thickness there.`,
+        tr('Upper and lower surface touch at x = {x} % chord (thickness {thickness} % chord); the wing would have zero thickness there.', {
+          x: fixed(stats.minCoreThicknessX * 100, 1),
+          thickness: fixed(stats.minCoreThickness * 100, 4),
+        }),
       ),
     );
   }
   if (stats.teGap < -1e-4) {
-    issues.push(issue('error', 'te-crossed', `Trailing edge is crossed (gap ${(stats.teGap * 100).toFixed(3)} % chord).`));
+    issues.push(issue('error', 'te-crossed', tr('Trailing edge is crossed (gap {gap} % chord).', { gap: fixed(stats.teGap * 100, 3) })));
   } else if (stats.teGap > LIMITS.teGapWarn) {
-    issues.push(issue('warning', 'te-gap', `Trailing-edge gap is ${(stats.teGap * 100).toFixed(2)} % chord.`));
+    issues.push(issue('warning', 'te-gap', tr('Trailing-edge gap is {gap} % chord.', { gap: fixed(stats.teGap * 100, 2) })));
   }
   // A closed TE reached over a steep end segment: the drawn TE base was probably read as surface.
   const nP = points.length;
   const steepEnd = (p, q) => 1 - q[0] <= 0.01 && Math.abs(q[0] - p[0]) <= 0.2 * Math.abs(q[1] - p[1]) && Math.abs(q[1] - p[1]) > 1e-6;
   if (Math.abs(stats.teGap) < 1e-6 && (steepEnd(points[1], points[0]) || steepEnd(points[nP - 2], points[nP - 1]))) {
-    issues.push(issue('warning', 'te-base', 'The outline reaches the trailing edge over a vertical segment; the trailing-edge base is probably read as surface points.', 0));
+    issues.push(
+      issue('warning', 'te-base', tr('The outline reaches the trailing edge over a vertical segment; the trailing-edge base is probably read as surface points.'), 0),
+    );
   }
   if (stats.maxThickness < LIMITS.thinWarn) {
-    issues.push(issue('warning', 'thin', `Maximum thickness is ${(stats.maxThickness * 100).toFixed(2)} % chord.`));
+    issues.push(issue('warning', 'thin', tr('Maximum thickness is {thickness} % chord.', { thickness: fixed(stats.maxThickness * 100, 2) })));
   } else if (stats.maxThickness > LIMITS.thickWarn) {
-    issues.push(issue('warning', 'thick', `Maximum thickness is ${(stats.maxThickness * 100).toFixed(1)} % chord.`));
+    issues.push(issue('warning', 'thick', tr('Maximum thickness is {thickness} % chord.', { thickness: fixed(stats.maxThickness * 100, 1) })));
   }
   const le = leadingEdgeIndex(points);
   let spikes = 0;
@@ -225,7 +251,11 @@ export function checkAirfoil(rawPointsIn) {
       if (firstSpike < 0) firstSpike = i;
     }
   }
-  if (spikes) issues.push(issue('warning', 'spike', `${spikes} point(s) turn the outline by more than ${LIMITS.spikeDeg} degrees.`, firstSpike));
+  if (spikes) {
+    issues.push(
+      issue('warning', 'spike', tr('{n} point(s) turn the outline by more than {angle} degrees.', { n: whole(spikes), angle: plain(LIMITS.spikeDeg) }), firstSpike),
+    );
+  }
 
   let ratio = 1;
   for (let i = 1; i < points.length - 1; i++) {
@@ -234,15 +264,21 @@ export function checkAirfoil(rawPointsIn) {
     if (a > 0 && c > 0) ratio = Math.max(ratio, a / c, c / a);
   }
   if (ratio > LIMITS.spacingRatio) {
-    issues.push(issue('info', 'uneven-spacing', `Adjacent segment lengths differ by a factor of up to ${ratio.toFixed(0)}.`));
+    issues.push(issue('info', 'uneven-spacing', tr('Adjacent segment lengths differ by a factor of up to {factor}.', { factor: fixed(ratio, 0) })));
   }
 
   issues.push(
     issue(
       'info',
       'stats',
-      `${points.length} points, t/c ${(stats.maxThickness * 100).toFixed(2)} % at ${(stats.maxThicknessX * 100).toFixed(1)} %, ` +
-        `camber ${(stats.maxCamber * 100).toFixed(2)} % at ${(stats.maxCamberX * 100).toFixed(1)} %, TE gap ${(stats.teGap * 100).toFixed(3)} %.`,
+      tr('{n} points, t/c {thickness} % at {thicknessX} %, camber {camber} % at {camberX} %, TE gap {gap} %.', {
+        n: whole(points.length),
+        thickness: fixed(stats.maxThickness * 100, 2),
+        thicknessX: fixed(stats.maxThicknessX * 100, 1),
+        camber: fixed(stats.maxCamber * 100, 2),
+        camberX: fixed(stats.maxCamberX * 100, 1),
+        gap: fixed(stats.teGap * 100, 3),
+      }),
     ),
   );
   return { ok: !issues.some((i) => i.severity === 'error'), points, issues, stats };

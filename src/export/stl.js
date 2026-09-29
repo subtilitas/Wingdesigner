@@ -7,7 +7,7 @@ import { checkPrecision } from './precision.js';
  * @throws {MeshPrecisionError} when float32 rounding merges two distinct corners of a triangle
  */
 export function meshToStl({ positions: P, indices: I }, header = 'Wingdesigner') {
-  checkPrecision(P, I, Math.fround, 'STL stores');
+  checkPrecision(P, I, Math.fround, 'STL');
   const n = I.length / 3;
   const buf = new ArrayBuffer(84 + n * 50);
   const view = new DataView(buf);
