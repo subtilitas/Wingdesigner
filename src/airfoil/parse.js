@@ -19,6 +19,9 @@ const DECIMAL_COMMA = /^[-+]?\d*,\d+$/;
 // Column header lines such as "x y", "X Yo Yu", "x/c y/c", "X Y_upper Y_lower".
 /** Largest accepted input in characters (a 2000-point file is about 60 000). */
 export const MAX_INPUT = 2_000_000;
+// A UTF-8 character takes at most 4 bytes: larger files exceed MAX_INPUT and are rejected by size
+// before they are read.
+export const MAX_FILE_BYTES = 4 * MAX_INPUT;
 // The self-intersection check compares every segment pair: 5000 points take about 0.2 s.
 export const MAX_POINTS = 5000;
 const COLUMN_HEADER = /^(?:[xyz](?:\/c)?[a-z_]*\s*){2,3}$/i;
@@ -221,18 +224,22 @@ export function parseDat(text, options = {}) {
     return { name, format: 'selig', points: [], issues: [...issues, issue('error', 'no-points', 'No coordinate lines found.')] };
   }
 
-  // Three-column table: x increasing, y_upper >= y_lower on (nearly) every row.
+  // Three-column table: x strictly increasing or strictly decreasing (read from the leading edge on),
+  // y_upper >= y_lower on (nearly) every row.
   const three = rows.every((r) => r.values.length === 3);
   if (three && rows.length >= 3) {
     let inc = true;
+    let dec = true;
     let above = 0;
     for (let k = 0; k < rows.length; k++) {
       if (k > 0 && !(rows[k].values[0] > rows[k - 1].values[0])) inc = false;
+      if (k > 0 && !(rows[k].values[0] < rows[k - 1].values[0])) dec = false;
       if (rows[k].values[1] >= rows[k].values[2]) above++;
     }
-    if (inc && above >= 0.9 * rows.length) {
-      const upper = rows.map((r) => [r.values[0], r.values[1]]);
-      const lower = rows.map((r) => [r.values[0], r.values[2]]);
+    if ((inc || dec) && above >= 0.9 * rows.length) {
+      const ordered = inc ? rows : rows.slice().reverse();
+      const upper = ordered.map((r) => [r.values[0], r.values[1]]);
+      const lower = ordered.map((r) => [r.values[0], r.values[2]]);
       const points = upper.reverse().concat(samePoint(lower[0], upper[upper.length - 1]) ? lower.slice(1) : lower);
       issues.push(issue('info', 'table', 'Read as a three-column table (x, upper y, lower y).'));
       return finish(name, 'table', points, issues);

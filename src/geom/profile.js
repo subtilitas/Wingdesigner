@@ -116,27 +116,103 @@ function extent(pts) {
 }
 
 /**
- * Self-crossing of a fitted 2D curve between its data points (cubic interpolation can overshoot
- * where coarse data changes quickly, e.g. near a trailing edge). Samples every knot span
- * (`samplesPerSpan`, by default 1 to 256 with at most about 4000 points in total; dense files have
- * short spans, coarse files, where interpolation overshoots, get many samples per span) and tests the
- * polyline for crossings. The size of a crossing is the extent of the smaller of the two parts the
- * crossing splits the outline into; crossings up to `tolerance` are ignored.
- * @returns {{x: number, size: number}|null} position and size of the largest crossing, or null
+ * Sample a curve on every knot span. With `samplesPerSpan` every span gets that many points;
+ * otherwise a budget of about `budget` points is shared among the spans in proportion to the length
+ * of their control polygon (which bounds the curve length in the span), at least 1 and at most 256
+ * per span: coarse spans, where interpolation overshoots or loops, get many samples even when most
+ * spans of a dense file are short.
+ * @returns {{pts: number[][], ts: number[]}}
  */
-export function curveCrossing(curve, { tolerance = 0, samplesPerSpan } = {}) {
+export function sampleCurve(curve, { samplesPerSpan, budget = 4000 } = {}) {
   const U = curve.knots;
   const p = curve.degree;
+  const P = curve.points;
   const spans = [];
-  for (let i = p; i < U.length - p - 1; i++) if (U[i + 1] > U[i]) spans.push([U[i], U[i + 1]]);
-  const per = samplesPerSpan ?? Math.max(1, Math.min(256, Math.floor(4000 / Math.max(spans.length, 1))));
+  for (let k = p; k < U.length - p - 1; k++) {
+    if (!(U[k + 1] > U[k])) continue;
+    let len = 0;
+    for (let j = k - p; j < k; j++) len += Math.hypot(P[j + 1][0] - P[j][0], P[j + 1][1] - P[j][1]);
+    spans.push({ a: U[k], b: U[k + 1], len });
+  }
+  const total = spans.reduce((sum, sp) => sum + sp.len, 0) || 1;
   const pts = [];
-  for (const [a, b] of spans) for (let s = 0; s < per; s++) pts.push(curvePoint(curve, a + ((b - a) * s) / per));
+  const ts = [];
+  for (const { a, b, len } of spans) {
+    const per = samplesPerSpan ?? Math.max(1, Math.min(256, Math.round((budget * len) / total)));
+    for (let s = 0; s < per; s++) {
+      const t = a + ((b - a) * s) / per;
+      ts.push(t);
+      pts.push(curvePoint(curve, t));
+    }
+  }
+  ts.push(U[U.length - 1]);
   pts.push(curvePoint(curve, U[U.length - 1]));
+  return { pts, ts };
+}
+
+/**
+ * Self-crossing of a fitted 2D curve between its data points (cubic interpolation can overshoot
+ * where coarse data changes quickly, e.g. near a trailing edge), on the samples of sampleCurve. The
+ * size of a crossing is the extent of the smaller of the two parts the crossing splits the outline
+ * into; crossings up to `tolerance` are ignored.
+ * @returns {{x: number, size: number}|null} position and size of the largest crossing, or null
+ */
+export function curveCrossing(curve, { tolerance = 0, samplesPerSpan, samples } = {}) {
+  const { pts } = samples ?? sampleCurve(curve, { samplesPerSpan });
   let worst = null;
   for (const [i, j] of selfIntersections(pts, 20)) {
     const size = Math.min(extent(pts.slice(i + 1, j + 1)), extent([...pts.slice(0, i + 1), ...pts.slice(j + 1)]));
     if (size > tolerance && !(worst && worst.size >= size)) worst = { x: pts[i][0], size };
   }
   return worst;
+}
+
+// x reversals of a fitted surface above this fraction of the chord are errors: the loft resamples
+// both surfaces by chord position and would drop the part that runs back. None of 246 real files
+// has any reversal.
+export const REVERSAL_TOLERANCE = 1e-4;
+
+/**
+ * Largest x reversal of a fitted airfoil curve: the upper surface (u from 0 to tLE) must run towards
+ * the leading edge, the lower surface (tLE to 1) away from it.
+ * @returns {{x: number, size: number}|null} position and amplitude of the largest reversal, or null
+ */
+export function curveReversal(curve, tLE, { tolerance = 0, samples } = {}) {
+  const { pts, ts } = samples ?? sampleCurve(curve);
+  let worst = null;
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    const x = pts[i][0];
+    if (ts[i] <= tLE) {
+      lo = Math.min(lo, x);
+      const d = x - lo;
+      if (d > tolerance && !(worst && worst.size >= d)) worst = { x, size: d };
+    } else {
+      hi = Math.max(hi, x);
+      const d = hi - x;
+      if (d > tolerance && !(worst && worst.size >= d)) worst = { x, size: d };
+    }
+  }
+  return worst;
+}
+
+/** Error message for a fitted airfoil curve that crosses itself or runs back in x, or null. */
+export function profileProblem({ curve, tLE }) {
+  const samples = sampleCurve(curve);
+  const cross = curveCrossing(curve, { tolerance: CROSSING_TOLERANCE, samples });
+  if (cross) {
+    return (
+      `the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
+      'the file has too few points there. Use a file with more points or finer spacing near that position.'
+    );
+  }
+  const back = curveReversal(curve, tLE, { tolerance: REVERSAL_TOLERANCE, samples });
+  if (back) {
+    return (
+      `the surface runs back in x by ${(back.size * 100).toFixed(3)} % chord near x = ${(back.x * 100).toFixed(1)} % chord; ` +
+      'every surface point needs its own chord position, since the loft resamples by chord position.'
+    );
+  }
+  return null;
 }

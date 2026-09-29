@@ -7,19 +7,26 @@
 import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
 import { averagingKnots, collocationFactor, collocationSolve, curvePoint, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
-import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, resampleProfile } from './profile.js';
+import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
 import { blendPoints, blendScalar, spanwiseWeights } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, resolveSettings } from '../model/project.js';
 
-/** Planform deviation (mm) between loft and intended edges above which a warning is issued. */
+/**
+ * Deviation (mm) between loft and intended edges above which stations are added and, if it remains,
+ * a warning is issued; small chords use 10 % of the local chord instead.
+ */
 export const PLANFORM_TOLERANCE = 0.5;
+const deviationTolerance = (chord) => Math.min(PLANFORM_TOLERANCE, 0.1 * chord);
 
 /** Span samples for the chord check (in addition to stations and guide breakpoints). */
 const CHORD_CHECK_SAMPLES = 256;
 
-/** Fitted chord (mm, along the intended chord direction) below which the surface counts as folded. */
-export const FOLD_LIMIT = 0.5;
+/**
+ * Fitted chord (mm, along the intended chord direction) below which the build stops: the 1 mm
+ * minimum chord less the 10 % deviation that small chords may keep.
+ */
+export const FOLD_LIMIT = 0.9 * LIMITS.minChord;
 
 /** Stations the builder may add where the loft deviates from the intended planform. */
 const MAX_EXTRA_STATIONS = 32;
@@ -125,14 +132,8 @@ function profileStage(a, parametrization, chordStations, N) {
   } else {
     try {
       const prof = profileCurve(check.points, { parametrization });
-      const cross = curveCrossing(prof.curve, { tolerance: CROSSING_TOLERANCE });
-      out = cross
-        ? {
-            error:
-              `the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
-              'the file has too few points there. Use a file with more points or finer spacing near that position.',
-          }
-        : { prof, points: check.points, compat: unitChord(resampleProfile(prof, chordStations), N) };
+      const problem = profileProblem(prof);
+      out = problem ? { error: problem } : { prof, points: check.points, compat: unitChord(resampleProfile(prof, chordStations), N) };
     } catch (e) {
       out = { error: `the NURBS interpolation failed (${e.message}).` };
     }
@@ -473,7 +474,7 @@ export function buildWing(project) {
       const sLE = surfacePoint(surface, paramsU[N], v);
       const sTE = surfacePoint(surface, 0, v);
       const sTEl = surfacePoint(surface, 1, v);
-      devs.push([y, Math.max(d3(sLE, le), d3(sTE, teU))]);
+      devs.push([y, Math.max(d3(sLE, le), d3(sTE, teU)), deviationTolerance(pl.chord)]);
       const dir = [axis[0] - le[0], axis[2] - le[2]];
       const len = Math.hypot(dir[0], dir[1]) || 1;
       const fitChord = (((sTE[0] + sTEl[0]) / 2 - sLE[0]) * dir[0] + ((sTE[2] + sTEl[2]) / 2 - sLE[2]) * dir[1]) / len;
@@ -492,7 +493,7 @@ export function buildWing(project) {
   let fitted = fit(yList);
   let extra = 0;
   for (let round = 0; round < 6 && extra < MAX_EXTRA_STATIONS; round++) {
-    const peaks = fitted.devs.filter(([, d], i, arr) => d > PLANFORM_TOLERANCE && d >= (arr[i - 1]?.[1] ?? 0) && d >= (arr[i + 1]?.[1] ?? 0));
+    const peaks = fitted.devs.filter(([, d, tol], i, arr) => d > tol && d >= (arr[i - 1]?.[1] ?? 0) && d >= (arr[i + 1]?.[1] ?? 0));
     const fresh = peaks.map(([y]) => y).filter((y) => !yList.includes(y)).slice(0, MAX_EXTRA_STATIONS - extra);
     if (!fresh.length) break;
     yList = [...yList, ...fresh].sort((a, b) => a - b);
@@ -503,8 +504,8 @@ export function buildWing(project) {
   result.stations = stations;
   if (minFit < FOLD_LIMIT) {
     errors.push(
-      `The fitted surface folds between stations at y = ${minFitY.toFixed(1)} mm (chord ${minFit.toFixed(2)} mm along the intended chord direction): ` +
-        `twist or guide curves change faster than ${MAX_EXTRA_STATIONS} added stations resolve. Add sections, reduce the twist difference or smooth the guide curves.`,
+      `The fitted surface folds or narrows between stations at y = ${minFitY.toFixed(1)} mm (chord ${minFit.toFixed(2)} mm along the intended chord direction, ` +
+        `minimum ${LIMITS.minChord} mm): twist or guide curves change faster than ${MAX_EXTRA_STATIONS} added stations resolve. Add sections, reduce the twist difference or smooth the guide curves.`,
     );
     return result;
   }
@@ -537,14 +538,16 @@ export function buildWing(project) {
   }
   let dev = 0;
   let devY = y0;
-  for (const [y, d] of devs) {
+  let over = false;
+  for (const [y, d, tol] of devs) {
     if (d > dev) {
       dev = d;
       devY = y;
     }
+    if (d > tol) over = true;
   }
   result.planformDeviation = dev;
-  if (dev > PLANFORM_TOLERANCE) {
+  if (over) {
     warnings.push(
       `The loft deviates up to ${dev.toFixed(2)} mm from the intended leading or trailing edge at y = ${devY.toFixed(1)} mm ` +
         `after ${extra} added station(s); raise the spanwise stations per panel.`,

@@ -1,11 +1,11 @@
 // Airfoil management: project airfoils, NACA generator, bundled library, external sources, and the
 // upload flow with preview and sanity check.
 
-import { decodeText, toSeligDat } from '../airfoil/parse.js';
+import { MAX_FILE_BYTES, MAX_INPUT, decodeText, toSeligDat } from '../airfoil/parse.js';
 import { importAirfoilText, checkAirfoil } from '../airfoil/sanity.js';
 import { parseNacaCode } from '../airfoil/naca.js';
 import { EXTERNAL_SOURCES, NACA_PRESETS, loadLibraryIndex, nacaEntry, suggestAttribution } from '../airfoil/library.js';
-import { CROSSING_TOLERANCE, curveCrossing, profileCurve } from '../geom/profile.js';
+import { profileCurve, profileProblem } from '../geom/profile.js';
 import { curvePoint } from '../geom/nurbs.js';
 import { addAirfoil, pruneAirfoils } from '../model/edit.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
@@ -55,18 +55,16 @@ export function previewAirfoil(candidate, { title = 'Airfoil preview', allowEdit
     let ok = !issues.some((i) => i.severity === 'error') && check.ok;
     let curve = null;
     if (ok) {
+      let prof = null;
       try {
-        curve = profileCurve(check.points).curve;
+        prof = profileCurve(check.points);
+        curve = prof.curve;
       } catch {
         curve = null;
       }
-      const cross = curve && curveCrossing(curve, { tolerance: CROSSING_TOLERANCE });
-      if (cross) {
-        issues.push({
-          severity: 'error',
-          code: 'curve-crossing',
-          message: `The NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; the file has too few points there.`,
-        });
+      const problem = prof && profileProblem(prof);
+      if (problem) {
+        issues.push({ severity: 'error', code: 'curve-shape', message: problem.charAt(0).toUpperCase() + problem.slice(1) });
         ok = false;
       }
     }
@@ -205,6 +203,10 @@ export class AirfoilsPanel {
 
   async uploadFiles(files) {
     for (const file of files) {
+      if (file.size > MAX_FILE_BYTES) {
+        this.onMessage(`${file.name}: ${(file.size / 1e6).toFixed(1)} MB; airfoil files are limited to ${MAX_INPUT.toLocaleString('en')} characters.`, true);
+        continue;
+      }
       const text = decodeText(await file.arrayBuffer());
       const r = importAirfoilText(text, file.name);
       await this.addCandidate(

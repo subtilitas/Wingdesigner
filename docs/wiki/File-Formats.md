@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | Selig | default | name line, then x y from the upper trailing edge over the leading edge to the lower trailing edge |
 | Lednicer | first numeric line holds two integers ≥ 2 (e.g. `61. 61.`) and the next point lies at the leading edge (x ≤ 5 % of the maximum x) | upper surface LE → TE, then lower LE → TE; when the counts disagree with the data, the surfaces are split where x jumps back |
-| Table | every data line has 3 values, x increases, upper ≥ lower on ≥ 90 % of lines | x, y_upper, y_lower (e.g. "X Yo Yu" tables) |
+| Table | every data line has 3 values, x strictly increases or strictly decreases, upper ≥ lower on ≥ 90 % of lines | x, y_upper, y_lower (e.g. "X Yo Yu" tables); decreasing tables are reversed |
 | XML | text contains `<coordinates>` | `<name>` and the `<point><x>…</x><y>…</y></point>` list of the first element |
 | HTML | text contains `<html>`, `<pre>` or `<body>` | coordinates from `<pre>` blocks, name from `<title>` |
 
@@ -16,7 +16,10 @@ exponents (`1.0D-3`); coordinates in percent (maximum x between 5 and 110 → di
 surface first (reversed); consecutive duplicate points (removed); a closing point that repeats the
 first point after a steep segment at the trailing edge (a drawn blunt trailing-edge base: removed; an
 outline that starts on the base, e.g. at its midpoint, loses the base point at both ends). Input
-above 2,000,000 characters or 5000 points is rejected.
+above 2,000,000 characters or 5000 points is rejected; uploaded files above 8 MB are rejected before
+they are read (a UTF-8 character takes at most 4 bytes). The preview also rejects an airfoil whose
+NURBS curve crosses itself or runs back in x ([[Geometry|Geometry]], section 1). Project files above
+50 MB are not opened.
 
 ### Checks
 

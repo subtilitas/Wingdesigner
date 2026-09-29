@@ -64,7 +64,11 @@ export function projectToJsonText(project, build, meta) {
  * Parse and validate project JSON text. Derived data is ignored.
  * @returns {{ok: boolean, project?: object, errors: string[]}}
  */
+/** Largest project file read (bytes): 50 MB holds hundreds of 5000-point airfoils. */
+export const MAX_PROJECT_BYTES = 50_000_000;
+
 export function projectFromJsonText(text) {
+  if (String(text).length > MAX_PROJECT_BYTES) return { ok: false, errors: [`The file is larger than ${MAX_PROJECT_BYTES / 1e6} MB.`] };
   let data;
   try {
     data = JSON.parse(text);

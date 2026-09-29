@@ -3,7 +3,7 @@
 import './ui/styles.css';
 import { buildWing } from './geom/wing.js';
 import { wingStats } from './geom/stats.js';
-import { projectFromJsonText, projectToJsonText } from './model/io.js';
+import { MAX_PROJECT_BYTES, projectFromJsonText, projectToJsonText } from './model/io.js';
 import { defaultProject } from './model/defaults.js';
 import { validateProject } from './model/project.js';
 import { Store } from './ui/store.js';
@@ -73,6 +73,10 @@ const openInput = h('input', {
     const f = e.target.files[0];
     e.target.value = '';
     if (!f) return;
+    if (f.size > MAX_PROJECT_BYTES) {
+      message(`Cannot open ${f.name}: ${(f.size / 1e6).toFixed(1)} MB; project files are limited to ${MAX_PROJECT_BYTES / 1e6} MB.`, true);
+      return;
+    }
     const r = projectFromJsonText(await f.text());
     if (!r.ok) {
       message(`Cannot open ${f.name}: ${r.errors.slice(0, 3).join(' ')}`, true);
@@ -140,7 +144,7 @@ document.getElementById('app').append(header, h('main', { class: 'layout' }, vie
 const viewer = new Viewer3D(viewport);
 const sectionsPanel = new SectionsPanel(panes.sections, store, getBuild, { onMessage: (m, e) => message(m, e) });
 const planform = new PlanformEditor(panes.planform, store, getBuild);
-const airfoils = new AirfoilsPanel(panes.airfoils, store, { onMessage: (m) => message(m) });
+const airfoils = new AirfoilsPanel(panes.airfoils, store, { onMessage: (m, e) => message(m, e) });
 const settings = new SettingsPanel(panes.settings, store, viewer);
 
 let activeTab = 'sections';

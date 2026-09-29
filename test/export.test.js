@@ -5,7 +5,7 @@ import { concatMeshes, edgeCheck, exportMeshes, meshVolume, mirrorMesh } from '.
 import { meshToStl, parseStl } from '../src/export/stl.js';
 import { meshesTo3mf, modelXml, xmlEscape } from '../src/export/threemf.js';
 import { stepReal, stepString, wingToStep } from '../src/export/step.js';
-import { projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
+import { MAX_PROJECT_BYTES, projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
 import { createProject, validateProject } from '../src/model/project.js';
 import { sampleProject } from './helpers.js';
 import { stepCases } from './step-cases.js';
@@ -290,6 +290,10 @@ describe('import hardening', () => {
     const r = projectFromJsonText(JSON.stringify(n));
     expect(r.ok).toBe(true);
     expect(r.project.sections[0].id).toBe('s1');
+  });
+
+  it('rejects project text above the size limit', () => {
+    expect(projectFromJsonText(' '.repeat(MAX_PROJECT_BYTES + 1)).errors[0]).toMatch(/larger than 50 MB/);
   });
 
   it('returns errors instead of throwing on malformed containers', () => {

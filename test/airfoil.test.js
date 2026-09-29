@@ -415,6 +415,15 @@ describe('parser robustness', () => {
     expect(big.issues.find((i) => i.code === 'too-many-points').message).toMatch(/5001 or more points/);
   });
 
+  it('reads three-column tables from the trailing edge to the leading edge', () => {
+    const rows = [[1, 0.002, -0.002], [0.8, 0.04, -0.02], [0.5, 0.07, -0.03], [0.2, 0.06, -0.03], [0.05, 0.03, -0.015], [0, 0, 0]];
+    const up = parseDat(rows.slice().reverse().map((r) => r.join(' ')).join('\n'));
+    const down = parseDat(rows.map((r) => r.join(' ')).join('\n'));
+    expect(down.format).toBe('table');
+    expect(down.points).toEqual(up.points);
+    expect(importAirfoilText(rows.map((r) => r.join(' ')).join('\n'), 't.dat').ok).toBe(true);
+  });
+
   it('rejects more points than the limit without throwing', () => {
     let text = 'Many\n';
     for (let i = 0; i < 150000; i++) text += `${(i / 150000).toFixed(5)} 0\n`;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildWing, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nurbs.js';
-import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
+import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
 import { blendPoints, blendScalar, spanwiseWeights } from '../src/geom/spanwise.js';
 import { clampedUniformKnots, defaultGuides, guideCurve, guideProblems, guideXAt, isMonotonicInY } from '../src/geom/guide.js';
 import { edgeCheck, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume, tessellateHalf } from '../src/geom/mesh.js';
@@ -520,6 +520,20 @@ describe('fitted surface between stations', () => {
     expect(Math.hypot(te[0] - mid[0], te[2] - mid[2])).toBeGreaterThan(1.9);
   });
 
+  it('keeps the fitted chord of 1 mm sections with 100 degrees of twist', () => {
+    const p = sampleProject();
+    p.airfoils = [naca('2412', 'a')];
+    p.sections = [
+      { id: 'a', airfoil: 'a', x: 0, y: 0, z: 0, chord: 1, twist: 0 },
+      { id: 'b', airfoil: 'a', x: 0, y: 10, z: 0, chord: 1, twist: 100 },
+    ];
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    const le = surfacePoint(b.surface, b.uLE, 0.5);
+    const te = surfacePoint(b.surface, 0, 0.5);
+    expect(Math.hypot(te[0] - le[0], te[2] - le[2])).toBeGreaterThan(0.95);
+  });
+
   it('reports a surface that folds between stations', () => {
     // Zigzag degree-5 control guides that 32 added stations cannot follow.
     let seed = 9;
@@ -533,7 +547,7 @@ describe('fitted surface between stations', () => {
       const p = sampleProject();
       p.guides = { nose: { enabled: true, mode: 'control', degree: 5, points: nose }, end: { enabled: true, mode: 'control', degree: 5, points: end } };
       const b = buildWing(p);
-      if (/folds between stations/.test(b.errors[0] ?? '')) fold = b;
+      if (/folds or narrows between stations/.test(b.errors[0] ?? '')) fold = b;
     }
     expect(fold).not.toBeNull();
     expect(fold.surface).toBeNull();
@@ -556,6 +570,25 @@ describe('fitted curve and surface row crossings', () => {
     const b = buildWing(p);
     expect(b.errors[0]).toMatch(/NURBS curve through the points crosses itself near x = 10\d\.\d % chord/);
     expect(b.surface).toBeNull();
+  });
+
+  it('samples the coarse spans of a dense file', () => {
+    // The looping coarse outline with one straight segment split into 4500 more points.
+    const [a, b] = [coarse[2], coarse[3]];
+    const extra = Array.from({ length: 4500 }, (_, i) => [a[0] + ((i + 1) / 4501) * (b[0] - a[0]), a[1] + ((i + 1) / 4501) * (b[1] - a[1])]);
+    const dense = [...coarse.slice(0, 3), ...extra, ...coarse.slice(3)];
+    const prof = profileCurve(checkAirfoil(dense).points);
+    expect(curveCrossing(prof.curve, { samplesPerSpan: 1, tolerance: CROSSING_TOLERANCE })).toBeNull();
+    expect(profileProblem(prof)).toMatch(/crosses itself/);
+  });
+
+  it('rejects a fitted surface that runs back in x', () => {
+    // Upper surface with a hook: x goes 0.62 -> 0.58 -> 0.66 around its middle.
+    const pts = [[1, 0.003], [0.8, 0.04], [0.66, 0.06], [0.58, 0.075], [0.62, 0.085], [0.4, 0.09], [0.2, 0.07], [0.05, 0.035], [0, 0], [0.05, -0.02], [0.2, -0.03], [0.5, -0.03], [0.8, -0.015], [1, -0.003]];
+    const c = checkAirfoil(pts);
+    expect(c.ok).toBe(true);
+    expect(profileProblem(profileCurve(c.points))).toMatch(/runs back in x/);
+    expect(profileProblem(profileCurve(nacaAirfoil('2412').points))).toBeNull();
   });
 
   it('samples a 5000-point curve in bounded time', () => {

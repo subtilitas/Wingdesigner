@@ -43,7 +43,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   reverses between stations (after 32 added stations) is an error; rows halfway between sections are
   tested for self-crossing.
 - Non-object `settings.trailingEdge` and `settings.tip` are rejected on import.
-- The fitted-curve crossing test samples at most about 4000 points (1 per span for 5000-point files).
+- The fitted-curve crossing test shares a budget of about 4000 samples among the knot spans by
+  control-polygon length, so loops in coarse spans of dense files are found.
+- A fitted airfoil curve that runs back in x by more than 0.01 % chord is an error (the loft
+  resamples by chord position).
+- Small chords add stations at 10 % chord deviation; a fitted chord below 0.9 mm is an error.
+- Three-column tables ordered from the trailing edge to the leading edge are read.
+- Airfoil uploads above 8 MB and project files above 50 MB are rejected before they are read.
 - XML airfoils are read in one pass and reading stops one point past the 5000-point limit.
 - Dragging a leading edge with only the end line enabled evaluates the end line at the new span
   position, so the leading edge lands under the pointer.

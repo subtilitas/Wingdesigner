@@ -14,10 +14,16 @@ All lengths are in mm. Algorithm numbers refer to Piegl and Tiller, *The NURBS B
 4. The interpolation systems are solved with a band LU factorization without pivoting (B-spline
    collocation matrices are totally positive), in time linear in the number of points: 5000 points
    take 13 ms.
-5. The curve is sampled with 8 to 256 points per knot span (about 4000 in total) and tested for
-   self-crossing. Cubic interpolation of a coarse file can loop past the trailing edge although the
-   file points pass every check; such an airfoil is an error. Crossing loops up to 0.05 % of the
-   chord are ignored: cusped closed trailing edges (e.g. MH 83) leave slivers of 0.014 % chord.
+5. The curve is sampled with a budget of about 4000 points shared among the knot spans in
+   proportion to the length of their control polygon (1 to 256 per span), so coarse spans get many
+   samples even in a dense file. The samples are tested for self-crossing: cubic interpolation of a
+   coarse file can loop past the trailing edge although the file points pass every check; such an
+   airfoil is an error. Crossing loops up to 0.05 % of the chord are ignored: cusped closed trailing
+   edges (e.g. MH 83) leave slivers of 0.014 % chord.
+6. The upper surface must run towards the leading edge and the lower surface away from it: an x
+   reversal of the fitted curve above 0.01 % chord is an error, because the loft resamples both
+   surfaces by chord position and would drop the part that runs back. None of 246 real files has a
+   reversal.
 
 ## 2. Common chord stations
 
@@ -39,13 +45,14 @@ Section values (x, z, chord, twist and the resampled shape) are blended between 
 Stations are the sections only (linear mode without guides) or the sections plus `panelStations − 1`
 intermediate stations per panel (smooth mode or any guide curve on), spaced by
 (1 − cos(πk/K)) / 2 so they cluster at the panel ends. After the fit, stations are added at the span
-positions where the loft leading or trailing edge deviates more than 0.5 mm (3D distance) from the
-intended edge, up to 32 added stations in at most 6 rounds. Twist counts: linear rows between strongly
+positions where the loft leading or trailing edge deviates more than 0.5 mm, or 10 % of the local
+chord if that is smaller (3D distance), from the intended edge, up to 32 added stations in at most 6
+rounds. Twist counts: linear rows between strongly
 twisted stations average rotated shapes and shorten the chord (180° of twist would collapse midspan to
 the pivot), and the 3D deviation adds stations there. After the last round, the chord of the fitted
 surface along the intended chord direction is sampled at 257 span positions and every guide
-breakpoint; below 0.5 mm, or reversed, the surface folds between stations and the build stops with an
-error.
+breakpoint; below 0.9 mm (the 1 mm minimum chord less the 10 % deviation allowed for small chords),
+or reversed, the surface folds or narrows between stations and the build stops with an error.
 
 With guide curves, x_LE(y) and/or x_TE(y) come from the curves instead. A guide is stretched linearly
 so its first and last point y match the root and tip. Through-point guides use parameters
