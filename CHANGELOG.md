@@ -12,6 +12,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   from a Royal Aircraft Establishment table reprinted by NACA, and S9104 (CC BY 4.0, Michael Selig).
   `public/airfoils/NOTICE.md` gives source, legal basis, conditions and attribution per file; the
   status outside the United States of the public-domain tables is not established.
+- Documentation in English and German: `README.md` and `README.de.md`, and 10 wiki pages (User Guide,
+  Geometry, File Formats, Airfoil Sources, Development, each in both languages) with 12 screenshots
+  from `npm run screenshots`. `npm run docs:check` (in CI) checks that every page has its
+  counterpart, that wiki links and images resolve, and that both README coverage tables are present.
 
 ### Changed
 

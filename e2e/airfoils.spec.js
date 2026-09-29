@@ -2,7 +2,8 @@
 // coordinates, NACA generator, library presets, "Remove unused", .dat download round trip and the
 // remove button of airfoils in use.
 //
-// All test airfoils are generated here from the NACA 4-digit equations; no third-party files are used.
+// Uploaded test airfoils are generated here from the NACA 4-digit equations; the library test adds the
+// bundled S9104 file from public/airfoils/.
 import { STORAGE_KEY, createDesign, dialogOf, downloadOf, expect, openTab, savedProject, statusOf, test, toastOf, whenRerendered } from './helpers.js';
 
 const NACA_MESSAGE = 'Enter a 4-digit (e.g. 2412) or 5-digit (e.g. 23012) designation.';

@@ -31,6 +31,8 @@ jobs:
         run: npm run coverage:check
       - name: Bundled airfoil library
         run: npm run airfoils:check
+      - name: Documentation pages, links and images
+        run: npm run docs:check
       - uses: actions/upload-artifact@v7
         if: always()
         with:
