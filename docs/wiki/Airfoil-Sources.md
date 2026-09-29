@@ -56,7 +56,7 @@ Tab **Airfoils**, box **More airfoils (external, not bundled)**:
 2. **Airfoils** > **Upload**: drop the file on the drop zone or use **Choose files**.
 3. Check the preview and the **Source / attribution** field, then click **Add to project**.
 
-A project holds at most 200 airfoils. At 200, **Upload** opens no preview and shows `The project holds 200 airfoils, the limit; "Remove unused" frees places.`
+Above 200 airfoils the **Checks** tab shows a warning `Large project: …`. It lists `N airfoils (warning above 200)` with any other size above its threshold and names the expected time and browser memory of each change. When the count rises above 200, the short message after **Add to project** also shows this warning. A project holds at most 10,000 airfoils. At 10,000, **Upload** opens no preview and shows `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.` An airfoil that takes the points of all project airfoils above 1,000,000 is refused with `With this airfoil the project airfoils hold N points; the limit is 1,000,000. "Remove unused" frees points.`
 
 ### Parser test
 

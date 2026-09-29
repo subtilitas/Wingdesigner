@@ -54,6 +54,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/export/stl.js` | Binary stereolithography (STL) writer |
 | `src/export/threemf.js` | 3MF writer |
 | `src/model/project.js` | Project model, defaults, limits, validation |
+| `src/model/budget.js` | Warning thresholds, loft grid, time and memory estimates |
 | `src/model/io.js` | Project JSON import and export |
 | `src/model/edit.js` | Edit operations |
 | `src/model/wizard.js` | Wizard presets and parameter ranges |
@@ -125,18 +126,72 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | **Glider** preset, elliptic guide curves, 17 spanwise stations | 60 | 36 ms | 12 ms | 6 ms | 445 KB |
 | **Glider** preset, elliptic guide curves, 17 spanwise stations | 200 | 89 ms | 42 ms | 19 ms | 1398 KB |
 
-Many sections: **Smooth**, **Spanwise stations per panel with guides or smooth mode** 40, **Chordwise stations per surface** 200; Node.js 24, load average 3.3 (other processes running).
+Large projects in the browser:
 
-| Case | Spanwise stations after the grid limit | `buildWing` |
+| Condition | Value |
+| --- | --- |
+| Machine | Chromium 141, headless, software rendering; 4 shared cores of a 2.1 GHz Intel Xeon CPU; load average 2 to 8 (other processes running) |
+| Change | 1 chord edit in the **Sections** table |
+| Values | JavaScript time of the change; JavaScript heap after the rebuild |
+
+| Case | JavaScript time per change | Heap |
 | --- | ---: | ---: |
-| 20 sections | 400 (21 per panel) | 0.8 s |
-| 200 sections | 399 (2 per panel) | 2.0 s |
+| 200 sections, **Smooth** (399 spanwise stations) | 0.5 to 0.65 s | 38 to 48 MB |
+| 1,000 sections, **Linear** | 1.5 to 1.6 s | 78 to 91 MB |
+| 2,000 sections, **Smooth** | 2.9 to 3.8 s | 159 to 175 MB |
+| 5,000 sections, **Linear** | 6.9 to 7.4 s | 345 to 361 MB |
+| 5,000 sections, **Smooth** | 6.2 to 8.3 s | 237 to 413 MB |
+| 10,000 sections, **Linear** | 15.8 to 16.4 s | 490 MB |
+| 15,000 sections, **Linear** | 19 to 23 s | 678 MB |
+| 20,000 sections, **Linear** | 24 s | 969 MB |
 
-- Grid limit: at most 160,000 grid points (spanwise stations × (2N + 1) profile points, N = **Chordwise stations per surface**) before added stations (`MAX_GRID_POINTS` in `src/geom/wing.js`). Above it the build uses fewer stations per panel and gives a warning.
-- Section layout, profile cache state and number of runs of these 2 measurements: not recorded.
+- 20,000 sections, **Linear**: 57 s page time per change with software rendering. Opening the project: 24 s JavaScript time, 59 s page time, 496 MB heap afterwards.
+- Selecting a section: 2 to 100 ms JavaScript time at 200 to 20,000 sections.
+- Airfoils of 20,001 points each: 100 airfoils open in 17 s, a change takes 2.3 s, heap 546 MB; 200 airfoils open in 35 s, a change takes 5.8 to 7.9 s, heap 1.1 GB.
+- Mesh export, 16 sections × 40 stations, 200 **Chordwise stations per surface**: STL with 8.5 million triangles in 6.9 s, 423 MB file, 2.7 GB browser memory at the peak. STL with 20 million triangles fails; 80 million triangles crash the tab. 3MF with 8.5 million triangles in 49 s, 97 MB file.
+- STEP export: 81 MB in 2.2 s (1,041 stations), 330 MB in 8.4 s (4,161 stations).
+- Node.js 24, 5,000 sections, **Linear**: `buildWing` 5.1 s, wing statistics 20 ms, 363 MB heap kept.
+- Node.js 24, guide curve of 50,000 points: 5.1 to 6.1 s per build. The **Planform** tab opens in 6 s with 10,000 guide points and in 36 s at 3.4 GB with 50,000.
 
 Build time without cached profiles: not measured in this run.
 Build time and memory use on phones: not measured.
+
+### Size warnings and limits
+
+Sizes above a warning threshold work as usual. The build then adds 1 warning to the **Checks** tab: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Each size reads `<value> (warning above <threshold>)`, for example `250 sections (warning above 200)`. `<time>` reads `under 1 s` or `about X s`; `<memory>` reads `about X MB` or `about X GB`. The status bar counts the warning. When a size rises above its threshold (an edit, **Open**, the restored autosave), a short message shows the same text. Beyond a hard limit a desktop browser tab runs out of memory or a change takes about 1 minute; the app refuses such projects and changes.
+
+| Size | Warning above (`WARN` in `src/model/budget.js`) | Hard limit (`LIMITS` in `src/model/project.js`) |
+| --- | ---: | ---: |
+| Sections | 200 | 20,000 |
+| Airfoils | 200 | 10,000 |
+| Points in one airfoil | 5,000 | 100,000 |
+| Airfoil points in all | 100,000 | 1,000,000 |
+| Points of a guide curve | 500 (enabled guide curves) | 20,000 |
+| Loft grid points | 60,000 | 5,000,000 |
+| Export triangles (STL, 3MF) | 2,000,000 | 10,000,000 |
+| Characters in a name (project, airfoils) | 200 | 10,000 |
+
+- Where the warnings appear: points in one airfoil in the airfoil preview (`many-points`); export triangles in the export dialog, which disables **Download** above 10,000,000 triangles; all other sizes in the `Large project` warning. The **Settings** tab shows `Loft grid: N points.` under the resolution fields, with the time and memory above 60,000 points.
+- Further hard limits: ids 200 characters; airfoil source texts 2,000 characters; airfoil input 5,000,000 characters (`MAX_INPUT` in `src/airfoil/parse.js`); airfoil files above 20 MB are not read; the parser stops after 100,001 coordinate lines (`MAX_POINTS`); **Open** rejects project files above 100 MB unread (`MAX_PROJECT_BYTES` in `src/model/io.js`).
+- Loft grid: spanwise stations × (2N + 1) profile points before added stations, N = **Chordwise stations per surface** (`loftGrid` in `src/model/budget.js`). Up to 5,000,000 grid points the build uses the settings as entered. Above, it uses fewer stations per panel and warns `Spanwise stations per panel reduced from K to k: S sections with N chord samples keep the loft within 5,000,000 grid points.` When 1 station per panel still exceeds the limit, the build stops with `The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.`
+
+Estimate model: linear fits to the browser measurements above, JavaScript time without drawing the 3D view. The 3D view adds the drawing time of the graphics card. Phones: not measured. The coefficients are `COST` (each change) and `EXPORT` (mesh export) in `src/model/budget.js`. Units: 1 MB = 1000 KB = 1,000,000 bytes.
+
+| Unit (`COST`) | Time | Memory |
+| --- | ---: | ---: |
+| Base of each change | 0.2 s | 15 MB |
+| Loft grid point | 11.5 µs | 0.65 KB |
+| Airfoil list entry in the **Sections** table: sections × airfoils up to 20,000 entries (`LAZY_OPTIONS`), above that 1 per section | 8.5 µs | 0.5 KB |
+| Airfoil point | 1.5 µs | 0.2 KB |
+| Point of an enabled guide curve | 110 µs | 50 KB |
+| Airfoil point, checks on import and first build of a wing that uses the airfoil (`many-points` warning only) | 30 µs | not used |
+
+| Export, per triangle (`EXPORT`) | Time | Memory | File |
+| --- | ---: | ---: | ---: |
+| STL | 0.8 µs | 210 bytes | 50 bytes |
+| 3MF | 5.8 µs | 110 bytes | 11.5 bytes |
+
+The export memory adds the base of 15 MB. Tests: `test/budget.test.js` (thresholds, estimates, loft grid as the build computes it, shortened names), `e2e/limits.spec.js` (warning above 200 sections and the title of the **+** button, airfoil lists of large sections tables, export dialog note and the hard limit).
 
 ## Test data policy
 
@@ -163,7 +218,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 182 tests in 7 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 200 tests in 9 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -204,7 +259,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Timeouts | 60000 ms per test, 60000 ms for server start |
 | Retries | 0 |
 
-125 tests in 9 spec files, 250 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+136 tests in 10 spec files, 272 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 30 tests run in one project only (`test.skip` in the other project):
 

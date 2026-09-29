@@ -750,27 +750,38 @@ test.describe('Airfoils tab', () => {
     expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410']);
   });
 
-  test('a project with 200 airfoils (the limit) refuses one more before the preview', async ({ page }) => {
+  test('above 200 airfoils an added airfoil brings the size warning; at 10,000 the next one is refused before the preview', async ({ page }) => {
+    test.slow();
     await startSport(page);
-    // Fill the autosaved project to 200 airfoils (copies of NACA 2410 with scaled thickness), reload.
     await expect.poll(async () => (await savedProject(page))?.airfoils?.length).toBe(2);
-    await page.evaluate((key) => {
-      const p = JSON.parse(localStorage.getItem(key));
-      const base = p.airfoils[1];
-      for (let i = 2; i < 200; i++) p.airfoils.push({ ...base, id: `copy-${i}`, name: `Copy ${i}`, points: base.points.map(([x, y]) => [x, y * (1 + i / 1000)]) });
-      localStorage.setItem(key, JSON.stringify(p));
-    }, STORAGE_KEY);
-    await page.reload();
-    await openTab(page, 'Airfoils');
-    await expect(sectionOf(page, 'Project airfoils').locator('li')).toHaveCount(200);
+    // Fill the autosaved project with five-point airfoils up to n, then reload.
+    const fill = async (n) => {
+      await page.evaluate(
+        ([key, count]) => {
+          const p = JSON.parse(localStorage.getItem(key));
+          for (let i = p.airfoils.length; i < count; i++) p.airfoils.push({ id: `copy-${i}`, name: `Copy ${i}`, points: [[1, 0], [0.5, 0.05 + i * 1e-7], [0, 0], [0.5, -0.04], [1, 0]] });
+          localStorage.setItem(key, JSON.stringify(p));
+        },
+        [STORAGE_KEY, n],
+      );
+      await page.reload();
+      await openTab(page, 'Airfoils');
+      await expect(sectionOf(page, 'Project airfoils').locator('li')).toHaveCount(n);
+    };
+    await fill(200);
     await nacaPreview(page, '4415');
-    await expect(toastOf(page)).toHaveText('The project holds 200 airfoils, the limit; "Remove unused" frees places.');
+    await dialogOf(page).getByRole('button', { name: 'Add to project' }).click();
+    await expect(toastOf(page)).toHaveText(/^Added airfoil "NACA 4415"\. Large project: 201 airfoils \(warning above 200\)\. Each change takes (under 1 s|about [\d.]+ s) and about \d+ MB of browser memory\.$/);
+    await expect.poll(async () => (await savedProject(page)).airfoils.length).toBe(201);
+    await fill(10_000);
+    await nacaPreview(page, '2415');
+    await expect(toastOf(page)).toHaveText('The project holds 10,000 airfoils, the limit; "Remove unused" frees places.');
     await expect(dialogOf(page)).toHaveCount(0);
-    // "Remove unused" frees 198 places; adding works again.
+    // "Remove unused" frees the places; adding works again.
     await clickAndRefresh(page, sectionOf(page, 'Project airfoils').getByRole('button', { name: 'Remove unused' }));
     expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410']);
-    await nacaPreview(page, '4415');
-    await addFromPreview(page, 'NACA 4415');
-    expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410', 'NACA 4415']);
+    await nacaPreview(page, '2415');
+    await addFromPreview(page, 'NACA 2415');
+    expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410', 'NACA 2415']);
   });
 });

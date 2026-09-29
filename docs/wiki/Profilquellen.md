@@ -56,7 +56,7 @@ Registerkarte **Airfoils** (Profile), Kasten **More airfoils (external, not bund
 2. **Airfoils** > **Upload** (Hochladen): Datei auf die Ablagefläche ziehen oder **Choose files** (Dateien wählen) verwenden.
 3. Vorschau und Feld **Source / attribution** (Quellenangabe) prüfen, dann **Add to project** (zum Projekt hinzufügen) klicken.
 
-Ein Projekt enthält höchstens 200 Profile. Bei 200 Profilen öffnet **Upload** keine Vorschau und zeigt `The project holds 200 airfoils, the limit; "Remove unused" frees places.`
+Über 200 Profilen zeigt die Registerkarte **Checks** (Prüfungen) eine Warnung `Large project: …`. Sie nennt `N airfoils (warning above 200)` mit jeder anderen Größe über ihrer Schwelle sowie die erwartete Rechenzeit und den Browserspeicher je Änderung. Steigt die Zahl über 200, zeigt die Kurzmeldung nach **Add to project** auch diese Warnung. Ein Projekt enthält höchstens 10 000 Profile. Bei 10 000 Profilen öffnet **Upload** keine Vorschau und zeigt `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.` Ein Profil, das die Punkte aller Projektprofile über 1 000 000 bringt, wird mit `With this airfoil the project airfoils hold N points; the limit is 1,000,000. "Remove unused" frees points.` abgelehnt.
 
 ### Einlesetest
 

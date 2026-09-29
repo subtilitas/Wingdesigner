@@ -16,6 +16,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   Geometry, File Formats, Airfoil Sources, Development, each in both languages) with 12 screenshots
   from `npm run screenshots`. `npm run docs:check` (in CI) checks that every page has its
   counterpart, that wiki links and images resolve, and that both README coverage tables are present.
+- Size warnings: above 200 sections, 200 airfoils, 5,000 points in one airfoil, 100,000 airfoil
+  points, 500 points in an enabled guide curve, 60,000 loft grid points or 200-character names, one
+  warning lists the sizes and the expected time and browser memory of each change; a toast shows it
+  when a size crosses its threshold, and the Sections **+**, Planform **Add point** and Settings
+  loft grid note name the estimate.
+- Export dialog: a note under the mesh density gives the triangles and file size of the chosen
+  format, halves and density, with time and memory above 2,000,000 triangles.
 
 ### Changed
 
@@ -33,6 +40,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   sample counts.
 - The airfoil preview uses the profile parametrization from Settings; profile errors under chord
   length or uniform parametrization point to centripetal parametrization.
+- Hard limits where a desktop browser tab runs out of memory or a change takes about a minute:
+  20,000 sections, 10,000 airfoils, 1,000,000 airfoil points, 100,000 points per airfoil, 20,000
+  guide points, 5,000,000 loft grid points (fewer stations per panel above it), 10,000,000 export
+  triangles, 10,000-character names.
+- Mesh export: Fine density is always offered; Download is off above 10,000,000 triangles.
+- Save and JSON export leave out the derived NURBS data when the file would exceed 100 MB, so every
+  saved project reopens; Open reads project files up to 100 MB (50 MB before), airfoil uploads up
+  to 20 MB and 5,000,000 characters (8 MB and 2,000,000 before).
+- Selecting a section marks the row, the 3D section outline and the planform handle without
+  rebuilding the wing; a click in a row outside its fields and buttons selects it.
+- Sections table: above 20,000 section-airfoil list entries each airfoil list is filled when it is
+  focused or pressed.
+- Lists and messages show the first 200 characters of a name followed by `…`; download file names
+  are cut to 120 characters.
 
 ### Fixed
 
@@ -90,6 +111,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   50 MB project held 100 copies (5,000 MB).
 - Autosave: an edit committed less than one frame before the page is hidden or left (reload, closing
   the tab, switching apps) is saved on `pagehide` or `visibilitychange`.
+- Airfoil check: a surface that runs back in x at more than 50 points is an error (`folds`);
+  clustered and vertical point runs are checked in linear time (crowded crossing-search cells are
+  subdivided, the thickness envelope evaluates each x once).
+- Builds take time linear in the section count: 5,000 sections took 25 to 43 s per change at up to
+  3.8 GB and 5,250 crashed the tab; now 6.9 to 7.4 s and 345 to 361 MB (Chromium 141).
+- Wing statistics integrate the planform over the sections, stations and every guide knot and
+  control point, halving an interval while its halves change an integral by more than 1e-10 of its
+  scale (at most 12 halvings).
+- Insert refuses a section with a message when no span position lies between the two neighbours or
+  the new tip would lie beyond y = 1,000,000 mm.
 - STL and 3MF exports refuse a mesh in which 32-bit coordinates collapse or turn over a triangle
   whose longest edge is at least 4 coordinate spacings (a 1 mm chord at 1,000,000 mm: 712 of 960
   triangles; a 7.41 mm chord near the limit: 4 triangles 10 mm long) and name the coordinate

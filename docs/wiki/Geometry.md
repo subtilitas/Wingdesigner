@@ -108,8 +108,9 @@ coarse file. The same test runs on each airfoil curve and on the surface rows (s
 | Samples per knot span | per = max(1, min(256, round(4000 · L_span / L_total))); L_span = length of the control polygon of the span (p segments), L_total = sum over the non-empty knot spans | 4 |
 | Samples in total | Σ per + 1, about 4001 | 4 · spans + 1 |
 | Test | proper crossings of non-adjacent polyline segments; every crossing found is sized; crossings up to the tolerance do not count; the search stops after 20 crossings above the tolerance; the largest is reported | same |
+| Search | uniform grid of about one cell per segment; only segments that share a cell are tested; a cell with more than 32 segments gets its own grid over the part its segments cover, at most 6 levels deep (`selfIntersections` in `src/airfoil/geometry.js`) | same |
 | Size of a crossing (mean width) | the crossing splits the polyline into 2 parts; part P = the part with the smaller bounding-box diagonal; size = area(P) / diagonal(P), area of P as a closed polygon (shoelace formula) | same |
-| Tolerance | size > 5e-4 of the chord (0.05 %) is an error. Cusped closed TEs of 246 real files leave slivers of at most 1.6e-5 of the chord (0.0016 %); the loop of a coarse 9-point file measures 2.5e-3 of the chord (0.25 %). | size > 5e-4 · c (mm), c = chord at the y of the row |
+| Tolerance | size > 5e-4 of the chord (0.05 %) is an error. Cusped closed TEs of 246 real files leave slivers of at most 1.6e-5 of the chord (0.0016 %); the loop of a coarse 9-point file measures 2.5e-3 of the chord (0.25 %). In the wing build the loop is also limited to 0.1 mm (`CROSSING_LIMIT` in `src/geom/profile.js`) at the largest chord of the sections that use the airfoil: above 200 mm chord a loop wider than 0.1 mm is an error, and the message adds "the loop is … mm wide at … mm chord, above 0.1 mm." | size > min(5e-4 · c, 0.1 mm), c = chord at the y of the row |
 | Message | "the NURBS curve through the points crosses itself near x = … % chord" | "The loft surface crosses itself at y = … mm near x = … mm" |
 | Remedy | a file with more points or finer spacing near that position | raise **Settings** > **Chordwise stations per surface**; the message ends with "Increase Settings > Chord samples." |
 
@@ -184,6 +185,8 @@ Limitation: x(u) must increase monotonically from the leading edge to each TE en
 above 1e-4 of the chord is an error (section 1.5). With a smaller reversal the solver returns one of
 several solutions for the affected stations. The sanity warning `non-monotonic` tests the file points
 only (x decrease > 1e-6 of the chord between neighbouring points on one surface), not the curve.
+The sanity error `folds` stops an airfoil whose upper or lower surface runs back in x at more than 50
+points: "The upper surface runs back in x at … points; the limit is 50." (lower surface likewise).
 
 ## 3. Spanwise stations
 
@@ -225,15 +228,20 @@ Example: **Glider** preset, 3 sections, K = 8: 17 stations.
 y_(i,k) = y_i + (y_(i+1) − y_i) (1 − cos(π k / K)) / 2          k = 0 … K − 1
 ```
 
-Grid limit (`MAX_GRID_POINTS` in `src/geom/wing.js`), **Smooth** or a guide curve enabled: before
-stations are added, K · (sections − 1) · (2N + 1) is at most 160,000 points.
+Loft grid (`loftGrid` in `src/model/budget.js`): stations times profile points before stations are
+added, ((sections − 1) · K + 1) · (2N + 1) points. **Linear** without a guide curve uses K_set = 1.
+The limits apply in every mode.
 
 | Item | Value |
 | --- | --- |
-| K used | max(1, min(K_set, floor(160,000 / ((sections − 1) · (2N + 1))))); K_set = **Settings** value |
-| Warning (K < K_set) | "Spanwise stations per panel reduced from K_set to K: S sections with N chord samples keep the loft within 160,000 grid points." |
-| Example | 20 sections, K_set = 40, N = 200: K = 21, 400 stations |
-| Example | 200 sections, K_set = 8, N = 60 (defaults): K = 6, 1,195 stations |
+| Warning threshold | above 60,000 grid points (`WARN.gridPoints`): the build adds the warning "Large project: …" with "… loft grid points (warning above 60,000)" and the expected time and browser memory of each change. **Settings** shows "Loft grid: … points." under the resolution fields, with the time and memory above 60,000. |
+| Limit | 5,000,000 grid points (`LIMITS.maxGridPoints` in `src/model/project.js`); beyond it a desktop browser tab runs out of memory |
+| K used | max(1, min(K_set, floor(5,000,000 / ((sections − 1) · (2N + 1))))); K_set = **Settings** value. K < K_set only above 5,000,000 grid points. |
+| Warning (K < K_set) | "Spanwise stations per panel reduced from K_set to K: S sections with N chord samples keep the loft within 5,000,000 grid points." |
+| Error (more than 5,000,000 grid points with the K used) | "The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections." No surface is built. |
+| Example | 200 sections, K_set = 8, N = 60 (defaults): K = 8, 1,593 stations, 192,753 grid points: warning with time and memory |
+| Example | 2,000 sections, K_set = 8, N = 200: K = 6, 11,995 stations, 4,809,995 grid points |
+| Example | 20,000 sections, N = 200, any mode: K = 1, 8,020,000 grid points: error |
 
 Added stations: the surface passes through the stations only. Between stations it can deviate from
 the intended surface, also through twist. After the surface fit (section 4), the builder compares
@@ -364,9 +372,9 @@ station):
 t_k = z_unit,(N−k) − z_unit,(N+k)          k = 1 … N − 1
 ```
 
-Chord stations beyond 99 % of the chord (s_k > 0.99): a negative t_k up to 1e-4 in magnitude counts
-as 0. The resampled TE of a cusped airfoil can lie in a crossing loop that the curve check of section
-1.4 accepts (loops with a mean width up to 5e-4 of the chord).
+Chord stations beyond 99 % of the chord (s_k > 0.99): a negative t_k up to min(1e-4, 0.1 mm / c) in
+magnitude counts as 0. The resampled TE of a cusped airfoil can lie in a crossing loop that the curve
+check of section 1.4 accepts (loops with a mean width up to 5e-4 of the chord, at most 0.1 mm).
 
 Fitted positions: the check positions plus the quarter points 0.25, 0.5 and 0.75 of every station
 interval after the final fit (section 3.2).
@@ -380,12 +388,13 @@ Checks in code order. Every row is an error; no surface is built.
 | Check | Condition |
 | --- | --- |
 | Section count | fewer than 2 sections |
-| Project limits | a section chord above 100,000 mm, a section x, y or z outside ±1,000,000 mm, a twist outside ±360°, more than 200 sections, or a guide curve (on or off) with more than 500 points, a point x outside ±1,100,000 mm or a point y outside ±1,000,000 mm. Same limits as on **Open** (`limitErrors` in `src/model/project.js`), so a project that cannot be saved cannot be exported. Every exceeded limit gives one message, e.g. "Section 3: twist must be within ±360 degrees." or "Section 2: chord must be at most 100000 mm." More than 200 sections: only that message, the sections are not read. |
+| Project limits | a section chord above 100,000 mm, a section x, y or z outside ±1,000,000 mm, a twist outside ±360°, more than 20,000 sections, or a guide curve (on or off) with more than 20,000 points, a point x outside ±1,100,000 mm or a point y outside ±1,000,000 mm. Same limits as on **Open** (`limitErrors` in `src/model/project.js`), so a project that cannot be saved cannot be exported. Every exceeded limit gives one message, e.g. "Section 3: twist must be within ±360 degrees." or "Section 2: chord must be at most 100000 mm." More than 20,000 sections: only the message "At most 20,000 sections are supported (found N).", the sections are not read. A guide curve above 20,000 points: "guides.nose.points: at most 20,000 points (found N)." (end line: `guides.end.points`). |
 | Root side | first section (after sorting by y) at y < 0: "lies on the mirrored side" |
 | Section positions | 2 sections with the same y |
 | Airfoil reference | a section uses an airfoil id missing in the project |
 | Airfoil | sanity-check error, failed NURBS interpolation, self-crossing NURBS curve (section 1.4) or x reversal (section 1.5). With **Chord length** or **Uniform** parametrization the message ends with 'Settings > Profile parametrization "centripetal" follows the points more closely.' |
 | Guide curves | a condition of section 3.3 violated |
+| Loft grid | more than 5,000,000 grid points with the stations per panel used (section 3.2) |
 | Section values | x_LE, c, z or cos(twist) of a check position is not a finite number. Message: "Section values give non-finite coordinates at y = … mm; check the positions, chords and twists of the sections." |
 | Geometry extent | at a check position: x_LE, x_LE + c (trailing edge) or z beyond ±1,200,000 mm (`LIMITS.maxExtent`), or c above 100,000 mm. Causes: **Smooth** overshoot; a guide curve close to ±1,200,000 mm, where the chord added to it or taken from it leaves the extent; nose line and end line more than 100,000 mm apart. Message: "At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves, or use linear interpolation." |
 | **Smooth** overshoot | **Smooth** only. At a check position an interpolated value lies more than 2 × (max − min) of its section values outside [min, max] (`OVERSHOOT_LIMIT` = 2). Values: x_LE (no guide curve on), chord (not both guide curves on), z, twist, and the height z_unit of every profile point k = 1 … 2N − 1. The message names the value with the largest overshoot (`leading-edge x`, `chord`, `z`, `twist`, `upper surface height at x = … % chord` or `lower surface height at x = … % chord`), its y, the section range and the smallest gap between 2 sections. Remedy in the message: **Linear**, more evenly spaced sections, or fewer closely spaced sections. |
@@ -395,7 +404,7 @@ Checks in code order. Every row is an error; no surface is built.
 | Chord | minimum chord < 1 mm; the message gives the chord and its y |
 | Chord, hint | as above, minimum at the tip, chord > −0.01 mm, **Wing tip** = **Flat**: the message adds "set **Settings** > **Wing tip** to **Pointed**" |
 | Fitted surface, finite | after the surface fit and the added stations (section 4): a control point coordinate is not a finite number. Message: "The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections." |
-| Fitted thickness | at every fitted position: local thickness of the fitted surface < −1e-9 (beyond 99 % chord: < −1e-4) at a compared chord station ("The fitted surface turns inside out between stations"), or ≤ 1e-5 (0.001 % of the chord) at a compared chord station from 1 % to 99 % chord ("The fitted surface has zero thickness between stations"). The message gives y and the thickness. Cause in the message: the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in **Smooth** mode). Remedy in the message: smooth the guide curves, space the sections more evenly or add sections. |
+| Fitted thickness | at every fitted position: local thickness of the fitted surface < −1e-9 (beyond 99 % chord: < −min(1e-4, 0.1 mm / c)) at a compared chord station ("The fitted surface turns inside out between stations"), or ≤ 1e-5 (0.001 % of the chord) at a compared chord station from 1 % to 99 % chord ("The fitted surface has zero thickness between stations"). The message gives y and the thickness. Cause in the message: the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in **Smooth** mode). Remedy in the message: smooth the guide curves, space the sections more evenly or add sections. |
 | Fitted chord | at every fitted position: c_fit < 0.9 mm (1 mm minimum chord less 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)) projected in the x-z plane onto the intended chord direction of the station at y. Message: "The fitted surface folds or narrows between stations" |
 | Surface self-crossing | the surface row at a section, halfway between 2 neighbouring sections or halfway between the 2 stations of one of the 64 widest station intervals (added stations included) crosses itself in the x-z plane with a loop size (mean width) above 5e-4 · c; 4 samples per knot span (section 1.4) |
 
@@ -591,8 +600,11 @@ Pass criteria per file:
 
 MAC: mean aerodynamic chord. The integrals use the intended planform: x_LE(y) and c(y) of section 3.4,
 including guide curves and the chord floor of a pointed tip (`planformAt` in `src/geom/wing.js`).
-Quadrature: 5-point Gauss-Legendre per station interval [y_a, y_b], exact for polynomials up to
-degree 9.
+Quadrature: 5-point Gauss-Legendre, exact for polynomials up to degree 9, on each interval [y_a, y_b]
+between neighbouring breakpoints. Breakpoints: the stations, the sections and, for each enabled guide
+curve, every knot and control point mapped to the wing span (`planformBreaks` in `src/geom/wing.js`).
+An interval is halved while the two halves change one of the 4 integrals by more than 1e-10 of its
+scale, at most 12 times (`REL_TOLERANCE`, `MAX_DEPTH` in `src/geom/stats.js`).
 
 ```
 S_half   = ∫ c dy
@@ -607,19 +619,24 @@ AR       = b² / S
 ∫ f dy   ≈ Σ_intervals (Δy / 2) Σ_i w_i f(y_a + (1 + t_i) Δy / 2)
 t_i      = 0, ±0.538469310105683, ±0.906179845938664
 w_i      = 0.568888888888889, 0.478628670499366, 0.236926885056189
+
+halve [a, b] while |I_left + I_right − I_whole| > 1e-10 · max(s, 1) · (b − a) for one integral,
+                   at most 12 halvings
+s        = c_max, c_max², c_max · y_max, c_max · max(|x_LE| + c)   (per integral, over the stations)
 ```
 
-| Planform between 2 neighbouring stations | Quadrature |
+| Planform between 2 neighbouring breakpoints | Quadrature |
 | --- | --- |
 | **Linear** or **Smooth**, no guide curve | exact: c and x_LE have degree ≤ 3 in y, the integrands degree ≤ 6 |
-| a guide curve enabled, or the chord raised to c_tip in the last panel of a pointed tip | not exact: guide knots inside a station interval, x(y) of a **Control points** guide is not a polynomial, the chord floor is a kink |
+| a guide curve enabled, or the chord raised to c_tip in the last panel of a pointed tip | not exact on every interval: x(y) of a **Control points** guide is not a polynomial, the chord floor is a kink; the halving refines these intervals |
 
-Quadrature error against the midpoint rule with 200,000 intervals:
+Quadrature error against the midpoint rule with 200,000 intervals (differences of this size lie
+within the error of the midpoint rule itself):
 
 | Case | S | MAC | y_MAC | x_LE,MAC |
 | --- | --- | --- | --- | --- |
-| **Glider**, **Tip** = **Flat** | −2.8e-7 % | −2.1e-7 % | −1.7e-7 % | 9.2e-8 mm |
-| **Glider**, **Tip** = **Pointed (1/200 scale)** | 3.1e-5 % | −1.9e-5 % | 3.8e-5 % | 8.1e-6 mm |
+| **Glider**, **Tip** = **Flat** | −2.1e-10 % | −3.4e-12 % | −4.1e-10 % | 2.0e-12 mm |
+| **Glider**, **Tip** = **Pointed (1/200 scale)** | −7.7e-10 % | 7.0e-10 % | −1.3e-9 % | −3.0e-10 mm |
 | other planforms with guide curves | not measured | not measured | not measured | not measured |
 
 - b: span, S: wing area, AR: aspect ratio. b, S and AR cover both halves.

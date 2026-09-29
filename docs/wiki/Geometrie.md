@@ -113,8 +113,9 @@ Profilkurve und für die Flächenzeilen (Abschnitt 4).
 | Abtastwerte je Knotenintervall | per = max(1, min(256, round(4000 · L_span / L_total))); L_span = Länge des Kontrollpolygons des Knotenintervalls (p Strecken), L_total = Summe über die nicht leeren Knotenintervalle | 4 |
 | Abtastwerte insgesamt | Σ per + 1, etwa 4001 | 4 · spans + 1 |
 | Test | echte Kreuzungen nicht benachbarter Polygonsegmente; jede gefundene Kreuzung wird vermessen; Kreuzungen bis zur Toleranz zählen nicht; die Suche endet nach 20 Kreuzungen über der Toleranz; die größte wird gemeldet | ebenso |
+| Suche | gleichmäßiges Gitter mit etwa einer Zelle je Segment; nur Segmente mit einer gemeinsamen Zelle werden geprüft; eine Zelle mit mehr als 32 Segmenten erhält ein eigenes Gitter über den Bereich ihrer Segmente, höchstens 6 Ebenen tief (`selfIntersections` in `src/airfoil/geometry.js`) | ebenso |
 | Größe einer Kreuzung (mittlere Breite) | die Kreuzung teilt das Polygon in 2 Teile; Teil P = der Teil mit der kleineren Diagonale des achsparallelen Hüllrechtecks; Größe = Fläche(P) / Diagonale(P), Fläche von P als geschlossenes Polygon (Gaußsche Trapezformel) | ebenso |
-| Toleranz | Größe > 5e-4 der Profiltiefe (0,05 %) ist ein Fehler. Spitz auslaufende geschlossene Endleisten von 246 echten Dateien hinterlassen schmale Schleifen von höchstens 1,6e-5 der Profiltiefe (0,0016 %); die Schleife einer grob aufgelösten Datei mit 9 Punkten misst 2,5e-3 der Profiltiefe (0,25 %). | Größe > 5e-4 · c (mm), c = Profiltiefe beim y der Zeile |
+| Toleranz | Größe > 5e-4 der Profiltiefe (0,05 %) ist ein Fehler. Spitz auslaufende geschlossene Endleisten von 246 echten Dateien hinterlassen schmale Schleifen von höchstens 1,6e-5 der Profiltiefe (0,0016 %); die Schleife einer grob aufgelösten Datei mit 9 Punkten misst 2,5e-3 der Profiltiefe (0,25 %). Beim Flügelaufbau ist die Schleife außerdem auf 0,1 mm begrenzt (`CROSSING_LIMIT` in `src/geom/profile.js`), bei der größten Profiltiefe der Profilschnitte mit diesem Profil: Über 200 mm Profiltiefe ist eine Schleife breiter als 0,1 mm ein Fehler, und die Meldung ergänzt „the loop is … mm wide at … mm chord, above 0.1 mm.“ | Größe > min(5e-4 · c, 0,1 mm), c = Profiltiefe beim y der Zeile |
 | Meldung | „the NURBS curve through the points crosses itself near x = … % chord“ | „The loft surface crosses itself at y = … mm near x = … mm“ |
 | Abhilfe | eine Datei mit mehr Punkten oder feinerer Verteilung an dieser Stelle | **Settings** > **Chordwise stations per surface** erhöhen; die Meldung endet mit „Increase Settings > Chord samples.“ |
 
@@ -189,7 +190,9 @@ Einschränkung: x(u) muss von der Profilnase zu jedem Endleistenendpunkt monoton
 über 1e-4 der Profiltiefe ist ein Fehler (Abschnitt 1.5). Bei einem kleineren Rücklauf liefert der
 Löser für die betroffenen Stationen eine von mehreren Lösungen. Die Warnung `non-monotonic` der
 Plausibilitätsprüfungen prüft nur die Dateipunkte (x-Abnahme > 1e-6 der Profiltiefe zwischen
-benachbarten Punkten einer Profilseite), nicht die Kurve.
+benachbarten Punkten einer Profilseite), nicht die Kurve. Der Fehler `folds` der
+Plausibilitätsprüfungen weist ein Profil ab, dessen Ober- oder Unterseite an mehr als 50 Punkten in x
+zurückläuft: „The upper surface runs back in x at … points; the limit is 50.“ (Unterseite ebenso).
 
 ## 3. Stationen in Spannweitenrichtung
 
@@ -234,16 +237,20 @@ Beispiel: Vorlage **Glider** (Segelflugmodell), 3 Profilschnitte, K = 8: 17 Stat
 y_(i,k) = y_i + (y_(i+1) − y_i) (1 − cos(π k / K)) / 2          k = 0 … K − 1
 ```
 
-Gittergrenze (`MAX_GRID_POINTS` in `src/geom/wing.js`), **Smooth** oder eine Leitkurve eingeschaltet:
-Vor dem Einfügen zusätzlicher Stationen beträgt K · (Profilschnitte − 1) · (2N + 1) höchstens
-160 000 Punkte.
+Flächengitter (`loftGrid` in `src/model/budget.js`): Stationen mal Konturpunkte vor dem Einfügen
+zusätzlicher Stationen, ((Profilschnitte − 1) · K + 1) · (2N + 1) Punkte. **Linear** ohne Leitkurve
+verwendet K_set = 1. Die Grenzen gelten in jedem Modus.
 
 | Größe | Wert |
 | --- | --- |
-| Verwendetes K | max(1, min(K_set, floor(160 000 / ((Profilschnitte − 1) · (2N + 1))))); K_set = Wert in **Settings** |
-| Warnung (K < K_set) | „Spanwise stations per panel reduced from K_set to K: S sections with N chord samples keep the loft within 160,000 grid points.“ |
-| Beispiel | 20 Profilschnitte, K_set = 40, N = 200: K = 21, 400 Stationen |
-| Beispiel | 200 Profilschnitte, K_set = 8, N = 60 (Vorgaben): K = 6, 1195 Stationen |
+| Warnschwelle | über 60 000 Gitterpunkten (`WARN.gridPoints`): Der Aufbau ergänzt die Warnung „Large project: …“ mit „… loft grid points (warning above 60,000)“ und der erwarteten Zeit und dem Browser-Speicher jeder Änderung. **Settings** zeigt unter den Auflösungsfeldern „Loft grid: … points.“, über 60 000 mit Zeit und Speicher. |
+| Grenze | 5 000 000 Gitterpunkte (`LIMITS.maxGridPoints` in `src/model/project.js`); darüber geht einem Browser-Tab auf einem Desktop-Rechner der Speicher aus |
+| Verwendetes K | max(1, min(K_set, floor(5 000 000 / ((Profilschnitte − 1) · (2N + 1))))); K_set = Wert in **Settings**. K < K_set nur über 5 000 000 Gitterpunkten. |
+| Warnung (K < K_set) | „Spanwise stations per panel reduced from K_set to K: S sections with N chord samples keep the loft within 5,000,000 grid points.“ |
+| Fehler (mehr als 5 000 000 Gitterpunkte mit dem verwendeten K) | „The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.“ Es wird keine Fläche aufgebaut. |
+| Beispiel | 200 Profilschnitte, K_set = 8, N = 60 (Vorgaben): K = 8, 1593 Stationen, 192 753 Gitterpunkte: Warnung mit Zeit und Speicher |
+| Beispiel | 2000 Profilschnitte, K_set = 8, N = 200: K = 6, 11 995 Stationen, 4 809 995 Gitterpunkte |
+| Beispiel | 20 000 Profilschnitte, N = 200, jeder Modus: K = 1, 8 020 000 Gitterpunkte: Fehler |
 
 Zusätzliche Stationen: Die Fläche verläuft nur durch die Stationen. Zwischen den Stationen kann sie
 von der vorgesehenen Fläche abweichen, auch durch Schränkung. Nach der Flächenanpassung (Abschnitt 4)
@@ -379,10 +386,10 @@ Tiefenstation):
 t_k = z_unit,(N−k) − z_unit,(N+k)          k = 1 … N − 1
 ```
 
-Tiefenstationen hinter 99 % der Profiltiefe (s_k > 0,99): Ein negatives t_k mit einem Betrag bis 1e-4
-zählt als 0. Die neu abgetastete Endleiste eines spitz auslaufenden Profils kann in einer
-Kreuzungsschleife liegen, die die Kurvenprüfung aus Abschnitt 1.4 zulässt (Schleifen mit einer mittleren
-Breite bis 5e-4 der Profiltiefe).
+Tiefenstationen hinter 99 % der Profiltiefe (s_k > 0,99): Ein negatives t_k mit einem Betrag bis
+min(1e-4, 0,1 mm / c) zählt als 0. Die neu abgetastete Endleiste eines spitz auslaufenden Profils kann
+in einer Kreuzungsschleife liegen, die die Kurvenprüfung aus Abschnitt 1.4 zulässt (Schleifen mit einer
+mittleren Breite bis 5e-4 der Profiltiefe, höchstens 0,1 mm).
 
 Positionen der angepassten Fläche: die Prüfpositionen und die Viertelpunkte 0,25, 0,5 und 0,75 jedes
 Stationsintervalls nach der letzten Anpassung (Abschnitt 3.2).
@@ -396,12 +403,13 @@ Prüfungen in der Reihenfolge des Codes. Jede Zeile ist ein Fehler; es wird kein
 | Prüfung | Bedingung |
 | --- | --- |
 | Anzahl der Profilschnitte | weniger als 2 Profilschnitte |
-| Projektgrenzen | Profiltiefe eines Profilschnitts über 100 000 mm, x, y oder z eines Profilschnitts außerhalb von ±1 000 000 mm, Schränkung außerhalb von ±360°, mehr als 200 Profilschnitte, oder eine Leitkurve (ein- oder ausgeschaltet) mit mehr als 500 Punkten, einem Punkt mit x außerhalb von ±1 100 000 mm oder y außerhalb von ±1 000 000 mm. Dieselben Grenzen wie bei **Open** (`limitErrors` in `src/model/project.js`); ein Projekt, das nicht gespeichert werden kann, kann daher nicht exportiert werden. Jede überschrittene Grenze ergibt eine Meldung, z. B. „Section 3: twist must be within ±360 degrees.“ oder „Section 2: chord must be at most 100000 mm.“ Mehr als 200 Profilschnitte: nur diese Meldung, die Profilschnitte werden nicht gelesen. |
+| Projektgrenzen | Profiltiefe eines Profilschnitts über 100 000 mm, x, y oder z eines Profilschnitts außerhalb von ±1 000 000 mm, Schränkung außerhalb von ±360°, mehr als 20 000 Profilschnitte, oder eine Leitkurve (ein- oder ausgeschaltet) mit mehr als 20 000 Punkten, einem Punkt mit x außerhalb von ±1 100 000 mm oder y außerhalb von ±1 000 000 mm. Dieselben Grenzen wie bei **Open** (`limitErrors` in `src/model/project.js`); ein Projekt, das nicht gespeichert werden kann, kann daher nicht exportiert werden. Jede überschrittene Grenze ergibt eine Meldung, z. B. „Section 3: twist must be within ±360 degrees.“ oder „Section 2: chord must be at most 100000 mm.“ Mehr als 20 000 Profilschnitte: nur die Meldung „At most 20,000 sections are supported (found N).“, die Profilschnitte werden nicht gelesen. Eine Leitkurve mit mehr als 20 000 Punkten: „guides.nose.points: at most 20,000 points (found N).“ (Endlinie: `guides.end.points`). |
 | Seite der Wurzel | erster Profilschnitt (nach Sortierung nach y) bei y < 0: „lies on the mirrored side“ |
 | Lage der Profilschnitte | 2 Profilschnitte mit demselben y |
 | Profilverweis | ein Profilschnitt verweist auf eine Profil-ID, die im Projekt fehlt |
 | Profil | Fehler der Plausibilitätsprüfungen, fehlgeschlagene NURBS-Interpolation, sich selbst überschneidende NURBS-Kurve (Abschnitt 1.4) oder Rücklauf in x (Abschnitt 1.5). Bei Parametrisierung **Chord length** oder **Uniform** endet die Meldung mit „Settings > Profile parametrization "centripetal" follows the points more closely.“ |
 | Leitkurven | eine Bedingung aus Abschnitt 3.3 verletzt |
+| Flächengitter | mehr als 5 000 000 Gitterpunkte mit den verwendeten Stationen je Feld (Abschnitt 3.2) |
 | Schnittwerte | x_LE, c, z oder cos(Schränkung) einer Prüfposition ist keine endliche Zahl. Meldung: „Section values give non-finite coordinates at y = … mm; check the positions, chords and twists of the sections.“ |
 | Ausdehnung der Geometrie | an einer Prüfposition: x_LE, x_LE + c (Endleiste) oder z außerhalb von ±1 200 000 mm (`LIMITS.maxExtent`) oder c über 100 000 mm. Ursachen: Überschwingen bei **Smooth**; eine Leitkurve nahe ±1 200 000 mm, bei der die hinzugerechnete oder abgezogene Profiltiefe die Ausdehnung verlässt; Nasenlinie und Endlinie mehr als 100 000 mm voneinander entfernt. Meldung: „At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves, or use linear interpolation.“ |
 | Überschwingen bei **Smooth** | Nur **Smooth**. An einer Prüfposition liegt ein interpolierter Wert um mehr als 2 × (max − min) seiner Schnittwerte außerhalb von [min, max] (`OVERSHOOT_LIMIT` = 2). Werte: x_LE (keine Leitkurve eingeschaltet), Profiltiefe (nicht beide Leitkurven eingeschaltet), z, Schränkung und die Höhe z_unit jedes Konturpunkts k = 1 … 2N − 1. Die Meldung nennt den Wert mit dem größten Überschwingen (`leading-edge x`, `chord`, `z`, `twist`, `upper surface height at x = … % chord` oder `lower surface height at x = … % chord`), sein y, den Bereich der Schnittwerte und den kleinsten Abstand zwischen 2 Profilschnitten. Abhilfe laut Meldung: **Linear**, gleichmäßiger verteilte Profilschnitte oder weniger dicht liegende Profilschnitte. |
@@ -411,7 +419,7 @@ Prüfungen in der Reihenfolge des Codes. Jede Zeile ist ein Fehler; es wird kein
 | Profiltiefe | kleinste Profiltiefe < 1 mm; die Meldung nennt Profiltiefe und zugehöriges y |
 | Profiltiefe, Hinweis | wie oben, Minimum am Rand, Profiltiefe > −0,01 mm, **Wing tip** = **Flat**: die Meldung ergänzt „set Settings > Wing tip to Pointed“ (**Settings** > **Wing tip** auf **Pointed** stellen) |
 | Angepasste Fläche, endlich | nach der Flächenanpassung und den zusätzlichen Stationen (Abschnitt 4): eine Koordinate eines Kontrollpunkts ist keine endliche Zahl. Meldung: „The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections.“ |
-| Dicke der angepassten Fläche | an jeder Position der angepassten Fläche: örtliche Dicke < −1e-9 (hinter 99 % der Profiltiefe: < −1e-4) an einer verglichenen Tiefenstation („The fitted surface turns inside out between stations“), oder ≤ 1e-5 (0,001 % der Profiltiefe) an einer verglichenen Tiefenstation von 1 % bis 99 % der Profiltiefe („The fitted surface has zero thickness between stations“). Die Meldung nennt y und die Dicke. Ursache laut Meldung: Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven oder ungleich verteilte Profilschnitte im Modus **Smooth**). Abhilfe laut Meldung: Leitkurven glätten, Profilschnitte gleichmäßiger verteilen oder Profilschnitte hinzufügen. |
+| Dicke der angepassten Fläche | an jeder Position der angepassten Fläche: örtliche Dicke < −1e-9 (hinter 99 % der Profiltiefe: < −min(1e-4, 0,1 mm / c)) an einer verglichenen Tiefenstation („The fitted surface turns inside out between stations“), oder ≤ 1e-5 (0,001 % der Profiltiefe) an einer verglichenen Tiefenstation von 1 % bis 99 % der Profiltiefe („The fitted surface has zero thickness between stations“). Die Meldung nennt y und die Dicke. Ursache laut Meldung: Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven oder ungleich verteilte Profilschnitte im Modus **Smooth**). Abhilfe laut Meldung: Leitkurven glätten, Profilschnitte gleichmäßiger verteilen oder Profilschnitte hinzufügen. |
 | Profiltiefe der angepassten Fläche | an jeder Position der angepassten Fläche: c_fit < 0,9 mm (1 mm Mindesttiefe abzüglich 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)), in der x-z-Ebene auf die vorgesehene Tiefenrichtung der Station bei y projiziert. Meldung: „The fitted surface folds or narrows between stations“ |
 | Selbstüberschneidung der Fläche | eine Flächenzeile an einem Profilschnitt, in der Mitte zwischen 2 benachbarten Profilschnitten oder in der Mitte zwischen den 2 Stationen eines der 64 breitesten Stationsintervalle (zusätzliche Stationen eingeschlossen) überschneidet sich in der x-z-Ebene mit einer Schleifengröße (mittlere Breite) über 5e-4 · c; 4 Abtastwerte je Knotenintervall (Abschnitt 1.4) |
 
@@ -615,7 +623,12 @@ Bestehenskriterien je Datei:
 MAC: mittlere aerodynamische Flügeltiefe (mean aerodynamic chord). Die Integrale verwenden den
 vorgesehenen Grundriss: x_LE(y) und c(y) aus Abschnitt 3.4, einschließlich Leitkurven und
 Mindesttiefe eines spitzen Flügelendes (`planformAt` in `src/geom/wing.js`). Quadratur: 5-Punkt-Gauß-
-Legendre je Stationsintervall [y_a, y_b], exakt für Polynome bis Grad 9.
+Legendre, exakt für Polynome bis Grad 9, auf jedem Intervall [y_a, y_b] zwischen benachbarten
+Teilungspunkten. Teilungspunkte: die Stationen, die Profilschnitte und für jede eingeschaltete Leitkurve
+jeder Knoten und jeder Kontrollpunkt, auf die Spannweite des Flügels abgebildet (`planformBreaks` in
+`src/geom/wing.js`). Ein Intervall wird halbiert, solange die beiden Hälften eines der 4 Integrale um
+mehr als 1e-10 seines Maßstabs ändern, höchstens 12-mal (`REL_TOLERANCE`, `MAX_DEPTH` in
+`src/geom/stats.js`).
 
 ```
 S_half   = ∫ c dy
@@ -630,19 +643,24 @@ AR       = b² / S
 ∫ f dy   ≈ Σ_intervals (Δy / 2) Σ_i w_i f(y_a + (1 + t_i) Δy / 2)
 t_i      = 0, ±0.538469310105683, ±0.906179845938664
 w_i      = 0.568888888888889, 0.478628670499366, 0.236926885056189
+
+halve [a, b] while |I_left + I_right − I_whole| > 1e-10 · max(s, 1) · (b − a) for one integral,
+                   at most 12 halvings
+s        = c_max, c_max², c_max · y_max, c_max · max(|x_LE| + c)   (per integral, over the stations)
 ```
 
-| Grundriss zwischen 2 benachbarten Stationen | Quadratur |
+| Grundriss zwischen 2 benachbarten Teilungspunkten | Quadratur |
 | --- | --- |
 | **Linear** oder **Smooth**, keine Leitkurve | exakt: c und x_LE haben in y höchstens Grad 3, die Integranden höchstens Grad 6 |
-| eine Leitkurve eingeschaltet, oder Profiltiefe im letzten Feld eines spitzen Flügelendes auf c_tip angehoben | nicht exakt: Knoten der Leitkurve innerhalb eines Stationsintervalls, x(y) einer Leitkurve im Modus **Control points** ist kein Polynom, die Mindesttiefe erzeugt einen Knick |
+| eine Leitkurve eingeschaltet, oder Profiltiefe im letzten Feld eines spitzen Flügelendes auf c_tip angehoben | nicht auf jedem Intervall exakt: x(y) einer Leitkurve im Modus **Control points** ist kein Polynom, die Mindesttiefe erzeugt einen Knick; die Halbierung verfeinert diese Intervalle |
 
-Quadraturfehler gegenüber der Mittelpunktregel mit 200 000 Intervallen:
+Quadraturfehler gegenüber der Mittelpunktregel mit 200 000 Intervallen (Abweichungen dieser Größe liegen
+innerhalb des Fehlers der Mittelpunktregel selbst):
 
 | Fall | S | MAC | y_MAC | x_LE,MAC |
 | --- | --- | --- | --- | --- |
-| **Glider**, **Tip** = **Flat** | −2,8e-7 % | −2,1e-7 % | −1,7e-7 % | 9,2e-8 mm |
-| **Glider**, **Tip** = **Pointed (1/200 scale)** | 3,1e-5 % | −1,9e-5 % | 3,8e-5 % | 8,1e-6 mm |
+| **Glider**, **Tip** = **Flat** | −2,1e-10 % | −3,4e-12 % | −4,1e-10 % | 2,0e-12 mm |
+| **Glider**, **Tip** = **Pointed (1/200 scale)** | −7,7e-10 % | 7,0e-10 % | −1,3e-9 % | −3,0e-10 mm |
 | andere Grundrisse mit Leitkurven | nicht gemessen | nicht gemessen | nicht gemessen | nicht gemessen |
 
 - b: Spannweite, S: Flügelfläche, AR (aspect ratio): Streckung. b, S und AR gelten für beide

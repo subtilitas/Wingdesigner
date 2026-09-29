@@ -276,7 +276,11 @@ let largeKeys = new Set();
 function noteLargeSizes() {
   const size = projectSize(store.project);
   const keys = new Set(largeSizes(size).map((q) => q.key));
-  if ([...keys].some((k) => !largeKeys.has(k))) message(sizeWarning(store.project, size));
+  if ([...keys].some((k) => !largeKeys.has(k))) {
+    // After a notice of the same change ("Added airfoil ..."), both stay readable.
+    const shown = toast.classList.contains('show') && !toast.classList.contains('error') ? `${toast.textContent} ` : '';
+    message(shown + sizeWarning(store.project, size));
+  }
   largeKeys = keys;
 }
 

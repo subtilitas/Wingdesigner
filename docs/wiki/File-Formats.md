@@ -32,8 +32,9 @@ Deutsch: [[Dateiformate|Dateiformate]]
 2. Remove accents.
 3. Replace each run of characters outside `A–Z a–z 0–9 . _ -` with one `_`.
 4. Remove leading and trailing `_`.
-5. Empty result: `wing`.
-6. Add the extension.
+5. Cut to 120 characters.
+6. Empty result: `wing`.
+7. Add the extension.
 
 Example: `Sport wing 1500` → `Sport_wing_1500.step`.
 
@@ -52,7 +53,7 @@ Name inside STEP, STL and 3MF files, written `<name>` below: project name; empty
 | Property | Rule |
 | --- | --- |
 | Detection | By content. The file extension is not evaluated. |
-| Size limit | At most 2,000,000 characters; larger input: error `too-large`. At most 5000 points; more: error `too-many-points`. Uploaded files above 8 MB (8,000,000 bytes, 4 bytes per UTF-8 character at most) are rejected before reading, with a red notice and no preview. |
+| Size limit | At most 5,000,000 characters; larger input: error `too-large`. At most 100,000 points; more: error `too-many-points`. Above 100,001 numeric lines (100,000 points and a Lednicer counts line) the parser stops reading, with the message `More than 100,001 coordinate lines; the limit is 100,000 points.` Uploaded files above 20 MB (20,000,000 bytes, 4 bytes per UTF-8 character at most) are not read: red notice `<file>: <size> MB; airfoil files are limited to 5,000,000 characters.`, no preview. Above 5,000 points the sanity checks add warning `many-points`. |
 | File picker filter | `.dat` `.txt` `.cor` `.xml` `.htm` `.html` `.csv` `text/plain`. Drag and drop accepts any file. |
 | Text encoding | UTF-8 (Unicode Transformation Format, 8 bit) with or without byte order mark (BOM). A file that is not valid UTF-8 is read as Windows-1252. |
 | Line ends | CR, LF or CR LF (carriage return, line feed) |
@@ -61,7 +62,7 @@ Name inside STEP, STL and 3MF files, written `<name>` below: project name; empty
 | Separators | space, tab, comma, semicolon |
 | Decimal comma | `0,125  1,250` is read as `0.125  1.250`. Conditions: at least 2 values. Separators: spaces, tabs or semicolons. Every value is a decimal-comma number or an integer. At least 1 value has a comma. A line with 1 field, e.g. `0,5`, is split at the comma: values `0` and `5`. |
 | Number syntax | optional sign, decimal point, exponent with `e`, `E`, `d` or `D` (`1.0D-3`) |
-| Name | First non-numeric line before the first numeric line. The name line keeps a `#` comment: `NACA 0012 # from UIUC` → name `NACA 0012 # from UIUC`. HTML: the `<title>` when not empty. XML: the first `<name>` element. None found: the file name without extension; pasted text: `pasted`. |
+| Name | First non-numeric line before the first numeric line. The name line keeps a `#` comment: `NACA 0012 # from UIUC` → name `NACA 0012 # from UIUC`. HTML: the `<title>` when not empty. XML: the first `<name>` element. None found: the file name without extension; pasted text: `pasted`. A name longer than 10,000 characters is cut to the first 10,000 (info `long-name`). |
 | Column header lines | 2 or 3 words that start with `x`, `y` or `z` (`x y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). After the name line: skipped without a message. As the first non-numeric line before the first numeric line: taken as the name (e.g. `X Yo Yu`), no info `no-name`. |
 | Other non-numeric lines | Skipped, warning `ignored-lines` |
 
@@ -95,7 +96,7 @@ Steps in this order:
 
 1. A value that is not a finite number stops the import (error `non-finite`).
 2. No point found: the import stops (error `no-points`).
-3. More than 5000 points: the import stops (error `too-many-points`).
+3. More than 100,000 points: the import stops (error `too-many-points`: `<n> points; the limit is 100,000.`).
 4. Closed outline with a blunt TE: points on the drawn TE base are removed (warning `closing-point`, rules below). TE base: the steep segment that closes a blunt TE.
 5. Consecutive duplicate points (difference below 1e-12 in x and in y) are removed.
 6. Largest x above 5 and at most 110: the coordinates are percent of chord and are divided by 100.
@@ -122,10 +123,10 @@ A parser error stops the import. The sanity checks then do not run.
 
 | Code | Severity | Condition |
 | --- | --- | --- |
-| `too-large` | Error | input longer than 2,000,000 characters |
+| `too-large` | Error | input longer than 5,000,000 characters |
 | `no-points` | Error | no coordinate point: no numeric line, or no `<point>` in the XML `<coordinates>` element |
 | `non-finite` | Error | a coordinate is not a finite number, e.g. a `<point>` without `<x>` or `<y>` |
-| `too-many-points` | Error | more than 5000 points |
+| `too-many-points` | Error | more than 100,000 points; text formats: reading stops above 100,001 numeric lines |
 | `xml-malformed` | Error | `<coordinates>` without closing tag |
 | `multi-element` | Warning | more than 1 `<coordinates>` element; only the first is read |
 | `ignored-lines` | Warning | non-numeric lines other than the name line and column header lines. HTML with a `<title>`: every non-numeric line except column headers. |
@@ -140,6 +141,7 @@ A parser error stops the import. The sanity checks then do not run.
 | `decimal-comma` | Info | decimal commas read as decimal points |
 | `duplicates` | Info | consecutive duplicate points removed |
 | `no-name` | Info | no name found; the file name is used |
+| `long-name` | Info | name longer than 10,000 characters; the first 10,000 are used. Message: `The name line has <n> characters; the first 10,000 are used.` |
 
 ![Upload preview of sample4412.txt, a percent table with decimal commas: messages decimal-comma, table, percent and stats](images/upload-preview.png)
 
@@ -165,23 +167,25 @@ The checks run:
 | Normalization | x → (x − x_min) / c, y → (y − y_LE) / c, c = x_max − x_min; no rotation |
 | LE point | point farthest from the TE midpoint (mean of the first and the last point); y_LE is its y |
 | % chord | fraction of the normalized chord 1 |
-| Checks on raw coordinates (files: after the parser steps) | `too-few-points`, `too-many-points`, `coarse`, `zero-chord`, `not-normalized`, `rotated`, `te-missing` |
+| Checks on raw coordinates (files: after the parser steps) | `too-few-points`, `too-many-points`, `many-points`, `coarse`, `zero-chord`, `not-normalized`, `rotated`, `te-missing` |
 | Checks on normalized coordinates | all other checks, starting with `outline-length`; `curve-shape` tests the NURBS curve through the normalized points |
-| Threshold source | `LIMITS` in `src/airfoil/sanity.js`; fixed values in `checkAirfoil()`; `CROSSING_TOLERANCE` and `REVERSAL_TOLERANCE` in `src/geom/profile.js` |
+| Threshold source | `LIMITS` in `src/airfoil/sanity.js`; `WARN.pointsPerAirfoil` in `src/model/budget.js`; fixed values in `checkAirfoil()`; `CROSSING_TOLERANCE` and `REVERSAL_TOLERANCE` in `src/geom/profile.js` |
 
 | Code | Severity | Condition | Threshold |
 | --- | --- | --- | --- |
 | `too-few-points` | Error | fewer points than the minimum | 5 points |
-| `too-many-points` | Error | more points than the maximum | 5000 points |
+| `too-many-points` | Error | more points than the maximum. Message: `<n> points; the limit is 100,000.` | 100,000 points |
 | `zero-chord` | Error | all points have the same x | – |
 | `outline-length` | Error | length of the normalized outline (sum of the segment lengths) above the threshold. Runs after normalization, before `self-intersection`; stops the remaining checks. Message: `The outline is … chords long; an airfoil outline is about 2 chords long.` | 10 chords |
-| `self-intersection` | Error | 2 non-adjacent outline segments cross. The segments are binned in a grid of about 1 cell per segment; a pair of binned segments is tested once, in the lower-left cell that both bounding boxes share; a segment that covers more than 16 cells is tested against every segment. The search stops at 10 crossings; the message then counts `10+`. | – |
+| `folds` | Error | number of points at which the upper or lower surface (split at the LE point) runs back in x (from LE to TE, x smaller than at the previous point) above the threshold. Runs after `outline-length`, before `self-intersection`; stops the remaining checks. Message: `The upper surface runs back in x at <n> points; the limit is 50.` (`lower` likewise). | 50 points |
+| `self-intersection` | Error | 2 non-adjacent outline segments cross. The segments are binned in a grid of about 1 cell per segment; a pair of binned segments is tested once, in the lower-left cell that both bounding boxes share; a segment that covers more than 16 cells is tested against every segment; a cell with more than 32 segments is searched again with its own grid, at most 6 levels deep. The search stops at 10 crossings; the message then counts `10+`. | – |
 | `one-surface` | Error | upper or lower surface (split at the LE point) has fewer points than the minimum | 3 points |
 | `crossed-surfaces` | Error | thickness at one of 199 interior cosine-spaced x positions below the threshold | −0.01 % chord |
 | `surfaces-touch` | Error | upper and lower surface touch: thickness at a file point or a cosine-spaced sample between 1 % and 99 % chord at or below the threshold. At each x the lowest point of the upper surface and the highest point of the lower surface count (vertical segments, surfaces that fold back in x). Reported only without `crossed-surfaces`. | 0.001 % chord |
 | `te-crossed` | Error | TE gap (y of the first point − y of the last point) below the threshold | −0.01 % chord |
-| `te-missing` | Error | neither the first nor the last point lies within the threshold of x_max (Selig order starts and ends at the TE) | 5 % chord |
+| `te-missing` | Error | the first or the last point lies more than the threshold before x_max (Selig order starts and ends at the TE). Message: `The first point lies at <x> % chord, not at the trailing edge; the point order is probably not Selig, or a surface is incomplete.` (`last` likewise). | 5 % chord |
 | `curve-shape` | Error | the NURBS curve through the points crosses itself, or one surface of the curve runs back in x, or the NURBS interpolation through the points fails (preview message: `The NURBS interpolation through the points failed (…).`). Runs after the other checks pass, in the preview and at wing build, both with the project's **Profile parametrization** (`settings.parametrization`). Loop size: mean width = area / bounding-box diagonal of the part with the smaller bounding box ([[Geometry|Geometry]], section 1.4). | loop size above 0.05 % chord; x reversal above 0.01 % chord |
+| `many-points` | Warning | more points than the threshold. Message: `<n> points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take <time>.` <time>: `under 1 s` or `about <t> s`, 30 µs per point. | 5,000 points |
 | `coarse` | Warning | fewer points than the threshold | 20 points |
 | `not-normalized` | Warning | x_min or x_max of the file deviates from 0 or 1 by more than the threshold; the coordinates are scaled to chord 1 | 0.02 |
 | `rotated` | Warning | line from the LE point to the TE midpoint inclined by more than the threshold. The coordinates are kept, so twist refers to the x axis of the file. | 0.5° |
@@ -229,7 +233,8 @@ The checks run:
 | --- | --- |
 | Written by | **Save** and **Export** > **Project JSON**; same content |
 | Read by | **Open** |
-| Encoding | UTF-8, indentation 1 space |
+| Encoding | UTF-8, indentation 1 space; every array of numbers (a point, a knot vector) on one line |
+| Size read by **Open** | at most 100 MB (100,000,000 bytes) |
 | Units | mm, angles in degrees (°) |
 | Axes | x chordwise towards the TE, y spanwise towards the right tip, z up; mirror plane y = 0 |
 | Numbers in `derived` | rounded to 12 significant digits |
@@ -242,23 +247,25 @@ The checks run:
 | `version` | integer `1` | always | required, must be 1 |
 | `generator` | `{ "name": "Wingdesigner", "version": "<app version>" }` | always | ignored |
 | `exportedAt` | ISO 8601 time, UTC | always | ignored |
-| `name` | string | always | not a string: `Imported wing` |
+| `name` | string | always | not a string: `Imported wing`; at most 10,000 characters |
 | `units` | `"mm"` | always | optional; any other value is rejected |
 | `coordinateSystem` | text, axes as above | always | ignored |
-| `airfoils` | array | always | required, 1 to 200 entries |
-| `sections` | array | always | required, 2 to 200 entries |
+| `airfoils` | array | always | required, 1 to 10,000 entries; at most 1,000,000 points in all |
+| `sections` | array | always | required, 2 to 20,000 entries |
 | `guides` | object with `nose` and `end` | always | optional; `null` counts as missing; a missing guide is created from the section edges, disabled |
-| `settings` | object | always, every key | optional; a missing key takes its default |
-| `derived` | object | only when the wing builds without errors | ignored; recomputed |
+| `settings` | object | always, every key | optional; a missing key takes its default; an unknown key is dropped |
+| `derived` | object | only when the wing builds without errors and the file stays within 100 MB | ignored; recomputed |
+
+**Open** drops unknown keys and their contents: at the top level and inside `airfoils[]`, `airfoils[].source`, `sections[]`, `guides`, `guides.nose`, `guides.end` and `settings`.
 
 ### `airfoils[]`
 
 | Key | Rule |
 | --- | --- |
-| `id` | non-empty string, unique; referenced by `sections[].airfoil` |
-| `name` | display name |
-| `points` | 5 to 5000 `[x, y]` pairs of finite numbers, Selig order, any scale (the build normalizes them). Values after the second one in a pair are dropped on **Open**. |
-| `source` | origin, kept as it is |
+| `id` | non-empty string, at most 200 characters, unique; referenced by `sections[].airfoil` |
+| `name` | display name, a string of at most 10,000 characters; missing or only white space: the `id` |
+| `points` | 5 to 100,000 `[x, y]` pairs of finite numbers, Selig order, any scale (the build normalizes them). All airfoils together: at most 1,000,000 points. Values after the second one in a pair are dropped on **Open**. |
+| `source` | origin: object with the keys `kind`, `id`, `file`, `attribution`, `license`, `url`, `terms`, `note`, `code`, `closedTE`. Each value is a string of at most 2,000 characters, `true`, `false` or `null`. Other keys are dropped on **Open**. |
 
 Ids made by the app:
 
@@ -273,7 +280,8 @@ Ids made by the app:
 - Same name and identical points as an airfoil in the project: the existing id is used; no new entry.
 - Wizard and sample wing: `naca<code>`.
 - Generated NACA section (`source.code` set) with the same code and the same `source.closedTE` as a project airfoil: the existing id is used, whatever the name; no new entry.
-- Project with 200 airfoils (`LIMITS.maxAirfoils`): no new entry. The **Airfoils** tab refuses the next airfoil before the preview with the message `The project holds 200 airfoils, the limit; "Remove unused" frees places.`
+- Project with 10,000 airfoils (`LIMITS.maxAirfoils`): no new entry. The **Airfoils** tab refuses the next airfoil before the preview with the message `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.`
+- Airfoil that would take the points of all airfoils above 1,000,000 (`LIMITS.maxAirfoilPoints`): no new entry. Message: `With this airfoil the project airfoils hold <n> points; the limit is 1,000,000. "Remove unused" frees points.`
 
 | `source.kind` | Further keys |
 | --- | --- |
@@ -285,7 +293,7 @@ Ids made by the app:
 
 | Key | Unit | Rule |
 | --- | --- | --- |
-| `id` | – | non-empty string, unique; missing: `s<n>`, n = position in the array from 1 |
+| `id` | – | non-empty string, at most 200 characters, unique; missing: `s<n>`, n = position in the array from 1 |
 | `airfoil` | – | `id` of an entry in `airfoils` |
 | `x` | mm | chordwise position of the LE; −1,000,000 to 1,000,000 mm |
 | `y` | mm | span position, 0 to 1,000,000 mm, different from every other section |
@@ -294,7 +302,7 @@ Ids made by the app:
 | `twist` | ° | rotation about the chord point at `settings.twistPivot`; positive = LE up; −360 to 360° |
 
 - Every value is a finite number.
-- Limits: `LIMITS` in `src/model/project.js` (`minChord`, `maxChord`, `maxCoordinate`, `maxTwist`, `maxSections`, `maxAirfoils`, `maxGuidePoints`, `maxGuideCoordinate`, `maxExtent`); points per airfoil: `MAX_POINTS` in `src/airfoil/parse.js`.
+- Limits: `LIMITS` in `src/model/project.js` (`minChord`, `maxChord`, `maxCoordinate`, `maxTwist`, `maxSections`, `maxAirfoils`, `maxAirfoilPoints`, `maxGuidePoints`, `maxGuideCoordinate`, `maxExtent`, `maxName`, `maxId`, `maxText`); points per airfoil: `MAX_POINTS` in `src/airfoil/parse.js`; names: `MAX_NAME` in `src/airfoil/parse.js`.
 - The wing build checks the same limits (`limitErrors`), so a project that cannot be saved cannot be exported. Planform drags stay within them: chord 1 to 100,000 mm, leading-edge x within ±1,000,000 mm, section y at most 1,000,000 mm, guide point x within ±1,100,000 mm.
 - Array order is free. The build sorts the sections by `y`.
 
@@ -308,7 +316,7 @@ Ids made by the app:
 | `edited` | `true` after a point is moved, added or removed; `false` after **Reset to sections**; any other value is rejected. When a section is added or removed, or its y, x or chord changes in the **Sections** table, a guide with `enabled` `false` and `edited` not `true` is reset to the section edges. | `true` when the points differ from the section edges (another point count, or a coordinate more than 1e-9 mm off), otherwise `false` |
 | `mode` | `"fit"`: curve through the points; `"control"`: the points are the control polygon | rejected |
 | `degree` | integer 1–5 | `3` |
-| `points` | 2 to 500 `[x, y]` pairs in mm, planform coordinates; x −1,100,000 to 1,100,000 mm (a disabled end line follows x + `chord` of the sections), y −1,000,000 to 1,000,000 mm. y must increase strictly (checked when the wing is built). The y range is stretched onto the root-to-tip span. | rejected |
+| `points` | 2 to 20,000 `[x, y]` pairs in mm, planform coordinates; x −1,100,000 to 1,100,000 mm (a disabled end line follows x + `chord` of the sections), y −1,000,000 to 1,000,000 mm. y must increase strictly (checked when the wing is built). The y range is stretched onto the root-to-tip span. | rejected |
 
 ### `settings`
 
@@ -321,11 +329,11 @@ Ids made by the app:
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Wing tip** |
 | `tip.ratio` | `0.001`–`0.01` (tip profile 1/1000 to 1/100 of the previous section chord); tip chord at least 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N** |
 | `chordSamples` | integer `16`–`200` | `60` | **Chordwise stations per surface** |
-| `panelStations` | integer `3`–`40`; the build uses fewer when the loft grid would exceed 160,000 points ([[Geometry|Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides or smooth mode** |
+| `panelStations` | integer `3`–`40`; the build uses fewer only when the loft grid would exceed 5,000,000 points ([[Geometry|Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides or smooth mode** |
 | `parametrization` | `"uniform"`, `"chord"`, `"centripetal"` | `"centripetal"` | **Profile parametrization** |
 | `mirror` | `true`, `false`; 3D view only, no effect on exports | `true` | **Show mirrored half (y < 0)** |
 
-Unknown keys inside `settings` are kept and written back.
+Unknown keys inside `settings` are dropped on **Open**. **Save** writes the keys of this table.
 
 ### `derived` (export only)
 
@@ -340,6 +348,7 @@ Unknown keys inside `settings` are kept and written back.
 - `profiles[].curve.controlPoints`: `[x, y]` in normalized airfoil coordinates (chord 1).
 - `surface.controlPoints[i][j]`: `[x, y, z]` in mm. i runs along u: u = 0 upper TE, u = `leadingEdgeU` LE, u = 1 lower TE. j runs along v: v = 0 root, v = 1 tip.
 - Algorithms: [[Geometry|Geometry]].
+- Size: when the file with `derived` would exceed 100 MB, **Save** and **Export** > **Project JSON** leave `derived` out and show the notice `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
 
 ### Checks on **Open**
 
@@ -347,14 +356,17 @@ The file is rejected, and the first 3 messages are shown, when:
 
 - the text is not valid JSON;
 - `format`, `version` or `units` do not match the table above;
-- the file is larger than 50 MB (50,000,000 bytes; **Open** checks the file size before reading);
+- the file is larger than 100 MB (100,000,000 bytes; **Open** checks the file size before reading and shows `Cannot open <file>: <size> MB; project files are limited to 100 MB.`);
 - `settings` is not an object, or `settings.trailingEdge` or `settings.tip` is present, not `null` and not an object;
 - `guides` is neither an object nor `null`;
-- `airfoils` is empty or has more than 200 entries, or `sections` has fewer than 2 or more than 200 entries;
+- `airfoils` is empty or has more than 10,000 entries, or `sections` has fewer than 2 or more than 20,000 entries;
+- the airfoils hold more than 1,000,000 points together;
 - an airfoil or section entry is not an object;
-- an airfoil `id` is not a non-empty string, or an airfoil `id` is repeated;
-- a section `id` is not a non-empty string, or a section `id` is repeated;
-- an airfoil has fewer than 5 or more than 5000 points, or a point that is not an `[x, y]` pair of finite numbers;
+- an airfoil `id` is not a non-empty string, is longer than 200 characters, or is repeated;
+- a section `id` is not a non-empty string, is longer than 200 characters, or is repeated;
+- `name` is longer than 10,000 characters, or an airfoil `name` is present and not a string or longer than 10,000 characters;
+- an airfoil `source` is present, not `null` and not an object, or a known `source` key holds something other than a string, `true`, `false` or `null`, or a string longer than 2,000 characters;
+- an airfoil has fewer than 5 or more than 100,000 points, or a point that is not an `[x, y]` pair of finite numbers;
 - a section `x`, `y`, `z`, `chord` or `twist` is not a finite number;
 - `chord` < 1 mm or > 100,000 mm, `y` < 0, 2 sections share `y`, or `airfoil` names an unknown id;
 - a section `x`, `y` or `z` lies outside −1,000,000 to 1,000,000 mm, or `twist` outside −360 to 360°;
@@ -362,10 +374,12 @@ The file is rejected, and the first 3 messages are shown, when:
 - `guides.nose` or `guides.end` is neither an object nor `null`;
 - a guide `enabled` is not `true` or `false`, or a guide `edited` is present and not `true` or `false`;
 - a guide `mode` is not `"fit"` or `"control"`;
-- a guide has fewer than 2 or more than 500 points, a point that is not a pair of finite numbers, a point x outside −1,100,000 to 1,100,000 mm, or a point y outside −1,000,000 to 1,000,000 mm;
+- a guide has fewer than 2 or more than 20,000 points, a point that is not a pair of finite numbers, a point x outside −1,100,000 to 1,100,000 mm, or a point y outside −1,000,000 to 1,000,000 mm;
 - a guide `degree` is not an integer 1–5.
 
-Counts are checked before contents. More than 200 airfoils or more than 200 sections: the file is rejected without reading any entry. An airfoil with more than 5000 points or a guide with more than 500 points: its points are not read.
+Counts are checked before contents. More than 10,000 airfoils or more than 20,000 sections: the file is rejected without reading any entry. More than 1,000,000 airfoil points in all: the file is rejected before any point is read. An airfoil with more than 100,000 points or a guide with more than 20,000 points: its points are not read.
+
+Sizes above a warning threshold and within these limits (`WARN` in `src/model/budget.js`: 200 sections, 200 airfoils, 5,000 points in one airfoil, 100,000 airfoil points in all, 500 points in an enabled guide curve, 60,000 loft grid points, a name of 200 characters) open with a warning on the **Checks** tab. The warning names the expected time and memory of each change: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` A notice shows the same text when a size crosses its threshold.
 
 Checked only when the wing is built, in this order:
 

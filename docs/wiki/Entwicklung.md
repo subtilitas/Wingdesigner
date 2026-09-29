@@ -54,6 +54,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/export/stl.js` | Export als binäres STL (Stereolithografie) |
 | `src/export/threemf.js` | 3MF-Export |
 | `src/model/project.js` | Projektmodell, Vorgaben, Grenzen, Validierung |
+| `src/model/budget.js` | Warnschwellen, Loft-Gitter, Schätzung von Rechenzeit und Speicher |
 | `src/model/io.js` | Import und Export der Projekt-JSON |
 | `src/model/edit.js` | Bearbeitungsoperationen |
 | `src/model/wizard.js` | Vorlagen und Wertebereiche des Assistenten |
@@ -125,18 +126,72 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | Vorlage **Glider** (Segelflugmodell), elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 60 | 36 ms | 12 ms | 6 ms | 445 KB |
 | Vorlage **Glider** (Segelflugmodell), elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 200 | 89 ms | 42 ms | 19 ms | 1398 KB |
 
-Viele Schnitte: **Smooth**, **Spanwise stations per panel with guides or smooth mode** (Stationen je Feld) 40, **Chordwise stations per surface** 200; Node.js 24, Load Average 3,3 (andere Prozesse liefen).
+Große Projekte im Browser:
 
-| Fall | Stationen in Spannweitenrichtung nach der Gittergrenze | `buildWing` |
+| Bedingung | Wert |
+| --- | --- |
+| Rechner | Chromium 141, headless, Software-Rendering; 4 geteilte Kerne eines Intel-Xeon-Hauptprozessors (CPU) mit 2,1 GHz; Load Average 2 bis 8 (andere Prozesse liefen) |
+| Änderung | 1 Änderung einer Profiltiefe in der Tabelle **Sections** |
+| Werte | JavaScript-Zeit der Änderung; JavaScript-Heap nach dem Neuaufbau |
+
+| Fall | JavaScript-Zeit je Änderung | Heap |
 | --- | ---: | ---: |
-| 20 Schnitte | 400 (21 je Feld) | 0,8 s |
-| 200 Schnitte | 399 (2 je Feld) | 2,0 s |
+| 200 Schnitte, **Smooth** (399 Stationen in Spannweitenrichtung) | 0,5 bis 0,65 s | 38 bis 48 MB |
+| 1000 Schnitte, **Linear** | 1,5 bis 1,6 s | 78 bis 91 MB |
+| 2000 Schnitte, **Smooth** | 2,9 bis 3,8 s | 159 bis 175 MB |
+| 5000 Schnitte, **Linear** | 6,9 bis 7,4 s | 345 bis 361 MB |
+| 5000 Schnitte, **Smooth** | 6,2 bis 8,3 s | 237 bis 413 MB |
+| 10 000 Schnitte, **Linear** | 15,8 bis 16,4 s | 490 MB |
+| 15 000 Schnitte, **Linear** | 19 bis 23 s | 678 MB |
+| 20 000 Schnitte, **Linear** | 24 s | 969 MB |
 
-- Gittergrenze: höchstens 160 000 Gitterpunkte (Stationen in Spannweitenrichtung × (2N + 1) Profilpunkte, N = **Chordwise stations per surface**) vor dem Einfügen zusätzlicher Stationen (`MAX_GRID_POINTS` in `src/geom/wing.js`). Darüber verwendet der Aufbau weniger Stationen je Feld und gibt eine Warnung aus.
-- Anordnung der Schnitte, Zustand des Profil-Cache und Anzahl der Läufe dieser 2 Messungen: nicht festgehalten.
+- 20 000 Schnitte, **Linear**: 57 s Seitenzeit je Änderung mit Software-Rendering. Öffnen des Projekts: 24 s JavaScript-Zeit, 59 s Seitenzeit, danach 496 MB Heap.
+- Auswahl eines Schnitts: 2 bis 100 ms JavaScript-Zeit bei 200 bis 20 000 Schnitten.
+- Profile mit je 20 001 Punkten: 100 Profile öffnen in 17 s, eine Änderung dauert 2,3 s, Heap 546 MB; 200 Profile öffnen in 35 s, eine Änderung dauert 5,8 bis 7,9 s, Heap 1,1 GB.
+- Export als Dreiecksnetz, 16 Schnitte × 40 Stationen, 200 **Chordwise stations per surface**: STL mit 8,5 Millionen Dreiecken in 6,9 s, Datei 423 MB, Browserspeicher in der Spitze 2,7 GB. STL mit 20 Millionen Dreiecken schlägt fehl; 80 Millionen Dreiecke bringen den Tab zum Absturz. 3MF mit 8,5 Millionen Dreiecken in 49 s, Datei 97 MB.
+- STEP-Export: 81 MB in 2,2 s (1041 Stationen), 330 MB in 8,4 s (4161 Stationen).
+- Node.js 24, 5000 Schnitte, **Linear**: `buildWing` 5,1 s, Flügelkennwerte 20 ms, 363 MB Heap behalten.
+- Node.js 24, Leitkurve mit 50 000 Punkten: 5,1 bis 6,1 s je Aufbau. Die Registerkarte **Planform** öffnet mit 10 000 Leitkurvenpunkten in 6 s und mit 50 000 in 36 s bei 3,4 GB.
 
 Rechenzeit ohne Profile im Cache: in diesem Lauf nicht gemessen.
 Rechenzeit und Speicherbedarf auf Smartphones: nicht gemessen.
+
+### Größenwarnungen und Grenzen
+
+Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt dann 1 Warnung in der Registerkarte **Checks**: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Jede Größe lautet `<value> (warning above <threshold>)`, zum Beispiel `250 sections (warning above 200)`. `<time>` lautet `under 1 s` oder `about X s`; `<memory>` lautet `about X MB` oder `about X GB`. Die Statusleiste zählt die Warnung. Steigt eine Größe über ihre Schwelle (Bearbeitung, **Open**, wiederhergestellte automatische Sicherung), zeigt eine Kurzmeldung denselben Text. Jenseits einer harten Grenze läuft einem Browser-Tab auf dem Desktop der Speicher aus oder eine Änderung dauert etwa 1 Minute; die App weist solche Projekte und Änderungen ab.
+
+| Größe | Warnung über (`WARN` in `src/model/budget.js`) | Harte Grenze (`LIMITS` in `src/model/project.js`) |
+| --- | ---: | ---: |
+| Schnitte | 200 | 20 000 |
+| Profile | 200 | 10 000 |
+| Punkte eines Profils | 5000 | 100 000 |
+| Profilpunkte insgesamt | 100 000 | 1 000 000 |
+| Punkte einer Leitkurve | 500 (eingeschaltete Leitkurven) | 20 000 |
+| Punkte des Loft-Gitters | 60 000 | 5 000 000 |
+| Dreiecke beim Export (STL, 3MF) | 2 000 000 | 10 000 000 |
+| Zeichen eines Namens (Projekt, Profile) | 200 | 10 000 |
+
+- Wo die Warnungen erscheinen: Punkte eines Profils in der Profilvorschau (`many-points`); Dreiecke beim Export im Exportdialog, der **Download** über 10 000 000 Dreiecken sperrt; alle anderen Größen in der Warnung `Large project`. Die Registerkarte **Settings** zeigt unter den Feldern der Auflösung `Loft grid: N points.`, über 60 000 Punkten mit Rechenzeit und Speicher.
+- Weitere harte Grenzen: IDs 200 Zeichen; Quellentexte eines Profils 2000 Zeichen; Profileingabe 5 000 000 Zeichen (`MAX_INPUT` in `src/airfoil/parse.js`); Profildateien über 20 MB werden nicht gelesen; der Parser hört nach 100 001 Koordinatenzeilen auf (`MAX_POINTS`); **Open** weist Projektdateien über 100 MB ungelesen ab (`MAX_PROJECT_BYTES` in `src/model/io.js`).
+- Loft-Gitter: Stationen in Spannweitenrichtung × (2N + 1) Profilpunkte vor dem Einfügen zusätzlicher Stationen, N = **Chordwise stations per surface** (`loftGrid` in `src/model/budget.js`). Bis 5 000 000 Gitterpunkte verwendet der Aufbau die Einstellungen wie eingegeben. Darüber verwendet er weniger Stationen je Feld und warnt `Spanwise stations per panel reduced from K to k: S sections with N chord samples keep the loft within 5,000,000 grid points.` Überschreitet schon 1 Station je Feld die Grenze, bricht der Aufbau ab mit `The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.`
+
+Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit ohne das Zeichnen der 3D-Ansicht. Die 3D-Ansicht kommt mit der Zeichenzeit der Grafikkarte hinzu. Smartphones: nicht gemessen. Die Koeffizienten stehen in `COST` (jede Änderung) und `EXPORT` (Export als Dreiecksnetz) in `src/model/budget.js`. Einheiten: 1 MB = 1000 KB = 1 000 000 Byte.
+
+| Einheit (`COST`) | Zeit | Speicher |
+| --- | ---: | ---: |
+| Grundwert jeder Änderung | 0,2 s | 15 MB |
+| Punkt des Loft-Gitters | 11,5 µs | 0,65 KB |
+| Eintrag einer Profilliste in der Tabelle **Sections**: Schnitte × Profile bis 20 000 Einträge (`LAZY_OPTIONS`), darüber 1 je Schnitt | 8,5 µs | 0,5 KB |
+| Profilpunkt | 1,5 µs | 0,2 KB |
+| Punkt einer eingeschalteten Leitkurve | 110 µs | 50 KB |
+| Profilpunkt, Prüfung beim Import und erster Aufbau eines Flügels mit dem Profil (nur Warnung `many-points`) | 30 µs | nicht verwendet |
+
+| Export, je Dreieck (`EXPORT`) | Zeit | Speicher | Datei |
+| --- | ---: | ---: | ---: |
+| STL | 0,8 µs | 210 Byte | 50 Byte |
+| 3MF | 5,8 µs | 110 Byte | 11,5 Byte |
+
+Der Speicher beim Export enthält zusätzlich den Grundwert von 15 MB. Tests: `test/budget.test.js` (Schwellen, Schätzungen, Loft-Gitter wie im Aufbau, gekürzte Namen), `e2e/limits.spec.js` (Warnung über 200 Schnitten und Titel der Schaltfläche **+**, Profillisten großer Schnitttabellen, Hinweis im Exportdialog und harte Grenze).
 
 ## Regeln für Testdaten
 
@@ -163,7 +218,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 182 Tests in 7 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 200 Tests in 9 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -204,7 +259,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Zeitlimits | 60000 ms je Test, 60000 ms für den Serverstart |
 | Wiederholungsversuche | 0 |
 
-125 Tests in 9 Spec-Dateien, 250 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+136 Tests in 10 Spec-Dateien, 272 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 30 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 

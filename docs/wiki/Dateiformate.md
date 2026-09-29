@@ -32,8 +32,9 @@ English: [[File Formats|File-Formats]]
 2. Akzente entfernen.
 3. Jede Folge von Zeichen außerhalb `A–Z a–z 0–9 . _ -` durch ein `_` ersetzen.
 4. `_` am Anfang und am Ende entfernen.
-5. Leeres Ergebnis: `wing`.
-6. Die Endung anhängen.
+5. Auf 120 Zeichen kürzen.
+6. Leeres Ergebnis: `wing`.
+7. Die Endung anhängen.
 
 Beispiel: `Sport wing 1500` → `Sport_wing_1500.step`.
 
@@ -52,7 +53,7 @@ Name in STEP-, STL- und 3MF-Dateien, unten `<name>` geschrieben: Projektname; le
 | Eigenschaft | Regel |
 | --- | --- |
 | Erkennung | Nach dem Inhalt. Die Dateiendung wird nicht ausgewertet. |
-| Größengrenze | Höchstens 2 000 000 Zeichen; größere Eingabe: Fehler `too-large`. Höchstens 5000 Punkte; mehr: Fehler `too-many-points`. Hochgeladene Dateien über 8 MB (8 000 000 Byte, höchstens 4 Byte je UTF-8-Zeichen) werden vor dem Einlesen abgewiesen, mit roter Meldung und ohne Vorschau. |
+| Größengrenze | Höchstens 5 000 000 Zeichen; größere Eingabe: Fehler `too-large`. Höchstens 100 000 Punkte; mehr: Fehler `too-many-points`. Bei mehr als 100 001 Zahlenzeilen (100 000 Punkte und eine Lednicer-Anzahlzeile) endet das Einlesen, mit der Meldung `More than 100,001 coordinate lines; the limit is 100,000 points.` Hochgeladene Dateien über 20 MB (20 000 000 Byte, höchstens 4 Byte je UTF-8-Zeichen) werden nicht gelesen: rote Meldung `<file>: <size> MB; airfoil files are limited to 5,000,000 characters.`, keine Vorschau. Über 5000 Punkten fügen die Plausibilitätsprüfungen die Warnung `many-points` hinzu. |
 | Filter der Dateiauswahl | `.dat` `.txt` `.cor` `.xml` `.htm` `.html` `.csv` `text/plain`. Beim Ziehen und Ablegen (Drag-and-drop) wird jede Datei angenommen. |
 | Zeichenkodierung | UTF-8 (Unicode Transformation Format, 8 Bit) mit oder ohne Byte-Order-Mark (BOM). Eine Datei, die kein gültiges UTF-8 ist, wird als Windows-1252 gelesen. |
 | Zeilenenden | CR, LF oder CR LF (Carriage Return, Line Feed) |
@@ -61,7 +62,7 @@ Name in STEP-, STL- und 3MF-Dateien, unten `<name>` geschrieben: Projektname; le
 | Trennzeichen | Leerzeichen, Tabulator, Komma, Semikolon |
 | Dezimalkomma | `0,125  1,250` wird als `0.125  1.250` gelesen. Bedingungen: Mindestens 2 Werte. Trennzeichen: Leerzeichen, Tabulatoren oder Semikolons. Jeder Wert ist eine Dezimalkommazahl oder eine ganze Zahl. Mindestens 1 Wert enthält ein Komma. Eine Zeile mit 1 Feld, z. B. `0,5`, wird am Komma getrennt: Werte `0` und `5`. |
 | Zahlenschreibweise | Vorzeichen optional, Dezimalpunkt, Exponent mit `e`, `E`, `d` oder `D` (`1.0D-3`) |
-| Name | Erste Nicht-Zahlenzeile vor der ersten Zahlenzeile. Die Namenszeile behält einen `#`-Kommentar: `NACA 0012 # from UIUC` → Name `NACA 0012 # from UIUC`. HTML: der `<title>`, wenn er nicht leer ist. XML: das erste `<name>`-Element. Kein Name gefunden: Dateiname ohne Endung; eingefügter Text: `pasted`. |
+| Name | Erste Nicht-Zahlenzeile vor der ersten Zahlenzeile. Die Namenszeile behält einen `#`-Kommentar: `NACA 0012 # from UIUC` → Name `NACA 0012 # from UIUC`. HTML: der `<title>`, wenn er nicht leer ist. XML: das erste `<name>`-Element. Kein Name gefunden: Dateiname ohne Endung; eingefügter Text: `pasted`. Ein Name mit mehr als 10 000 Zeichen wird auf die ersten 10 000 gekürzt (Info `long-name`). |
 | Spaltenkopfzeilen | 2 oder 3 Wörter, die mit `x`, `y` oder `z` beginnen (`x y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). Nach der Namenszeile: ohne Meldung übersprungen. Als erste Nicht-Zahlenzeile vor der ersten Zahlenzeile: wird als Name übernommen (z. B. `X Yo Yu`), keine Info `no-name`. |
 | Andere Nicht-Zahlenzeilen | Übersprungen, Warnung `ignored-lines` |
 
@@ -95,7 +96,7 @@ Schritte in dieser Reihenfolge:
 
 1. Ein Wert, der keine endliche Zahl ist, bricht den Import ab (Fehler `non-finite`).
 2. Kein Punkt gefunden: Der Import bricht ab (Fehler `no-points`).
-3. Mehr als 5000 Punkte: Der Import bricht ab (Fehler `too-many-points`).
+3. Mehr als 100 000 Punkte: Der Import bricht ab (Fehler `too-many-points`: `<n> points; the limit is 100,000.`).
 4. Geschlossene Kontur mit stumpfer Endleiste: Punkte auf der gezeichneten Endleistenstirn werden entfernt (Warnung `closing-point`, Regeln unten). Endleistenstirn: der steile Abschluss einer stumpfen Endleiste.
 5. Aufeinanderfolgende doppelte Punkte (Abweichung unter 1e-12 in x und in y) werden entfernt.
 6. Größtes x über 5 und höchstens 110: Die Koordinaten gelten als Prozent der Profiltiefe und werden durch 100 geteilt.
@@ -122,10 +123,10 @@ Ein Fehler beim Einlesen bricht den Import ab. Die Plausibilitätsprüfungen lau
 
 | Code | Schweregrad | Bedingung |
 | --- | --- | --- |
-| `too-large` | Fehler | Eingabe länger als 2 000 000 Zeichen |
+| `too-large` | Fehler | Eingabe länger als 5 000 000 Zeichen |
 | `no-points` | Fehler | kein Koordinatenpunkt: keine Zahlenzeile oder kein `<point>` im XML-Element `<coordinates>` |
 | `non-finite` | Fehler | eine Koordinate ist keine endliche Zahl, z. B. ein `<point>` ohne `<x>` oder `<y>` |
-| `too-many-points` | Fehler | mehr als 5000 Punkte |
+| `too-many-points` | Fehler | mehr als 100 000 Punkte; Textformate: das Einlesen endet bei mehr als 100 001 Zahlenzeilen |
 | `xml-malformed` | Fehler | `<coordinates>` ohne schließendes Tag |
 | `multi-element` | Warnung | mehr als 1 `<coordinates>`-Element; nur das erste wird gelesen |
 | `ignored-lines` | Warnung | Nicht-Zahlenzeilen außer Namenszeile und Spaltenkopfzeilen. HTML mit `<title>`: jede Nicht-Zahlenzeile außer Spaltenkopfzeilen. |
@@ -140,6 +141,7 @@ Ein Fehler beim Einlesen bricht den Import ab. Die Plausibilitätsprüfungen lau
 | `decimal-comma` | Info | Dezimalkommas als Dezimalpunkte gelesen |
 | `duplicates` | Info | aufeinanderfolgende doppelte Punkte entfernt |
 | `no-name` | Info | kein Name gefunden; der Dateiname wird verwendet |
+| `long-name` | Info | Name länger als 10 000 Zeichen; die ersten 10 000 werden verwendet. Meldung: `The name line has <n> characters; the first 10,000 are used.` |
 
 ![Vorschau beim Hochladen von sample4412.txt, einer Prozenttabelle mit Dezimalkomma: Meldungen decimal-comma, table, percent und stats](images/upload-preview.png)
 
@@ -165,23 +167,25 @@ Die Prüfungen laufen:
 | Normierung | x → (x − x_min) / c, y → (y − y_LE) / c, c = x_max − x_min; keine Drehung |
 | Profilnase | Punkt mit dem größten Abstand zur Endleistenmitte (Mittel aus erstem und letztem Punkt); y_LE ist ihr y |
 | % der Profiltiefe | Anteil der normierten Profiltiefe 1 |
-| Prüfungen auf Rohkoordinaten (Dateien: nach den Schritten beim Einlesen) | `too-few-points`, `too-many-points`, `coarse`, `zero-chord`, `not-normalized`, `rotated`, `te-missing` |
+| Prüfungen auf Rohkoordinaten (Dateien: nach den Schritten beim Einlesen) | `too-few-points`, `too-many-points`, `many-points`, `coarse`, `zero-chord`, `not-normalized`, `rotated`, `te-missing` |
 | Prüfungen auf normierten Koordinaten | alle übrigen Prüfungen, beginnend mit `outline-length`; `curve-shape` prüft die NURBS-Kurve durch die normierten Punkte |
-| Herkunft der Schwellwerte | `LIMITS` in `src/airfoil/sanity.js`; feste Werte in `checkAirfoil()`; `CROSSING_TOLERANCE` und `REVERSAL_TOLERANCE` in `src/geom/profile.js` |
+| Herkunft der Schwellwerte | `LIMITS` in `src/airfoil/sanity.js`; `WARN.pointsPerAirfoil` in `src/model/budget.js`; feste Werte in `checkAirfoil()`; `CROSSING_TOLERANCE` und `REVERSAL_TOLERANCE` in `src/geom/profile.js` |
 
 | Code | Schweregrad | Bedingung | Schwellwert |
 | --- | --- | --- | --- |
 | `too-few-points` | Fehler | weniger Punkte als das Minimum | 5 Punkte |
-| `too-many-points` | Fehler | mehr Punkte als das Maximum | 5000 Punkte |
+| `too-many-points` | Fehler | mehr Punkte als das Maximum. Meldung: `<n> points; the limit is 100,000.` | 100 000 Punkte |
 | `zero-chord` | Fehler | alle Punkte haben dasselbe x | – |
 | `outline-length` | Fehler | Länge der normierten Kontur (Summe der Abschnittslängen) über dem Schwellwert. Läuft nach der Normierung, vor `self-intersection`; beendet die übrigen Prüfungen. Meldung: `The outline is … chords long; an airfoil outline is about 2 chords long.` | 10 Profiltiefen |
-| `self-intersection` | Fehler | 2 nicht benachbarte Konturabschnitte kreuzen sich. Die Abschnitte werden in ein Gitter mit etwa 1 Zelle je Abschnitt einsortiert; ein Paar einsortierter Abschnitte wird einmal geprüft, in der linken unteren Zelle, die beide Hüllrechtecke gemeinsam haben; ein Abschnitt, der mehr als 16 Zellen überdeckt, wird gegen jeden Abschnitt geprüft. Die Suche endet bei 10 Kreuzungen; die Meldung zählt dann `10+`. | – |
+| `folds` | Fehler | Anzahl der Punkte, an denen die Ober- oder Unterseite (an der Profilnase getrennt) in x zurückläuft (von der Profilnase zur Endleiste: x kleiner als am vorigen Punkt), über dem Schwellwert. Läuft nach `outline-length`, vor `self-intersection`; beendet die übrigen Prüfungen. Meldung: `The upper surface runs back in x at <n> points; the limit is 50.` (`lower` entsprechend). | 50 Punkte |
+| `self-intersection` | Fehler | 2 nicht benachbarte Konturabschnitte kreuzen sich. Die Abschnitte werden in ein Gitter mit etwa 1 Zelle je Abschnitt einsortiert; ein Paar einsortierter Abschnitte wird einmal geprüft, in der linken unteren Zelle, die beide Hüllrechtecke gemeinsam haben; ein Abschnitt, der mehr als 16 Zellen überdeckt, wird gegen jeden Abschnitt geprüft; eine Zelle mit mehr als 32 Abschnitten wird mit einem eigenen Gitter erneut durchsucht, höchstens 6 Ebenen tief. Die Suche endet bei 10 Kreuzungen; die Meldung zählt dann `10+`. | – |
 | `one-surface` | Fehler | Ober- oder Unterseite (an der Profilnase getrennt) hat weniger Punkte als das Minimum | 3 Punkte |
 | `crossed-surfaces` | Fehler | Dicke an einer von 199 inneren, kosinusverteilten x-Positionen unter dem Schwellwert | −0,01 % der Profiltiefe |
 | `surfaces-touch` | Fehler | Ober- und Unterseite berühren sich: Dicke an einem Dateipunkt oder einer kosinusverteilten Stützstelle zwischen 1 % und 99 % der Profiltiefe höchstens gleich dem Schwellwert. An jedem x zählen der tiefste Punkt der Oberseite und der höchste Punkt der Unterseite (senkrechte Abschnitte, in x zurücklaufende Profilseiten). Nur ohne `crossed-surfaces` gemeldet. | 0,001 % der Profiltiefe |
 | `te-crossed` | Fehler | Endleistendicke (y des ersten Punkts − y des letzten Punkts) unter dem Schwellwert | −0,01 % der Profiltiefe |
-| `te-missing` | Fehler | weder der erste noch der letzte Punkt liegt innerhalb des Schwellwerts vor x_max (die Selig-Reihenfolge beginnt und endet an der Endleiste) | 5 % der Profiltiefe |
+| `te-missing` | Fehler | der erste oder der letzte Punkt liegt um mehr als den Schwellwert vor x_max (die Selig-Reihenfolge beginnt und endet an der Endleiste). Meldung: `The first point lies at <x> % chord, not at the trailing edge; the point order is probably not Selig, or a surface is incomplete.` (`last` entsprechend). | 5 % der Profiltiefe |
 | `curve-shape` | Fehler | die NURBS-Kurve durch die Punkte kreuzt sich selbst, oder eine Profilseite der Kurve läuft in x zurück, oder die NURBS-Interpolation durch die Punkte scheitert (Meldung der Vorschau: `The NURBS interpolation through the points failed (…).`). Läuft nach bestandenen übrigen Prüfungen, in der Vorschau und beim Flügelaufbau, beide mit der **Profile parametrization** des Projekts (`settings.parametrization`). Schleifengröße: mittlere Breite = Fläche / Diagonale des Hüllrechtecks des Teils mit dem kleineren Hüllrechteck ([[Geometrie|Geometrie]], Abschnitt 1.4). | Schleifengröße über 0,05 % der Profiltiefe; Rücklauf in x über 0,01 % der Profiltiefe |
+| `many-points` | Warnung | mehr Punkte als der Schwellwert. Meldung: `<n> points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take <time>.` <time>: `under 1 s` oder `about <t> s`, 30 µs je Punkt. | 5000 Punkte |
 | `coarse` | Warnung | weniger Punkte als der Schwellwert | 20 Punkte |
 | `not-normalized` | Warnung | x_min oder x_max der Datei weicht um mehr als den Schwellwert von 0 bzw. 1 ab; die Koordinaten werden auf Profiltiefe 1 skaliert | 0,02 |
 | `rotated` | Warnung | Linie von der Profilnase zur Endleistenmitte um mehr als den Schwellwert geneigt. Die Koordinaten bleiben erhalten; die Schränkung bezieht sich daher auf die x-Achse der Datei. | 0,5° |
@@ -229,7 +233,8 @@ Die Prüfungen laufen:
 | --- | --- |
 | Geschrieben von | **Save** und **Export** > **Project JSON**; gleicher Inhalt |
 | Gelesen von | **Open** |
-| Kodierung | UTF-8, Einrückung 1 Leerzeichen |
+| Kodierung | UTF-8, Einrückung 1 Leerzeichen; jedes Zahlen-Array (ein Punkt, ein Knotenvektor) auf einer Zeile |
+| Von **Open** gelesene Größe | höchstens 100 MB (100 000 000 Byte) |
 | Einheiten | mm, Winkel in Grad (°) |
 | Achsen | x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende, z nach oben; Spiegelebene y = 0 |
 | Zahlen in `derived` | auf 12 signifikante Stellen gerundet |
@@ -242,23 +247,25 @@ Die Prüfungen laufen:
 | `version` | ganze Zahl `1` | immer | Pflicht, muss 1 sein |
 | `generator` | `{ "name": "Wingdesigner", "version": "<App-Version>" }` | immer | ignoriert |
 | `exportedAt` | Zeitpunkt nach ISO 8601, UTC | immer | ignoriert |
-| `name` | Zeichenkette | immer | keine Zeichenkette: `Imported wing` |
+| `name` | Zeichenkette | immer | keine Zeichenkette: `Imported wing`; höchstens 10 000 Zeichen |
 | `units` | `"mm"` | immer | optional; jeder andere Wert wird abgelehnt |
 | `coordinateSystem` | Text, Achsen wie oben | immer | ignoriert |
-| `airfoils` | Array | immer | Pflicht, 1 bis 200 Einträge |
-| `sections` | Array | immer | Pflicht, 2 bis 200 Einträge |
+| `airfoils` | Array | immer | Pflicht, 1 bis 10 000 Einträge; insgesamt höchstens 1 000 000 Punkte |
+| `sections` | Array | immer | Pflicht, 2 bis 20 000 Einträge |
 | `guides` | Objekt mit `nose` und `end` | immer | optional; `null` gilt als fehlend; eine fehlende Leitkurve wird aus den Schnittkanten erzeugt, ausgeschaltet |
-| `settings` | Objekt | immer, alle Schlüssel | optional; ein fehlender Schlüssel erhält seine Vorgabe |
-| `derived` | Objekt | nur wenn der Flügel ohne Fehler aufgebaut wird | ignoriert; wird neu berechnet |
+| `settings` | Objekt | immer, alle Schlüssel | optional; ein fehlender Schlüssel erhält seine Vorgabe; ein unbekannter Schlüssel entfällt |
+| `derived` | Objekt | nur wenn der Flügel ohne Fehler aufgebaut wird und die Datei höchstens 100 MB groß bleibt | ignoriert; wird neu berechnet |
+
+**Open** verwirft unbekannte Schlüssel samt Inhalt: auf der obersten Ebene und in `airfoils[]`, `airfoils[].source`, `sections[]`, `guides`, `guides.nose`, `guides.end` und `settings`.
 
 ### `airfoils[]`
 
 | Schlüssel | Regel |
 | --- | --- |
-| `id` | nicht leere Zeichenkette, eindeutig; referenziert von `sections[].airfoil` |
-| `name` | Anzeigename |
-| `points` | 5 bis 5000 Paare `[x, y]` aus endlichen Zahlen, Selig-Reihenfolge, beliebiger Maßstab (der Flügelaufbau normiert sie). Werte nach dem zweiten Wert eines Paars entfallen bei **Open**. |
-| `source` | Herkunft, bleibt unverändert |
+| `id` | nicht leere Zeichenkette, höchstens 200 Zeichen, eindeutig; referenziert von `sections[].airfoil` |
+| `name` | Anzeigename, Zeichenkette mit höchstens 10 000 Zeichen; fehlt er oder besteht er nur aus Leerraum: die `id` |
+| `points` | 5 bis 100 000 Paare `[x, y]` aus endlichen Zahlen, Selig-Reihenfolge, beliebiger Maßstab (der Flügelaufbau normiert sie). Alle Profile zusammen: höchstens 1 000 000 Punkte. Werte nach dem zweiten Wert eines Paars entfallen bei **Open**. |
+| `source` | Herkunft: Objekt mit den Schlüsseln `kind`, `id`, `file`, `attribution`, `license`, `url`, `terms`, `note`, `code`, `closedTE`. Jeder Wert ist eine Zeichenkette mit höchstens 2000 Zeichen, `true`, `false` oder `null`. Andere Schlüssel entfallen bei **Open**. |
 
 Von der App erzeugte IDs:
 
@@ -273,7 +280,8 @@ Von der App erzeugte IDs:
 - Gleicher Name und identische Punkte wie ein Profil im Projekt: Die vorhandene ID wird verwendet; kein neuer Eintrag.
 - Assistent und Beispielflügel: `naca<code>`.
 - Erzeugtes NACA-Profil (`source.code` gesetzt) mit derselben Kennung und demselben `source.closedTE` wie ein Profil im Projekt: Die vorhandene ID wird verwendet, unabhängig vom Namen; kein neuer Eintrag.
-- Projekt mit 200 Profilen (`LIMITS.maxAirfoils`): kein neuer Eintrag. Die Registerkarte **Airfoils** lehnt das nächste Profil vor der Vorschau ab, mit der Meldung `The project holds 200 airfoils, the limit; "Remove unused" frees places.`
+- Projekt mit 10 000 Profilen (`LIMITS.maxAirfoils`): kein neuer Eintrag. Die Registerkarte **Airfoils** lehnt das nächste Profil vor der Vorschau ab, mit der Meldung `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.`
+- Profil, mit dem die Punkte aller Profile 1 000 000 überschreiten würden (`LIMITS.maxAirfoilPoints`): kein neuer Eintrag. Meldung: `With this airfoil the project airfoils hold <n> points; the limit is 1,000,000. "Remove unused" frees points.`
 
 | `source.kind` | Weitere Schlüssel |
 | --- | --- |
@@ -285,7 +293,7 @@ Von der App erzeugte IDs:
 
 | Schlüssel | Einheit | Regel |
 | --- | --- | --- |
-| `id` | – | nicht leere Zeichenkette, eindeutig; fehlt sie: `s<n>`, n = Position im Array ab 1 |
+| `id` | – | nicht leere Zeichenkette, höchstens 200 Zeichen, eindeutig; fehlt sie: `s<n>`, n = Position im Array ab 1 |
 | `airfoil` | – | `id` eines Eintrags in `airfoils` |
 | `x` | mm | Lage der Profilnase in Profiltiefenrichtung; −1 000 000 bis 1 000 000 mm |
 | `y` | mm | Spannweitenposition, 0 bis 1 000 000 mm, verschieden von jedem anderen Schnitt |
@@ -294,7 +302,7 @@ Von der App erzeugte IDs:
 | `twist` | ° | Schränkung: Drehung um den Tiefenpunkt bei `settings.twistPivot`; positiv = Nase hoch; −360 bis 360° |
 
 - Jeder Wert ist eine endliche Zahl.
-- Grenzen: `LIMITS` in `src/model/project.js` (`minChord`, `maxChord`, `maxCoordinate`, `maxTwist`, `maxSections`, `maxAirfoils`, `maxGuidePoints`, `maxGuideCoordinate`, `maxExtent`); Punkte je Profil: `MAX_POINTS` in `src/airfoil/parse.js`.
+- Grenzen: `LIMITS` in `src/model/project.js` (`minChord`, `maxChord`, `maxCoordinate`, `maxTwist`, `maxSections`, `maxAirfoils`, `maxAirfoilPoints`, `maxGuidePoints`, `maxGuideCoordinate`, `maxExtent`, `maxName`, `maxId`, `maxText`); Punkte je Profil: `MAX_POINTS` in `src/airfoil/parse.js`; Namen: `MAX_NAME` in `src/airfoil/parse.js`.
 - Der Flügelaufbau prüft dieselben Grenzen (`limitErrors`); ein Projekt, das nicht gespeichert werden kann, kann daher nicht exportiert werden. Ziehen im Grundriss bleibt innerhalb der Grenzen: Profiltiefe 1 bis 100 000 mm, x der Profilnase innerhalb von ±1 000 000 mm, y eines Schnitts höchstens 1 000 000 mm, x eines Leitkurvenpunkts innerhalb von ±1 100 000 mm.
 - Die Reihenfolge im Array ist frei. Der Flügelaufbau sortiert die Schnitte nach `y`.
 
@@ -308,7 +316,7 @@ Von der App erzeugte IDs:
 | `edited` | `true`, nachdem ein Punkt verschoben, hinzugefügt oder gelöscht wurde; `false` nach **Reset to sections**; jeder andere Wert wird abgelehnt. Wird ein Schnitt hinzugefügt oder gelöscht oder ändert sich sein y, x oder `chord` in der Tabelle **Sections**, wird eine Leitkurve mit `enabled` `false` und `edited` ungleich `true` auf die Schnittkanten zurückgesetzt. | `true`, wenn die Punkte von den Schnittkanten abweichen (andere Punktzahl oder eine Koordinate um mehr als 1e-9 mm verschoben), sonst `false` |
 | `mode` | `"fit"`: Kurve durch die Punkte; `"control"`: die Punkte bilden das Kontrollpolygon | abgelehnt |
 | `degree` | ganze Zahl 1–5 (Grad) | `3` |
-| `points` | 2 bis 500 Paare `[x, y]` in mm, Grundrisskoordinaten; x −1 100 000 bis 1 100 000 mm (eine ausgeschaltete Endlinie folgt x + `chord` der Schnitte), y −1 000 000 bis 1 000 000 mm. y muss streng steigen (geprüft beim Flügelaufbau). Der y-Bereich wird auf die Spannweite von der Wurzel bis zum Rand gestreckt. | abgelehnt |
+| `points` | 2 bis 20 000 Paare `[x, y]` in mm, Grundrisskoordinaten; x −1 100 000 bis 1 100 000 mm (eine ausgeschaltete Endlinie folgt x + `chord` der Schnitte), y −1 000 000 bis 1 000 000 mm. y muss streng steigen (geprüft beim Flügelaufbau). Der y-Bereich wird auf die Spannweite von der Wurzel bis zum Rand gestreckt. | abgelehnt |
 
 ### `settings`
 
@@ -321,11 +329,11 @@ Von der App erzeugte IDs:
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Wing tip** |
 | `tip.ratio` | `0.001`–`0.01` (Randprofil 1/1000 bis 1/100 der Profiltiefe des vorherigen Schnitts); Randtiefe mindestens 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N** |
 | `chordSamples` | ganze Zahl `16`–`200` | `60` | **Chordwise stations per surface** |
-| `panelStations` | ganze Zahl `3`–`40`; der Flügelaufbau verwendet weniger, wenn das Flächengitter 160 000 Punkte überschreiten würde ([[Geometrie|Geometrie]], Abschnitt 3.2) | `8` | **Spanwise stations per panel with guides or smooth mode** |
+| `panelStations` | ganze Zahl `3`–`40`; der Flügelaufbau verwendet nur dann weniger, wenn das Flächengitter 5 000 000 Punkte überschreiten würde ([[Geometrie|Geometrie]], Abschnitt 3.2) | `8` | **Spanwise stations per panel with guides or smooth mode** |
 | `parametrization` | `"uniform"`, `"chord"`, `"centripetal"` | `"centripetal"` | **Profile parametrization** |
 | `mirror` | `true`, `false`; nur 3D-Ansicht, ohne Wirkung auf Exporte | `true` | **Show mirrored half (y < 0)** |
 
-Unbekannte Schlüssel in `settings` bleiben erhalten und werden wieder geschrieben.
+Unbekannte Schlüssel in `settings` entfallen bei **Open**. **Save** schreibt die Schlüssel dieser Tabelle.
 
 ### `derived` (nur Export)
 
@@ -340,6 +348,7 @@ Unbekannte Schlüssel in `settings` bleiben erhalten und werden wieder geschrieb
 - `profiles[].curve.controlPoints`: `[x, y]` in normierten Profilkoordinaten (Profiltiefe 1).
 - `surface.controlPoints[i][j]`: `[x, y, z]` in mm. i läuft entlang u: u = 0 obere Endleiste, u = `leadingEdgeU` Profilnase, u = 1 untere Endleiste. j läuft entlang v: v = 0 Wurzel, v = 1 Rand.
 - Algorithmen: [[Geometrie|Geometrie]].
+- Größe: Würde die Datei mit `derived` 100 MB überschreiten, lassen **Save** und **Export** > **Project JSON** `derived` weg und zeigen die Meldung `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
 
 ### Prüfungen bei **Open**
 
@@ -347,14 +356,17 @@ Die Datei wird abgelehnt, und die ersten 3 Meldungen erscheinen, wenn:
 
 - der Text kein gültiges JSON ist;
 - `format`, `version` oder `units` nicht der Tabelle oben entsprechen;
-- die Datei größer als 50 MB ist (50 000 000 Byte; **Open** prüft die Dateigröße vor dem Einlesen);
+- die Datei größer als 100 MB ist (100 000 000 Byte; **Open** prüft die Dateigröße vor dem Einlesen und zeigt `Cannot open <file>: <size> MB; project files are limited to 100 MB.`);
 - `settings` kein Objekt ist, oder `settings.trailingEdge` oder `settings.tip` vorhanden, nicht `null` und kein Objekt ist;
 - `guides` weder ein Objekt noch `null` ist;
-- `airfoils` leer ist oder mehr als 200 Einträge hat, oder `sections` weniger als 2 oder mehr als 200 Einträge hat;
+- `airfoils` leer ist oder mehr als 10 000 Einträge hat, oder `sections` weniger als 2 oder mehr als 20 000 Einträge hat;
+- die Profile zusammen mehr als 1 000 000 Punkte enthalten;
 - ein Eintrag in `airfoils` oder `sections` kein Objekt ist;
-- eine Profil-`id` keine nicht leere Zeichenkette ist oder eine Profil-`id` doppelt vorkommt;
-- eine Schnitt-`id` keine nicht leere Zeichenkette ist oder eine Schnitt-`id` doppelt vorkommt;
-- ein Profil weniger als 5 oder mehr als 5000 Punkte hat oder ein Punkt kein Paar `[x, y]` aus endlichen Zahlen ist;
+- eine Profil-`id` keine nicht leere Zeichenkette ist, länger als 200 Zeichen ist oder doppelt vorkommt;
+- eine Schnitt-`id` keine nicht leere Zeichenkette ist, länger als 200 Zeichen ist oder doppelt vorkommt;
+- `name` länger als 10 000 Zeichen ist, oder der `name` eines Profils vorhanden und keine Zeichenkette oder länger als 10 000 Zeichen ist;
+- `source` eines Profils vorhanden, nicht `null` und kein Objekt ist, oder ein bekannter Schlüssel in `source` etwas anderes als eine Zeichenkette, `true`, `false` oder `null` enthält oder eine Zeichenkette mit mehr als 2000 Zeichen;
+- ein Profil weniger als 5 oder mehr als 100 000 Punkte hat oder ein Punkt kein Paar `[x, y]` aus endlichen Zahlen ist;
 - `x`, `y`, `z`, `chord` oder `twist` eines Schnitts keine endliche Zahl ist;
 - `chord` < 1 mm oder > 100 000 mm, `y` < 0, 2 Schnitte dasselbe `y` haben oder `airfoil` eine unbekannte ID nennt;
 - `x`, `y` oder `z` eines Schnitts außerhalb von −1 000 000 bis 1 000 000 mm liegt oder `twist` außerhalb von −360 bis 360°;
@@ -362,10 +374,12 @@ Die Datei wird abgelehnt, und die ersten 3 Meldungen erscheinen, wenn:
 - `guides.nose` oder `guides.end` weder ein Objekt noch `null` ist;
 - `enabled` einer Leitkurve weder `true` noch `false` ist, oder `edited` einer Leitkurve vorhanden und weder `true` noch `false` ist;
 - `mode` einer Leitkurve weder `"fit"` noch `"control"` ist;
-- eine Leitkurve weniger als 2 oder mehr als 500 Punkte hat, ein Punkt kein Paar aus endlichen Zahlen ist, das x eines Punkts außerhalb von −1 100 000 bis 1 100 000 mm oder sein y außerhalb von −1 000 000 bis 1 000 000 mm liegt;
+- eine Leitkurve weniger als 2 oder mehr als 20 000 Punkte hat, ein Punkt kein Paar aus endlichen Zahlen ist, das x eines Punkts außerhalb von −1 100 000 bis 1 100 000 mm oder sein y außerhalb von −1 000 000 bis 1 000 000 mm liegt;
 - `degree` einer Leitkurve keine ganze Zahl 1–5 ist.
 
-Anzahlen werden vor den Inhalten geprüft. Mehr als 200 Profile oder mehr als 200 Schnitte: Die Datei wird abgelehnt, ohne einen Eintrag zu lesen. Ein Profil mit mehr als 5000 Punkten oder eine Leitkurve mit mehr als 500 Punkten: Ihre Punkte werden nicht gelesen.
+Anzahlen werden vor den Inhalten geprüft. Mehr als 10 000 Profile oder mehr als 20 000 Schnitte: Die Datei wird abgelehnt, ohne einen Eintrag zu lesen. Mehr als 1 000 000 Profilpunkte insgesamt: Die Datei wird abgelehnt, bevor ein Punkt gelesen wird. Ein Profil mit mehr als 100 000 Punkten oder eine Leitkurve mit mehr als 20 000 Punkten: Ihre Punkte werden nicht gelesen.
+
+Größen über einer Warnschwelle und innerhalb dieser Grenzen (`WARN` in `src/model/budget.js`: 200 Schnitte, 200 Profile, 5000 Punkte in einem Profil, 100 000 Profilpunkte insgesamt, 500 Punkte in einer eingeschalteten Leitkurve, 60 000 Punkte im Flächengitter, ein Name mit 200 Zeichen) öffnen mit einer Warnung in der Registerkarte **Checks**. Die Warnung nennt die erwartete Zeit und den Speicherbedarf jeder Änderung: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Eine Meldung zeigt denselben Text, wenn eine Größe ihre Schwelle überschreitet.
 
 Erst beim Flügelaufbau geprüft, in dieser Reihenfolge:
 
