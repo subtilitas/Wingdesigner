@@ -5,11 +5,14 @@ import { meshToStl } from '../export/stl.js';
 import { meshesTo3mf } from '../export/threemf.js';
 import { concatMeshes, exportMeshes } from '../geom/mesh.js';
 import { projectToJsonText } from '../model/io.js';
+import { cloneProject } from '../model/project.js';
 import { download, h, slugFile } from './dom.js';
 
 export function exportDialog(store, getBuild, version) {
+  // Project and build are captured together when the dialog opens; every format writes that state.
+  const project = cloneProject(store.project);
   const build = getBuild();
-  const name = store.project.name || 'wing';
+  const name = project.name || 'wing';
   const blocked = !build?.surface;
   const radio = (group, value, label, checked, disabled = false) =>
     h('label', { class: 'check' }, h('input', { type: 'radio', name: group, value, checked, disabled }), label);
@@ -59,7 +62,7 @@ export function exportDialog(store, getBuild, version) {
     const half = data.get('half');
     const dens = Number(data.get('dens'));
     if (fmt === 'json') {
-      download(slugFile(name, 'json'), projectToJsonText(store.project, build, { generatorVersion: version }), 'application/json');
+      download(slugFile(name, 'json'), projectToJsonText(project, build, { generatorVersion: version }), 'application/json');
       return;
     }
     if (blocked) return;

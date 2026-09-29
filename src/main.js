@@ -103,7 +103,7 @@ const header = h(
       },
       'Save',
     ),
-    h('button', { type: 'button', class: 'primary', onclick: () => exportDialog(store, getBuild, VERSION) }, 'Export'),
+    h('button', { type: 'button', class: 'primary', onclick: () => exportDialog(store, () => safeBuild(store.project), VERSION) }, 'Export'),
     undoBtn,
     redoBtn,
     h('button', { type: 'button', onclick: () => helpDialog() }, 'Help'),
