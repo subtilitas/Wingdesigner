@@ -76,6 +76,24 @@ describe('3MF', () => {
     expect(xml).toContain('x="0.12346" y="0" z="12"');
     expect(xmlEscape(`"'`)).toBe('&quot;&apos;');
   });
+
+  it('removes characters that XML 1.0 does not allow', () => {
+    expect(xmlEscape('Wing\u0008v2\u0000\uFFFE\uD800 \u00e9\u{1F600}\t')).toBe('Wingv2 \u00e9\u{1F600}\t');
+    const model = strFromU8(unzipSync(meshesTo3mf([], { title: 'A\u0008B' }))['3D/3dmodel.model']);
+    expect(model).toContain('<metadata name="Title">AB</metadata>');
+  });
+
+  it('writes a model larger than one 1 MB chunk identically to the single-string XML', () => {
+    // 40,000 vertices produce about 2.4 MB of XML, i.e. several chunks.
+    const n = 40000;
+    const positions = Float64Array.from({ length: 3 * n }, (_, i) => (i % 997) * 0.123);
+    const indices = Uint32Array.from({ length: 3 * (n - 2) }, (_, i) => Math.floor(i / 3) + (i % 3));
+    const objs = [{ name: 'big', mesh: { positions, indices } }];
+    const xml = modelXml(objs, { title: 'big' });
+    expect(xml.length).toBeGreaterThan(2 * (1 << 20));
+    const model = strFromU8(unzipSync(meshesTo3mf(objs, { title: 'big' }))['3D/3dmodel.model']);
+    expect(model).toBe(xml);
+  });
 });
 
 describe('STEP', () => {

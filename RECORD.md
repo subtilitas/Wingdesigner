@@ -15,9 +15,9 @@ Last updated: 2026-09-29
 | Wing loft (`src/geom/wing.js`) | Sections, linear or smooth spanwise blending, nose and end guide curves, trailing-edge modes | `test/wing.test.js` |
 | Meshes (`src/geom/mesh.js`) | Closed outward meshes, mirror, merged full wing | Edge-manifold and volume tests |
 | STEP export (`src/export/step.js`) | AP214 B-rep solids with exact B-spline faces | `scripts/validate_step.py` with OpenCascade (cadquery-ocp 8.0.1): 8 cases including 2 pointed tips and 1 symmetric airfoil, all valid and closed, volume within 8e-5 of the mesh |
-| STL, 3MF, project JSON | Implemented | `test/export.test.js` |
+| STL, 3MF, project JSON | Implemented; 3MF model XML is written and deflated in 1 MB chunks (zip entries with data descriptors) | `test/export.test.js`; `scripts/validate_3mf.py` with lib3mf 2.5.0 in strict mode: 8 cases, no reader warnings, every object manifold and oriented. Other 3MF readers (slicers) not tested. |
 | UI (`src/ui/`, `src/main.js`) | 3D viewer, planform editor, sections, airfoils, settings, checks, wizard, export | Playwright smoke test on desktop (1280 x 720) and Pixel 7 viewports, no console errors |
-| CI | `ci.yml` (lint, unit tests, coverage check, STEP validation, e2e, Pages deploy), `docs.yml` (wiki), `release.yml` (tags) | All jobs green on pull request #1; Pages deployment and wiki push run on `main` only and are not yet observed |
+| CI | `ci.yml` (lint, unit tests, coverage check, STEP and 3MF validation, e2e, Pages deploy; runs on `main` queue, other refs cancel older runs), `docs.yml` (wiki), `release.yml` (tags) | All jobs green on pull request #1; Pages deployment and wiki push run on `main` only and are not yet observed |
 | Bundled airfoil library | Empty index; NACA presets are generated | `npm run airfoils:check` (in CI): free license per entry, restricted hosts rejected, every file indexed and listed in `public/airfoils/NOTICE.md` |
 
 ## Decisions
@@ -34,6 +34,8 @@ Last updated: 2026-09-29
 | Smooth spanwise blending reports negative blended thickness as an error | The cubic cardinal functions overshoot between sections with large chord or thickness changes; the upper surface then passes below the lower one. |
 | Guide curves stretched to root-to-tip span | Guides follow span edits without manual correction. |
 | Pointed tip: tip profile scaled to 1/100 to 1/1000 (default 1/200) of the previous section chord | A zero chord has no profile and no valid B-rep face; a scaled profile keeps the tip closed, profile-shaped and exportable. Converging guide curves end in this profile. |
+| Airfoil files limited to 2,000,000 characters and 5000 points | The self-intersection check compares every segment pair: 1000 points take 16 ms, 5000 points 188 ms, 10000 points 1042 ms (Node.js 24, sandbox CPU). |
+| Profile thickness checked before and after the trailing-edge setting | The linear taper of the closed and fixed-thickness modes pulls the surfaces through each other where an airfoil is thinner inside than its trailing-edge gap. |
 | Trailing-edge thickness limited to 5 % of the local chord | Keeps small tip profiles free of self-intersection with a fixed thickness in mm. |
 | Through-point guide curves parametrized by span position | y(t) is exactly linear, so a guide cannot double back in span; x(y) is a spline function. |
 | Adaptive spanwise stations (up to 32 extra) | Stations are added where the loft deviates more than 0.5 mm from the intended edges, e.g. at pointed elliptic tips (pointed glider preset: 6 extra, 0.14 mm). |

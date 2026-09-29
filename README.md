@@ -53,7 +53,7 @@ The project autosaves in the browser (local storage). **Save** downloads the pro
 | --- | --- | --- |
 | STEP (ISO 10303-21, AP214) | One closed B-rep solid per half: B-spline upper and lower faces, ruled trailing-edge face (open trailing edge), planar root and tip caps. The surfaces are the exact loft. | Every CI run reads the files with OpenCascade 8.0.1: shapes valid, shells closed and oriented, volume within 0.05 % of the mesh volume. |
 | STL (binary) | Closed triangle mesh: right half, both halves as two shells, or the full wing as one shell (root at y = 0). | Unit tests: every edge shared by exactly 2 triangles with opposite direction, positive volume. |
-| 3MF | Same meshes, one object per shell, unit millimetre. | Unit tests: package structure, vertex and triangle counts. |
+| 3MF | Same meshes, one object per shell, unit millimetre. | Unit tests: package structure, vertex and triangle counts. CI: lib3mf 2.5.0 strict read of 8 cases, every object manifold and oriented. |
 | Project JSON | Airfoil coordinates, sections, guide curves, settings, plus the derived NURBS data: every profile curve, both guide curves, the spanwise stations and the wing surface (degrees, knots, control points). | Round trip in unit tests. |
 
 ## Airfoil data and licenses
@@ -90,8 +90,9 @@ npm run e2e            # Playwright smoke test against the build (desktop and ph
 npm run coverage       # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage table below; CI runs coverage:check and fails on drift
 npm run airfoils:check # validate the bundled airfoil library and NACA presets
-npm run step:cases     # write STEP test files to step-check/
+npm run step:cases     # write STEP and 3MF test files to step-check/
 python scripts/validate_step.py step-check/cases.json   # needs: pip install cadquery-ocp
+python scripts/validate_3mf.py step-check/cases.json    # needs: pip install lib3mf
 ```
 
 ## Test coverage
@@ -99,7 +100,7 @@ python scripts/validate_step.py step-check/cases.json   # needs: pip install cad
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.3 % | 94.0 % | 100.0 % | 98.8 % |
+| 98.3 % | 93.9 % | 100.0 % | 98.9 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

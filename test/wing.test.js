@@ -440,3 +440,32 @@ describe('builder robustness', () => {
     expect(buildWing(p).errors).toEqual([]);
   });
 });
+
+describe('trailing-edge setting and span range', () => {
+  // Symmetric blunt airfoil, 3 % chord trailing-edge gap, thinner inside than the gap would allow
+  // for a linear taper: t(x) = 0.1 sqrt(x) (1 - x)^3 + 0.03 x^4.
+  const xs = Array.from({ length: 61 }, (_, i) => (1 - Math.cos((Math.PI * i) / 60)) / 2);
+  const t = (x) => 0.1 * Math.sqrt(x) * (1 - x) ** 3 + 0.03 * x ** 4;
+  const waisted = [...xs.slice().reverse().map((x) => [x, t(x) / 2]), ...xs.slice(1).map((x) => [x, -t(x) / 2])];
+  const project = (mode) => {
+    const p = sampleProject({ settings: { trailingEdge: { mode, thickness: 0.3 } } });
+    p.airfoils = [{ id: 'w', name: 'waisted', points: waisted }];
+    for (const s of p.sections) s.airfoil = 'w';
+    return p;
+  };
+
+  it('reports surfaces pulled through each other by the closed or thickness mode', () => {
+    expect(buildWing(project('asis')).errors).toEqual([]);
+    for (const mode of ['closed', 'thickness']) {
+      const b = buildWing(project(mode));
+      expect(b.errors[0]).toMatch(/trailing-edge setting pulls the upper surface below the lower surface at y = 0\.0 mm/);
+      expect(b.surface).toBeNull();
+    }
+  });
+
+  it('rejects a section on the mirrored side of y = 0', () => {
+    const p = sampleProject();
+    p.sections[0].y = -5;
+    expect(buildWing(p).errors[0]).toMatch(/y = -5 mm lies on the mirrored side/);
+  });
+});

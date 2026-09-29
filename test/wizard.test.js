@@ -7,6 +7,7 @@ import { edgeCheck, exportMeshes } from '../src/geom/mesh.js';
 import {
   addAirfoil,
   addGuidePoint,
+  clampSectionY,
   insertSection,
   moveGuidePoint,
   pruneAirfoils,
@@ -166,5 +167,28 @@ describe('wizard tips', () => {
     const b = buildWing(p);
     expect(b.errors).toEqual([]);
     expect(b.tipChord).toBeCloseTo(0.005 * p.sections[1].chord, 9);
+  });
+});
+
+describe('section drag clamp', () => {
+  const sorted = (...ys) => ys.map((y) => ({ y }));
+
+  it('keeps 1 mm from wide-apart neighbours', () => {
+    expect(clampSectionY(sorted(0, 300, 600), 1, -50)).toBe(1);
+    expect(clampSectionY(sorted(0, 300, 600), 1, 900)).toBe(599);
+    expect(clampSectionY(sorted(0, 300, 600), 1, 250)).toBe(250);
+    expect(clampSectionY(sorted(0, 300, 600), 2, 5000)).toBe(5000);
+  });
+
+  it('stays strictly between neighbours closer than 2 mm', () => {
+    for (const y of [-10, 0.1, 0.5, 5]) {
+      const v = clampSectionY(sorted(0, 0.4, 0.8), 1, y);
+      expect(v).toBeGreaterThan(0);
+      expect(v).toBeLessThan(0.8);
+    }
+  });
+
+  it('keeps the root section in place', () => {
+    expect(clampSectionY(sorted(0, 300), 0, 120)).toBe(0);
   });
 });

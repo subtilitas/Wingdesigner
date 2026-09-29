@@ -400,6 +400,39 @@ describe('parser robustness', () => {
     expect(s.points.length).toBe(sharp.length);
   });
 
+  it('rejects more points than the limit without throwing', () => {
+    let text = 'Many\n';
+    for (let i = 0; i < 150000; i++) text += `${(i / 150000).toFixed(5)} 0\n`;
+    expect(text.length).toBeLessThan(2_000_000);
+    const r = importAirfoilText(text, 'many.dat');
+    expect(r.ok).toBe(false);
+    expect(codes(r.issues)).toContain('too-many-points');
+    const dense = nacaAirfoil('2412', { pointsPerSide: 2600 }).points;
+    expect(codes(checkAirfoil(dense).issues)).toContain('too-many-points');
+  });
+
+  it('removes a drawn trailing-edge base in both point orders', () => {
+    const blunt = nacaAirfoil('2412', { pointsPerSide: 31 }).points;
+    const gap = blunt[0][1] - blunt[blunt.length - 1][1];
+    // Clockwise: lower TE first, closed by repeating it after the upper TE.
+    const cw = blunt.slice().reverse();
+    cw.push(cw[0].slice());
+    const r1 = importAirfoilText(selig(cw), 'cw.dat');
+    expect(r1.ok).toBe(true);
+    expect(codes(r1.issues)).toContain('closing-point');
+    expect(r1.stats.teGap).toBeCloseTo(gap, 6);
+    // Outline starts and ends on the base at the TE midpoint.
+    const mid = [blunt[0][0], (blunt[0][1] + blunt[blunt.length - 1][1]) / 2];
+    const onBase = [mid, ...blunt, mid];
+    const r2 = importAirfoilText(selig(onBase), 'mid.dat');
+    expect(r2.ok).toBe(true);
+    expect(r2.points.length).toBe(blunt.length);
+    expect(r2.stats.teGap).toBeCloseTo(gap, 6);
+    // The same outline from a project file (no parser) is flagged.
+    expect(codes(checkAirfoil(onBase).issues)).toContain('te-base');
+    expect(codes(checkAirfoil(blunt).issues)).not.toContain('te-base');
+  });
+
   it('removes consecutive duplicates for every source and rejects outlines that miss the trailing edge', () => {
     const pts = nacaAirfoil('2412').points.map((p) => p.slice());
     pts.splice(30, 0, pts[30].slice());

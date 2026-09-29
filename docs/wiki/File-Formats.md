@@ -14,13 +14,16 @@ Accepted details: UTF-8 with or without byte order mark (BOM), otherwise Windows
 `#` comments; separators space, tab, comma, semicolon; decimal commas (`0,125  1,250`); Fortran
 exponents (`1.0D-3`); coordinates in percent (maximum x between 5 and 110 → divided by 100); lower
 surface first (reversed); consecutive duplicate points (removed); a closing point that repeats the
-first point after a blunt trailing edge (removed). Input above 2,000,000 characters is rejected.
+first point after a steep segment at the trailing edge (a drawn blunt trailing-edge base: removed; an
+outline that starts on the base, e.g. at its midpoint, loses the base point at both ends). Input
+above 2,000,000 characters or 5000 points is rejected.
 
 ### Checks
 
 | Code | Severity | Condition |
 | --- | --- | --- |
 | too-large | error | input longer than 2,000,000 characters |
+| too-many-points | error | more than 5000 points |
 | no-points | error | no coordinate lines |
 | non-finite | error | a value is not a finite number |
 | too-few-points | error | fewer than 5 points |
@@ -37,8 +40,9 @@ first point after a blunt trailing edge (removed). Input above 2,000,000 charact
 | te-gap | warning | trailing-edge gap above 2 % chord |
 | thin / thick | warning | maximum thickness below 1 % or above 30 % chord |
 | spike | warning | outline turns by more than 90 degrees at a point (except within 2 points of the leading edge) |
+| closing-point | warning | drawn trailing-edge base removed (see above) |
+| te-base | warning | closed trailing edge reached over a vertical segment within 1 % chord of the trailing edge: the base is probably read as surface points |
 | duplicates | info | consecutive duplicate points removed |
-| closing-point | info | repeated first point after a blunt trailing edge removed |
 | uneven-spacing | info | adjacent segment lengths differ by more than a factor of 25 |
 | stats | info | point count, thickness, camber and their positions, trailing-edge gap |
 

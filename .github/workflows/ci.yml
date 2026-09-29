@@ -9,9 +9,10 @@ on:
 permissions:
   contents: read
 
+# Runs on main queue so a running Pages deployment is never cancelled; other refs cancel older runs.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:
@@ -38,7 +39,7 @@ jobs:
           retention-days: 14
 
   step:
-    name: STEP validation (OpenCascade)
+    name: STEP and 3MF validation (OpenCascade, lib3mf)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -52,11 +53,12 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: ~/.cache/pip
-          key: pip-ocp-${{ runner.os }}-8.0.1
+          key: pip-ocp-${{ runner.os }}-8.0.1-lib3mf-2.5.0
       - run: npm ci
-      - run: pip install cadquery-ocp==8.0.1.0.0
+      - run: pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0
       - run: npm run step:cases
       - run: python scripts/validate_step.py step-check/cases.json
+      - run: python scripts/validate_3mf.py step-check/cases.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:

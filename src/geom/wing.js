@@ -122,6 +122,10 @@ export function buildWing(project) {
     errors.push('At least 2 sections are required.');
     return result;
   }
+  if (!(sections[0].y >= 0)) {
+    errors.push(`Section at y = ${sections[0].y} mm lies on the mirrored side; the half wing spans y >= 0.`);
+    return result;
+  }
   for (let i = 1; i < sections.length; i++) {
     if (!(sections[i].y > sections[i - 1].y)) {
       errors.push(`Sections ${i} and ${i + 1} share span position y = ${sections[i].y} mm.`);
@@ -197,6 +201,9 @@ export function buildWing(project) {
   const pivot = settings.twistPivot;
   const te = settings.trailingEdge;
   const pointed = settings.tip.mode === 'pointed';
+  // Trailing-edge gap as a fraction of the local chord: the thickness in mm, limited to
+  // MAX_GAP_FRACTION of the chord (used by the 'thickness' mode only).
+  const teGap = (chord) => Math.min(te.thickness / chord, MAX_GAP_FRACTION);
   const yPrev = ys[ys.length - 2];
   let tipChord = 0;
   const placed = new Map();
@@ -248,20 +255,35 @@ export function buildWing(project) {
   let minChordY = y0;
   let minThick = Infinity;
   let minThickY = y0;
-  for (const y of checkYs) {
+  let minTeThick = Infinity;
+  let minTeThickY = y0;
+  const thinnest = (shape) => {
+    let t = Infinity;
+    for (let k = 1; k < N; k++) t = Math.min(t, shape[N - k][1] - shape[N + k][1]);
+    return t;
+  };
+  for (const y of [...checkYs].sort((a, b) => a - b)) {
     if (!(y >= y0 && y <= y1)) continue;
     const { chord, w } = placement(y);
     if (chord < minChord) {
       minChord = chord;
       minChordY = y;
     }
-    // Blended profile thickness at every chord station (smooth mode can overshoot below zero).
+    // Blended profile thickness at every chord station (smooth mode can overshoot below zero), then
+    // again after the trailing-edge setting, whose linear taper can pull the surfaces through each
+    // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendPoints(w, compat);
-    for (let k = 1; k < N; k++) {
-      const t = shape[N - k][1] - shape[N + k][1];
-      if (t < minThick) {
-        minThick = t;
-        minThickY = y;
+    // Round-off level differences do not move the reported position.
+    const t = thinnest(shape);
+    if (t < minThick - 1e-12) {
+      minThick = t;
+      minThickY = y;
+    }
+    if (chord >= LIMITS.minChord) {
+      const tTe = thinnest(applyTrailingEdge(shape, te.mode, teGap(chord), N));
+      if (tTe < minTeThick - 1e-12) {
+        minTeThick = tTe;
+        minTeThickY = y;
       }
     }
   }
@@ -269,6 +291,14 @@ export function buildWing(project) {
     errors.push(
       `The blended profile at y = ${minThickY.toFixed(1)} mm has negative thickness (${(minThick * 100).toFixed(2)} % chord); ` +
         'smooth spanwise interpolation overshoots between unevenly spaced sections. Use linear interpolation or add sections.',
+    );
+    return result;
+  }
+  if (minTeThick < -1e-9) {
+    errors.push(
+      `The trailing-edge setting pulls the upper surface below the lower surface at y = ${minTeThickY.toFixed(1)} mm ` +
+        `(${(minTeThick * 100).toFixed(2)} % chord); the airfoil is thinner inside than its trailing-edge gap. ` +
+        'Use "as in file" or a larger trailing-edge thickness.',
     );
     return result;
   }

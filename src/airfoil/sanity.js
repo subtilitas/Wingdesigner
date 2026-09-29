@@ -2,10 +2,11 @@
 // Severity: 'error' blocks use in a wing, 'warning' allows use, 'info' reports facts.
 
 import { airfoilStats, bounds, leadingEdgeIndex, normalize, selfIntersections, splitSurfaces } from './geometry.js';
-import { parseDat } from './parse.js';
+import { MAX_POINTS, parseDat } from './parse.js';
 
 export const LIMITS = {
   minPoints: 5,
+  maxPoints: MAX_POINTS,
   coarsePoints: 20,
   normTolerance: 0.02,
   teGapWarn: 0.02,
@@ -61,6 +62,10 @@ export function checkAirfoil(rawPointsIn) {
   if (!rawPoints || rawPoints.length < LIMITS.minPoints) {
     issues.push(issue('error', 'too-few-points', `At least ${LIMITS.minPoints} points are required (found ${rawPoints ? rawPoints.length : 0}).`));
     return { ok: false, points: rawPoints ?? [], issues, stats: null };
+  }
+  if (rawPoints.length > LIMITS.maxPoints) {
+    issues.push(issue('error', 'too-many-points', `${rawPoints.length} points; the limit is ${LIMITS.maxPoints}.`));
+    return { ok: false, points: rawPoints, issues, stats: null };
   }
   if (rawPoints.length < LIMITS.coarsePoints) {
     issues.push(issue('warning', 'coarse', `Only ${rawPoints.length} points; the NURBS interpolation may not match the intended shape.`));
@@ -123,6 +128,12 @@ export function checkAirfoil(rawPointsIn) {
     issues.push(issue('error', 'te-crossed', `Trailing edge is crossed (gap ${(stats.teGap * 100).toFixed(3)} % chord).`));
   } else if (stats.teGap > LIMITS.teGapWarn) {
     issues.push(issue('warning', 'te-gap', `Trailing-edge gap is ${(stats.teGap * 100).toFixed(2)} % chord.`));
+  }
+  // A closed TE reached over a steep end segment: the drawn TE base was probably read as surface.
+  const nP = points.length;
+  const steepEnd = (p, q) => 1 - q[0] <= 0.01 && Math.abs(q[0] - p[0]) <= 0.2 * Math.abs(q[1] - p[1]) && Math.abs(q[1] - p[1]) > 1e-6;
+  if (Math.abs(stats.teGap) < 1e-6 && (steepEnd(points[1], points[0]) || steepEnd(points[nP - 2], points[nP - 1]))) {
+    issues.push(issue('warning', 'te-base', 'The outline reaches the trailing edge over a vertical segment; the trailing-edge base is probably read as surface points.', 0));
   }
   if (stats.maxThickness < LIMITS.thinWarn) {
     issues.push(issue('warning', 'thin', `Maximum thickness is ${(stats.maxThickness * 100).toFixed(2)} % chord.`));

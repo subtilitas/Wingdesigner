@@ -13,7 +13,7 @@ and fflate (3MF zip). Geometry and file code has no DOM dependency and runs in N
 | `src/model/` | Project model and validation (`project.js`), JSON import/export (`io.js`), edit operations (`edit.js`), wizard (`wizard.js`), default project (`defaults.js`) |
 | `src/ui/` | DOM code: store with undo/redo, 3D viewer, 2D pan/zoom canvas, panels, dialogs |
 | `public/airfoils/` | Bundled airfoil files and `index.json` with source and license per file |
-| `scripts/` | Coverage table, airfoil library check, STEP case export and OpenCascade validation |
+| `scripts/` | Coverage table, airfoil library check, STEP and 3MF case export, OpenCascade and lib3mf validation |
 | `test/` | Vitest unit tests |
 | `e2e/` | Playwright smoke test |
 
@@ -32,16 +32,17 @@ npm run build            # dist/
 npm run e2e              # Playwright against the build; PW_CHROMIUM=/path/to/chrome to use a local browser
 npm run coverage && npm run coverage:readme   # update the README coverage table
 npm run airfoils:check
-npm run step:cases && python scripts/validate_step.py step-check/cases.json
+npm run step:cases && python scripts/validate_step.py step-check/cases.json && python scripts/validate_3mf.py step-check/cases.json
 ```
 
-STEP validation needs `pip install cadquery-ocp==8.0.1.0.0` (OpenCascade 8 Python bindings).
+STEP validation needs `pip install cadquery-ocp==8.0.1.0.0` (OpenCascade 8 Python bindings), 3MF
+validation `pip install lib3mf==2.5.0` (3MF Consortium reference library, strict mode).
 
 ## Continuous integration
 
 | Workflow | Trigger | Jobs |
 | --- | --- | --- |
-| `ci.yml` | push to `main`, pull requests, manual | lint + unit tests + coverage + README coverage check + airfoil check; STEP validation with OpenCascade; Playwright smoke test (Chromium); build; deploy to GitHub Pages (push to `main` only, after all jobs pass) |
+| `ci.yml` | push to `main`, pull requests, manual | lint + unit tests + coverage + README coverage check + airfoil check; STEP validation with OpenCascade and 3MF validation with lib3mf; Playwright smoke test (Chromium); build; deploy to GitHub Pages (push to `main` only, after all jobs pass). Runs on `main` queue; runs on other refs cancel the older run of the same ref. |
 | `docs.yml` | push to `main` touching `docs/wiki/`, manual | copies `docs/wiki/` into the repository wiki with `GITHUB_TOKEN` (`contents: write`) |
 | `release.yml` | tag `v*` | checks tag = `package.json` version, tests, builds, attaches `wingdesigner-<tag>-site.zip` to a GitHub release with the CHANGELOG section as notes |
 

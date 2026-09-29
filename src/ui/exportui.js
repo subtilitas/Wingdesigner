@@ -8,7 +8,7 @@ import { projectToJsonText } from '../model/io.js';
 import { cloneProject } from '../model/project.js';
 import { download, h, slugFile } from './dom.js';
 
-export function exportDialog(store, getBuild, version) {
+export function exportDialog(store, getBuild, version, notify = () => {}) {
   // Project and build are captured together when the dialog opens; every format writes that state.
   const project = cloneProject(store.project);
   const build = getBuild();
@@ -61,20 +61,25 @@ export function exportDialog(store, getBuild, version) {
     const fmt = data.get('fmt');
     const half = data.get('half');
     const dens = Number(data.get('dens'));
-    if (fmt === 'json') {
-      download(slugFile(name, 'json'), projectToJsonText(project, build, { generatorVersion: version }), 'application/json');
-      return;
-    }
-    if (blocked) return;
-    if (fmt === 'step') {
-      download(slugFile(name, 'step'), wingToStep(build, { mirror: half !== 'right', name }), 'application/step');
-      return;
-    }
-    const meshes = exportMeshes(build, half, { uRefine: dens, vRefine: (build.surface.degreeV === 1 ? 1 : 3) * dens });
-    if (fmt === 'stl') {
-      download(slugFile(name, 'stl'), meshToStl(concatMeshes(meshes.map((m) => m.mesh)), `Wingdesigner ${name}`), 'model/stl');
-    } else {
-      download(slugFile(name, '3mf'), meshesTo3mf(meshes, { title: name }), 'model/3mf');
+    try {
+      if (fmt === 'json') {
+        download(slugFile(name, 'json'), projectToJsonText(project, build, { generatorVersion: version }), 'application/json');
+        return;
+      }
+      if (blocked) return;
+      if (fmt === 'step') {
+        download(slugFile(name, 'step'), wingToStep(build, { mirror: half !== 'right', name }), 'application/step');
+        return;
+      }
+      const meshes = exportMeshes(build, half, { uRefine: dens, vRefine: (build.surface.degreeV === 1 ? 1 : 3) * dens });
+      if (fmt === 'stl') {
+        download(slugFile(name, 'stl'), meshToStl(concatMeshes(meshes.map((m) => m.mesh)), `Wingdesigner ${name}`), 'model/stl');
+      } else {
+        download(slugFile(name, '3mf'), meshesTo3mf(meshes, { title: name }), 'model/3mf');
+      }
+    } catch (e) {
+      // Out-of-memory and size limits of the browser end here, e.g. very dense meshes.
+      notify(`Export failed: ${e.message}. Use Normal mesh density or fewer chord samples and panel stations.`, true);
     }
   });
   dialog.showModal();

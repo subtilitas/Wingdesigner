@@ -15,6 +15,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   rejected; HTML tag stripping runs in linear time.
 - Airfoil check: `te-missing` is an error; duplicate points are removed before the checks.
 - Loft: negative blended thickness in smooth spanwise mode is reported as an error.
+- Airfoil import: files above 5000 points are rejected instead of stalling the checks; the largest
+  x is found without spreading all rows into one call; a drawn blunt trailing-edge base is removed in
+  both point orders and when the outline starts on the base; a closed trailing edge reached over a
+  vertical segment is reported (`te-base`).
+- Loft: the closed and fixed-thickness trailing-edge modes report surfaces pulled through each other;
+  sections at y < 0 are rejected; dragging a section keeps it strictly between its neighbours.
+- 3MF export: the model XML is written in 1 MB chunks, so meshes beyond the JavaScript string limit
+  export; characters outside XML 1.0 are removed from names; export failures show a message.
+- CI: runs on `main` queue instead of cancelling a running Pages deployment; 3MF files are validated
+  with lib3mf.
 - UI: rejected autosave data is kept under a separate key; keyboard shortcuts are inactive while a
   dialog is open; input focus survives a rebuild; empty or invalid number fields restore their
   value; export formats are disabled while the wing has errors; equal section span positions are

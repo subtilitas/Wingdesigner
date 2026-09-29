@@ -19,6 +19,8 @@ const DECIMAL_COMMA = /^[-+]?\d*,\d+$/;
 // Column header lines such as "x y", "X Yo Yu", "x/c y/c", "X Y_upper Y_lower".
 /** Largest accepted input in characters (a 2000-point file is about 60 000). */
 export const MAX_INPUT = 2_000_000;
+// The self-intersection check compares every segment pair: 5000 points take about 0.2 s.
+export const MAX_POINTS = 5000;
 const COLUMN_HEADER = /^(?:[xyz](?:\/c)?[a-z_]*\s*){2,3}$/i;
 
 function issue(severity, code, message) {
@@ -241,7 +243,9 @@ export function parseDat(text, options = {}) {
   const isCount = (v) => v >= 2 && Math.abs(v - Math.round(v)) < 1e-9;
   // Lednicer: a counts line followed by the upper surface starting at the leading edge (x near 0).
   const xs1 = rows.slice(1).map((r) => r.values[0]);
-  const startsAtLE = xs1.length > 0 && xs1[0] <= 0.05 * Math.max(...xs1.map(Math.abs), 1e-12);
+  let xs1Max = 1e-12;
+  for (const x of xs1) xs1Max = Math.max(xs1Max, Math.abs(x));
+  const startsAtLE = xs1.length > 0 && xs1[0] <= 0.05 * xs1Max;
   if (isCount(first[0]) && isCount(first[1]) && rows.length > 1 && startsAtLE) {
     const nu = Math.round(first[0]);
     const nl = Math.round(first[1]);
@@ -284,13 +288,19 @@ function finish(name, format, pointsIn, issuesIn) {
     return { name, format, points: [], issues: [...issues, issue('error', 'non-finite', 'Coordinates contain non-finite values.')] };
   }
   if (points.length === 0) return { name, format, points, issues: [...issues, issue('error', 'no-points', 'No coordinate points found.')] };
+  if (points.length > MAX_POINTS) {
+    return { name, format, points: [], issues: [...issues, issue('error', 'too-many-points', `${points.length} points; the limit is ${MAX_POINTS}.`)] };
+  }
 
-  // A blunt trailing edge drawn as a closed outline (CAD polylines) ends with the lower TE point at
-  // the same x as the first point and then repeats the first point. A sharp closed TE also repeats
-  // the first point but approaches it along the lower surface, so it is kept.
-  if (points.length > 3 && samePoint(points[0], points[points.length - 1])) {
-    const a = points[points.length - 2];
+  // A blunt trailing edge drawn as a closed outline (CAD polylines) repeats the first point after a
+  // steep segment at the trailing edge (the drawn TE base). The outline either starts at a TE
+  // corner (drop the repeated point) or on the base itself, e.g. at the TE midpoint (drop the base
+  // point at both ends). A sharp closed TE approaches the repeated point along a surface, so it is kept.
+  if (points.length > 4 && samePoint(points[0], points[points.length - 1])) {
+    const n = points.length;
+    const a = points[n - 2];
     const b = points[0];
+    const c = points[1];
     let xmin = Infinity;
     let xmax = -Infinity;
     for (const q of points) {
@@ -298,9 +308,14 @@ function finish(name, format, pointsIn, issuesIn) {
       xmax = Math.max(xmax, q[0]);
     }
     const scale = Math.max(xmax - xmin, 1e-12);
-    if (Math.abs(a[0] - b[0]) <= 1e-6 * scale && b[1] - a[1] > 1e-6 * scale) {
+    const steep = (p, q) => Math.abs(q[0] - p[0]) <= 0.2 * Math.abs(q[1] - p[1]) && Math.abs(q[1] - p[1]) > 1e-6 * scale;
+    const nearTE = (p) => xmax - p[0] <= 0.01 * scale;
+    if (steep(a, b) && steep(b, c) && nearTE(a) && nearTE(c) && (b[1] - a[1]) * (c[1] - b[1]) > 0) {
+      points = points.slice(1, -1);
+      issues.push(issue('warning', 'closing-point', 'The outline starts and ends on the drawn trailing-edge base; the base point was removed at both ends.'));
+    } else if (steep(a, b) && nearTE(a)) {
       points = points.slice(0, -1);
-      issues.push(issue('info', 'closing-point', 'The outline repeats its first point after a blunt trailing edge; the repeated point was removed.'));
+      issues.push(issue('warning', 'closing-point', 'The outline repeats its first point after a blunt trailing edge; the repeated point was removed.'));
     }
   }
   const dedup = [];

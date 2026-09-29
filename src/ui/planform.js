@@ -3,7 +3,7 @@
 
 import { curvePoint, surfacePoint } from '../geom/nurbs.js';
 import { guideCurve } from '../geom/guide.js';
-import { addGuidePoint, moveGuidePoint, removeGuidePoint, resetGuide, sortedSections, syncGuidesToSpan } from '../model/edit.js';
+import { addGuidePoint, clampSectionY, moveGuidePoint, removeGuidePoint, resetGuide, sortedSections, syncGuidesToSpan } from '../model/edit.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, formatNum, h, numberInput } from './dom.js';
 
@@ -249,9 +249,7 @@ export class PlanformEditor {
             s.chord = te - s.x;
             const sorted = sortedSections(p);
             const i = sorted.indexOf(s);
-            const lo = i > 0 ? sorted[i - 1].y + 1 : 0;
-            const hi = i < sorted.length - 1 ? sorted[i + 1].y - 1 : Infinity;
-            if (i > 0) s.y = Math.min(Math.max(y, lo), hi);
+            s.y = clampSectionY(sorted, i, y);
           } else {
             const le = p.guides?.nose?.enabled && st ? st.xLE : s.x;
             s.chord = Math.max(1, x - le);

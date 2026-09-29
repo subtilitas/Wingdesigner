@@ -11,6 +11,18 @@ export function sortedSections(project) {
  * Keep guide curves spanning exactly from the root to the tip: when the root or tip span position
  * changes, guide point y values are remapped linearly.
  */
+/**
+ * Span position for a dragged section: strictly between its neighbours (margin 1 mm, or a quarter of
+ * the gap when they are closer than 4 mm). The root section (index 0) keeps its y.
+ */
+export function clampSectionY(sorted, i, y) {
+  if (i <= 0) return sorted[0].y;
+  const prev = sorted[i - 1].y;
+  const next = i < sorted.length - 1 ? sorted[i + 1].y : Infinity;
+  const m = Math.min(1, (next - prev) / 4);
+  return Math.min(Math.max(y, prev + m), next - m);
+}
+
 export function syncGuidesToSpan(project) {
   const s = sortedSections(project);
   if (s.length < 2 || !project.guides) return project;
