@@ -18,6 +18,7 @@ import {
   sectionRows as rows,
   sectionValues,
   settleView,
+  STORAGE_KEY,
   statusFigures,
   statusOf as status,
   test,
@@ -440,6 +441,24 @@ test.describe('Sections tab', () => {
     await expect.poll(() => tableSections(page)).toEqual(edited);
     await expect(status(page)).toHaveText(editedStatus);
     expect((await savedProject(page)).sections.map(({ airfoil, x, y, z, chord, twist }) => ({ airfoil, y, x, z, chord, twist }))).toEqual(edited);
+  });
+
+  test('an edit is saved when the page is left before the next frame', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const chord = await field(page, 0, 'chord').elementHandle();
+    // Commit an edit and leave the page in the same task: the rebuild frame has not run yet.
+    const saved = await page.evaluate(
+      ([input, key]) => {
+        input.value = '321';
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        dispatchEvent(new PageTransitionEvent('pagehide'));
+        return JSON.parse(localStorage.getItem(key)).sections[0].chord;
+      },
+      [chord, STORAGE_KEY],
+    );
+    expect(saved).toBe(321);
+    await frames(page);
+    expect((await savedProject(page)).sections[0].chord).toBe(321);
   });
 
   test('values beyond the project limits are clamped to them', async ({ page }) => {

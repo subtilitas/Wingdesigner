@@ -228,11 +228,12 @@ export function segmentsCross(a, b, c, d, eps = 1e-14) {
 
 /**
  * Pairs [i, j] (i < j, sorted) of non-adjacent polyline segments that cross each other; the search
- * stops after `limit` crossings. Segments are binned into a uniform grid of about one cell per
+ * stops after `limit` crossings. With `accept`, only crossings for which accept(i, j) is true are
+ * returned and counted towards the limit. Segments are binned into a uniform grid of about one cell per
  * segment, and only segments that share a cell are tested: close to linear time for outlines whose
  * total length is a few times their extent (checkAirfoil rejects longer ones).
  */
-export function selfIntersections(points, limit = 10) {
+export function selfIntersections(points, limit = 10, accept = null) {
   const nSeg = points.length - 1;
   if (nSeg < 3) return [];
   let xmin = Infinity;
@@ -284,7 +285,7 @@ export function selfIntersections(points, limit = 10) {
   const test = (a, b) => {
     const i = Math.min(a, b);
     const j = Math.max(a, b);
-    if (j >= i + 2 && segmentsCross(points[i], points[i + 1], points[j], points[j + 1])) hits.push([i, j]);
+    if (j >= i + 2 && segmentsCross(points[i], points[i + 1], points[j], points[j + 1]) && (!accept || accept(i, j))) hits.push([i, j]);
   };
   for (const i of long) {
     // Long pairs are tested from their smaller index.

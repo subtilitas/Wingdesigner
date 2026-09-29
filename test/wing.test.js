@@ -792,4 +792,20 @@ describe('trailing-edge slivers and crossing size', () => {
     const loop = line([[1, 0.05], [0.4, 0], [0.6, -0.02], [0.8, 0.02], [0.2, 0], [0, 0.05]]);
     expect(curveCrossing(loop, { tolerance: CROSSING_TOLERANCE }).size).toBeGreaterThan(10 * CROSSING_TOLERANCE);
   });
+
+  it('finds a large crossing behind more small crossings than the search limit', () => {
+    // 30 curls 1e-4 wide (below the tolerance) along y = 0, then a loop 0.05 wide at x = 0.8.
+    const pts = [];
+    const d = 1e-4;
+    for (let k = 0; k < 30; k++) {
+      const x = k * 5 * d;
+      pts.push([x, 0], [x + 2 * d, 0], [x + 2 * d, d], [x + d, d], [x + d, -d], [x + 3 * d, -d]);
+    }
+    pts.push([0.75, 0], [0.9, 0], [0.9, 0.05], [0.8, 0.05], [0.8, -0.05], [1, -0.05]);
+    const small = curveCrossing(null, { samples: { pts: pts.slice(0, 180) } });
+    expect(small.size).toBeLessThan(CROSSING_TOLERANCE);
+    const cross = curveCrossing(null, { samples: { pts }, tolerance: CROSSING_TOLERANCE });
+    expect(cross.x).toBeCloseTo(0.75, 9);
+    expect(cross.size).toBeGreaterThan(10 * CROSSING_TOLERANCE);
+  });
 });

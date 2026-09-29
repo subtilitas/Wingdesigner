@@ -102,29 +102,75 @@ function pointSegmentDistance(P, A, B) {
 // resolution; the loop of a coarse 9-point file measures 2.5e-3 chord.
 export const CROSSING_TOLERANCE = 5e-4;
 
-/** Area of a closed polygon (shoelace formula, absolute value). */
-function polygonArea(pts) {
-  let a = 0;
-  for (let k = 0; k < pts.length; k++) {
-    const [x0, y0] = pts[k];
-    const [x1, y1] = pts[(k + 1) % pts.length];
-    a += x0 * y1 - x1 * y0;
-  }
-  return Math.abs(a) / 2;
-}
-
-function extent(pts) {
-  let x0 = Infinity;
-  let y0 = Infinity;
-  let x1 = -Infinity;
-  let y1 = -Infinity;
-  for (const [x, y] of pts) {
-    x0 = Math.min(x0, x);
-    y0 = Math.min(y0, y);
-    x1 = Math.max(x1, x);
-    y1 = Math.max(y1, y);
-  }
-  return Math.hypot(x1 - x0, y1 - y0);
+/**
+ * Crossing size for the polyline pts: size(i, j) splits the outline at the crossing of segments i
+ * and j into the inner part pts[i+1..j] and the outer part (the rest), both closed polygons, and
+ * returns the mean width (area over extent, the diagonal of the bounding box) of the part with the
+ * smaller extent. Each query costs O(1): prefix sums of the shoelace terms give the areas, sparse
+ * tables of the coordinates the bounding boxes. The tables are built on the first query.
+ */
+function crossingSizer(pts) {
+  const n = pts.length;
+  // Coordinates relative to the first point keep the shoelace sums small.
+  const ox = pts[0][0];
+  const oy = pts[0][1];
+  const cross = (a, b) => (pts[a][0] - ox) * (pts[b][1] - oy) - (pts[b][0] - ox) * (pts[a][1] - oy);
+  let C = null;
+  let tables = null;
+  const init = () => {
+    // C[k]: shoelace sum of the segments 0..k-1.
+    C = new Float64Array(n);
+    for (let k = 1; k < n; k++) C[k] = C[k - 1] + cross(k - 1, k);
+    // tables[l][q][k]: min x, max x, min y, max y (q = 0..3) of pts[k .. k + 2^l - 1].
+    const xs = Float64Array.from(pts, (p) => p[0]);
+    const ys = Float64Array.from(pts, (p) => p[1]);
+    tables = [[xs, xs, ys, ys]];
+    for (let w = 1; 2 * w <= n; w *= 2) {
+      const prev = tables[tables.length - 1];
+      tables.push(
+        prev.map((t, q) => {
+          const out = new Float64Array(n - 2 * w + 1);
+          for (let k = 0; k < out.length; k++) out[k] = q % 2 === 0 ? Math.min(t[k], t[k + w]) : Math.max(t[k], t[k + w]);
+          return out;
+        }),
+      );
+    }
+  };
+  // Bounding box of pts[a..b] (inclusive) merged into box [x0, x1, y0, y1].
+  const grow = (a, b, box) => {
+    const l = 31 - Math.clz32(b - a + 1);
+    const t = tables[l];
+    const c = b - (1 << l) + 1;
+    box[0] = Math.min(box[0], t[0][a], t[0][c]);
+    box[1] = Math.max(box[1], t[1][a], t[1][c]);
+    box[2] = Math.min(box[2], t[2][a], t[2][c]);
+    box[3] = Math.max(box[3], t[3][a], t[3][c]);
+    return box;
+  };
+  const diagonal = (box) => Math.hypot(box[1] - box[0], box[3] - box[2]);
+  // Twice the area of the closed polygon pts[a0..a1] + pts[b0..b1], summed directly: parts of a
+  // few points (the usual small loop) keep their exact area instead of a difference of prefix sums.
+  const direct = (a0, a1, b0, b1) => {
+    const idx = [];
+    for (let k = a0; k <= a1; k++) idx.push(k);
+    for (let k = b0; k <= b1; k++) idx.push(k);
+    let a = 0;
+    for (let k = 0; k < idx.length; k++) a += cross(idx[k], idx[(k + 1) % idx.length]);
+    return a;
+  };
+  const SHORT = 64;
+  return (i, j) => {
+    if (!C) init();
+    const inner = diagonal(grow(i + 1, j, [Infinity, -Infinity, Infinity, -Infinity]));
+    const outerBox = grow(0, i, [Infinity, -Infinity, Infinity, -Infinity]);
+    const outer = diagonal(grow(j + 1, n - 1, outerBox));
+    if (inner <= outer) {
+      const a = j - i <= SHORT ? direct(i + 1, j, 1, 0) : C[j] - C[i + 1] + cross(j, i + 1);
+      return Math.abs(a) / 2 / (inner || 1);
+    }
+    const a = i + n - j <= SHORT ? direct(0, i, j + 1, n - 1) : C[i] + cross(i, j + 1) + C[n - 1] - C[j + 1] + cross(n - 1, 0);
+    return Math.abs(a) / 2 / (outer || 1);
+  };
 }
 
 /**
@@ -183,14 +229,16 @@ export function sampleCurve(curve, { samplesPerSpan, budget = 4000 } = {}) {
  */
 export function curveCrossing(curve, { tolerance = 0, samplesPerSpan, samples } = {}) {
   const { pts } = samples ?? sampleCurve(curve, { samplesPerSpan });
+  const size = crossingSizer(pts);
   let worst = null;
-  for (const [i, j] of selfIntersections(pts, 20)) {
-    const inner = pts.slice(i + 1, j + 1);
-    const outer = [...pts.slice(0, i + 1), ...pts.slice(j + 1)];
-    const part = extent(inner) <= extent(outer) ? inner : outer;
-    const size = polygonArea(part) / (extent(part) || 1);
-    if (size > tolerance && !(worst && worst.size >= size)) worst = { x: pts[i][0], size };
-  }
+  // Crossings up to the tolerance do not count towards the search limit, so any number of small
+  // slivers cannot hide a larger loop.
+  selfIntersections(pts, 20, (i, j) => {
+    const s = size(i, j);
+    if (!(s > tolerance)) return false;
+    if (!(worst && worst.size >= s)) worst = { x: pts[i][0], size: s };
+    return true;
+  });
   return worst;
 }
 

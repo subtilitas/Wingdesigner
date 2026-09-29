@@ -238,13 +238,29 @@ function rebuild() {
     }
     undoBtn.disabled = !store.canUndo();
     redoBtn.disabled = !store.canRedo();
-    save(store.project);
+    flushSave();
   });
 }
 
+// The autosave runs with the rebuild in the next frame. Leaving or hiding the page before that
+// frame (reload, closing the tab, switching apps on a phone) saves the pending edit at once.
+let savePending = false;
+function flushSave() {
+  if (!savePending) return;
+  savePending = false;
+  save(store.project);
+}
+addEventListener('pagehide', flushSave);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushSave();
+});
+
 store.subscribe((project, reason) => {
   // Airfoil and settings panels re-render in the next frame together with the build.
-  if (reason !== 'select') refreshPanels = true;
+  if (reason !== 'select') {
+    refreshPanels = true;
+    savePending = true;
+  }
   rebuild();
 });
 

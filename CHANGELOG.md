@@ -78,6 +78,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - Airfoil check: consecutive points closer than 1e-9 chord are removed (their interpolation
   parameters coincide and the collocation matrix is singular); the preview reports an interpolation
   failure as an error and does not offer "Add to project".
+- Crossing test of fitted curves and surface rows: crossings up to the size tolerance do not count
+  towards the limit of 20, so small slivers cannot hide a larger loop; each crossing is sized in
+  constant time (prefix sums of the area terms, sparse tables of the coordinates).
+- Undo history: the undo and redo stacks together hold at most 64,000,000 characters of serialized
+  project in addition to the 100-step limit; a larger project keeps 1 undo step. 100 edits of a
+  50 MB project held 100 copies (5,000 MB).
+- Autosave: an edit committed less than one frame before the page is hidden or left (reload, closing
+  the tab, switching apps) is saved on `pagehide` or `visibilitychange`.
 - Airfoil import: files above 5000 points are rejected instead of stalling the checks; the largest
   x is found without spreading all rows into one call; a drawn blunt trailing-edge base is removed in
   both point orders and when the outline starts on the base; a closed trailing edge reached over a
