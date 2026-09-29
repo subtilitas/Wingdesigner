@@ -9,6 +9,7 @@ import { profileCurve, profileProblem } from '../geom/profile.js';
 import { curvePoint } from '../geom/nurbs.js';
 import { addAirfoil, pruneAirfoils } from '../model/edit.js';
 import { LIMITS, airfoilPoints } from '../model/project.js';
+import { displayName } from '../model/budget.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, download, h, slugFile } from './dom.js';
 
@@ -192,6 +193,7 @@ export class AirfoilsPanel {
     this.filter = '';
     // Text typed into the upload and NACA fields survives re-rendering until it is added.
     this.drafts = { paste: '', naca: '', closedTE: false };
+    this.entries = new WeakMap();
     this.render();
     loadLibraryIndex().then((lib) => {
       this.library = lib;
@@ -207,9 +209,10 @@ export class AirfoilsPanel {
     // The reason an airfoil with `count` points cannot be added, or null.
     const refusal = (count) => {
       const p = this.store.project;
-      if (p.airfoils.length >= LIMITS.maxAirfoils) return `The project holds ${LIMITS.maxAirfoils} airfoils, the limit; "Remove unused" frees places.`;
+      const n = (v) => v.toLocaleString('en');
+      if (p.airfoils.length >= LIMITS.maxAirfoils) return `The project holds ${n(LIMITS.maxAirfoils)} airfoils, the limit; "Remove unused" frees places.`;
       const total = airfoilPoints(p) + count;
-      if (total > LIMITS.maxAirfoilPoints) return `With this airfoil the project airfoils hold ${total} points; the limit is ${LIMITS.maxAirfoilPoints}. "Remove unused" frees points.`;
+      if (total > LIMITS.maxAirfoilPoints) return `With this airfoil the project airfoils hold ${n(total)} points; the limit is ${n(LIMITS.maxAirfoilPoints)}. "Remove unused" frees points.`;
       return null;
     };
     const before = refusal(candidate.points?.length ?? 0);
@@ -228,7 +231,7 @@ export class AirfoilsPanel {
       this.onMessage(after, true);
       return null;
     }
-    this.onMessage(`Added airfoil "${res.name}".`);
+    this.onMessage(`Added airfoil "${displayName(res.name)}".`);
     return id;
   }
 
@@ -261,17 +264,22 @@ export class AirfoilsPanel {
       'ul',
       { class: 'airfoil-list' },
       p.airfoils.map((a) => {
+        // Airfoils are replaced, never changed in place: an entry (and its drawn thumbnail) stays
+        // valid while its airfoil object and its use by a section stay the same.
+        const inUse = used.has(a.id);
+        const kept = this.entries.get(a);
+        if (kept?.inUse === inUse) return kept.li;
         const c = h('canvas', { class: 'thumb' });
         requestAnimationFrame(() => drawThumb(c, a.points));
         const attribution = a.source?.attribution ?? (a.source?.kind === 'naca' ? 'NACA equations' : '');
-        return h(
+        const li = h(
           'li',
           {},
           c,
-          h('div', { class: 'grow' }, h('div', {}, a.name), h('div', { class: 'small muted' }, `${a.points.length} points${attribution ? ` · ${attribution}` : ''}${used.has(a.id) ? '' : ' · unused'}`)),
+          h('div', { class: 'grow' }, h('div', {}, displayName(a.name)), h('div', { class: 'small muted' }, `${a.points.length} points${attribution ? ` · ${attribution}` : ''}${used.has(a.id) ? '' : ' · unused'}`)),
           h(
             'button',
-            { type: 'button', class: 'icon', title: 'Preview', onclick: () => previewAirfoil({ ...a }, { title: a.name, allowEdit: false, parametrization: this.store.project.settings?.parametrization }) },
+            { type: 'button', class: 'icon', title: 'Preview', onclick: () => previewAirfoil({ ...a }, { title: displayName(a.name), allowEdit: false, parametrization: this.store.project.settings?.parametrization }) },
             'View',
           ),
           h(
@@ -291,6 +299,8 @@ export class AirfoilsPanel {
             '×',
           ),
         );
+        this.entries.set(a, { li, inUse });
+        return li;
       }),
     );
 

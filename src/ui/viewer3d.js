@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { surfaceDerivatives1, surfaceDerivatives1Grid, surfacePoint } from '../geom/nurbs.js';
+import { surfaceDerivatives1, surfaceDerivatives1Grid, surfacePoint, surfacePointGrid } from '../geom/nurbs.js';
 import { stripTriangulate } from '../geom/triangulate.js';
 
 function refine(params, r) {
@@ -200,17 +200,35 @@ export class Viewer3D {
     const us = refine(build.paramsU, 1);
     const lines = new THREE.Group();
     if (this.options.sections) {
+      // All section outlines as one set of line segments (one draw call for any number of sections).
       const sectionVs = build.sections.map((s) => (build.tipY > build.rootY ? (s.y - build.rootY) / (build.tipY - build.rootY) : 0));
-      for (const v of sectionVs) {
-        const pts = us.map((u) => surfacePoint(S, u, v));
-        if (!build.closedTE) pts.push(pts[0]);
-        const line = new THREE.Line(polyline(pts, origin), this.sectionMaterial(v, selectedV));
-        line.userData.sectionV = v;
-        lines.add(line);
-      }
+      const closing = build.closedTE ? 0 : 1;
+      const segs = new Float32Array(sectionVs.length * (us.length - 1 + closing) * 6);
+      let at = 0;
+      let prev = null;
+      let first = null;
+      surfacePointGrid(S, us, sectionVs, (k, j, P) => {
+        const q = [P[0] - origin[0], P[1] - origin[1], P[2] - origin[2]];
+        if (j > 0) {
+          segs.set(prev, at);
+          segs.set(q, at + 3);
+          at += 6;
+        } else first = q;
+        if (j === us.length - 1 && closing) {
+          segs.set(q, at);
+          segs.set(first, at + 3);
+          at += 6;
+        }
+        prev = q;
+      });
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(segs, 3));
+      lines.add(new THREE.LineSegments(g, this.lineMaterial));
     }
     const vs = refine(build.paramsV, 4);
-    for (const u of [0, build.uLE, 1]) lines.add(new THREE.Line(polyline(vs.map((v) => surfacePoint(S, u, v)), origin), this.edgeMaterial));
+    const edges = [[], [], []];
+    surfacePointGrid(S, [0, build.uLE, 1], vs, (k, j, P) => edges[j].push(P));
+    for (const e of edges) lines.add(new THREE.Line(polyline(e, origin), this.edgeMaterial));
     if (this.options.controlNet) {
       const segs = [];
       const P = S.points;
@@ -232,6 +250,10 @@ export class Viewer3D {
       left.position.set(origin[0], -origin[1], origin[2]);
       this.wingGroup.add(left);
     }
+    this.origin = origin;
+    this.selectionGroup = new THREE.Group();
+    this.wingGroup.add(this.selectionGroup);
+    this.drawSelection();
     this.updateGrid(build);
     if (!this.hasFitted) {
       this.fit();
@@ -240,16 +262,31 @@ export class Viewer3D {
     this.render();
   }
 
-  sectionMaterial(v, selectedV) {
-    return selectedV !== null && Math.abs(v - selectedV) < 1e-9 ? this.selMaterial : this.lineMaterial;
+  /** The outline of the selected section (both halves), on top of the other outlines. */
+  drawSelection() {
+    const g = this.selectionGroup;
+    const build = this.build;
+    if (!g || !build?.surface) return;
+    this.clearGroup(g);
+    if (this.selectedV === null || !this.options.sections) return;
+    const pts = refine(build.paramsU, 1).map((u) => surfacePoint(build.surface, u, this.selectedV));
+    if (!build.closedTE) pts.push(pts[0]);
+    const right = new THREE.Line(polyline(pts, this.origin), this.selMaterial);
+    right.position.set(...this.origin);
+    right.renderOrder = 1;
+    g.add(right);
+    if (this.options.mirror) {
+      const left = right.clone();
+      left.scale.set(1, -1, 1);
+      left.position.set(this.origin[0], -this.origin[1], this.origin[2]);
+      g.add(left);
+    }
   }
 
   /** Highlight the section at span fraction selectedV (null: none) without rebuilding the view. */
   setSelection(selectedV) {
     this.selectedV = selectedV;
-    this.wingGroup.traverse((o) => {
-      if (o.userData.sectionV !== undefined) o.material = this.sectionMaterial(o.userData.sectionV, selectedV);
-    });
+    this.drawSelection();
     this.render();
   }
 

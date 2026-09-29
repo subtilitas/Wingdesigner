@@ -26,17 +26,25 @@ export const DEFAULT_SETTINGS = Object.freeze({
 // profile shape falls under the resolution of meshes, STEP modelling tolerances and manufacturing.
 export const LIMITS = Object.freeze({
   minChord: 1,
-  // Bounds that keep every computed coordinate finite and every rebuild interactive.
+  // Bounds that keep every computed coordinate finite.
   maxChord: 100_000,
   maxCoordinate: 1_000_000,
   maxTwist: 360,
-  maxSections: 200,
-  // Every section can use its own airfoil; each project airfoil is a list entry with a thumbnail.
-  maxAirfoils: 200,
-  // Points of all project airfoils together: 20 airfoils of 5000 points, or 200 of 500. The first
-  // build of 20 such airfoils with folding surfaces takes 0.8 s; 200 took 40 s.
-  maxAirfoilPoints: 100_000,
-  maxGuidePoints: 500,
+  // Hard size limits: beyond them a desktop browser tab runs out of memory or a change takes about
+  // a minute (measurements in RECORD.md). Sizes above the warning thresholds in budget.js work, with
+  // a warning that names the expected time and memory.
+  maxSections: 20_000,
+  maxAirfoils: 10_000,
+  // Points of all project airfoils together, and of one airfoil (the parser stops above it).
+  maxAirfoilPoints: 1_000_000,
+  maxPointsPerAirfoil: MAX_POINTS,
+  // Disabled guide curves carry one point per section.
+  maxGuidePoints: 20_000,
+  // Loft grid: spanwise stations times profile points; above it the stations per panel go down.
+  maxGridPoints: 5_000_000,
+  // Mesh export triangles, both halves counted: 8.5 million wrote a 423 MB STL at 2.7 GB browser
+  // memory; 20 million failed.
+  maxExportTriangles: 10_000_000,
   // Guide x reaches the trailing edge of any valid section (x + chord), where disabled end lines lie.
   maxGuideCoordinate: 1_100_000,
   // Extent of the built geometry: every leading edge, trailing edge and z within this bound covers
@@ -45,9 +53,10 @@ export const LIMITS = Object.freeze({
   tipRatio: [0.001, 0.01],
   chordSamples: [16, 200],
   panelStations: [3, 40],
-  // Characters of the project name, airfoil names and ids, and section ids (the airfoil file name
-  // limit). Each airfoil name appears in every section's airfoil list.
+  // Characters of the project name and airfoil names; lists and messages show the first 200.
   maxName: MAX_NAME,
+  // Characters of airfoil and section ids (references inside the project file).
+  maxId: 200,
   // Characters of each airfoil source text (attribution, license, URL, terms, note).
   maxText: 2000,
 });
@@ -75,6 +84,9 @@ export function resolveSettings(settings) {
     tip: pick(DEFAULT_SETTINGS.tip, s.tip),
   };
 }
+
+/** A count with thousands separators. */
+const count = (v) => v.toLocaleString('en');
 
 /** A text value for messages: at most 40 characters. */
 const shown = (v) => {
@@ -124,7 +136,7 @@ export function limitErrors(p) {
   const errors = [];
   const sections = Array.isArray(p?.sections) ? p.sections : [];
   // Counts first: an oversized array is rejected without visiting every entry.
-  if (sections.length > LIMITS.maxSections) return [`At most ${LIMITS.maxSections} sections are supported (found ${sections.length}).`];
+  if (sections.length > LIMITS.maxSections) return [`At most ${count(LIMITS.maxSections)} sections are supported (found ${count(sections.length)}).`];
   sections.forEach((s, i) => {
     if (!isObject(s)) return;
     if (isNum(s.chord) && s.chord > LIMITS.maxChord) errors.push(`Section ${i + 1}: chord must be at most ${LIMITS.maxChord} mm.`);
@@ -136,7 +148,7 @@ export function limitErrors(p) {
   for (const key of ['nose', 'end']) {
     const g = isObject(p?.guides) ? p.guides[key] : null;
     if (!isObject(g) || !Array.isArray(g.points)) continue;
-    if (g.points.length > LIMITS.maxGuidePoints) errors.push(`guides.${key}.points: at most ${LIMITS.maxGuidePoints} points.`);
+    if (g.points.length > LIMITS.maxGuidePoints) errors.push(`guides.${key}.points: at most ${count(LIMITS.maxGuidePoints)} points (found ${count(g.points.length)}).`);
     else if (g.points.some((q) => Array.isArray(q) && (Math.abs(q[0]) > LIMITS.maxGuideCoordinate || Math.abs(q[1]) > LIMITS.maxCoordinate))) {
       errors.push(`guides.${key}.points: x must be within ±${LIMITS.maxGuideCoordinate} mm and y within ±${LIMITS.maxCoordinate} mm.`);
     }
@@ -157,26 +169,26 @@ export function validateProject(p) {
   if (p.guides !== undefined && p.guides !== null && !isObject(p.guides)) errors.push('guides must be an object.');
   if (!Number.isInteger(p.version) || p.version < 1 || p.version > VERSION) errors.push(`Unsupported project version ${p.version}.`);
   if (!Array.isArray(p.airfoils) || p.airfoils.length === 0) errors.push('airfoils must be a non-empty array.');
-  else if (p.airfoils.length > LIMITS.maxAirfoils) errors.push(`At most ${LIMITS.maxAirfoils} airfoils are supported (found ${p.airfoils.length}).`);
+  else if (p.airfoils.length > LIMITS.maxAirfoils) errors.push(`At most ${count(LIMITS.maxAirfoils)} airfoils are supported (found ${count(p.airfoils.length)}).`);
   if (!Array.isArray(p.sections) || p.sections.length < 2) errors.push('At least 2 sections are required.');
-  else if (p.sections.length > LIMITS.maxSections) errors.push(`At most ${LIMITS.maxSections} sections are supported (found ${p.sections.length}).`);
+  else if (p.sections.length > LIMITS.maxSections) errors.push(`At most ${count(LIMITS.maxSections)} sections are supported (found ${count(p.sections.length)}).`);
   if (!errors.length && !p.airfoils.every(isObject)) errors.push('Every airfoil must be an object.');
   if (!errors.length && airfoilPoints(p) > LIMITS.maxAirfoilPoints) {
-    errors.push(`The airfoils hold ${airfoilPoints(p)} points together; the limit is ${LIMITS.maxAirfoilPoints}.`);
+    errors.push(`The airfoils hold ${count(airfoilPoints(p))} points together; the limit is ${count(LIMITS.maxAirfoilPoints)}.`);
   }
   if (!errors.length && !p.sections.every(isObject)) errors.push('Every section must be an object.');
   if (errors.length) return { ok: false, errors };
-  if (typeof p.name === 'string' && p.name.length > LIMITS.maxName) errors.push(`name has ${p.name.length} characters; the limit is ${LIMITS.maxName}.`);
+  if (typeof p.name === 'string' && p.name.length > LIMITS.maxName) errors.push(`name has ${count(p.name.length)} characters; the limit is ${count(LIMITS.maxName)}.`);
   const ids = new Set();
   p.airfoils.forEach((a, i) => {
     // Ids and names are checked for length first: messages quote them.
     if (typeof a.id !== 'string' || !a.id) errors.push(`Airfoil ${i + 1}: id must be a non-empty string.`);
-    else if (a.id.length > LIMITS.maxName) errors.push(`Airfoil ${i + 1}: id has ${a.id.length} characters; the limit is ${LIMITS.maxName}.`);
+    else if (a.id.length > LIMITS.maxId) errors.push(`Airfoil ${i + 1}: id has ${a.id.length} characters; the limit is ${LIMITS.maxId}.`);
     else if (ids.has(a.id)) errors.push(`Duplicate airfoil id "${a.id}".`);
     else ids.add(a.id);
     const at = `Airfoil ${i + 1}`;
     if (a.name !== undefined && typeof a.name !== 'string') errors.push(`${at}: name must be a string.`);
-    else if (a.name?.length > LIMITS.maxName) errors.push(`${at}: name has ${a.name.length} characters; the limit is ${LIMITS.maxName}.`);
+    else if (a.name?.length > LIMITS.maxName) errors.push(`${at}: name has ${count(a.name.length)} characters; the limit is ${count(LIMITS.maxName)}.`);
     if (a.source !== undefined && a.source !== null) {
       if (!isObject(a.source)) errors.push(`${at}: source must be an object.`);
       else {
@@ -189,8 +201,8 @@ export function validateProject(p) {
       }
     }
     if (!Array.isArray(a.points) || a.points.length < 5) errors.push(`${at} needs at least 5 numeric [x, y] points.`);
-    // The airfoil file limit applies to project files too; the thumbnail draws every point.
-    else if (a.points.length > MAX_POINTS) errors.push(`${at} has ${a.points.length} points; the limit is ${MAX_POINTS}.`);
+    // The airfoil file limit applies to project files too.
+    else if (a.points.length > LIMITS.maxPointsPerAirfoil) errors.push(`${at} has ${count(a.points.length)} points; the limit is ${count(LIMITS.maxPointsPerAirfoil)}.`);
     else if (!a.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(`${at} needs at least 5 numeric [x, y] points.`);
   });
   const secIds = new Set();
@@ -204,7 +216,7 @@ export function validateProject(p) {
     // Sections without an id get "s<n>" on import; check the effective id.
     const id = s.id ?? `s${i + 1}`;
     if (typeof id !== 'string' || !id) errors.push(`Section ${i + 1}: id must be a non-empty string.`);
-    else if (id.length > LIMITS.maxName) errors.push(`Section ${i + 1}: id has ${id.length} characters; the limit is ${LIMITS.maxName}.`);
+    else if (id.length > LIMITS.maxId) errors.push(`Section ${i + 1}: id has ${id.length} characters; the limit is ${LIMITS.maxId}.`);
     else if (secIds.has(id)) errors.push(`Duplicate section id "${id}".`);
     secIds.add(id);
   });

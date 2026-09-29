@@ -81,16 +81,47 @@ export function projectToJsonText(project, build, meta) {
 }
 
 /**
- * Parse and validate project JSON text. Derived data is ignored.
- * @returns {{ok: boolean, project?: object, errors: string[]}}
+ * Largest project file read (bytes). The project data of every project within LIMITS fits (1,000,000
+ * airfoil points take about 40 MB); the derived NURBS data of large wings may not.
  */
-/** Largest project file read (bytes): 50 MB holds hundreds of 5000-point airfoils. */
-export const MAX_PROJECT_BYTES = 50_000_000;
+export const MAX_PROJECT_BYTES = 100_000_000;
+
+// Characters per number of derived data in the file (12 significant digits, sign, separator).
+const CHARS_PER_NUMBER = 22;
+
+/** Numbers in the derived data of a build. */
+function derivedNumbers(build) {
+  const curve = (c) => (c ? 2 * c.points.length + c.knots.length + (c.weights?.length ?? 0) : 0);
+  let n = 6 * build.stations.length + curve(build.guides.nose) + curve(build.guides.end);
+  for (const p of build.profiles.values()) n += curve(p.curve) + 1;
+  const S = build.surface;
+  return n + 3 * S.points.length * S.points[0].length + S.knotsU.length + S.knotsV.length;
+}
+
+/**
+ * Text of a project file (Save, JSON export). The derived NURBS data is left out when the file would
+ * exceed MAX_PROJECT_BYTES, so that Open reads every file the app writes; Open recomputes it.
+ * @returns {{text: string, derived: boolean, omitted: boolean}} omitted: derived data left out for size
+ */
+export function projectFileText(project, build, meta) {
+  if (build?.surface && CHARS_PER_NUMBER * derivedNumbers(build) <= MAX_PROJECT_BYTES) {
+    const full = formatJson(projectToJson(project, build, meta));
+    if (full.length <= MAX_PROJECT_BYTES) return { text: full, derived: true, omitted: false };
+  }
+  return { text: formatJson(projectToJson(project, null, meta)), derived: false, omitted: !!build?.surface };
+}
+
+/** The message after writing a file without its derived data. */
+export const OMITTED_NOTE = `The file leaves out the derived NURBS data: with it, the file would exceed ${MAX_PROJECT_BYTES / 1e6} MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`;
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 const samePoints = (a, b) => a.length === b.length && a.every((p, i) => Math.abs(p[0] - b[i][0]) <= 1e-9 && Math.abs(p[1] - b[i][1]) <= 1e-9);
 
+/**
+ * Parse and validate project JSON text. Derived data is ignored.
+ * @returns {{ok: boolean, project?: object, errors: string[]}}
+ */
 export function projectFromJsonText(text) {
   if (String(text).length > MAX_PROJECT_BYTES) return { ok: false, errors: [`The file is larger than ${MAX_PROJECT_BYTES / 1e6} MB.`] };
   let data;

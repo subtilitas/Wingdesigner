@@ -3,6 +3,7 @@
 
 import { airfoilStats, bounds, leadingEdgeIndex, normalize, selfIntersections, splitSurfaces } from './geometry.js';
 import { MAX_POINTS, parseDat } from './parse.js';
+import { WARN, airfoilFirstUseSeconds, formatSeconds } from '../model/budget.js';
 
 export const LIMITS = {
   minPoints: 5,
@@ -16,6 +17,9 @@ export const LIMITS = {
   // Interior thickness (1 % to 99 % chord) at or below this fraction of the chord is a contact.
   touchThickness: 1e-5,
   maxOutlineLength: 10,
+  // Points per surface where x decreases: accepted real airfoils have up to 13 (a slat of a
+  // multi-element section; 1,915 of 1,927 files have none).
+  maxFolds: 50,
   spacingRatio: 25,
   rotationDeg: 0.5,
 };
@@ -83,8 +87,18 @@ export function checkAirfoil(rawPointsIn) {
     return { ok: false, points: rawPoints ?? [], issues, stats: null };
   }
   if (rawPoints.length > LIMITS.maxPoints) {
-    issues.push(issue('error', 'too-many-points', `${rawPoints.length} points; the limit is ${LIMITS.maxPoints}.`));
+    issues.push(issue('error', 'too-many-points', `${rawPoints.length.toLocaleString('en')} points; the limit is ${LIMITS.maxPoints.toLocaleString('en')}.`));
     return { ok: false, points: rawPoints, issues, stats: null };
+  }
+  if (rawPoints.length > WARN.pointsPerAirfoil) {
+    const n = rawPoints.length;
+    issues.push(
+      issue(
+        'warning',
+        'many-points',
+        `${n.toLocaleString('en')} points (warning above ${WARN.pointsPerAirfoil.toLocaleString('en')}): the checks and the first build of a wing that uses the airfoil take ${formatSeconds(airfoilFirstUseSeconds(n))}.`,
+      ),
+    );
   }
   if (rawPoints.length < LIMITS.coarsePoints) {
     issues.push(issue('warning', 'coarse', `Only ${rawPoints.length} points; the NURBS interpolation may not match the intended shape.`));
@@ -136,6 +150,22 @@ export function checkAirfoil(rawPointsIn) {
   for (let i = 1; i < points.length; i++) outline += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
   if (outline > LIMITS.maxOutlineLength) {
     issues.push(issue('error', 'outline-length', `The outline is ${outline.toFixed(1)} chords long; an airfoil outline is about 2 chords long.`));
+    return { ok: false, points, issues, stats: null };
+  }
+
+  // A surface that runs back in x at many points (zigzags) is not an airfoil, and the thickness
+  // envelope then compares every x with every backward run. Strict decreases, the comparison of the
+  // envelope search.
+  const folds = (surface) => {
+    let c = 0;
+    for (let i = 1; i < surface.length; i++) if (surface[i][0] < surface[i - 1][0]) c++;
+    return c;
+  };
+  const halves = splitSurfaces(points);
+  const fu = folds(halves.upper);
+  const fl = folds(halves.lower);
+  if (fu > LIMITS.maxFolds || fl > LIMITS.maxFolds) {
+    issues.push(issue('error', 'folds', `The ${fu >= fl ? 'upper' : 'lower'} surface runs back in x at ${Math.max(fu, fl)} points; the limit is ${LIMITS.maxFolds}.`));
     return { ok: false, points, issues, stats: null };
   }
 

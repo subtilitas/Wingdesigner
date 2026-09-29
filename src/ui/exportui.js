@@ -4,9 +4,10 @@ import { wingToStep } from '../export/step.js';
 import { MeshPrecisionError } from '../export/precision.js';
 import { meshToStl } from '../export/stl.js';
 import { meshesTo3mf } from '../export/threemf.js';
-import { MAX_EXPORT_TRIANGLES, concatMeshes, exportMeshes, exportTriangles } from '../geom/mesh.js';
-import { projectToJsonText } from '../model/io.js';
-import { cloneProject } from '../model/project.js';
+import { concatMeshes, exportMeshes, exportTriangles } from '../geom/mesh.js';
+import { WARN, exportCost, formatMegabytes, formatSeconds } from '../model/budget.js';
+import { OMITTED_NOTE, projectFileText } from '../model/io.js';
+import { LIMITS, cloneProject } from '../model/project.js';
 import { download, h, slugFile } from './dom.js';
 
 export function exportDialog(store, getBuild, version, notify = () => {}) {
@@ -15,18 +16,39 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
   const build = getBuild();
   const name = project.name || 'wing';
   const blocked = !build?.surface;
-  // Fine density: 4 times the triangles of Normal; beyond MAX_EXPORT_TRIANGLES it is not offered.
   const vRefine = (dens) => (build?.surface?.degreeV === 1 ? 1 : 3) * dens;
-  const fineTriangles = blocked ? 0 : exportTriangles(build, 'halves', { uRefine: 2, vRefine: vRefine(2) });
-  const fineOff = fineTriangles > MAX_EXPORT_TRIANGLES;
   const radio = (group, value, label, checked, disabled = false) =>
     h('label', { class: 'check' }, h('input', { type: 'radio', name: group, value, checked, disabled }), label);
+  // Triangles, expected time, memory and file size of the chosen mesh export; above
+  // LIMITS.maxExportTriangles (a desktop browser tab runs out of memory) Download is off.
+  const sizeNote = h('p', { class: 'small', 'aria-live': 'polite' });
+  const downloadBtn = h('button', { value: 'ok', class: 'primary' }, 'Download');
+  const choice = (form) => ({ fmt: form.fmt.value, half: form.half.value, dens: Number(form.dens.value) });
+  const refresh = () => {
+    const { fmt, half, dens } = choice(dialog.querySelector('form').elements);
+    const mesh = !blocked && (fmt === 'stl' || fmt === '3mf');
+    let over = false;
+    sizeNote.hidden = !mesh;
+    if (mesh) {
+      const n = exportTriangles(build, half, { uRefine: dens, vRefine: vRefine(dens) });
+      const c = exportCost(n, fmt);
+      over = n > LIMITS.maxExportTriangles;
+      const what = `${(n / 1e6).toFixed(n < 1e5 ? 2 : 1)} million triangles, file ${formatMegabytes(c.fileMB)}`;
+      sizeNote.className = `small${over ? ' sev-error' : n > WARN.exportTriangles ? ' sev-warning' : ' muted'}`;
+      sizeNote.textContent = over
+        ? `${what}: above the limit of ${LIMITS.maxExportTriangles / 1e6} million triangles, where a desktop browser tab runs out of memory. Use Normal density, one half, or fewer chord samples or panel stations.`
+        : n > WARN.exportTriangles
+          ? `${what}. The export takes ${formatSeconds(c.seconds)} and ${formatMegabytes(c.megabytes)} of browser memory.`
+          : `${what}.`;
+    }
+    downloadBtn.disabled = over;
+  };
   const dialog = h(
     'dialog',
     { class: 'modal' },
     h(
       'form',
-      { method: 'dialog' },
+      { method: 'dialog', onchange: () => refresh() },
       h('h2', {}, 'Export'),
       blocked ? h('p', { class: 'sev-error' }, 'The wing has errors; only the project JSON can be exported.') : null,
       h(
@@ -46,20 +68,12 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         radio('half', 'merged', 'Full wing as one body (mesh formats, root at y = 0)', false),
         radio('half', 'right', 'Right half only', false),
       ),
-      h(
-        'fieldset',
-        {},
-        h('legend', {}, 'Mesh density (STL, 3MF)'),
-        radio('dens', '1', 'Normal', true),
-        radio('dens', '2', 'Fine (4x triangles)', false, fineOff),
-        fineOff
-          ? h('p', { class: 'small muted' }, `Fine: ${(fineTriangles / 1e6).toFixed(1)} million triangles for both halves, above the limit of ${(MAX_EXPORT_TRIANGLES / 1e6).toFixed(0)} million.`)
-          : null,
-      ),
+      h('fieldset', {}, h('legend', {}, 'Mesh density (STL, 3MF)'), radio('dens', '1', 'Normal', true), radio('dens', '2', 'Fine (4x triangles)', false), sizeNote),
       h('p', { class: 'small muted' }, 'Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.'),
-      h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close('cancel') }, 'Cancel'), h('button', { value: 'ok', class: 'primary' }, 'Download')),
+      h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close('cancel') }, 'Cancel'), downloadBtn),
     ),
   );
+  refresh();
   document.body.append(dialog);
   dialog.addEventListener('close', () => {
     const data = new FormData(dialog.querySelector('form'));
@@ -71,7 +85,9 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
     const dens = Number(data.get('dens'));
     try {
       if (fmt === 'json') {
-        download(slugFile(name, 'json'), projectToJsonText(project, build, { generatorVersion: version }), 'application/json');
+        const file = projectFileText(project, build, { generatorVersion: version });
+        download(slugFile(name, 'json'), file.text, 'application/json');
+        if (file.omitted) notify(OMITTED_NOTE);
         return;
       }
       if (blocked) return;

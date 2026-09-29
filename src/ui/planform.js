@@ -7,6 +7,17 @@ import { addGuidePoint, chordFromTrailingEdge, dragLeadingEdge, moveGuidePoint, 
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, formatNum, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
+import { WARN, costPhrase, projectSize } from '../model/budget.js';
+
+/** Title of "Add point": the hard limit, or above the warning threshold the time and memory with one more point. */
+function addPointTitle(project, guide) {
+  const n = guide.points.length + 1;
+  if (n > LIMITS.maxGuidePoints) return `At most ${LIMITS.maxGuidePoints.toLocaleString('en')} points per guide curve.`;
+  if (n <= WARN.guidePoints) return 'Add a point in the widest gap';
+  const size = projectSize(project);
+  size.guidePoints = Math.max(size.guidePoints, n);
+  return `Add a point in the widest gap. With ${n.toLocaleString('en')} points, ${costPhrase(size)}.`;
+}
 
 const GUIDE_LABEL = { nose: 'Nose line (leading edge)', end: 'End line (trailing edge)' };
 
@@ -375,7 +386,7 @@ export class PlanformEditor {
                 {
                   type: 'button',
                   disabled: gd.points.length >= LIMITS.maxGuidePoints,
-                  title: `At most ${LIMITS.maxGuidePoints} points per guide`,
+                  title: addPointTitle(this.store.project, gd),
                   onclick: () =>
                     this.store.update((q) => {
                       const i = addGuidePoint(q, key);

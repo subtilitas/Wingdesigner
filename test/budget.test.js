@@ -1,0 +1,118 @@
+import { describe, expect, it } from 'vitest';
+import {
+  LAZY_OPTIONS,
+  WARN,
+  changeCost,
+  costSentence,
+  displayName,
+  exportCost,
+  formatMegabytes,
+  formatSeconds,
+  largeSizes,
+  loftGrid,
+  projectSize,
+  sizeWarning,
+} from '../src/model/budget.js';
+import { buildWing } from '../src/geom/wing.js';
+import { LIMITS } from '../src/model/project.js';
+import { PRESETS, wizardProject } from '../src/model/wizard.js';
+import { sampleProject } from './helpers.js';
+
+/** The sample wing with n evenly spaced sections. */
+function withSections(n) {
+  const p = sampleProject();
+  const s0 = p.sections[0];
+  p.sections = Array.from({ length: n }, (_, i) => ({ ...s0, id: `s${i}`, y: 3 * i }));
+  return p;
+}
+
+describe('project size warnings', () => {
+  it('stays silent below every threshold, also for all wizard presets', () => {
+    expect(sizeWarning(sampleProject())).toBeNull();
+    for (const pr of Object.values(PRESETS)) {
+      const p = wizardProject(pr.params);
+      expect(sizeWarning(p)).toBeNull();
+      expect(buildWing(p).warnings.filter((w) => w.startsWith('Large project'))).toEqual([]);
+    }
+    expect(largeSizes(projectSize(withSections(WARN.sections)))).toEqual([]);
+  });
+
+  it('names the sizes above their thresholds and the time and memory of a change', () => {
+    const p = withSections(1000);
+    p.name = 'x'.repeat(WARN.name + 1);
+    const size = projectSize(p);
+    expect(size).toMatchObject({ sections: 1000, airfoils: 2, gridPoints: 1000 * 121, longestName: WARN.name + 1 });
+    expect(largeSizes(size).map((q) => q.key)).toEqual(['sections', 'gridPoints', 'longestName']);
+    const w = sizeWarning(p);
+    expect(w).toBe(
+      `Large project: 1,000 sections (warning above 200), 121,000 loft grid points (warning above 60,000) and a name of 201 characters (warning above 200). ${costSentence(size)}`,
+    );
+    expect(w).toMatch(/Each change takes about [\d.]+ s and about \d+ MB of browser memory\.$/);
+    // The build carries the warning.
+    expect(buildWing(p).warnings[0]).toBe(w);
+  });
+
+  it('counts enabled guide curves only, and airfoil points of the largest airfoil and of all', () => {
+    const p = sampleProject();
+    const pts = Array.from({ length: WARN.guidePoints + 1 }, (_, i) => [200, (600 * i) / WARN.guidePoints]);
+    p.guides.end.points = pts;
+    expect(projectSize(p).guidePoints).toBe(0);
+    p.guides.end.enabled = true;
+    expect(projectSize(p).guidePoints).toBe(WARN.guidePoints + 1);
+    expect(largeSizes(projectSize(p))[0].text).toBe('a guide curve of 501 points (warning above 500)');
+    const size = { ...projectSize(sampleProject()), largestAirfoil: 6000, airfoilPoints: 120_000 };
+    expect(largeSizes(size).map((q) => q.text)).toEqual([
+      'an airfoil of 6,000 points (warning above 5,000)',
+      '120,000 airfoil points in all (warning above 100,000)',
+    ]);
+  });
+
+  it('estimates grow with every size and stop counting airfoil lists above LAZY_OPTIONS', () => {
+    const base = projectSize(sampleProject());
+    const c0 = changeCost(base);
+    for (const key of ['gridPoints', 'airfoilPoints', 'guidePoints', 'sections']) {
+      const c = changeCost({ ...base, [key]: base[key] * 10 + 1000 });
+      expect(c.seconds).toBeGreaterThan(c0.seconds);
+      expect(c.megabytes).toBeGreaterThan(c0.megabytes);
+    }
+    // Above LAZY_OPTIONS the lists hold one entry per section.
+    const lazy = { ...base, sections: 1000, airfoils: LAZY_OPTIONS };
+    expect(changeCost(lazy).seconds).toBeLessThan(changeCost({ ...lazy, airfoils: 20 }).seconds);
+    // At the hard section limit with default settings a change takes about half a minute.
+    const most = projectSize(withSections(LIMITS.maxSections));
+    expect(changeCost(most).seconds).toBeGreaterThan(20);
+    expect(changeCost(most).seconds).toBeLessThan(60);
+  });
+
+  it('formats seconds and megabytes', () => {
+    expect(formatSeconds(0.4)).toBe('under 1 s');
+    expect(formatSeconds(3.26)).toBe('about 3.5 s');
+    expect(formatSeconds(42.4)).toBe('about 42 s');
+    expect(formatMegabytes(0.2)).toBe('about 1 MB');
+    expect(formatMegabytes(247)).toBe('about 250 MB');
+    expect(formatMegabytes(1240)).toBe('about 1.2 GB');
+  });
+
+  it('shortens long names for lists and messages', () => {
+    expect(displayName('NACA 2412')).toBe('NACA 2412');
+    expect(displayName('x'.repeat(WARN.name))).toBe('x'.repeat(WARN.name));
+    expect(displayName('x'.repeat(WARN.name + 5))).toBe(`${'x'.repeat(WARN.name)}…`);
+    expect(displayName(undefined)).toBe('');
+  });
+
+  it('estimates mesh exports per triangle', () => {
+    const stl = exportCost(2_000_000, 'stl');
+    expect(stl.fileMB).toBeCloseTo(100, 0);
+    expect(exportCost(4_000_000, 'stl').seconds).toBeCloseTo(2 * stl.seconds, 9);
+    expect(exportCost(2_000_000, '3mf').seconds).toBeGreaterThan(stl.seconds);
+  });
+
+  it('computes the loft grid of a project as the build does', () => {
+    for (const settings of [{ spanwise: 'linear' }, { spanwise: 'smooth', panelStations: 12, chordSamples: 40 }]) {
+      const p = sampleProject({ settings });
+      const b = buildWing(p);
+      const g = loftGrid(p.sections.length, b.settings);
+      expect((b.stations.length - b.extraStations) * (2 * g.N + 1)).toBe(g.points);
+    }
+  });
+});

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
 import { buildWing } from '../src/geom/wing.js';
-import { MAX_EXPORT_TRIANGLES, concatMeshes, edgeCheck, exportMeshes, exportTriangles, meshVolume, mirrorMesh } from '../src/geom/mesh.js';
+import { concatMeshes, edgeCheck, exportMeshes, exportTriangles, meshVolume, mirrorMesh } from '../src/geom/mesh.js';
 import { meshToStl, parseStl } from '../src/export/stl.js';
 import { MeshPrecisionError } from '../src/export/precision.js';
 import { meshesTo3mf, modelXml, xmlEscape } from '../src/export/threemf.js';
 import { stepReal, stepString, wingToStep } from '../src/export/step.js';
-import { MAX_PROJECT_BYTES, formatJson, projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
-import { createProject, validateProject } from '../src/model/project.js';
+import { MAX_PROJECT_BYTES, formatJson, projectFileText, projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
+import { LIMITS, createProject, validateProject } from '../src/model/project.js';
 import { setGuideEnabled } from '../src/model/edit.js';
 import { sampleProject } from './helpers.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
@@ -93,7 +93,6 @@ describe('STL', () => {
         expect(estimate).toBeLessThan(1.02 * actual);
       }
     }
-    expect(MAX_EXPORT_TRIANGLES).toBe(2_000_000);
   });
 
   it('refuses a mesh that 32-bit coordinates collapse', () => {
@@ -302,19 +301,20 @@ describe('project JSON', () => {
     const json = projectToJson(sampleProject(), null);
     json.sections = Array.from({ length: 300_000 }, () => ({}));
     const t0 = performance.now();
-    expect(validateProject(json).errors).toEqual(['At most 200 sections are supported (found 300000).']);
+    expect(validateProject(json).errors).toEqual([`At most ${LIMITS.maxSections.toLocaleString('en')} sections are supported (found 300,000).`]);
     const g = projectToJson(sampleProject(), null);
     g.guides.end.points = Array.from({ length: 300_000 }, () => ['x', null]);
-    expect(validateProject(g).errors).toEqual(['guides.end.points: at most 500 points.']);
+    expect(validateProject(g).errors).toEqual([`guides.end.points: at most ${LIMITS.maxGuidePoints.toLocaleString('en')} points (found 300,000).`]);
     expect(performance.now() - t0).toBeLessThan(500);
   });
 
-  it('rejects airfoils above the 5000-point file limit in project files', () => {
+  it('rejects airfoils above the airfoil file point limit in project files', () => {
     const json = projectToJson(sampleProject(), null);
-    json.airfoils[0].points = Array.from({ length: 5001 }, (_, i) => [Math.abs(Math.cos((2 * Math.PI * i) / 5000)), 0.05 * Math.sin((2 * Math.PI * i) / 5000)]);
+    const n = LIMITS.maxPointsPerAirfoil + 1;
+    json.airfoils[0].points = Array.from({ length: n }, (_, i) => [Math.abs(Math.cos((2 * Math.PI * i) / (n - 1))), 0.05 * Math.sin((2 * Math.PI * i) / (n - 1))]);
     const r = projectFromJsonText(JSON.stringify(json));
     expect(r.ok).toBe(false);
-    expect(r.errors[0]).toMatch(/has 5001 points; the limit is 5000/);
+    expect(r.errors[0]).toBe(`Airfoil 1 has ${n.toLocaleString('en')} points; the limit is ${LIMITS.maxPointsPerAirfoil.toLocaleString('en')}.`);
   });
 
   it('writes numbers of a point or knot vector on one line and parses to the same data', () => {
@@ -347,14 +347,16 @@ describe('project JSON', () => {
       edit(j);
       return projectFromJsonText(JSON.stringify(j)).errors;
     };
+    const max = LIMITS.maxName;
+    const count = (v) => v.toLocaleString('en');
     // At the limits the project loads.
     const ok = base();
-    ok.name = long(200);
-    ok.airfoils[0].name = long(200);
+    ok.name = long(max);
+    ok.airfoils[0].name = long(max);
     ok.airfoils[0].source = { kind: 'upload', attribution: long(2000) };
     expect(projectFromJsonText(JSON.stringify(ok)).ok).toBe(true);
-    expect(errorsOf((j) => (j.name = long(201)))).toEqual(['name has 201 characters; the limit is 200.']);
-    expect(errorsOf((j) => (j.airfoils[0].name = long(2_000_000)))).toEqual(['Airfoil 1: name has 2000000 characters; the limit is 200.']);
+    expect(errorsOf((j) => (j.name = long(max + 1)))).toEqual([`name has ${count(max + 1)} characters; the limit is ${count(max)}.`]);
+    expect(errorsOf((j) => (j.airfoils[0].name = long(2_000_000)))).toEqual([`Airfoil 1: name has 2,000,000 characters; the limit is ${count(max)}.`]);
     expect(errorsOf((j) => (j.airfoils[0].name = 7))).toEqual(['Airfoil 1: name must be a string.']);
     expect(errorsOf((j) => (j.airfoils[0].source = { url: long(2001) }))).toEqual(['Airfoil 1: source.url has 2001 characters; the limit is 2000.']);
     expect(errorsOf((j) => (j.sections[0].id = long(201)))).toEqual(['Section 1: id has 201 characters; the limit is 200.']);
@@ -435,12 +437,12 @@ describe('project JSON', () => {
       (p) => (p.sections[1].x = 1_000_001),
       (p) => (p.sections[1].z = -1_000_001),
       (p) => (p.sections[2].y = 1_000_001),
-      (p) => (p.guides.nose.points = Array.from({ length: 501 }, (_, i) => [0, (600 * i) / 500])),
+      (p) => (p.guides.nose.points = Array.from({ length: LIMITS.maxGuidePoints + 1 }, (_, i) => [0, (600 * i) / LIMITS.maxGuidePoints])),
       (p) => (p.guides.nose.points[1] = [2e6, 300]),
       (p) => (p.guides.end.points[1] = [-1_100_001, 300]),
       (p) => {
         const s = p.sections[0];
-        p.sections = Array.from({ length: 201 }, (_, i) => ({ ...s, id: `s${i}`, y: i * 3 }));
+        p.sections = Array.from({ length: LIMITS.maxSections + 1 }, (_, i) => ({ ...s, id: `s${i}`, y: i * 3 }));
       },
     ];
     for (const mutate of cases) {
@@ -455,7 +457,7 @@ describe('project JSON', () => {
     p.sections[1].twist = -360;
     p.sections[1].chord = 100_000;
     p.guides.nose.edited = true;
-    p.guides.nose.points = Array.from({ length: 500 }, (_, i) => [0, (600 * i) / 499]);
+    p.guides.nose.points = Array.from({ length: LIMITS.maxGuidePoints }, (_, i) => [0, (600 * i) / (LIMITS.maxGuidePoints - 1)]);
     expect(validateProject(p).ok).toBe(true);
   });
 
@@ -508,7 +510,22 @@ describe('import hardening', () => {
   });
 
   it('rejects project text above the size limit', () => {
-    expect(projectFromJsonText(' '.repeat(MAX_PROJECT_BYTES + 1)).errors[0]).toMatch(/larger than 50 MB/);
+    expect(projectFromJsonText(' '.repeat(MAX_PROJECT_BYTES + 1)).errors[0]).toBe('The file is larger than 100 MB.');
+  });
+
+  it('leaves out the derived data when the file would exceed the Open limit', () => {
+    const p = sampleProject();
+    const b = buildWing(p);
+    const small = projectFileText(p, b);
+    expect(small).toMatchObject({ derived: true, omitted: false });
+    expect(JSON.parse(small.text).derived.surface.degreeU).toBe(3);
+    // A surface whose control points alone take more than MAX_PROJECT_BYTES (22 characters a number).
+    const huge = { ...b, surface: { ...b.surface, points: [{ length: Math.ceil(MAX_PROJECT_BYTES / 66) + 1 }] } };
+    const big = projectFileText(p, huge);
+    expect(big).toMatchObject({ derived: false, omitted: true });
+    expect(JSON.parse(big.text).derived).toBeUndefined();
+    expect(projectFromJsonText(big.text).ok).toBe(true);
+    expect(projectFileText(p, null)).toMatchObject({ derived: false, omitted: false });
   });
 
   it('returns errors instead of throwing on malformed containers', () => {

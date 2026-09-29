@@ -96,7 +96,7 @@ function nextSection(project, afterIndex) {
 
 /** Why no section can be inserted after sorted index afterIndex, or null when one can. */
 export function insertProblem(project, afterIndex) {
-  if (project.sections.length >= LIMITS.maxSections) return `At most ${LIMITS.maxSections} sections.`;
+  if (project.sections.length >= LIMITS.maxSections) return `At most ${LIMITS.maxSections.toLocaleString('en')} sections.`;
   const { a, b, sec } = nextSection(project, afterIndex);
   // Neighbouring span positions can be too close for a number between them.
   if (b && !(sec.y > a.y && sec.y < b.y)) return `No span position lies between y = ${a.y} mm and y = ${b.y} mm. Move the two sections apart first.`;

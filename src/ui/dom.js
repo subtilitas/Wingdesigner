@@ -85,6 +85,8 @@ export function slugFile(name, ext) {
       .normalize('NFKD')
       .replace(/[̀-ͯ]/g, '')
       .replace(/[^A-Za-z0-9._-]+/g, '_')
-      .replace(/^_+|_+$/g, '') || 'wing';
+      .replace(/^_+|_+$/g, '')
+      // File systems allow 255 bytes per name.
+      .slice(0, 120) || 'wing';
   return `${base}.${ext}`;
 }

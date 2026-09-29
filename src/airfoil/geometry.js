@@ -156,6 +156,10 @@ export function airfoilStats(points, samples = 201) {
     if (x >= lo && x <= hi) coreXs.push(x);
   }
   coreXs.sort((a, b) => a - b);
+  // Each x once: a vertical run of points at one x is evaluated once, not once per point.
+  let u = 0;
+  for (let k = 0; k < coreXs.length; k++) if (k === 0 || coreXs[k] !== coreXs[u - 1]) coreXs[u++] = coreXs[k];
+  coreXs.length = u;
   // Lowest point of the upper and highest point of the lower surface at each x: vertical segments
   // and surfaces that fold back in x can touch at more than one y.
   const yu = yAtAll(upper, coreXs, Math.min);
@@ -251,55 +255,32 @@ export function segmentsCross(a, b, c, d, eps = 1e-14) {
  * stops after `limit` crossings. With `accept`, only crossings for which accept(i, j) is true are
  * returned and counted towards the limit. Segments are binned into a uniform grid of about one cell per
  * segment, and only segments that share a cell are tested: close to linear time for outlines whose
- * total length is a few times their extent (checkAirfoil rejects longer ones).
+ * total length is a few times their extent (checkAirfoil rejects longer ones). A cell holding more
+ * than CROWDED segments (points clustered in a small region) is searched again with its own grid over
+ * the part of the cell its segments cover, at most MAX_DEPTH levels deep.
  */
 export function selfIntersections(points, limit = 10, accept = null) {
   const nSeg = points.length - 1;
   if (nSeg < 3) return [];
-  let xmin = Infinity;
-  let xmax = -Infinity;
-  let ymin = Infinity;
-  let ymax = -Infinity;
-  for (const [x, y] of points) {
-    xmin = Math.min(xmin, x);
-    xmax = Math.max(xmax, x);
-    ymin = Math.min(ymin, y);
-    ymax = Math.max(ymax, y);
-  }
-  const G = Math.max(1, Math.ceil(Math.sqrt(nSeg)));
-  const cw = (xmax - xmin) / G || 1;
-  const ch = (ymax - ymin) / G || 1;
-  const cell = (v, v0, c) => Math.min(G - 1, Math.max(0, Math.floor((v - v0) / c)));
   // Segments whose bounding box covers at most LONG_CELLS cells are binned by that box (exact: two
   // crossing segments both contain the crossing point, so they share its cell). A binned pair is
   // tested only in the lower-left cell that both boxes share, so each pair is tested once. Longer
-  // segments are tested against every segment; the outline length limit of checkAirfoil bounds
-  // their number.
+  // segments are tested against every segment of the search; the outline length limit of
+  // checkAirfoil bounds their number.
   const LONG_CELLS = 16;
-  const bins = new Array(G * G);
-  const gx0 = new Int32Array(nSeg);
-  const gy0 = new Int32Array(nSeg);
-  const isLong = new Uint8Array(nSeg);
-  const long = [];
+  const CROWDED = 32;
+  const MAX_DEPTH = 6;
+  const bx0 = new Float64Array(nSeg);
+  const bx1 = new Float64Array(nSeg);
+  const by0 = new Float64Array(nSeg);
+  const by1 = new Float64Array(nSeg);
   for (let i = 0; i < nSeg; i++) {
     const [ax, ay] = points[i];
     const [bx, by] = points[i + 1];
-    gx0[i] = cell(Math.min(ax, bx), xmin, cw);
-    gy0[i] = cell(Math.min(ay, by), ymin, ch);
-    const gx1 = cell(Math.max(ax, bx), xmin, cw);
-    const gy1 = cell(Math.max(ay, by), ymin, ch);
-    if ((gx1 - gx0[i] + 1) * (gy1 - gy0[i] + 1) > LONG_CELLS) {
-      isLong[i] = 1;
-      long.push(i);
-      continue;
-    }
-    for (let gx = gx0[i]; gx <= gx1; gx++) {
-      for (let gy = gy0[i]; gy <= gy1; gy++) {
-        const key = gx * G + gy;
-        if (bins[key]) bins[key].push(i);
-        else bins[key] = [i];
-      }
-    }
+    bx0[i] = Math.min(ax, bx);
+    bx1[i] = Math.max(ax, bx);
+    by0[i] = Math.min(ay, by);
+    by1[i] = Math.max(ay, by);
   }
   const hits = [];
   const test = (a, b) => {
@@ -307,24 +288,84 @@ export function selfIntersections(points, limit = 10, accept = null) {
     const j = Math.max(a, b);
     if (j >= i + 2 && segmentsCross(points[i], points[i + 1], points[j], points[j + 1]) && (!accept || accept(i, j))) hits.push([i, j]);
   };
-  for (const i of long) {
-    // Long pairs are tested from their smaller index.
-    for (let j = 0; j < nSeg && hits.length < limit; j++) if (!(isLong[j] && j < i)) test(i, j);
-    if (hits.length >= limit) break;
-  }
-  for (let key = 0; key < bins.length && hits.length < limit; key++) {
-    const bin = bins[key];
-    if (!bin) continue;
-    const gx = Math.floor(key / G);
-    const gy = key - gx * G;
-    for (let a = 0; a < bin.length && hits.length < limit; a++) {
-      const i = bin[a];
-      for (let b = a + 1; b < bin.length && hits.length < limit; b++) {
-        const j = bin[b];
-        if (Math.max(gx0[i], gx0[j]) === gx && Math.max(gy0[i], gy0[j]) === gy) test(i, j);
+  const boundsOf = (ids) => {
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (const i of ids) {
+      x0 = Math.min(x0, bx0[i]);
+      x1 = Math.max(x1, bx1[i]);
+      y0 = Math.min(y0, by0[i]);
+      y1 = Math.max(y1, by1[i]);
+    }
+    return [x0, x1, y0, y1];
+  };
+  // Lower-left cell and long flag of each segment, one set per depth: a sub-search leaves the
+  // cells of the enclosing searches intact.
+  const levels = [];
+  const level = (d) => (levels[d] ??= { gx0: new Int32Array(nSeg), gy0: new Int32Array(nSeg), isLong: new Uint8Array(nSeg) });
+  // Search the segments `ids` inside the rectangle; owns(i, j) tells whether the enclosing cells
+  // assign the pair to this search.
+  const search = (ids, [xmin, xmax, ymin, ymax], owns, depth) => {
+    const n = ids.length;
+    if (n <= CROWDED || depth >= MAX_DEPTH) {
+      for (let a = 0; a < n && hits.length < limit; a++) for (let b = a + 1; b < n && hits.length < limit; b++) if (owns(ids[a], ids[b])) test(ids[a], ids[b]);
+      return;
+    }
+    const { gx0, gy0, isLong } = level(depth);
+    const G = Math.max(1, Math.ceil(Math.sqrt(n)));
+    const cw = (xmax - xmin) / G || 1;
+    const ch = (ymax - ymin) / G || 1;
+    const cell = (v, v0, c) => Math.min(G - 1, Math.max(0, Math.floor((v - v0) / c)));
+    const long = [];
+    const bins = new Map();
+    for (const i of ids) {
+      gx0[i] = cell(bx0[i], xmin, cw);
+      gy0[i] = cell(by0[i], ymin, ch);
+      const gx1 = cell(bx1[i], xmin, cw);
+      const gy1 = cell(by1[i], ymin, ch);
+      isLong[i] = (gx1 - gx0[i] + 1) * (gy1 - gy0[i] + 1) > LONG_CELLS ? 1 : 0;
+      if (isLong[i]) {
+        long.push(i);
+        continue;
+      }
+      for (let gx = gx0[i]; gx <= gx1; gx++) {
+        for (let gy = gy0[i]; gy <= gy1; gy++) {
+          const key = gx * G + gy;
+          const bin = bins.get(key);
+          if (bin) bin.push(i);
+          else bins.set(key, [i]);
+        }
       }
     }
-  }
+    // Long pairs are tested from their larger index.
+    for (const i of long) {
+      for (const j of ids) {
+        if (hits.length >= limit) return;
+        if (j !== i && !(isLong[j] && j < i) && owns(i, j)) test(i, j);
+      }
+    }
+    for (const [key, bin] of bins) {
+      if (hits.length >= limit) return;
+      const gx = Math.floor(key / G);
+      const gy = key - gx * G;
+      const here = (i, j) => Math.max(gx0[i], gx0[j]) === gx && Math.max(gy0[i], gy0[j]) === gy && owns(i, j);
+      if (bin.length > CROWDED) {
+        const [sx0, sx1, sy0, sy1] = boundsOf(bin);
+        const cx0 = xmin + gx * cw;
+        const cy0 = ymin + gy * ch;
+        const sub = [Math.max(sx0, cx0), Math.min(sx1, gx === G - 1 ? Infinity : cx0 + cw), Math.max(sy0, cy0), Math.min(sy1, gy === G - 1 ? Infinity : cy0 + ch)];
+        if (sub[1] - sub[0] < xmax - xmin || sub[3] - sub[2] < ymax - ymin) {
+          search(bin, sub, here, depth + 1);
+          continue;
+        }
+      }
+      for (let a = 0; a < bin.length && hits.length < limit; a++) for (let b = a + 1; b < bin.length && hits.length < limit; b++) if (here(bin[a], bin[b])) test(bin[a], bin[b]);
+    }
+  };
+  const all = Array.from({ length: nSeg }, (_, i) => i);
+  search(all, boundsOf(all), () => true, 0);
   hits.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
   return hits;
 }

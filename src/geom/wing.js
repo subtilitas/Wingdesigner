@@ -11,6 +11,7 @@ import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, prof
 import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
+import { displayName, loftGrid, sizeWarning } from '../model/budget.js';
 
 /**
  * Deviation (mm) between loft and intended surface above which stations are added and, if it remains,
@@ -34,13 +35,6 @@ export const FOLD_LIMIT = 0.9 * LIMITS.minChord;
  * range. Natural cubic splines through closely spaced sections overshoot by thousands of times it.
  */
 export const OVERSHOOT_LIMIT = 2;
-
-/**
- * Largest loft grid before added stations: spanwise stations times profile points (2N + 1). 20
- * sections with 40 stations per panel and 200 chord samples: 160,000 points took 0.7 s to build and
- * 3.6 s to display; the default design has 363.
- */
-export const MAX_GRID_POINTS = 60_000;
 
 /** Surface rows tested halfway between fitted stations (the widest intervals), besides the sections. */
 const MAX_STATION_ROWS = 64;
@@ -261,6 +255,9 @@ export function buildWing(project) {
     errors.push(...limits);
     return result;
   }
+  // Sizes above their warning thresholds: expected time and memory of each change.
+  const large = sizeWarning(project);
+  if (large) warnings.push(large);
   if (!(sections[0].y >= 0)) {
     errors.push(`Section at y = ${sections[0].y} mm lies on the mirrored side; the half wing spans y >= 0.`);
     return result;
@@ -286,7 +283,7 @@ export function buildWing(project) {
     // Uniform and chord-length parametrization follow unevenly spaced points less closely.
     const hint = settings.parametrization === 'centripetal' ? '' : ' Settings > Profile parametrization "centripetal" follows the points more closely.';
     if (stage.error) {
-      errors.push(`Airfoil "${a.name ?? a.id}": ${stage.error}${hint}`);
+      errors.push(`Airfoil "${displayName(a.name ?? a.id)}": ${stage.error}${hint}`);
       continue;
     }
     // The crossing tolerance of the profile stage is a fraction of the chord; above 200 mm chord
@@ -295,7 +292,7 @@ export function buildWing(project) {
     const cross = CROSSING_TOLERANCE * chordMax > CROSSING_LIMIT ? stageCrossing(stage, CROSSING_LIMIT / chordMax) : null;
     if (cross) {
       errors.push(
-        `Airfoil "${a.name ?? a.id}": the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
+        `Airfoil "${displayName(a.name ?? a.id)}": the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
           `the loop is ${(cross.size * chordMax).toFixed(2)} mm wide at ${chordMax} mm chord, above ${CROSSING_LIMIT} mm. ` +
           `Use a file with more points or finer spacing near that position.${hint}`,
       );
@@ -343,14 +340,19 @@ export function buildWing(project) {
   const y0 = ys[0];
   const y1 = ys[ys.length - 1];
   const dense = guideOn.nose || guideOn.end || settings.spanwise === 'smooth';
-  const Kset = dense ? Math.max(LIMITS.panelStations[0], Math.min(settings.panelStations, LIMITS.panelStations[1])) : 1;
-  // Grid budget: stations times profile points (2N + 1) stays within MAX_GRID_POINTS, so many
-  // sections with fine settings rebuild within about a second; fewer stations per panel then.
-  const K = Math.max(1, Math.min(Kset, Math.floor(MAX_GRID_POINTS / ((2 * N + 1) * (sections.length - 1)))));
-  if (K < Kset) {
-    warnings.push(
-      `Spanwise stations per panel reduced from ${Kset} to ${K}: ${sections.length} sections with ${N} chord samples keep the loft within ${MAX_GRID_POINTS.toLocaleString('en')} grid points.`,
+  // Grid: stations times profile points (2N + 1). Above LIMITS.maxGridPoints, where a desktop
+  // browser tab runs out of memory, fewer stations per panel; one station per panel at least.
+  const grid = loftGrid(sections.length, settings, guideOn.nose || guideOn.end);
+  const K = grid.K;
+  const maxGrid = LIMITS.maxGridPoints.toLocaleString('en');
+  if (grid.points > LIMITS.maxGridPoints) {
+    errors.push(
+      `The loft grid needs ${grid.points.toLocaleString('en')} points with one station per panel (${sections.length.toLocaleString('en')} sections, ${N} chord samples); the limit is ${maxGrid}. Reduce the chord samples or the sections.`,
     );
+    return result;
+  }
+  if (K < grid.Kset) {
+    warnings.push(`Spanwise stations per panel reduced from ${grid.Kset} to ${K}: ${sections.length.toLocaleString('en')} sections with ${N} chord samples keep the loft within ${maxGrid} grid points.`);
   }
 
   // Intermediate stations cluster towards the panel ends (cosine spacing), where guide curves

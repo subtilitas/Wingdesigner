@@ -1,7 +1,18 @@
 // Settings form: spanwise interpolation, twist pivot, trailing edge, resolution, display.
 
 import { LIMITS } from '../model/project.js';
+import { WARN, costPhrase, loftGrid, projectSize } from '../model/budget.js';
 import { clear, h, numberInput } from './dom.js';
+
+/** Loft grid points of the current settings; above the warning threshold with time and memory. */
+function gridNote(project) {
+  const g = project.guides ?? {};
+  const grid = loftGrid(project.sections.length, project.settings, g.nose?.enabled || g.end?.enabled);
+  const over = grid.points > WARN.gridPoints;
+  const reduced = grid.K < grid.Kset ? `, ${grid.K} spanwise stations per panel instead of ${grid.Kset}` : '';
+  const cost = over ? `; above ${WARN.gridPoints.toLocaleString('en')}, ${costPhrase(projectSize(project))}` : '';
+  return h('p', { class: `small ${over ? 'sev-warning' : 'muted'}` }, `Loft grid: ${grid.points.toLocaleString('en')} points${reduced}${cost}.`);
+}
 
 export class SettingsPanel {
   constructor(root, store, viewer) {
@@ -137,6 +148,7 @@ export class SettingsPanel {
             onCommit: (v) => set((q) => (q.panelStations = Math.round(Math.min(Math.max(v, LIMITS.panelStations[0]), LIMITS.panelStations[1])))),
           }),
         ),
+        gridNote(this.store.project),
         h(
           'label',
           { class: 'field' },

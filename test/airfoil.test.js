@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeText, parseDat, parseNumbers, toSeligDat } from '../src/airfoil/parse.js';
+import { MAX_INPUT, MAX_NAME, MAX_POINTS, decodeText, parseDat, parseNumbers, toSeligDat } from '../src/airfoil/parse.js';
 import { DUPLICATE_DISTANCE, LIMITS, checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
 import { profileCurve } from '../src/geom/profile.js';
 import { nacaAirfoil, parseNacaCode } from '../src/airfoil/naca.js';
@@ -378,7 +378,7 @@ describe('parser robustness', () => {
   });
 
   it('limits input size and parses unclosed tags in linear time', () => {
-    expect(codes(parseDat('x'.repeat(2_000_001)).issues)).toContain('too-large');
+    expect(codes(parseDat('x'.repeat(MAX_INPUT + 1)).issues)).toContain('too-large');
     const t0 = performance.now();
     parseDat('<html>' + '<pre'.repeat(20000));
     parseDat('<coordinates>'.repeat(20000));
@@ -417,9 +417,12 @@ describe('parser robustness', () => {
       '</coordinates></airfoil>';
     const t0 = performance.now();
     expect(parseDat(xml(4999)).points.length).toBe(4999);
-    const big = parseDat(xml(20000));
-    expect(performance.now() - t0).toBeLessThan(2000);
-    expect(big.issues.find((i) => i.code === 'too-many-points').message).toMatch(/5001 or more points/);
+    // Short coordinates keep a file past the point limit within MAX_INPUT.
+    const many = `<airfoil><name>T</name><coordinates>${'<point><x>0</x><y>0</y></point>'.repeat(MAX_POINTS + 50)}</coordinates></airfoil>`;
+    expect(many.length).toBeLessThan(MAX_INPUT);
+    const big = parseDat(many);
+    expect(performance.now() - t0).toBeLessThan(3000);
+    expect(big.issues.find((i) => i.code === 'too-many-points').message).toBe(`${(MAX_POINTS + 1).toLocaleString('en')} or more points; the limit is ${MAX_POINTS.toLocaleString('en')}.`);
   });
 
   it('reads three-column tables from the trailing edge to the leading edge', () => {
@@ -433,33 +436,40 @@ describe('parser robustness', () => {
 
   it('rejects more points than the limit without throwing', () => {
     let text = 'Many\n';
-    for (let i = 0; i < 150000; i++) text += `${(i / 150000).toFixed(5)} 0\n`;
-    expect(text.length).toBeLessThan(2_000_000);
+    for (let i = 0; i < MAX_POINTS + 1000; i++) text += `${(i / MAX_POINTS).toFixed(6)} 0\n`;
+    expect(text.length).toBeLessThan(MAX_INPUT);
     const r = importAirfoilText(text, 'many.dat');
     expect(r.ok).toBe(false);
     expect(codes(r.issues)).toContain('too-many-points');
+    const lines = Array.from({ length: MAX_POINTS + 1 }, (_, i) => [Math.cos((2 * Math.PI * i) / MAX_POINTS), 0]);
+    expect(checkAirfoil(lines).issues.find((i) => i.code === 'too-many-points').message).toBe(`${(MAX_POINTS + 1).toLocaleString('en')} points; the limit is ${MAX_POINTS.toLocaleString('en')}.`);
+    // Above 5000 points the airfoil is accepted with a warning that names the time.
     const dense = nacaAirfoil('2412', { pointsPerSide: 2600 }).points;
-    expect(codes(checkAirfoil(dense).issues)).toContain('too-many-points');
+    const d = checkAirfoil(dense);
+    expect(d.ok).toBe(true);
+    expect(d.issues.find((i) => i.code === 'many-points').message).toMatch(/^5,199 points \(warning above 5,000\): the checks and the first build of a wing that uses the airfoil take (under 1 s|about [\d.]+ s)\.$/);
   });
 
-  it('keeps the first 200 characters of a long name line', () => {
+  it('keeps the first MAX_NAME characters of a long name line', () => {
     const pts = nacaAirfoil('2412', { pointsPerSide: 21 }).points;
-    const r = parseDat([`N${'x'.repeat(2_000)}`, ...pts.map((p) => p.join(' '))].join('\n'));
-    expect(r.name).toBe(`N${'x'.repeat(199)}`);
-    expect(r.issues.find((i) => i.code === 'long-name').message).toBe('The name line has 2001 characters; the first 200 are used.');
+    const r = parseDat([`N${'x'.repeat(MAX_NAME + 1000)}`, ...pts.map((p) => p.join(' '))].join('\n'));
+    expect(r.name).toBe(`N${'x'.repeat(MAX_NAME - 1)}`);
+    expect(r.issues.find((i) => i.code === 'long-name').message).toBe(`The name line has ${(MAX_NAME + 1001).toLocaleString('en')} characters; the first ${MAX_NAME.toLocaleString('en')} are used.`);
     expect(r.points.length).toBe(pts.length);
   });
 
   it('stops reading coordinate lines after the point limit plus a Lednicer counts line', () => {
-    // 400,000 short rows (1.6 MB): reading stops at row 5002.
-    const text = 'Rows\n' + '0 0\n'.repeat(400000);
+    // 1,200,000 short rows (4.8 MB): reading stops at row MAX_POINTS + 2.
+    const text = 'Rows\n' + '0 0\n'.repeat(1_200_000);
+    expect(text.length).toBeLessThan(MAX_INPUT);
     const t0 = performance.now();
     const r = parseDat(text);
-    expect(performance.now() - t0).toBeLessThan(500);
+    expect(performance.now() - t0).toBeLessThan(1000);
     expect(r.points).toEqual([]);
-    expect(r.issues.find((i) => i.code === 'too-many-points').message).toBe('More than 5001 coordinate lines; the limit is 5000 points.');
-    // A Lednicer file of 5001 rows (counts line and 2 x 2500 surface points) is read.
-    const pts = nacaAirfoil('0012', { pointsPerSide: 2500 }).points;
+    const count = (v) => v.toLocaleString('en');
+    expect(r.issues.find((i) => i.code === 'too-many-points').message).toBe(`More than ${count(MAX_POINTS + 1)} coordinate lines; the limit is ${count(MAX_POINTS)} points.`);
+    // A Lednicer file of MAX_POINTS + 1 rows (counts line and 2 x MAX_POINTS / 2 surface points) is read.
+    const pts = nacaAirfoil('0012', { pointsPerSide: MAX_POINTS / 2 }).points;
     const le = pts.findIndex(([x]) => x === 0);
     const upper = pts.slice(0, le + 1).reverse();
     const lower = pts.slice(le);
@@ -467,7 +477,7 @@ describe('parser robustness', () => {
     const read = parseDat(lednicer);
     expect(read.format).toBe('lednicer');
     expect(read.points.length).toBe(upper.length + lower.length - 1);
-    expect(1 + upper.length + lower.length).toBe(5001);
+    expect(1 + upper.length + lower.length).toBe(MAX_POINTS + 1);
   });
 
   it('removes consecutive points closer than DUPLICATE_DISTANCE so the interpolation stays regular', () => {
@@ -487,6 +497,41 @@ describe('parser robustness', () => {
     expect(r.issues.find((i) => i.code === 'duplicates').message).toMatch(/1 consecutive point\(s\) closer than 1e-9 chord/);
     for (const parametrization of ['centripetal', 'chord', 'uniform']) expect(() => profileCurve(r.points, { parametrization })).not.toThrow();
     expect(DUPLICATE_DISTANCE).toBe(1e-9);
+  });
+
+  it('rejects a surface that runs back in x at more than LIMITS.maxFolds points, in linear time', () => {
+    // NACA 0012 with a narrow vertical zigzag at x = 0.5 on each surface (k points, half-width w).
+    const zigzag = (k, w = 1e-4, h = 0.004) => {
+      const base = nacaAirfoil('0012', { pointsPerSide: 100 }).points;
+      const le = base.findIndex(([x]) => x === 0);
+      const yAt = (s, x) => {
+        const i = s.findIndex((p) => p[0] >= x);
+        const [x0, y0] = s[i - 1];
+        const [x1, y1] = s[i];
+        return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+      };
+      const insert = (s, sign) => {
+        const y0 = yAt(s, 0.5);
+        const zz = Array.from({ length: k }, (_, j) => [j % 2 ? 0.5 + w : 0.5 - w, y0 + (sign * h * j) / k]);
+        return [...s.filter((p) => p[0] < 0.5 - w), ...zz, ...s.filter((p) => p[0] > 0.5 + 2 * w)];
+      };
+      const upper = insert(base.slice(0, le + 1).reverse(), 1);
+      const lower = insert(base.slice(le), -1);
+      return [...upper.reverse(), ...lower.slice(1)];
+    };
+    // k zigzag points run back in x (k - 2) / 2 times: 102 points at the limit, 104 above it.
+    expect(LIMITS.maxFolds).toBe(50);
+    expect(codes(checkAirfoil(zigzag(102)).issues)).not.toContain('folds');
+    expect(checkAirfoil(zigzag(104)).issues.find((i) => i.code === 'folds').message).toBe('The upper surface runs back in x at 51 points; the limit is 50.');
+    const t0 = performance.now();
+    const r = checkAirfoil(zigzag(2400));
+    expect(performance.now() - t0).toBeLessThan(200);
+    expect(r.ok).toBe(false);
+    expect(r.issues.find((i) => i.code === 'folds').message).toBe('The upper surface runs back in x at 1199 points; the limit is 50.');
+    // A vertical run of points at one x (no fold) is checked in linear time.
+    const t1 = performance.now();
+    expect(checkAirfoil(zigzag(2400, 0)).issues.map((i) => i.code)).not.toContain('folds');
+    expect(performance.now() - t1).toBeLessThan(300);
   });
 
   it('rejects outlines longer than LIMITS.maxOutlineLength chords before the crossing test', () => {

@@ -195,9 +195,6 @@ export function mirrorMesh({ positions, indices }) {
   return { positions: P, indices: I };
 }
 
-/** Largest mesh export in triangles: about 100 MB of binary STL. */
-export const MAX_EXPORT_TRIANGLES = 2_000_000;
-
 /**
  * Triangles of an export: surface quads, trailing-edge strip and caps per half, times the shells.
  * The count is exact for the surface and trailing edge and bounds the caps by the ring size.

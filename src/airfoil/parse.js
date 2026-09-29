@@ -18,14 +18,16 @@ const NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?$/;
 const DECIMAL_COMMA = /^[-+]?\d*,\d+$/;
 // Column header lines such as "x y", "X Yo Yu", "x/c y/c", "X Y_upper Y_lower".
 /** Largest accepted input in characters (a 2000-point file is about 60 000). */
-export const MAX_INPUT = 2_000_000;
+export const MAX_INPUT = 5_000_000;
 // A UTF-8 character takes at most 4 bytes: larger files exceed MAX_INPUT and are rejected by size
 // before they are read.
 export const MAX_FILE_BYTES = 4 * MAX_INPUT;
-// The self-intersection check compares every segment pair: 5000 points take about 0.2 s.
-export const MAX_POINTS = 5000;
-// Longest airfoil name in characters: the longest name line among 1,964 real files has 179.
-export const MAX_NAME = 200;
+// Most points of one airfoil; the parser stops reading above it. Above 5000 points (the warning
+// threshold in model/budget.js) the checks and the first build take longer.
+export const MAX_POINTS = 100_000;
+// Longest airfoil name in characters; longer name lines are cut. The longest name line among 1,964
+// real files has 179 characters; lists and messages show the first 200.
+export const MAX_NAME = 10_000;
 const COLUMN_HEADER = /^(?:[xyz](?:\/c)?[a-z_]*\s*){2,3}$/i;
 
 function issue(severity, code, message) {
@@ -213,7 +215,7 @@ export function parseDat(text, options = {}) {
       // A Lednicer file has one counts line besides its points: more rows exceed the point limit in
       // every format, so reading stops there.
       if (rows.length > MAX_POINTS + 1) {
-        return { name: (name || fallbackName).slice(0, MAX_NAME), format: 'selig', points: [], issues: [...issues, issue('error', 'too-many-points', `More than ${MAX_POINTS + 1} coordinate lines; the limit is ${MAX_POINTS} points.`)] };
+        return { name: (name || fallbackName).slice(0, MAX_NAME), format: 'selig', points: [], issues: [...issues, issue('error', 'too-many-points', `More than ${(MAX_POINTS + 1).toLocaleString('en')} coordinate lines; the limit is ${MAX_POINTS.toLocaleString('en')} points.`)] };
       }
     } else if (!name && rows.length === 0) {
       name = raw.trim();
@@ -305,15 +307,15 @@ function finish(nameIn, format, pointsIn, issuesIn) {
   let name = nameIn;
   if (name.length > MAX_NAME) {
     name = name.slice(0, MAX_NAME);
-    issues.push(issue('info', 'long-name', `The name line has ${nameIn.length} characters; the first ${MAX_NAME} are used.`));
+    issues.push(issue('info', 'long-name', `The name line has ${nameIn.length.toLocaleString('en')} characters; the first ${MAX_NAME.toLocaleString('en')} are used.`));
   }
   if (points.some((p) => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) {
     return { name, format, points: [], issues: [...issues, issue('error', 'non-finite', 'Coordinates contain non-finite values.')] };
   }
   if (points.length === 0) return { name, format, points, issues: [...issues, issue('error', 'no-points', 'No coordinate points found.')] };
   if (points.length > MAX_POINTS) {
-    const n = `${points.length}${format === 'xml' && points.length === MAX_POINTS + 1 ? ' or more' : ''}`;
-    return { name, format, points: [], issues: [...issues, issue('error', 'too-many-points', `${n} points; the limit is ${MAX_POINTS}.`)] };
+    const n = `${points.length.toLocaleString('en')}${format === 'xml' && points.length === MAX_POINTS + 1 ? ' or more' : ''}`;
+    return { name, format, points: [], issues: [...issues, issue('error', 'too-many-points', `${n} points; the limit is ${MAX_POINTS.toLocaleString('en')}.`)] };
   }
 
   // A blunt trailing edge drawn as a closed outline (CAD polylines) repeats the first point after a

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_GRID_POINTS, OVERSHOOT_LIMIT, buildWing, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
+import { OVERSHOOT_LIMIT, buildWing, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nurbs.js';
 import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
@@ -9,7 +9,8 @@ import { edgeCheck, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume
 import { earClip, polygonArea } from '../src/geom/triangulate.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
-import { createProject, validateProject } from '../src/model/project.js';
+import { LIMITS, createProject, validateProject } from '../src/model/project.js';
+import { loftGrid } from '../src/model/budget.js';
 import { naca, sampleProject } from './helpers.js';
 
 describe('profile curves', () => {
@@ -741,19 +742,34 @@ describe('smooth spanwise overshoot', () => {
     expect(b.surface).toBeNull();
   });
 
-  it('keeps the loft grid within MAX_GRID_POINTS by reducing stations per panel', { timeout: 30000 }, () => {
+  it('uses the stations as set above the grid warning and names the expected time and memory', { timeout: 30000 }, () => {
     const p = sampleProject({ settings: { spanwise: 'smooth', panelStations: 40, chordSamples: 200 } });
     const base = p.sections[0];
-    p.sections = Array.from({ length: 30 }, (_, i) => ({ ...base, id: `s${i}`, y: 20 * i, chord: 200 - 3 * i, x: 2 * i }));
-    const t0 = performance.now();
+    p.sections = Array.from({ length: 5 }, (_, i) => ({ ...base, id: `s${i}`, y: 100 * i, chord: 200 - 10 * i, x: 5 * i }));
     const b = buildWing(p);
-    const ms = performance.now() - t0;
     expect(b.errors).toEqual([]);
-    // floor(60,000 / (401 points x 29 panels)) = 5 stations per panel.
-    expect(b.warnings[0]).toBe('Spanwise stations per panel reduced from 40 to 5: 30 sections with 200 chord samples keep the loft within 60,000 grid points.');
-    expect(b.stations.length - b.extraStations).toBe(29 * 5 + 1);
-    expect((b.stations.length - b.extraStations) * 401).toBeLessThanOrEqual(MAX_GRID_POINTS);
-    expect(ms).toBeLessThan(15000);
+    // (4 panels x 40 stations + 1) x 401 profile points = 64,561 grid points.
+    expect(b.stations.length - b.extraStations).toBe(4 * 40 + 1);
+    expect(b.warnings[0]).toMatch(/^Large project: 64,561 loft grid points \(warning above 60,000\)\. Each change takes (under 1 s|about [\d.]+ s) and about \d+ MB of browser memory\.$/);
+  });
+
+  it('reduces the stations per panel above LIMITS.maxGridPoints and stops when one station per panel exceeds it', () => {
+    const smooth = { spanwise: 'smooth', panelStations: 8, chordSamples: 200 };
+    // floor(LIMITS.maxGridPoints / (401 points x 2999 panels)) stations per panel.
+    const K = Math.floor(LIMITS.maxGridPoints / (401 * 2999));
+    expect(K).toBeLessThan(8);
+    expect(loftGrid(3000, smooth)).toEqual({ N: 200, Kset: 8, K, points: (2999 * K + 1) * 401 });
+    expect(loftGrid(3, { ...smooth, spanwise: 'linear' })).toMatchObject({ Kset: 1, K: 1 });
+    expect(loftGrid(3, { ...smooth, spanwise: 'linear' }, true)).toMatchObject({ Kset: 8, K: 8 });
+    const p = sampleProject({ settings: { chordSamples: 200 } });
+    const base = p.sections[0];
+    const n = Math.ceil(LIMITS.maxGridPoints / 401) + 1;
+    p.sections = Array.from({ length: n }, (_, i) => ({ ...base, id: `s${i}`, y: i }));
+    const b = buildWing(p);
+    expect(b.errors[0]).toBe(
+      `The loft grid needs ${(n * 401).toLocaleString('en')} points with one station per panel (${n.toLocaleString('en')} sections, 200 chord samples); the limit is ${LIMITS.maxGridPoints.toLocaleString('en')}. Reduce the chord samples or the sections.`,
+    );
+    expect(b.surface).toBeNull();
   });
 
   it('stops at values beyond the project limits, which would also block saving', () => {
@@ -762,7 +778,7 @@ describe('smooth spanwise overshoot', () => {
       [(p) => (p.sections[1].twist = 1e308), /Section 2: twist must be within ±360 degrees/],
       [(p) => (p.sections[1].chord = 100_001), /Section 2: chord must be at most 100000 mm/],
       [(p) => (p.sections[2].x = -1_000_001), /Section 3: x must be within ±1000000 mm/],
-      [(p) => (p.guides.end.points = Array.from({ length: 501 }, (_, i) => [200, (600 * i) / 500])), /guides.end.points: at most 500 points/],
+      [(p) => (p.guides.end.points = Array.from({ length: LIMITS.maxGuidePoints + 1 }, (_, i) => [200, (600 * i) / LIMITS.maxGuidePoints])), new RegExp(`guides.end.points: at most ${LIMITS.maxGuidePoints.toLocaleString('en')} points`)],
     ];
     for (const [mutate, message] of cases) {
       const p = sampleProject();

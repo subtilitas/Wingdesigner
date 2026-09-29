@@ -211,21 +211,23 @@ describe('edit operations', () => {
   it('stops adding airfoils at LIMITS.maxAirfoils', () => {
     const p = sampleProject();
     const base = p.airfoils[0].points;
-    for (let i = p.airfoils.length; i < LIMITS.maxAirfoils; i++) {
-      expect(addAirfoil(p, { name: `Foil ${i}`, points: base.map(([x, y]) => [x, y * (1 + i / 1000)]) })).not.toBeNull();
-    }
-    expect(p.airfoils.length).toBe(200);
+    // Small airfoils (5 points) keep the total within LIMITS.maxAirfoilPoints.
+    const small = (i) => [[1, 0], [0.5, 0.05 + i * 1e-7], [0, 0], [0.5, -0.04], [1, 0]];
+    for (let i = p.airfoils.length; i < LIMITS.maxAirfoils - 1; i++) p.airfoils.push({ id: `f${i}`, name: `Foil ${i}`, points: small(i) });
+    expect(addAirfoil(p, { name: 'Last', points: small(-1) })).not.toBeNull();
+    expect(p.airfoils.length).toBe(LIMITS.maxAirfoils);
     expect(addAirfoil(p, { name: 'One more', points: base.map(([x, y]) => [x, y * 0.5]) })).toBeNull();
     // An airfoil the project already holds is still found.
     expect(addAirfoil(p, { name: p.airfoils[0].name, points: base })).toBe(p.airfoils[0].id);
     expect(validateProject(p).ok).toBe(true);
     p.airfoils.push({ ...p.airfoils[0], id: 'extra' });
-    expect(validateProject(p).errors).toContain('At most 200 airfoils are supported (found 201).');
+    const count = (v) => v.toLocaleString('en');
+    expect(validateProject(p).errors).toContain(`At most ${count(LIMITS.maxAirfoils)} airfoils are supported (found ${count(LIMITS.maxAirfoils + 1)}).`);
   });
 
   it('stops adding airfoils at LIMITS.maxAirfoilPoints points together', () => {
     const p = sampleProject();
-    const dense = nacaAirfoil('4412', { pointsPerSide: 2500 }).points;
+    const dense = nacaAirfoil('4412', { pointsPerSide: 25000 }).points;
     const start = airfoilPoints(p);
     let i = 0;
     while (airfoilPoints(p) + dense.length <= LIMITS.maxAirfoilPoints) {
@@ -236,7 +238,7 @@ describe('edit operations', () => {
     expect(addAirfoil(p, { name: 'One more', points: dense.map(([x, y]) => [x, y * 0.5]) })).toBeNull();
     expect(validateProject(p).ok).toBe(true);
     p.airfoils.push({ id: 'extra', name: 'Extra', points: dense });
-    expect(validateProject(p).errors).toEqual([`The airfoils hold ${airfoilPoints(p)} points together; the limit is 100000.`]);
+    expect(validateProject(p).errors).toEqual([`The airfoils hold ${airfoilPoints(p).toLocaleString('en')} points together; the limit is ${LIMITS.maxAirfoilPoints.toLocaleString('en')}.`]);
   });
 
   it('keeps drags within the project limits', () => {
@@ -278,13 +280,18 @@ describe('edit operations', () => {
 
   it('stops adding guide points at LIMITS.maxGuidePoints and sections at LIMITS.maxSections', () => {
     const p = sampleProject();
-    while (p.guides.nose.points.length < LIMITS.maxGuidePoints) expect(addGuidePoint(p, 'nose')).toBeGreaterThan(0);
+    const m = LIMITS.maxGuidePoints;
+    p.guides.nose.points = Array.from({ length: m - 1 }, (_, i) => [0, (600 * i) / (m - 2)]);
+    expect(addGuidePoint(p, 'nose')).toBeGreaterThan(0);
     expect(addGuidePoint(p, 'nose')).toBe(-1);
-    expect(p.guides.nose.points.length).toBe(500);
+    expect(p.guides.nose.points.length).toBe(m);
     const q = sampleProject();
-    while (q.sections.length < LIMITS.maxSections) expect(insertSection(q, q.sections.length - 1)).not.toBeNull();
+    const s0 = q.sections[0];
+    q.sections = Array.from({ length: LIMITS.maxSections - 1 }, (_, i) => ({ ...s0, id: `s${i}`, y: 10 * i }));
+    expect(insertSection(q, q.sections.length - 1)).not.toBeNull();
+    expect(insertProblem(q, 0)).toBe(`At most ${LIMITS.maxSections.toLocaleString('en')} sections.`);
     expect(insertSection(q, 0)).toBeNull();
-    expect(q.sections.length).toBe(200);
+    expect(q.sections.length).toBe(LIMITS.maxSections);
     const far = sampleProject();
     far.sections[2].y = LIMITS.maxCoordinate - 5;
     expect(insertProblem(far, 2)).toMatch(/beyond y = 1000000 mm/);

@@ -3,7 +3,8 @@
 import './ui/styles.css';
 import { buildWing } from './geom/wing.js';
 import { wingStats } from './geom/stats.js';
-import { MAX_PROJECT_BYTES, projectFromJsonText, projectToJsonText } from './model/io.js';
+import { MAX_PROJECT_BYTES, OMITTED_NOTE, projectFileText, projectFromJsonText } from './model/io.js';
+import { largeSizes, projectSize, sizeWarning } from './model/budget.js';
 import { defaultProject } from './model/defaults.js';
 import { validateProject } from './model/project.js';
 import { Store } from './ui/store.js';
@@ -163,7 +164,9 @@ const header = h(
         // Build from the current project: an edit committed by this click's blur is not yet in `build`.
         onclick: () => {
           try {
-            download(slugFile(store.project.name, 'json'), projectToJsonText(store.project, safeBuild(store.project), { generatorVersion: VERSION }), 'application/json');
+            const file = projectFileText(store.project, safeBuild(store.project), { generatorVersion: VERSION });
+            download(slugFile(store.project.name, 'json'), file.text, 'application/json');
+            if (file.omitted) message(OMITTED_NOTE);
           } catch (e) {
             // String length and memory limits of the browser end here.
             message(`Save failed: ${e.message}.`, true);
@@ -267,6 +270,16 @@ function renderChecks() {
   statusBar.classList.toggle('has-error', build.errors.length > 0);
 }
 
+// Sizes above their warning thresholds; a size that newly crosses its threshold (an edit, Open or
+// the restored project) shows the size warning with the expected time and memory.
+let largeKeys = new Set();
+function noteLargeSizes() {
+  const size = projectSize(store.project);
+  const keys = new Set(largeSizes(size).map((q) => q.key));
+  if ([...keys].some((k) => !largeKeys.has(k))) message(sizeWarning(store.project, size));
+  largeKeys = keys;
+}
+
 let rebuildPending = false;
 let refreshPanels = false;
 // A selection alone keeps the build: the viewer, the table and the planform only mark the section.
@@ -296,7 +309,10 @@ function rebuild() {
       settings.update();
       refreshPanels = false;
     }
-    if (changed) renderChecks();
+    if (changed) {
+      renderChecks();
+      noteLargeSizes();
+    }
     if (focusKey) {
       const el = document.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
       if (el && el !== document.activeElement) {
@@ -338,7 +354,8 @@ function message(text, isError = false) {
   toast.classList.toggle('error', isError);
   toast.classList.add('show');
   clearTimeout(message.t);
-  message.t = setTimeout(() => toast.classList.remove('show'), 4000);
+  // Long messages (size warnings) stay longer: 60 ms per character, at least 4 s.
+  message.t = setTimeout(() => toast.classList.remove('show'), Math.max(4000, 60 * text.length));
 }
 
 async function newDesign(firstRun) {

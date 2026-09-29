@@ -3,6 +3,7 @@
 import { insertProblem, insertSection, removeSection, sortedSections, syncGuidesToSpan, resetDisabledGuides } from '../model/edit.js';
 import { clear, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
+import { LAZY_OPTIONS, WARN, costPhrase, displayName, loftGrid, projectSize } from '../model/budget.js';
 
 const C = LIMITS.maxCoordinate;
 
@@ -52,6 +53,25 @@ export class SectionsPanel {
     const sections = sortedSections(p);
     const overridden = (key) => (key === 'x' && (guides.nose?.enabled || guides.end?.enabled)) || (key === 'chord' && guides.nose?.enabled && guides.end?.enabled);
     const stations = build?.stations ?? [];
+    // One option per section and airfoil: 1,000 sections with 200 airfoils took 1.7 s per render.
+    const lazyLists = sections.length * p.airfoils.length > LAZY_OPTIONS;
+    const option = (a, chosen) => h('option', { value: a.id, selected: a.id === chosen }, displayName(a.name));
+    const fillList = (e) => {
+      const el = e.currentTarget;
+      if (el.options.length >= p.airfoils.length) return;
+      const chosen = el.value;
+      el.replaceChildren(...p.airfoils.map((a) => option(a, chosen)));
+      el.value = chosen;
+    };
+    // Above the warning threshold the insert button names the time and memory with one more section.
+    const more = { ...projectSize(p), sections: sections.length + 1 };
+    more.gridPoints = loftGrid(more.sections, p.settings, guides.nose?.enabled || guides.end?.enabled).points;
+    const insertTitle =
+      sections.length >= LIMITS.maxSections
+        ? `At most ${LIMITS.maxSections.toLocaleString('en')} sections: more run a desktop browser tab out of memory.`
+        : more.sections > WARN.sections
+          ? `Insert a section after this one. With ${more.sections.toLocaleString('en')} sections, ${costPhrase(more)}.`
+          : 'Insert a section after this one';
     const rows = sections.map((s, i) => {
       const st = stationAt(stations, s.y);
       const commit = (key) => (value) => {
@@ -89,8 +109,10 @@ export class SectionsPanel {
                 this.store.update((q) => {
                   q.sections.find((z) => z.id === s.id).airfoil = e.target.value;
                 }),
+              // Large tables list only the chosen airfoil until the list is used.
+              ...(lazyLists ? { onfocus: fillList, onpointerdown: fillList } : {}),
             },
-            p.airfoils.map((a) => h('option', { value: a.id, selected: a.id === s.airfoil }, a.name)),
+            (lazyLists ? p.airfoils.filter((a) => a.id === s.airfoil) : p.airfoils).map((a) => option(a, s.airfoil)),
           ),
         ),
         FIELDS.map((f) => {
@@ -119,7 +141,7 @@ export class SectionsPanel {
             {
               type: 'button',
               class: 'icon',
-              title: sections.length >= LIMITS.maxSections ? `At most ${LIMITS.maxSections} sections` : 'Insert a section after this one',
+              title: insertTitle,
               'aria-label': `Insert section after ${i + 1}`,
               disabled: sections.length >= LIMITS.maxSections,
               onclick: () => {
