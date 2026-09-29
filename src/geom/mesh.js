@@ -1,7 +1,7 @@
 // Tessellation of the wing surface into a closed, outward-oriented triangle mesh, mirroring,
 // and mesh measures (volume, area, edge manifold check).
 
-import { surfacePoint } from './nurbs.js';
+import { surfacePointGrid } from './nurbs.js';
 import { stripTriangulate } from './triangulate.js';
 
 function refine(params, r) {
@@ -27,15 +27,12 @@ export function tessellateHalf(build, { uRefine = 1, vRefine } = {}) {
   const cols = closed ? M - 1 : M; // distinct vertices per row
   const V = vs.length;
   const positions = new Float64Array(cols * V * 3);
-  for (let k = 0; k < V; k++) {
-    for (let j = 0; j < cols; j++) {
-      const P = surfacePoint(S, us[j], vs[k]);
-      const o = (k * cols + j) * 3;
-      positions[o] = P[0];
-      positions[o + 1] = P[1];
-      positions[o + 2] = P[2];
-    }
-  }
+  surfacePointGrid(S, us.slice(0, cols), vs, (k, j, P) => {
+    const o = (k * cols + j) * 3;
+    positions[o] = P[0];
+    positions[o + 1] = P[1];
+    positions[o + 2] = P[2];
+  });
   const id = (j, k) => k * cols + (j % cols);
   const surface = [];
   for (let k = 0; k < V - 1; k++) {

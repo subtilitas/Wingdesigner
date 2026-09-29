@@ -8,7 +8,7 @@ import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
 import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
 import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
-import { blendScalar, spanwiseBlender, spanwiseWeights } from './spanwise.js';
+import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
 
@@ -107,11 +107,15 @@ function unitChord(points, N) {
 /** Concatenate clamped curves that share end points into one curve with C0 joins. */
 export function joinCurves(curves) {
   const p = curves[0].degree;
-  let knots = curves[0].knots.slice();
-  let points = curves[0].points.slice();
+  const knots = curves[0].knots.slice();
+  const points = curves[0].points.slice();
+  // Appended in place: copying the joined arrays per curve took time quadratic in the curve count.
   for (let i = 1; i < curves.length; i++) {
-    knots = knots.slice(0, -1).concat(curves[i].knots.slice(p + 1));
-    points = points.concat(curves[i].points.slice(1));
+    knots.pop();
+    const K = curves[i].knots;
+    for (let j = p + 1; j < K.length; j++) knots.push(K[j]);
+    const P = curves[i].points;
+    for (let j = 1; j < P.length; j++) points.push(P[j]);
   }
   return { degree: p, knots, points };
 }
@@ -133,6 +137,9 @@ function interpolateAlongV(values, scheme) {
       const parts = scheme.panels.map(([a, b]) => {
         const f0 = scheme.params[a];
         const f1 = scheme.params[b];
+        // Two stations: the interpolating curve is the straight segment through them (degree 1,
+        // knots 0, 0, 1, 1), as interpolateCurve returns it, without the solve.
+        if (b - a === 1) return { degree: 1, knots: [0, 0, 1, 1].map((t) => f0 + t * (f1 - f0)), points: [series[a].slice(), series[b].slice()] };
         const local = scheme.params.slice(a, b + 1).map((f) => (f - f0) / (f1 - f0));
         const c = interpolateCurve(series.slice(a, b + 1), scheme.degree, { params: local });
         return { degree: c.degree, knots: c.knots.map((t) => f0 + t * (f1 - f0)), points: c.points };
@@ -335,7 +342,6 @@ export function buildWing(project) {
   const ys = sections.map((s) => s.y);
   const y0 = ys[0];
   const y1 = ys[ys.length - 1];
-  const weights = spanwiseWeights(ys, settings.spanwise);
   const dense = guideOn.nose || guideOn.end || settings.spanwise === 'smooth';
   const Kset = dense ? Math.max(LIMITS.panelStations[0], Math.min(settings.panelStations, LIMITS.panelStations[1])) : 1;
   // Grid budget: stations times profile points (2N + 1) stays within MAX_GRID_POINTS, so many
@@ -370,13 +376,18 @@ export function buildWing(project) {
   const teGap = (chord) => Math.min(te.thickness / chord, MAX_GAP_FRACTION);
   const yPrev = ys[ys.length - 2];
   let tipChord = 0;
+  // Leading-edge x, chord, z and twist of every section, blended from the two neighbouring sections
+  // (O(1) per span position; a full weight vector per position made time and memory grow with the
+  // square of the section count).
+  const scalarBlender = () => spanwiseBlender(ys, settings.spanwise, sections.map((_, i) => [[X[i], C[i], Z[i], T[i]]]));
+  let blendScalars = scalarBlender();
   const placed = new Map();
   const placement = (y) => {
     const hit = placed.get(y);
     if (hit) return hit;
-    const w = weights(y);
-    let xLE = blendScalar(w, X);
-    let chord = blendScalar(w, C);
+    const raw = blendScalars(y)[0];
+    let xLE = raw[0];
+    let chord = raw[1];
     const xTE = guideOn.end ? guideXAt(result.guides.end, y, y0, y1) : null;
     if (guideOn.nose) xLE = guideXAt(result.guides.nose, y, y0, y1);
     if (guideOn.nose && guideOn.end) chord = xTE - xLE;
@@ -384,7 +395,7 @@ export function buildWing(project) {
     // curves that meet at the tip end in a scaled-down profile instead of a zero chord.
     if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
     if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
-    const out = { w, xLE, chord, z: blendScalar(w, Z), twist: blendScalar(w, T) };
+    const out = { raw, xLE, chord, z: raw[2], twist: raw[3] };
     placed.set(y, out);
     return out;
   };
@@ -394,6 +405,7 @@ export function buildWing(project) {
     tipChord = Math.max(scaled, LIMITS.minChord);
     result.tipChordLimited = scaled < LIMITS.minChord;
     C[C.length - 1] = tipChord;
+    blendScalars = scalarBlender();
     placed.clear();
   }
   // Actual tip chord: with both guides on, the guides set it, and a gap wider than the scaled tip
@@ -459,9 +471,10 @@ export function buildWing(project) {
   const smooth = settings.spanwise === 'smooth';
   const range = (values) => [Math.min(...values), Math.max(...values)];
   const overshootChecks = [];
-  if (!guideOn.nose && !guideOn.end) overshootChecks.push({ name: 'leading-edge x', unit: 'mm', values: X, range: range(X) });
-  if (!(guideOn.nose && guideOn.end)) overshootChecks.push({ name: 'chord', unit: 'mm', values: C, range: range(C) });
-  overshootChecks.push({ name: 'z', unit: 'mm', values: Z, range: range(Z) }, { name: 'twist', unit: '°', values: T, range: range(T) });
+  // k: index of the value in the blended placement scalars [leading-edge x, chord, z, twist].
+  if (!guideOn.nose && !guideOn.end) overshootChecks.push({ name: 'leading-edge x', unit: 'mm', k: 0, range: range(X) });
+  if (!(guideOn.nose && guideOn.end)) overshootChecks.push({ name: 'chord', unit: 'mm', k: 1, range: range(C) });
+  overshootChecks.push({ name: 'z', unit: 'mm', k: 2, range: range(Z) }, { name: 'twist', unit: '°', k: 3, range: range(T) });
   const profileRanges = smooth ? compat[0].map((_, k) => range(compat.map((c) => c[k][1]))) : [];
   const profileNames = compat[0].map((_, k) => `${k < N ? 'upper' : 'lower'} surface height at x = ${(chordStations[Math.abs(k - N)] * 100).toFixed(1)} % chord`);
   let overshoot = null;
@@ -474,7 +487,7 @@ export function buildWing(project) {
   let farPlacement = null;
   for (const y of [...checkYs].sort((a, b) => a - b)) {
     if (!(y >= y0 && y <= y1)) continue;
-    const { chord, w, xLE, z, twist } = placement(y);
+    const { chord, raw, xLE, z, twist } = placement(y);
     // Placement values whose coordinates overflow (e.g. a twist of 1e308 degrees) stop the build.
     if (![xLE, chord, z, Math.cos((twist * Math.PI) / 180)].every(Number.isFinite)) {
       nonFiniteY = y;
@@ -494,7 +507,7 @@ export function buildWing(project) {
     // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendCompat(y);
     if (smooth) {
-      for (const q of overshootChecks) record(q.name, q.unit, blendScalar(w, q.values), q.range, y);
+      for (const q of overshootChecks) record(q.name, q.unit, raw[q.k], q.range, y);
       for (let k = 1; k < 2 * N; k++) record(profileNames[k], '% chord', shape[k][1], profileRanges[k], y);
     }
     // Round-off level differences do not move the reported position.

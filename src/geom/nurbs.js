@@ -225,6 +225,82 @@ export function surfaceDerivatives1(surf, u, v) {
   return { point: S, du: Su, dv: Sv };
 }
 
+/** Span and basis functions (with first derivatives when `ders`) for every parameter value of one direction. */
+function basisTable(n, p, params, U, ders) {
+  return params.map((t) => {
+    const span = findSpan(n, p, t, U);
+    return { span, N: ders ? dersBasisFuns(span, t, p, Math.min(1, p), U) : basisFuns(span, t, p, U) };
+  });
+}
+
+/**
+ * surfacePoint on the grid us x vs: the basis functions are evaluated once per parameter value
+ * instead of once per point; the sums per point are those of surfacePoint. visit(k, j, point) is
+ * called for v = vs[k], u = us[j].
+ */
+export function surfacePointGrid(surf, us, vs, visit) {
+  const { degreeU: p, degreeV: q, knotsU: U, knotsV: V, points: P, weights: W } = surf;
+  const bu = basisTable(P.length - 1, p, us, U, false);
+  const bv = basisTable(P[0].length - 1, q, vs, V, false);
+  const dim = P[0][0].length;
+  for (let kk = 0; kk < vs.length; kk++) {
+    const { span: sv, N: Nv } = bv[kk];
+    for (let jj = 0; jj < us.length; jj++) {
+      const { span: su, N: Nu } = bu[jj];
+      const out = new Array(dim).fill(0);
+      let w = 0;
+      for (let k = 0; k <= p; k++) {
+        const i = su - p + k;
+        for (let l = 0; l <= q; l++) {
+          const j = sv - q + l;
+          const b = Nu[k] * Nv[l] * (W ? W[i][j] : 1);
+          w += b;
+          for (let c = 0; c < dim; c++) out[c] += b * P[i][j][c];
+        }
+      }
+      if (W) for (let c = 0; c < dim; c++) out[c] /= w;
+      visit(kk, jj, out);
+    }
+  }
+}
+
+/**
+ * surfaceDerivatives1 on the grid us x vs, with the basis functions evaluated once per parameter
+ * value. visit(k, j, { point, du, dv }) is called for v = vs[k], u = us[j].
+ */
+export function surfaceDerivatives1Grid(surf, us, vs, visit) {
+  if (surf.weights) throw new Error('surfaceDerivatives1Grid supports non-rational surfaces only');
+  const { degreeU: p, degreeV: q, knotsU: U, knotsV: V, points: P } = surf;
+  const bu = basisTable(P.length - 1, p, us, U, true);
+  const bv = basisTable(P[0].length - 1, q, vs, V, true);
+  const dim = P[0][0].length;
+  for (let kk = 0; kk < vs.length; kk++) {
+    const { span: sv, N: Nv } = bv[kk];
+    for (let jj = 0; jj < us.length; jj++) {
+      const { span: su, N: Nu } = bu[jj];
+      const S = new Array(dim).fill(0);
+      const Su = new Array(dim).fill(0);
+      const Sv = new Array(dim).fill(0);
+      for (let k = 0; k <= p; k++) {
+        const i = su - p + k;
+        for (let l = 0; l <= q; l++) {
+          const j = sv - q + l;
+          const Pij = P[i][j];
+          const b0 = Nu[0][k] * Nv[0][l];
+          const b1 = p >= 1 ? Nu[1][k] * Nv[0][l] : 0;
+          const b2 = q >= 1 ? Nu[0][k] * Nv[1][l] : 0;
+          for (let c = 0; c < dim; c++) {
+            S[c] += b0 * Pij[c];
+            Su[c] += b1 * Pij[c];
+            Sv[c] += b2 * Pij[c];
+          }
+        }
+      }
+      visit(kk, jj, { point: S, du: Su, dv: Sv });
+    }
+  }
+}
+
 /** Parameter values for interpolation (eq. 9.4-9.6). method: 'uniform' | 'chord' | 'centripetal'. */
 export function parametrize(points, method = 'chord') {
   const n = points.length - 1;

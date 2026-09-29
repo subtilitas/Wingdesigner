@@ -51,6 +51,18 @@ function cardinalSecondDerivatives(xs) {
   return M;
 }
 
+/** Index j of the span interval [ys[j], ys[j + 1]] that holds y (clamped to 0 .. n - 2): binary search. */
+function intervalOf(ys, y) {
+  let lo = 0;
+  let hi = ys.length - 2;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (y > ys[mid]) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
 /**
  * Build a weight function for section positions ys (strictly increasing).
  * @returns {(y: number) => number[]} weights per section, summing to 1
@@ -62,8 +74,7 @@ export function spanwiseWeights(ys, mode = 'linear') {
     const M = cardinalSecondDerivatives(ys);
     return (y) => {
       const yy = Math.min(Math.max(y, ys[0]), ys[n - 1]);
-      let j = 0;
-      while (j < n - 2 && yy > ys[j + 1]) j++;
+      const j = intervalOf(ys, yy);
       const h = ys[j + 1] - ys[j];
       const a = (ys[j + 1] - yy) / h;
       const b = (yy - ys[j]) / h;
@@ -84,8 +95,7 @@ export function spanwiseWeights(ys, mode = 'linear') {
       w[n - 1] = 1;
       return w;
     }
-    let i = 0;
-    while (y > ys[i + 1]) i++;
+    const i = intervalOf(ys, y);
     const t = (y - ys[i]) / (ys[i + 1] - ys[i]);
     w[i] = 1 - t;
     w[i + 1] = t;
@@ -103,8 +113,18 @@ export function spanwiseWeights(ys, mode = 'linear') {
 export function spanwiseBlender(ys, mode, lists) {
   const n = ys.length;
   if (!(mode === 'smooth' && n >= 3)) {
-    const weights = spanwiseWeights(ys, mode);
-    return (y) => blendPoints(weights(y), lists);
+    // Linear (hat functions): the two neighbouring sections, with the sums of blendPoints.
+    const copy = (L) => L.map((p) => p.slice());
+    if (n === 1) return () => copy(lists[0]);
+    return (y) => {
+      if (y <= ys[0]) return copy(lists[0]);
+      if (y >= ys[n - 1]) return copy(lists[n - 1]);
+      const i = intervalOf(ys, y);
+      const t = (y - ys[i]) / (ys[i + 1] - ys[i]);
+      const w0 = 1 - t;
+      const [A, B] = [lists[i], lists[i + 1]];
+      return A.map((p, k) => p.map((v, c) => (t === 0 ? w0 * v : w0 * v + t * B[k][c])));
+    };
   }
   const count = lists[0].length;
   const dim = lists[0][0].length;
@@ -142,8 +162,7 @@ export function spanwiseBlender(ys, mode, lists) {
   }
   return (y) => {
     const yy = Math.min(Math.max(y, ys[0]), ys[n - 1]);
-    let j = 0;
-    while (j < n - 2 && yy > ys[j + 1]) j++;
+    const j = intervalOf(ys, yy);
     const hj = ys[j + 1] - ys[j];
     const a = (ys[j + 1] - yy) / hj;
     const b = (yy - ys[j]) / hj;

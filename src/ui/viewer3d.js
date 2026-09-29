@@ -4,7 +4,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { surfaceDerivatives1, surfacePoint } from '../geom/nurbs.js';
+import { surfaceDerivatives1, surfaceDerivatives1Grid, surfacePoint } from '../geom/nurbs.js';
 import { stripTriangulate } from '../geom/triangulate.js';
 
 function refine(params, r) {
@@ -35,31 +35,27 @@ export function displayGeometry(build, origin = [0, 0, 0]) {
   const V = vs.length;
   const pos = new Float32Array(M * V * 3);
   const nrm = new Float32Array(M * V * 3);
-  const grid = [];
-  for (let k = 0; k < V; k++) {
-    const row = [];
-    for (let j = 0; j < M; j++) {
-      const { point, du, dv } = surfaceDerivatives1(S, us[j], vs[k]);
-      let n = cross(dv, du);
-      let l = Math.hypot(n[0], n[1], n[2]);
-      if (l < 1e-12) {
-        // Degenerate derivative (e.g. exactly at a sharp trailing edge): fall back to a neighbour.
-        const u2 = us[j] + (j === M - 1 ? -1e-4 : 1e-4);
-        const d2 = surfaceDerivatives1(S, u2, vs[k]);
-        n = cross(d2.dv, d2.du);
-        l = Math.hypot(n[0], n[1], n[2]) || 1;
-      }
-      const o = (k * M + j) * 3;
-      pos[o] = point[0] - origin[0];
-      pos[o + 1] = point[1] - origin[1];
-      pos[o + 2] = point[2] - origin[2];
-      nrm[o] = n[0] / l;
-      nrm[o + 1] = n[1] / l;
-      nrm[o + 2] = n[2] / l;
-      row.push(point);
+  const grid = Array.from({ length: V }, () => new Array(M));
+  // Basis functions once per u and per v value (surfaceDerivatives1 per vertex took 10 times longer).
+  surfaceDerivatives1Grid(S, us, vs, (k, j, { point, du, dv }) => {
+    let n = cross(dv, du);
+    let l = Math.hypot(n[0], n[1], n[2]);
+    if (l < 1e-12) {
+      // Degenerate derivative (e.g. exactly at a sharp trailing edge): fall back to a neighbour.
+      const u2 = us[j] + (j === M - 1 ? -1e-4 : 1e-4);
+      const d2 = surfaceDerivatives1(S, u2, vs[k]);
+      n = cross(d2.dv, d2.du);
+      l = Math.hypot(n[0], n[1], n[2]) || 1;
     }
-    grid.push(row);
-  }
+    const o = (k * M + j) * 3;
+    pos[o] = point[0] - origin[0];
+    pos[o + 1] = point[1] - origin[1];
+    pos[o + 2] = point[2] - origin[2];
+    nrm[o] = n[0] / l;
+    nrm[o + 1] = n[1] / l;
+    nrm[o + 2] = n[2] / l;
+    grid[k][j] = point;
+  });
   const idx = [];
   for (let k = 0; k < V - 1; k++) {
     for (let j = 0; j < M - 1; j++) {
