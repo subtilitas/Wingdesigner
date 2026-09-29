@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import MarkdownIt from 'markdown-it';
 
 const WIKI = 'docs/wiki';
-const markdown = new MarkdownIt();
+// GitHub renders HTML in Markdown: HTML blocks end tables as they do there.
+const markdown = new MarkdownIt({ html: true });
 export const PAGE_PAIRS = [
   ['README.md', 'README.de.md'],
   [`${WIKI}/User-Guide.md`, `${WIKI}/Benutzerhandbuch.md`],
@@ -18,19 +19,48 @@ export const PAGE_PAIRS = [
 
 /**
  * Indexes of the lines that start a table row (header and body rows), as a CommonMark parser with
- * GitHub tables reads the text: fenced code, block quotes, rows without outer pipes and the end of
- * a table at the next block follow the Markdown rules.
+ * GitHub tables and HTML reads the text: fenced code, block quotes, HTML blocks, rows without outer
+ * pipes and the end of a table at the next block follow the Markdown rules.
  */
 export function tableRows(text) {
   return markdown.parse(text, {}).filter((t) => t.type === 'tr_open').map((t) => t.map[0]);
 }
 
-/** In a table row the | of [[Label|Page]] ends the cell and splits the link: tables use [[Page Name]]. */
+// Delimiter row of a table after any block-quote markers: dashes with optional colons and at least one |.
+const DELIMITER = /^\s*(\|?(\s*:?-+:?\s*\|)+\s*(:?-+:?\s*)?|\|\s*:?-+:?\s*)$/;
+const unquote = (line) => line.replace(/^(\s*>)+/, '');
+
+/**
+ * Table problems a wiki reader sees:
+ * - a cell holds [[ without ]] after it: a | inside [[Label|Page]] ended the cell and split the link
+ *   (code spans do not count, they show the text as it is);
+ * - a header and delimiter row that form no table: a | in the header, e.g. in a wiki link, gives
+ *   the header more cells than the delimiter row, and the whole table shows as text.
+ */
 export function tableLinkProblems(text, file) {
+  const tokens = markdown.parse(text, {});
   const lines = text.split('\n');
-  return tableRows(text)
-    .filter((i) => /\[\[[^\]]*\|[^\]]*\]\]/.test(lines[i]))
-    .map((i) => `${file}:${i + 1}: wiki link with | in a table row; in tables a wiki link holds only the page title`);
+  const problems = [];
+  let row = null;
+  for (const t of tokens) {
+    if (t.type === 'tr_open') row = t.map[0];
+    if (t.type === 'table_close') row = null;
+    if (t.type !== 'inline' || row === null) continue;
+    const plain = t.children.filter((c) => c.type === 'text').map((c) => c.content).join('');
+    if (/\[\[(?![^\]]*\]\])/.test(plain) && !problems.some((p) => p.startsWith(`${file}:${row + 1}:`))) {
+      problems.push(`${file}:${row + 1}: wiki link split by the | of a table cell; in tables a wiki link holds only the page title`);
+    }
+  }
+  const covered = new Set();
+  for (const t of tokens) {
+    if (['table_open', 'fence', 'code_block', 'html_block'].includes(t.type) && t.map) for (let i = t.map[0]; i < t.map[1]; i++) covered.add(i);
+  }
+  lines.forEach((line, i) => {
+    if (i > 0 && !covered.has(i) && DELIMITER.test(unquote(line)) && unquote(lines[i - 1]).includes('|')) {
+      problems.push(`${file}:${i}: the header and delimiter rows form no table (a | in the header, e.g. in a wiki link?)`);
+    }
+  });
+  return problems;
 }
 
 function main() {
