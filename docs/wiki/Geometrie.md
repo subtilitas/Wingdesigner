@@ -245,7 +245,7 @@ verwendet K_set = 1. Die Grenzen gelten in jedem Modus.
 | --- | --- |
 | Warnschwelle | über 60 000 Gitterpunkten (`WARN.gridPoints`): Der Aufbau ergänzt die Warnung „Large project: …“ mit „… loft grid points (warning above 60,000)“ und der erwarteten Zeit und dem Browser-Speicher jeder Änderung. **Settings** zeigt unter den Auflösungsfeldern „Loft grid: … points.“, über 60 000 mit Zeit und Speicher. |
 | Grenze | 5 000 000 Gitterpunkte (`LIMITS.maxGridPoints` in `src/model/project.js`); darüber geht einem Browser-Tab auf einem Desktop-Rechner der Speicher aus |
-| Verwendetes K | max(1, min(K_set, floor(5 000 000 / ((Profilschnitte − 1) · (2N + 1))))); K_set = Wert in **Settings**. K < K_set nur über 5 000 000 Gitterpunkten. |
+| Verwendetes K | max(1, min(K_set, floor((5 000 000 / (2N + 1) − 1) / (Profilschnitte − 1)))), das größte K, dessen Gitter ((Profilschnitte − 1) · K + 1) · (2N + 1) höchstens 5 000 000 Punkte hat; K_set = Wert in **Settings**. K < K_set nur über 5 000 000 Gitterpunkten. |
 | Warnung (K < K_set) | „Spanwise stations per panel reduced from K_set to K: S sections with N chord samples keep the loft within 5,000,000 grid points.“ |
 | Fehler (mehr als 5 000 000 Gitterpunkte mit dem verwendeten K) | „The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.“ Es wird keine Fläche aufgebaut. |
 | Beispiel | 200 Profilschnitte, K_set = 8, N = 60 (Vorgaben): K = 8, 1593 Stationen, 192 753 Gitterpunkte: Warnung mit Zeit und Speicher |

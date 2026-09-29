@@ -58,7 +58,8 @@ export function loftGrid(sectionCount, settings, guidesOn = false) {
   const dense = guidesOn || settings.spanwise === 'smooth';
   const Kset = dense ? Math.max(LIMITS.panelStations[0], Math.min(settings.panelStations, LIMITS.panelStations[1])) : 1;
   const panels = Math.max(1, sectionCount - 1);
-  const K = Math.max(1, Math.min(Kset, Math.floor(LIMITS.maxGridPoints / ((2 * N + 1) * panels))));
+  // Largest K with (panels * K + 1) * (2N + 1) <= LIMITS.maxGridPoints.
+  const K = Math.max(1, Math.min(Kset, Math.floor((LIMITS.maxGridPoints / (2 * N + 1) - 1) / panels)));
   return { N, Kset, K, points: (panels * K + 1) * (2 * N + 1) };
 }
 

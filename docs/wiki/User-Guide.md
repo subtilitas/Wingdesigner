@@ -22,14 +22,14 @@ Deutsch: [[Benutzerhandbuch|Benutzerhandbuch]]
 | Top bar | **New**, **Open**, **Save**, **Export**, **Undo**, **Redo**, **Help** |
 | 3D view | Wing surface, section outlines (blue, selected section red), leading-edge and trailing-edge lines (grey), grid in the plane z = 0 (20 × 20 cells); view buttons |
 | Side panel | Tabs **Sections**, **Planform**, **Airfoils**, **Settings**, **Checks** |
-| Status bar | Span, wing area, aspect ratio (AR), mean aerodynamic chord (MAC), warning count (only with 1 or more warnings). With errors: error count and first error message in red text. |
-| Messages | Short notices (e.g. `Created "Glider".`) at the bottom of the 3D view for 4 s. Error notices on red background. |
+| Status bar | Span, wing area, aspect ratio (AR), mean aerodynamic chord (MAC), warning count (only with 1 or more warnings). With errors: error count and first error message in red text. With autosave off: `Autosave off: use Save` in red text (section [Storage](#storage)). |
+| Messages | Short notices (e.g. `Created "Glider".`) at the bottom of the 3D view for 4 s; a notice longer than 66 characters stays 60 ms per character. Error notices on red background. |
 
 | Top bar button | Effect |
 | --- | --- |
 | **New** | Opens the wizard (section [Wizard](#wizard)). |
-| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Rejects files above 50 MB unread. Rejects invalid files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. |
-| **Save** | Downloads the project JSON. Same file as **Export** > Project JSON. |
+| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Rejects files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` Rejects invalid files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. |
+| **Save** | Downloads the project JSON. Same file as **Export** > Project JSON. When the derived NURBS data would take the file above 100 MB, the file leaves it out (section [Export](#export)). A failure shows the red notice `Save failed: <reason>.` |
 | **Export** | Opens the export dialog (section [Export](#export)). |
 | **Undo** / **Redo** | Steps through the edit history, kept in memory only: at most 100 steps and at most 64,000,000 characters of serialized project (undo and redo together); a project above 640,000 characters keeps fewer steps, at least 1. **New** and **Open** are undoable. |
 | **Help** | App version, workflow, controls, links to this wiki and to the source code. |
@@ -54,10 +54,12 @@ On touch screens (coarse pointer), buttons and input fields are at least 40 px h
 
 - After every change the browser stores the project in `localStorage` under the key `wingdesigner.project.v1`. The next visit restores it.
 - Only projects that pass the **Open** validation are saved. Otherwise the last valid project stays stored.
-- A stored project that fails to load is kept under `wingdesigner.project.v1.rejected`. An error notice shows, and the wizard opens as on a first visit.
+- A stored project that fails to load is kept under `wingdesigner.project.v1.rejected`. An error notice shows, and the wizard opens as on a first visit. Without room for that copy, the project stays under `wingdesigner.project.v1` and autosave stays off.
 - The active tab is stored under `wingdesigner.tab`.
 - Without a stored project (first visit), the wizard opens. Nothing is stored while this first-run wizard is open; a reload shows the wizard again.
-- With blocked storage (private window, full quota), the project exists only in the open browser tab. Use **Save** to keep it.
+- With blocked storage (private window), the project exists only in the open browser tab. Use **Save** to keep it.
+- When the browser refuses the project (browsers keep about 5,000,000 characters per site), the red notice `Autosave is off: browser storage refused the project (… characters; browsers keep about 5,000,000 per site). Use Save to keep it.` shows once. The status bar shows `Autosave off: use Save` until an autosave succeeds again; then the notice `Autosave works again.` shows.
+- While autosave fails, the key `wingdesigner.project.v1.stale` holds the time of the first failure. The next visit restores the last stored project and shows `This is the project as last saved; autosave stopped at … because browser storage was full, and later edits were not saved.`
 - The undo history is not stored.
 
 ## Controls
@@ -187,12 +189,20 @@ Computation: [[Geometry|Geometry]].
 
 | Button | Effect |
 | --- | --- |
-| **+** | Inserts a section halfway to the next one: mean of y, x, z, chord and twist; airfoil of the current section. On the tip row: copy of the tip, one panel length further out (at least 10 mm); no insert when the copy would lie beyond y = 1,000,000 mm. Disabled at 200 sections (tooltip `At most 200 sections`). |
+| **+** | Inserts a section halfway to the next one: mean of y, x, z, chord and twist; airfoil of the current section. On the tip row: copy of the tip, one panel length further out (at least 10 mm). Disabled at 20,000 sections (tooltip `At most 20,000 sections: more run a desktop browser tab out of memory.`). |
 | **×** | Deletes the section. Disabled while 2 sections remain. |
+
+**+** refuses the insert with an error notice when:
+
+- no number lies between the y values of the two neighbouring sections: `No span position lies between y = … mm and y = … mm. Move the two sections apart first.`
+- the copy of the tip would lie beyond y = 1,000,000 mm: `A section beyond the tip would lie beyond y = 1000000 mm.`
+
+Tooltip of **+**: `Insert a section after this one`. When the insert gives more than 200 sections, the tooltip adds the estimate of section [Project size](#project-size): `Insert a section after this one. With … sections, each change takes … and … of browser memory.`
 
 - A y that another section already has is rejected with an error notice (`Another section already lies at y = … mm; …`). The field keeps its previous value.
 - A typed value outside the limit becomes the nearest limit, e.g. a negative y becomes 0, a chord below 1 mm becomes 1 mm. Arrow steps stop at the limits. The limits are the same as for project files ([[File Formats|File-Formats]]).
-- A click on a row outside the input fields selects the section. The 3D view draws its outline in red; the planform editor draws its chord line in red.
+- A click anywhere in a row outside its input fields, lists and buttons selects the section, also in the card layout of narrow screens. The row is marked, the 3D view draws the section outline in red, and the planform editor draws its chord line and handles in red. Selecting does not rebuild the wing: it takes 2 ms of JavaScript at 200 sections and 100 to 110 ms at 20,000 sections.
+- Airfoil lists: with more than 20,000 list entries (sections × project airfoils), each list holds only its chosen airfoil until it is focused or pressed; then it lists all project airfoils.
 - When the root or tip y changes, the guide point y values scale linearly to the changed root-to-tip range.
 - Between sections, x, z, chord, twist and the airfoil shape are interpolated along the span (**Settings** > **Spanwise interpolation**).
 
@@ -213,7 +223,7 @@ The planform editor shows the half wing from above: span y to the right, chord x
 
 | Toolbar control | Effect |
 | --- | --- |
-| **Fit** | Fits the planform into the canvas |
+| **Fit** | Fits the sections, the points and curves of the guide curves that are on, the built outline and, with **Mirror** on, the mirror image into the canvas |
 | **+** / **−** | Zoom by factor 1.25 / 0.8 about the canvas centre |
 | **Mirror** | Grey mirror image of the other half. Display only; on by default; not stored. |
 
@@ -249,7 +259,10 @@ Constraints and errors:
 - Error: at a checked span position the leading-edge x, the trailing-edge x or z lies beyond ±1,200,000 mm, or the chord exceeds 100,000 mm. Example: nose line at x = −1,100,000 mm, end line at x = 1,100,000 mm (chord 2,200,000 mm).
 - With **Wing tip** = Pointed, the chord in the last panel stays at or above the tip chord. Nose line and end line may then meet at the tip.
 - Stations: every section. With a guide curve on or with **Smooth**, each panel is divided into **Spanwise stations per panel** intervals (default 8, cosine spacing); Glider preset: 17 stations.
-- Grid limit: panels × **Spanwise stations per panel** × (2 · N + 1) profile points stays at or below 160,000 before added stations (N = **Chordwise stations per surface**). Above it the wing uses fewer intervals per panel, with a warning. Examples with **Smooth**, 40 intervals per panel and N = 200: 20 sections: 21 intervals per panel, 400 stations; 200 sections: 2 intervals per panel, 399 stations.
+- Loft grid: stations × (2 · N + 1) profile points before added stations (N = **Chordwise stations per surface**). Stations: panels × **Spanwise stations per panel** + 1 with a guide curve on or with **Smooth**, otherwise one per section. **Settings** shows the count (`Loft grid: … points.`).
+- Above 60,000 grid points the build adds the `Large project` warning (section [Project size](#project-size)). Up to 5,000,000 grid points the wing uses the settings as entered.
+- Above 5,000,000 grid points the wing uses fewer intervals per panel, with a warning. When one interval per panel still exceeds 5,000,000 grid points, the build stops with an error ([Checks](#checks)).
+- Examples with **Smooth**, 40 intervals per panel and N = 200: 20 sections: 761 stations, 305,161 grid points; 1,000 sections: 12 intervals per panel, 11,989 stations, 4,807,589 grid points. With N = 200, more than 12,468 sections exceed 5,000,000 grid points at one station per panel; with N = 60 (default), 20,000 sections give 2,420,000 grid points.
 - Added stations: up to 32 (at most 6 rounds). The app adds them at the checked span positions where the wing surface deviates from the intended profile by more than 0.5 mm, or 10 % of the local chord if that is smaller (3D distance). Compared points: leading edge, upper trailing-edge point and every k-th chord station per surface, k = **Chordwise stations per surface** / 6, rounded down (5 chord stations at the default 60). Twist between stations also adds stations: Swept flying wing preset, 3 sections, 2 added stations.
 - Errors between stations, checked at the checked span positions and at 0.25, 0.5 and 0.75 of every interval between neighbouring stations: the fitted surface chord, measured along the intended chord direction, falls below 0.9 mm or reverses (surface folds or narrows); the local thickness at a compared chord station falls below 0 (surface turns inside out); the local thickness at a compared chord station between 1 % and 99 % chord is at most 0.001 % of the chord (zero thickness).
 - The added stations and the deviation warning use the checked span positions only, not the points at 0.25, 0.5 and 0.75 of the station intervals.
@@ -261,7 +274,7 @@ Controls per guide curve (boxes **Nose line (leading edge)** and **End line (tra
 | **Use guide curve** | always | on, off | off | On: the curve sets the edge. A guide that was never edited starts at the current section edges; an edited guide keeps its points. Off: the edge follows the sections. While off, an unedited guide follows the section edges; an edited guide keeps its points. Edited: a point was moved (drag or point table), added or removed. Guide curves from the wizard count as not edited until the page is reloaded or the project is opened from a file: switching one off and on again replaces its points with the section edges (**Undo** restores them). After a reload or **Open**, a guide stored without the edited state counts as edited when its points differ from the section edges: another point count, or a coordinate more than 1e-9 mm off. |
 | **Mode** | guide curve on (otherwise disabled) | **Through points**, **Control points** | **Through points** | **Through points**: the curve passes through every point. **Control points**: the points form the control polygon (dashed line). The curve starts and ends at the first and last point and otherwise lies inside the convex hull of the control polygon. |
 | **Degree** | guide curve on (otherwise disabled) | 1 to 5 | 3 | Polynomial degree; limited to the point count − 1 |
-| **Add point** | guide curve on (otherwise hidden); disabled at 500 points (tooltip `At most 500 points per guide`) | – | – | Inserts a point halfway across the widest gap in y |
+| **Add point** | guide curve on (otherwise hidden); disabled at 20,000 points (tooltip `At most 20,000 points per guide curve.`) | – | – | Inserts a point halfway across the widest gap in y. Tooltip: `Add a point in the widest gap`; when the curve would get more than 500 points, `Add a point in the widest gap. With … points, each change takes … and … of browser memory.` (section [Project size](#project-size)) |
 | **Remove selected point** | guide curve on (otherwise hidden); enabled while an interior point is selected | – | – | Deletes the selected interior point. Root and tip points cannot be deleted. |
 | **Reset to sections** | guide curve on (otherwise hidden) | – | – | Moves all points to the section edges and clears the edited state |
 | Point table | guide curve on (otherwise hidden) | x, y in mm | – | x editable for every point, within ±1,100,000 mm; y editable for interior points. Root and tip y are read-only. |
@@ -285,13 +298,22 @@ Controls per guide curve (boxes **Nose line (leading edge)** and **End line (tra
 - a project airfoil has the same name and the same points;
 - a project airfoil is a generated NACA section with the same code and the same **Closed trailing edge** setting (any name).
 
-A project holds at most 200 airfoils. At 200 airfoils, a file upload, **Check pasted text**, the NACA generator and the library open no preview. They show the red notice `The project holds 200 airfoils, the limit; "Remove unused" frees places.` **Open** rejects a project file with more than 200 airfoils or with an airfoil of more than 5000 points.
+Limits of the project airfoils (section [Project size](#project-size)):
+
+| Limit | Airfoils tab (upload, **Check pasted text**, NACA generator, library) | **Open** |
+| --- | --- | --- |
+| 10,000 airfoils | At 10,000 airfoils no preview opens: red notice `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.` | More airfoils: `At most 10,000 airfoils are supported (found …).` |
+| 1,000,000 airfoil points in all | An airfoil that would take the total above 1,000,000 opens no preview and is not added: red notice `With this airfoil the project airfoils hold … points; the limit is 1,000,000. "Remove unused" frees points.` | More points: `The airfoils hold … points together; the limit is 1,000,000.` |
+| 100,000 points per airfoil | Error `too-many-points` in the preview ([[File Formats|File-Formats]]) | More points: `Airfoil … has … points; the limit is 100,000.` |
+
+- Above 200 airfoils or above 100,000 airfoil points in all, the wing build adds the `Large project` warning.
+- Lists and messages show the first 200 characters of a longer airfoil name, followed by `…`.
 
 ### Upload
 
 | Input | Rule |
 | --- | --- |
-| Files | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Drop them on the drop zone or use **Choose files**. Several files open one preview each, in order. A file above 8 MB is not read: red notice `<file>: … MB; airfoil files are limited to 2,000,000 characters.` |
+| Files | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Drop them on the drop zone or use **Choose files**. Several files open one preview each, in order. A file above 20 MB is not read: red notice `<file>: … MB; airfoil files are limited to 5,000,000 characters.` |
 | Pasted text | Paste coordinates into the text area, then **Check pasted text**. |
 | Text encoding | UTF-8 (Unicode Transformation Format, 8-bit); a file that is not valid UTF-8 is read as Windows-1252. |
 | Layouts and checks | Selig, Lednicer, x/upper/lower table, XML (Extensible Markup Language), HTML (HyperText Markup Language): see [[File Formats|File-Formats]] |
@@ -304,7 +326,7 @@ A project holds at most 200 airfoils. At 200 airfoils, a file upload, **Check pa
 | **Name** | From the name line of the file, otherwise the file name. Editable. |
 | **Source / attribution** | Stored in the project file. Pre-filled for names starting with `HS` plus space or hyphen (`HS 3.4`, `HS-1.4`): `Hartmut Siegmann, www.aerodesign.de`. Pre-filled for names starting with `MH`, an optional space or hyphen and a digit (`MH45`, `MH 60`): `Martin Hepperle, www.mh-aerotools.de`. Both matches are case-insensitive. Pre-filled for a bundled library file with its author from `index.json`. |
 | Format line | Detected format and point count |
-| Messages | **Error**: blocks adding. **Warning**: adding allowed. **Info**: facts, e.g. thickness, camber and trailing-edge gap in % chord, or the number of removed points that lie closer than 1e-9 chord to the previous point. After the sanity checks pass, the preview also rejects a NURBS curve that crosses itself or runs back in x, and points on which the NURBS interpolation fails (`The NURBS interpolation through the points failed (…).`). All three are error `curve-shape` ([[File Formats|File-Formats]]). |
+| Messages | **Error**: blocks adding. **Warning**: adding allowed. **Info**: facts, e.g. thickness, camber and trailing-edge gap in % chord, or the number of removed points that lie closer than 1e-9 chord to the previous point. Above 5,000 points: warning `… points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take ….` A surface that runs back in x at more than 50 points: error `The upper surface runs back in x at … points; the limit is 50.` (`lower` likewise). After the sanity checks pass, the preview also rejects a NURBS curve that crosses itself or runs back in x, and points on which the NURBS interpolation fails (`The NURBS interpolation through the points failed (…).`). All three are error `curve-shape` ([[File Formats|File-Formats]]). |
 | **Add to project** | Adds the airfoil. Disabled and labelled **Cannot add (errors)** while an error exists. |
 
 ### NACA generator
@@ -398,11 +420,16 @@ The box **More airfoils (external, not bundled)** links to 3 collections. The ap
 | Geometry | **Tip profile scale 1 : N of the previous section chord** | N = 100 to 1000, step 50 | 200 | Shown only with **Pointed** |
 | Geometry | **Trailing-edge thickness (mm)** | ≥ 0, step 0.1 | wizard: 0.2 % of the root chord, at least 0.3; sample wing: 0.5; project file without the value: 0.4 | Shown only with **Fixed thickness in mm** |
 | Resolution | **Chordwise stations per surface** | 16 to 200, step 4 | 60 | Airfoil resampling: N stations give 2 · N + 1 points per outline (60 → 121) |
-| Resolution | **Spanwise stations per panel with guides or smooth mode** | 3 to 40 | 8 | Intervals per panel, cosine spacing; used only with a guide curve on or with Smooth. Fewer intervals above the grid limit of 160,000 points (section [Guide curves](#guide-curves)). |
+| Resolution | **Spanwise stations per panel with guides or smooth mode** | 3 to 40 | 8 | Intervals per panel, cosine spacing; used only with a guide curve on or with Smooth. Fewer intervals only above 5,000,000 loft grid points (section [Guide curves](#guide-curves)). |
 | Resolution | **Profile parametrization** | **Centripetal (recommended)**, **Chord length**, **Uniform** | Centripetal | Parameter spacing of the airfoil NURBS interpolation, in the wing build and in the airfoil preview |
 | Display | **Show mirrored half (y < 0)** | on, off | on | Display only (3D view). Checks, status bar and wizard always report both halves. Stored in the project. |
 | Display | **Show NURBS control net** | on, off | off | 3D view only; not stored |
 | Display | **Show section outlines** | on, off | on | 3D view only; not stored |
+
+Below **Spanwise stations per panel** a note gives the loft grid points of the current settings (section [Guide curves](#guide-curves)), e.g. Glider preset: `Loft grid: 2,057 points.`
+
+- After a reduction above 5,000,000 grid points the note adds `, … spanwise stations per panel instead of …`.
+- Above 60,000 grid points the note turns to the warning colour and adds the estimate of section [Project size](#project-size): `Loft grid: … points; above 60,000, each change takes … and … of browser memory.`
 
 Spanwise interpolation:
 
@@ -443,7 +470,7 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 
 - Mean of 10 runs after 2 warm-up runs (STEP export: 3 runs); Node.js 24.21, Intel Xeon x86-64, 2.10 GHz, 4 cores, load average 3.3 (other processes running); 2026-09-29.
 - 1 KB = 1024 bytes.
-- Grid limit examples of section [Guide curves](#guide-curves) (Node.js 24, load average 3.3): 20 sections: build 0.8 s; 200 sections: build 2.0 s.
+- Large projects in the browser: section [Project size](#project-size).
 - Full conditions and more cases: [[Development|Development]], section Build and export times.
 - Phones: not measured.
 
@@ -473,15 +500,16 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 | --- | --- | --- |
 | Airfoil "…": … | error | the airfoil fails the sanity checks ([[File Formats|File-Formats]]), e.g. in an opened project file. With **Profile parametrization** **Chord length** or **Uniform**, every `Airfoil "…"` message ends with `Settings > Profile parametrization "centripetal" follows the points more closely.` |
 | Airfoil "…": the NURBS interpolation failed (…). | error | the airfoil NURBS interpolation fails |
-| Airfoil "…": the NURBS curve through the points crosses itself near x = … % chord; … | error | the curve through the airfoil points crosses itself. The crossing splits the outline into 2 parts; the part with the smaller bounding-box diagonal has a mean width (area / bounding-box diagonal) above 0.05 % of the chord |
+| Airfoil "…": the NURBS curve through the points crosses itself near x = … % chord; … | error | the curve through the airfoil points crosses itself. The crossing splits the outline into 2 parts; the part with the smaller bounding-box diagonal has a mean width (area / bounding-box diagonal) above 0.05 % of the chord. An airfoil used at a chord above 200 mm also fails when that width exceeds 0.1 mm at its largest chord; the message then reads `…; the loop is … mm wide at … mm chord, above 0.1 mm. …` |
 | Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | error | the curve through the airfoil points runs back in x by more than 0.01 % of the chord. In the parser test with 1,964 real airfoil files, this check rejects 4 files with **Centripetal**, 12 with **Chord length** and 82 with **Uniform** ([[Airfoil Sources|Airfoil-Sources]], section Parser test). |
+| Airfoil "…": The upper surface runs back in x at … points; the limit is 50. (also `lower`) | error | a surface of the airfoil runs back in x at more than 50 points (check `folds`, [[File Formats|File-Formats]]) |
 | Nose line: … / End line: … | error | guide points not strictly increasing in y, or the curve turns back in y |
 | Nose line: the curve through the points reaches x = … mm, beyond ±1200000 mm; space the points more evenly in y or use control-point mode. (also End line) | error | a control point of the guide curve lies beyond x = ±1,200,000 mm |
 | Section values give non-finite coordinates at y = … mm; … | error | leading-edge x, chord, z or twist of a checked span position gives a non-finite coordinate, e.g. **Smooth** with 2 sections 5e-324 mm apart. **Open** accepts such a file; the **Sections** table rejects a y less than 1e-6 mm from another section. |
 | At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves, or use linear interpolation. | error | at a checked span position: leading-edge x, trailing-edge x or z beyond ±1,200,000 mm, or chord above 100,000 mm |
 | Smooth spanwise interpolation overshoots at y = … mm: … is …, while the sections range from … to … . The sections are unevenly spaced (smallest gap … mm). … | error | **Smooth**: an interpolated value (leading-edge x, chord, z, twist or a profile point height) lies more than 2 × the section range outside that range |
-| The blended profile has negative thickness at y = … mm, x = … % chord (… % chord); … | error | **Smooth**: the blended profile at a checked span position has negative thickness at a chord station (overshoot between unevenly spaced sections). Behind 99 % chord, crossings up to 0.01 % of the chord count as zero thickness. |
-| The resampled profile has negative thickness at y = … mm, x = … % chord (… % chord): … | error | **Linear**: upper and lower surface of a section airfoil cross at a chord station. Behind 99 % chord, crossings up to 0.01 % of the chord count as zero thickness. |
+| The blended profile has negative thickness at y = … mm, x = … % chord (… % chord); … | error | **Smooth**: the blended profile at a checked span position has negative thickness at a chord station (overshoot between unevenly spaced sections). Behind 99 % chord, crossings up to 0.01 % of the chord, at most 0.1 mm, count as zero thickness. |
+| The resampled profile has negative thickness at y = … mm, x = … % chord (… % chord): … | error | **Linear**: upper and lower surface of a section airfoil cross at a chord station. Behind 99 % chord, crossings up to 0.01 % of the chord, at most 0.1 mm, count as zero thickness. |
 | The trailing-edge setting pulls the upper surface below the lower surface at y = … mm (… % chord); … | error | **Closed** or **Fixed thickness** on an airfoil that is thinner inside than its trailing-edge gap |
 | Upper and lower surface of the blended profile touch at y = … mm, x = … % chord (thickness … % chord); … | error | **As in the airfoil files**: thickness at most 0.001 % of the chord between 1 % and 99 % chord |
 | The trailing-edge setting makes upper and lower surface touch at y = … mm, x = … % chord (thickness … % chord); … | error | **Closed** or **Fixed thickness**: thickness at most 0.001 % of the chord between 1 % and 99 % chord |
@@ -490,9 +518,11 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 | The fitted surface turns inside out between stations at y = … mm (local thickness … % chord): … | error | local thickness of the fitted surface below 0 at a compared chord station; checked at the checked span positions and at 0.25, 0.5 and 0.75 of every station interval |
 | The fitted surface has zero thickness between stations at y = … mm (local thickness … % chord): … | error | local thickness of the fitted surface at most 0.001 % of the chord at a compared chord station between 1 % and 99 % chord; same positions |
 | The fitted surface folds or narrows between stations at y = … mm (chord … mm along the intended chord direction, minimum 1 mm): … | error | fitted surface chord below 0.9 mm or reversed after the added stations; same positions |
-| The loft surface crosses itself at y = … mm near x = … mm: … | error | a surface row crosses itself between the resampled points; mean width of the smaller part as for airfoils, above 0.05 % of the local chord. Tested rows: every section, halfway between 2 sections, and halfway between 2 neighbouring stations in the 64 widest station intervals. |
+| The loft surface crosses itself at y = … mm near x = … mm: … | error | a surface row crosses itself between the resampled points; mean width of the smaller part as for airfoils, above 0.05 % of the local chord or above 0.1 mm, whichever is smaller. Tested rows: every section, halfway between 2 sections, and halfway between 2 neighbouring stations in the 64 widest station intervals. |
+| The loft grid needs … points with one station per panel (… sections, … chord samples); the limit is 5,000,000. Reduce the chord samples or the sections. | error | sections × (2 · **Chordwise stations per surface** + 1) above 5,000,000, e.g. more than 12,468 sections at 200 chord samples ([Guide curves](#guide-curves)) |
 | Internal error: … | error | exception in the wing build (program defect) |
-| Spanwise stations per panel reduced from … to …: … sections with … chord samples keep the loft within 160,000 grid points. | warning | grid limit: panels × **Spanwise stations per panel** × (2 · **Chordwise stations per surface** + 1) above 160,000, with a guide curve on or with **Smooth** |
+| Large project: … (warning above …). Each change takes … and … of browser memory. | warning | a project size above its warning threshold; the message lists every such size, e.g. `1,000 sections (warning above 200) and 121,000 loft grid points (warning above 60,000)`. Thresholds and estimate: section [Project size](#project-size). |
+| Spanwise stations per panel reduced from … to …: … sections with … chord samples keep the loft within 5,000,000 grid points. | warning | loft grid above 5,000,000 points with the set **Spanwise stations per panel**, with a guide curve on or with **Smooth** ([Guide curves](#guide-curves)) |
 | Pointed tip: nose line and end line end … mm apart, so the tip chord is … mm instead of … mm; … | warning | pointed tip, both guide curves on, gap at the tip more than 0.5 mm wider than the scaled tip chord |
 | Trailing-edge thickness … mm exceeds 5 % of the chord at … station(s); it is limited to 5 % there. | warning | fixed thickness above 5 % of the local chord |
 | The trailing edge is closed on some stations and open on others; … station(s) were opened to 0.01 mm. | warning | not every station closed, and at least one station with a trailing-edge gap below 0.01 mm |
@@ -508,13 +538,62 @@ Build errors that the UI and **Open** prevent (reachable only through code). The
 | --- | --- | --- |
 | At least 2 sections are required. | fewer than 2 sections | **×** is disabled at 2 sections; **Open** rejects the file |
 | Section …: chord must be at most 100000 mm. / Section …: x must be within ±1000000 mm. (also y, z) / Section …: twist must be within ±360 degrees. | chord above 100,000 mm; x, y or z outside ±1,000,000 mm; twist outside ±360° | the **Sections** table clamps typed values to these limits; planform drags stay within them; **Open** rejects the file |
-| At most 200 sections are supported (found …). | more than 200 sections | **+** is disabled at 200 sections; **Open** rejects the file |
-| guides.….points: at most 500 points. / guides.….points: x must be within ±1100000 mm and y within ±1000000 mm. | a guide curve with more than 500 points, a point x outside ±1,100,000 mm or a point y outside ±1,000,000 mm | **Add point** is disabled at 500 points; drags and the point table keep x within ±1,100,000 mm; **Open** rejects the file |
+| At most 20,000 sections are supported (found …). | more than 20,000 sections | **+** is disabled at 20,000 sections; **Open** rejects the file |
+| guides.….points: at most 20,000 points (found …). / guides.….points: x must be within ±1100000 mm and y within ±1000000 mm. | a guide curve with more than 20,000 points, a point x outside ±1,100,000 mm or a point y outside ±1,000,000 mm | **Add point** is disabled at 20,000 points; drags and the point table keep x within ±1,100,000 mm; **Open** rejects the file |
 | Section at y = … mm lies on the mirrored side; … | root y below 0 | the y field sets negative values to 0; **Open** rejects the file |
 | Sections … and … share span position y = … mm. | two sections with the same y | the Sections table rejects the value; **Open** rejects the file |
 | Section at y = … mm uses unknown airfoil "…". | airfoil id missing in the project | **×** is disabled for used airfoils; **Open** rejects the file |
 
 With an error the wing is not built: the 3D view and the statistics stay empty, and **Export** offers only the project JSON.
+
+## Project size
+
+Above a warning threshold the app works as usual. The wing build adds one warning to the **Checks** tab, counted in the status bar:
+
+`Large project: <sizes>. Each change takes … and … of browser memory.`
+
+- Each size reads e.g. `1,000 sections (warning above 200)`.
+- A notice with the same text shows when a size crosses its threshold: after an edit, after **Open**, and for the restored project of the next visit.
+- The hard limits lie where a desktop browser tab runs out of memory or a change takes about a minute.
+
+| Size | Warning above | Hard limit | At the hard limit |
+| --- | --- | --- | --- |
+| Sections | 200 | 20,000 | **+** disabled; **Open** rejects the file |
+| Project airfoils | 200 | 10,000 | the Airfoils tab adds no airfoil; **Open** rejects the file |
+| Points of one airfoil | 5,000 | 100,000 | preview error `too-many-points`; **Open** rejects the file |
+| Airfoil points in all | 100,000 | 1,000,000 | the Airfoils tab adds no airfoil; **Open** rejects the file |
+| Points of a guide curve that is on | 500 | 20,000 (every guide curve) | **Add point** disabled; **Open** rejects the file |
+| Loft grid points | 60,000 | 5,000,000 | fewer spanwise stations per panel; build error when one station per panel exceeds the limit |
+| Triangles of an STL or 3MF export | 2,000,000 (export dialog) | 10,000,000 | **Download** disabled |
+| Characters of the project name or an airfoil name | 200 | 10,000 | name fields take at most 10,000 characters; the airfoil parser keeps the first 10,000; **Open** rejects the file |
+| Project file | – | 100 MB | **Open** rejects the file unread; **Save** leaves out the derived NURBS data |
+
+The estimate in the warning is a linear fit to measurements in Chromium 141 on 4 cores of a 2.1 GHz Xeon server CPU (JavaScript time, without drawing the 3D view):
+
+| Part | Time | Browser memory |
+| --- | --- | --- |
+| Base of each change | 0.2 s | 15 MB |
+| Per 1,000 loft grid points | 11.5 ms | 0.65 MB |
+| Per point of a guide curve that is on (the one with more points) | 0.11 ms | 0.05 MB |
+| Per 1,000 airfoil points | 1.5 ms | 0.2 MB |
+| Per 1,000 entries of the airfoil lists in the Sections table (sections × airfoils; above 20,000 one per section) | 8.5 ms | 0.5 MB |
+
+- Times read `under 1 s`, `about 1.5 s` (half seconds below 10 s) or `about 14 s`; memory has 2 significant digits, e.g. `about 94 MB`, `about 1.6 GB`.
+- Drawing the 3D view adds the time of the graphics card. Phones: not measured.
+
+Measured per chord edit in the browser: Chromium 141 headless, software rendering, 4 shared cores, load average 2 to 8; **Linear**, 1 airfoil, 60 chord samples; JavaScript time and JavaScript heap after the change.
+
+| Sections | Loft grid points | Estimate | Time | Memory |
+| --- | --- | --- | --- | --- |
+| 1,000 | 121,000 | about 1.5 s, about 94 MB | 1.5 to 1.6 s | 78 to 91 MB |
+| 5,000 | 605,000 | about 7 s, about 410 MB | 6.9 to 7.4 s | 345 to 361 MB |
+| 10,000 | 1,210,000 | about 14 s, about 810 MB | 15.8 to 16.4 s | 490 MB |
+| 15,000 | 1,815,000 | about 21 s, about 1.2 GB | 19 to 23 s | 678 MB |
+| 20,000 | 2,420,000 | about 28 s, about 1.6 GB | 24 s | 969 MB |
+
+- 20,000 sections: 57 s page time per change with software rendering; opening the file: 24 s of JavaScript, 59 s page time.
+- Selecting a section: 2 ms of JavaScript at 200 sections, 100 to 110 ms at 20,000 sections.
+- Full conditions and more cases: [[Development|Development]].
 
 ## Export
 
@@ -539,6 +618,17 @@ With an error the wing is not built: the 3D view and the statistics stay empty, 
 | Mesh density (STL, 3MF) | **Normal** | selected |
 | Mesh density (STL, 3MF) | **Fine (4x triangles)**: doubles the subdivision in both surface directions | – |
 
+For STL and 3MF, a note under the mesh density gives the triangles and the file size of the chosen format, wing halves and density, e.g. Glider preset, STL, both halves, **Normal**: `0.02 million triangles, file about 1.2 MB.` STEP and Project JSON show no note.
+
+| Triangles | Note | **Download** |
+| --- | --- | --- |
+| up to 2,000,000 | `… million triangles, file ….` | enabled |
+| above 2,000,000 | warning colour; adds `The export takes … and … of browser memory.` | enabled |
+| above 10,000,000 | error colour: `… million triangles, file …: above the limit of 10 million triangles, where a desktop browser tab runs out of memory. Use Normal density, one half, or fewer chord samples or panel stations.` | disabled |
+
+- Estimate per million triangles: STL 0.8 s, 210 MB of browser memory, 50 MB of file; 3MF 5.8 s, 110 MB of browser memory, 11.5 MB of file. The memory estimate adds 15 MB.
+- Measured (Chromium 141, 4 cores of a 2.1 GHz Xeon server CPU): STL with 8.5 million triangles: 6.9 s, 423 MB file, 2.7 GB browser memory at the peak; 3MF with 8.5 million triangles: 49 s, 97 MB file; STL with 20 million triangles failed.
+
 | Button | Effect |
 | --- | --- |
 | **Download** | Writes the file with the selected options. |
@@ -554,7 +644,9 @@ With an error the wing is not built: the 3D view and the statistics stay empty, 
 - **Full wing** needs the root section at y = 0. Otherwise STL and 3MF write 2 bodies, as with **Both halves**.
 - STEP has no merged body: **Full wing** writes 2 solids.
 - Project JSON holds the full project. Without wing errors it also holds the derived NURBS data: airfoil curves, guide curves, spanwise stations and the wing surface.
-- File name: project name with accents removed; each run of characters outside `A–Z a–z 0–9 . _ -` becomes one `_`; leading and trailing `_` are removed. Extension `.step`, `.stl`, `.3mf` or `.json`. Empty name: `wing`.
+- When the derived NURBS data would take the file above 100 MB, the largest file **Open** reads, **Save** and Project JSON leave it out and show the notice `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
+- File name: project name with accents removed; each run of characters outside `A–Z a–z 0–9 . _ -` becomes one `_`; leading and trailing `_` are removed; the first 120 characters are kept. Extension `.step`, `.stl`, `.3mf` or `.json`. Empty name: `wing`.
 - Units: mm in every format. Axes as in the app.
-- If the browser runs out of memory or reaches a size limit, the export stops. A red notice `Export failed: …` suggests **Normal** mesh density or lower **Chordwise stations per surface** and **Spanwise stations per panel**. Size limit: not measured.
+- If the browser runs out of memory or reaches a size limit of its own, the export stops with the red notice `Export failed: <reason>. Use Normal mesh density or fewer chord samples and panel stations.`
+- STL and 3MF store 32-bit coordinates. When the rounding collapses or turns over a triangle that is visible at that resolution, the export writes no file and shows the red notice `STL stores 32-bit coordinates: at … mm their spacing is … mm, and … of … triangles collapse or turn over. Move the wing towards the origin, or export STEP.` (3MF: `3MF readers store 32-bit coordinates: …`).
 - File contents: [[File Formats|File-Formats]].

@@ -755,8 +755,12 @@ describe('smooth spanwise overshoot', () => {
 
   it('reduces the stations per panel above LIMITS.maxGridPoints and stops when one station per panel exceeds it', () => {
     const smooth = { spanwise: 'smooth', panelStations: 8, chordSamples: 200 };
-    // floor(LIMITS.maxGridPoints / (401 points x 2999 panels)) stations per panel.
-    const K = Math.floor(LIMITS.maxGridPoints / (401 * 2999));
+    // Largest K with (2999 panels x K + 1) x 401 points <= LIMITS.maxGridPoints.
+    const K = Math.floor((LIMITS.maxGridPoints / 401 - 1) / 2999);
+    // The tip station counts: N = 16, 3,886 sections, 40 stations per panel stays within the limit.
+    const g = loftGrid(3886, { spanwise: 'smooth', panelStations: 40, chordSamples: 16 });
+    expect(g.points).toBeLessThanOrEqual(LIMITS.maxGridPoints);
+    expect(g.K).toBe(38);
     expect(K).toBeLessThan(8);
     expect(loftGrid(3000, smooth)).toEqual({ N: 200, Kset: 8, K, points: (2999 * K + 1) * 401 });
     expect(loftGrid(3, { ...smooth, spanwise: 'linear' })).toMatchObject({ Kset: 1, K: 1 });

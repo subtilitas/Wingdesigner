@@ -236,7 +236,7 @@ The limits apply in every mode.
 | --- | --- |
 | Warning threshold | above 60,000 grid points (`WARN.gridPoints`): the build adds the warning "Large project: …" with "… loft grid points (warning above 60,000)" and the expected time and browser memory of each change. **Settings** shows "Loft grid: … points." under the resolution fields, with the time and memory above 60,000. |
 | Limit | 5,000,000 grid points (`LIMITS.maxGridPoints` in `src/model/project.js`); beyond it a desktop browser tab runs out of memory |
-| K used | max(1, min(K_set, floor(5,000,000 / ((sections − 1) · (2N + 1))))); K_set = **Settings** value. K < K_set only above 5,000,000 grid points. |
+| K used | max(1, min(K_set, floor((5,000,000 / (2N + 1) − 1) / (sections − 1)))), the largest K whose grid ((sections − 1) · K + 1) · (2N + 1) stays within 5,000,000; K_set = **Settings** value. K < K_set only above 5,000,000 grid points. |
 | Warning (K < K_set) | "Spanwise stations per panel reduced from K_set to K: S sections with N chord samples keep the loft within 5,000,000 grid points." |
 | Error (more than 5,000,000 grid points with the K used) | "The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections." No surface is built. |
 | Example | 200 sections, K_set = 8, N = 60 (defaults): K = 8, 1,593 stations, 192,753 grid points: warning with time and memory |
