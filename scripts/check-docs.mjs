@@ -29,6 +29,10 @@ const files = [...readdirSync(WIKI).filter((f) => f.endsWith('.md')).map((f) => 
 for (const f of files) {
   const text = readFileSync(f, 'utf8');
   const base = f.startsWith(WIKI) ? WIKI : '.';
+  // In a table row the | of [[Label|Page]] ends the cell and splits the link: tables use [[Page Name]].
+  text.split('\n').forEach((line, i) => {
+    if (line.startsWith('|') && /\[\[[^\]]*\|[^\]]*\]\]/.test(line)) problems.push(`${f}:${i + 1}: wiki link with | in a table row; in tables a wiki link holds only the page title`);
+  });
   for (const m of text.matchAll(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g)) {
     const target = (m[2] ?? m[1]).trim().replace(/#.*$/, '');
     if (/\.(png|jpg|svg)$/i.test(target)) continue;

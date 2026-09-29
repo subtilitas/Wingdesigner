@@ -297,7 +297,7 @@ Bedienelemente je Leitkurve (Kästen **Nose line (leading edge)** und **End line
 | --- | --- |
 | Listeneintrag | Kontur, Name, Punktanzahl, Quellenangabe, `unused`, wenn kein Schnitt das Profil verwendet |
 | **View** | Öffnet die Vorschau; Name und Quellenangabe sind schreibgeschützt. Einzige Schaltfläche ist **Close** (Schließen). |
-| **.dat** | Lädt das Profil als Selig-Datei `.dat` mit 7 Nachkommastellen herunter (mehr bei Konturen kleiner als 1, siehe [[Dateiformate|Dateiformate]]) |
+| **.dat** | Lädt das Profil als Selig-Datei `.dat` mit 7 Nachkommastellen herunter (mehr bei Konturen kleiner als 1, siehe [[Dateiformate]]) |
 | **×** | Entfernt das Profil. Gesperrt, solange ein Schnitt es verwendet. |
 | **Remove unused** | Entfernt alle Profile, die kein Schnitt verwendet |
 
@@ -316,7 +316,7 @@ Grenzen der Projektprofile (Abschnitt [Projektgröße](#projektgröße)):
 | --- | --- | --- |
 | 10 000 Profile | Bei 10 000 Profilen öffnet sich keine Vorschau: rote Meldung `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.` | Mehr Profile: `At most 10,000 airfoils are supported (found …).` |
 | 1 000 000 Profilpunkte insgesamt | Ein Profil, das die Summe über 1 000 000 brächte, öffnet keine Vorschau und wird nicht hinzugefügt: rote Meldung `With this airfoil the project airfoils hold … points; the limit is 1,000,000. "Remove unused" frees points.` | Mehr Punkte: `The airfoils hold … points together; the limit is 1,000,000.` |
-| 100 000 Punkte je Profil | Fehler `too-many-points` in der Vorschau ([[Dateiformate|Dateiformate]]) | Mehr Punkte: `Airfoil … has … points; the limit is 100,000.` |
+| 100 000 Punkte je Profil | Fehler `too-many-points` in der Vorschau ([[Dateiformate]]) | Mehr Punkte: `Airfoil … has … points; the limit is 100,000.` |
 
 - Über 200 Profilen oder über 100 000 Profilpunkten insgesamt ergänzt der Flügelaufbau die Warnung `Large project`.
 - Listen und Meldungen zeigen von einem längeren Profilnamen die ersten 200 Zeichen, gefolgt von `…`.
@@ -328,7 +328,7 @@ Grenzen der Projektprofile (Abschnitt [Projektgröße](#projektgröße)):
 | Dateien | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Auf die Ablagefläche ziehen oder **Choose files** verwenden. Mehrere Dateien öffnen nacheinander je eine Vorschau. Eine Datei über 20 MB wird nicht gelesen: rote Meldung `<file>: … MB; airfoil files are limited to 5,000,000 characters.` Eine Datei, die der Browser nicht lesen kann: rote Meldung `<file>: the browser could not read the file (NotReadableError).` |
 | Eingefügter Text | Koordinaten in den Textbereich einfügen, dann **Check pasted text**. |
 | Zeichenkodierung | UTF-8 (Unicode Transformation Format, 8 Bit); eine Datei, die kein gültiges UTF-8 ist, wird als Windows-1252 gelesen. |
-| Aufbau und Prüfungen | Selig, Lednicer, Tabelle x/oben/unten, XML (Extensible Markup Language), HTML (HyperText Markup Language): siehe [[Dateiformate|Dateiformate]] |
+| Aufbau und Prüfungen | Selig, Lednicer, Tabelle x/oben/unten, XML (Extensible Markup Language), HTML (HyperText Markup Language): siehe [[Dateiformate]] |
 
 ![Vorschau beim Hochladen einer Prozenttabelle mit Dezimalkomma: Dateipunkte, NURBS-Kurve, Prüfmeldungen](images/upload-preview.png)
 
@@ -338,7 +338,7 @@ Grenzen der Projektprofile (Abschnitt [Projektgröße](#projektgröße)):
 | **Name** | Aus der Namenszeile der Datei, sonst der Dateiname. Bearbeitbar. |
 | **Source / attribution** (Quelle / Urheber) | Wird in der Projektdatei gespeichert. Vorbelegt für Namen, die mit `HS` und einem Leerzeichen oder Bindestrich beginnen (`HS 3.4`, `HS-1.4`): `Hartmut Siegmann, www.aerodesign.de`. Vorbelegt für Namen, die mit `MH`, einem optionalen Leerzeichen oder Bindestrich und einer Ziffer beginnen (`MH45`, `MH 60`): `Martin Hepperle, www.mh-aerotools.de`. Groß- und Kleinschreibung spielt keine Rolle. Vorbelegt für eine mitgelieferte Bibliotheksdatei mit ihrem Autor aus `index.json`. |
 | Formatzeile | Erkanntes Format und Punktanzahl |
-| Meldungen | **Error** (Fehler): verhindert das Hinzufügen. **Warning** (Warnung): Hinzufügen möglich. **Info**: Fakten, z. B. Dicke, Wölbung und Endleistendicke in % der Profiltiefe oder die Anzahl entfernter Punkte, die näher als das 1e-9-Fache der Profiltiefe am vorherigen Punkt liegen. Über 5000 Punkten: Warnung `… points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take ….` Eine Profilseite, die an mehr als 50 Punkten in x zurückläuft: Fehler `The upper surface runs back in x at … points; the limit is 50.` (`lower` entsprechend). Nach bestandenen Plausibilitätsprüfungen weist die Vorschau zusätzlich eine NURBS-Kurve ab, die sich selbst kreuzt oder in x zurückläuft, und Punkte, an denen die NURBS-Interpolation scheitert (`The NURBS interpolation through the points failed (…).`). Alle drei sind Fehler `curve-shape` ([[Dateiformate|Dateiformate]]). |
+| Meldungen | **Error** (Fehler): verhindert das Hinzufügen. **Warning** (Warnung): Hinzufügen möglich. **Info**: Fakten, z. B. Dicke, Wölbung und Endleistendicke in % der Profiltiefe oder die Anzahl entfernter Punkte, die näher als das 1e-9-Fache der Profiltiefe am vorherigen Punkt liegen. Über 5000 Punkten: Warnung `… points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take ….` Eine Profilseite, die an mehr als 50 Punkten in x zurückläuft: Fehler `The upper surface runs back in x at … points; the limit is 50.` (`lower` entsprechend). Nach bestandenen Plausibilitätsprüfungen weist die Vorschau zusätzlich eine NURBS-Kurve ab, die sich selbst kreuzt oder in x zurückläuft, und Punkte, an denen die NURBS-Interpolation scheitert (`The NURBS interpolation through the points failed (…).`). Alle drei sind Fehler `curve-shape` ([[Dateiformate]]). |
 | **Add to project** | Fügt das Profil hinzu. Gesperrt und mit **Cannot add (errors)** beschriftet, solange ein Fehler vorliegt. |
 
 ### NACA-Generator
@@ -511,11 +511,11 @@ Einfluss der Auflösung auf Rechenzeit und Größe der STEP-Datei (STEP: Standar
 
 | Meldung | Schweregrad | Bedingung |
 | --- | --- | --- |
-| Airfoil "…": … | Fehler | das Profil besteht die Plausibilitätsprüfungen nicht ([[Dateiformate|Dateiformate]]), z. B. in einer geöffneten Projektdatei. Mit **Profile parametrization** **Chord length** oder **Uniform** endet jede Meldung `Airfoil "…"` mit `Settings > Profile parametrization "centripetal" follows the points more closely.` |
+| Airfoil "…": … | Fehler | das Profil besteht die Plausibilitätsprüfungen nicht ([[Dateiformate]]), z. B. in einer geöffneten Projektdatei. Mit **Profile parametrization** **Chord length** oder **Uniform** endet jede Meldung `Airfoil "…"` mit `Settings > Profile parametrization "centripetal" follows the points more closely.` |
 | Airfoil "…": the NURBS interpolation failed (…). | Fehler | die NURBS-Interpolation des Profils schlägt fehl |
 | Airfoil "…": the NURBS curve through the points crosses itself near x = … % chord; … | Fehler | die Kurve durch die Profilpunkte kreuzt sich selbst. Die Kreuzung teilt die Kontur in 2 Teile; der Teil mit der kleineren Diagonale des Hüllrechtecks hat eine mittlere Breite (Fläche / Diagonale des Hüllrechtecks) über 0,05 % der Profiltiefe. Ein Profil, das bei einer Profiltiefe über 200 mm verwendet wird, scheitert auch, wenn diese Breite bei seiner größten Profiltiefe 0,1 mm übersteigt; die Meldung lautet dann `…; the loop is … mm wide at … mm chord, above 0.1 mm. …` |
-| Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | Fehler | die Kurve durch die Profilpunkte läuft um mehr als 0,01 % der Profiltiefe in x zurück. Im Einlesetest mit 1964 realen Profildateien weist diese Prüfung mit **Centripetal** 4 Dateien ab, mit **Chord length** 12 und mit **Uniform** 82 ([[Profilquellen|Profilquellen]], Abschnitt Einlesetest). |
-| Airfoil "…": The upper surface runs back in x at … points; the limit is 50. (ebenso `lower`) | Fehler | eine Seite des Profils läuft an mehr als 50 Punkten in x zurück (Prüfung `folds`, [[Dateiformate|Dateiformate]]) |
+| Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | Fehler | die Kurve durch die Profilpunkte läuft um mehr als 0,01 % der Profiltiefe in x zurück. Im Einlesetest mit 1964 realen Profildateien weist diese Prüfung mit **Centripetal** 4 Dateien ab, mit **Chord length** 12 und mit **Uniform** 82 ([[Profilquellen]], Abschnitt Einlesetest). |
+| Airfoil "…": The upper surface runs back in x at … points; the limit is 50. (ebenso `lower`) | Fehler | eine Seite des Profils läuft an mehr als 50 Punkten in x zurück (Prüfung `folds`, [[Dateiformate]]) |
 | Nose line: … / End line: … | Fehler | y der Leitkurvenpunkte steigt nicht streng an, oder die Kurve läuft in y zurück; Modus Durchgangspunkte: `Points … and … at y = … mm and y = … mm lie too close together for the curve parameters; move them apart.`, wenn zwei normierte y-Werte höchstens 4 Einheiten der letzten Stelle des größeren Werts oder höchstens 2^-1021 (etwa 4,5e-308) auseinanderliegen; `the curve fit is singular; move the points further apart in y or use control-point mode.`, wenn die Interpolation Punkte, deren normierte y-Werte enger liegen, als sie auflöst, nicht lösen kann, z. B. 1e-300 der Spannweite |
 | Nose line: the curve through the points reaches x = … mm, beyond ±1200000 mm; space the points more evenly in y or use control-point mode. (ebenso End line) | Fehler | ein Kontrollpunkt der Leitkurve liegt jenseits von x = ±1 200 000 mm |
 | Section values give non-finite coordinates at y = … mm; … | Fehler | x der Profilnase, Profiltiefe, z oder Schränkung einer geprüften Spannweitenposition ergibt eine nicht endliche Koordinate, z. B. bei **Smooth** mit 3 Schnitten bei y = 0, 1e-300 und 2e-300 mm und Schränkungen 0°, 90° und 0°. **Open** und die Tabelle **Sections** akzeptieren solche Positionen; die Tabelle **Sections** weist nur ein y ab, das dem eines anderen Schnitts gleicht. |

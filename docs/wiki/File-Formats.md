@@ -185,7 +185,7 @@ The checks run:
 | `surfaces-touch` | Error | upper and lower surface touch: thickness at a file point or a cosine-spaced sample between 1 % and 99 % chord at or below the threshold. At each x the lowest point of the upper surface and the highest point of the lower surface count (vertical segments, surfaces that fold back in x). Reported only without `crossed-surfaces`. | 0.001 % chord |
 | `te-crossed` | Error | TE gap (y of the first point − y of the last point) below the threshold | −0.01 % chord |
 | `te-missing` | Error | the first or the last point lies more than the threshold before x_max (Selig order starts and ends at the TE). Message: `The first point lies at <x> % chord, not at the trailing edge; the point order is probably not Selig, or a surface is incomplete.` (`last` likewise). | 5 % chord |
-| `curve-shape` | Error | the NURBS curve through the points crosses itself, or one surface of the curve runs back in x, or the NURBS interpolation through the points fails (preview message: `The NURBS interpolation through the points failed (…).`). Runs after the other checks pass, in the preview and at wing build, both with the project's **Profile parametrization** (`settings.parametrization`). Loop size: mean width = area / bounding-box diagonal of the part with the smaller bounding box ([[Geometry|Geometry]], section 1.4). | loop size above 0.05 % chord; x reversal above 0.01 % chord |
+| `curve-shape` | Error | the NURBS curve through the points crosses itself, or one surface of the curve runs back in x, or the NURBS interpolation through the points fails (preview message: `The NURBS interpolation through the points failed (…).`). Runs after the other checks pass, in the preview and at wing build, both with the project's **Profile parametrization** (`settings.parametrization`). Loop size: mean width = area / bounding-box diagonal of the part with the smaller bounding box ([[Geometry]], section 1.4). | loop size above 0.05 % chord; x reversal above 0.01 % chord |
 | `many-points` | Warning | more points than the threshold. Message: `<n> points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take <time>.` <time>: `under 1 s` or `about <t> s`, 30 µs per point. | 5,000 points |
 | `coarse` | Warning | fewer points than the threshold | 20 points |
 | `not-normalized` | Warning | x_min or x_max of the file deviates from 0 or 1 by more than the threshold; the coordinates are scaled to chord 1 | 0.02 |
@@ -215,7 +215,7 @@ The checks run:
 | Date | 2026-09-29 |
 | Files | 1,964: mh-aerotools.de 56 HTML pages and 55 XML files; aerodesign.de 188 (154 `.dat`, 34 `.txt`); UIUC (University of Illinois Urbana-Champaign) 1,665 `.dat` |
 | Files in the repository | none (license) |
-| Results per set, rejected files and error messages | [[Airfoil Sources|Airfoil-Sources]], section Parser test |
+| Results per set, rejected files and error messages | [[Airfoil Sources]], section Parser test |
 
 ## Airfoil export (`.dat`)
 
@@ -330,7 +330,7 @@ Ids made by the app:
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Wing tip** |
 | `tip.ratio` | `0.001`–`0.01` (tip profile 1/1000 to 1/100 of the previous section chord); tip chord at least 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N** |
 | `chordSamples` | integer `16`–`200` | `60` | **Chordwise stations per surface** |
-| `panelStations` | integer `3`–`40`; the build uses fewer only when the loft grid would exceed 5,000,000 points ([[Geometry|Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides or smooth mode** |
+| `panelStations` | integer `3`–`40`; the build uses fewer only when the loft grid would exceed 5,000,000 points ([[Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides or smooth mode** |
 | `parametrization` | `"uniform"`, `"chord"`, `"centripetal"` | `"centripetal"` | **Profile parametrization** |
 | `mirror` | `true`, `false`; 3D view only, no effect on exports | `true` | **Show mirrored half (y < 0)** |
 

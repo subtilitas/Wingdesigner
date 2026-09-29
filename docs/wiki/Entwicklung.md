@@ -386,6 +386,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | Seitenpaare | Eine Datei der 6 englisch-deutschen Paare oben fehlt (`Home.md` ausgenommen) |
 | Markierungen der Testabdeckung | `README.md` oder `README.de.md` enthält `<!-- coverage:start -->` oder `<!-- coverage:end -->` nicht |
 | Wiki-Links | Die Zielseite eines Wiki-Links (doppelte eckige Klammern) hat keine Datei in `docs/wiki/` |
+| Wiki-Links in Tabellen | Ein Wiki-Link in einer Tabellenzeile enthält `\|`: Das Wiki beendet dort die Tabellenzelle und teilt den Link. In Tabellen enthält ein Wiki-Link nur den Seitentitel, mit Leerzeichen statt der Bindestriche des Seitennamens (`User Guide` verweist auf `User-Guide`). |
 | Bilder | Eine eingebundene Bilddatei fehlt oder ihr Alternativtext ist leer |
 | Relative Links | Das Ziel eines relativen Markdown-Links existiert nicht |
 
