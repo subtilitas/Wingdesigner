@@ -224,7 +224,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 280 tests in 11 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 281 tests in 11 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -386,7 +386,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | Page pairs | A file of the 6 English–German pairs above is missing (`Home.md` excluded) |
 | Coverage markers | `README.md` or `README.de.md` lacks `<!-- coverage:start -->` or `<!-- coverage:end -->` |
 | Wiki links | The target page of a wiki link (double square brackets) has no file in `docs/wiki/` |
-| Wiki links in tables | A wiki link in a table row (header or body, with or without outer `\|`; fenced code excluded) contains `\|`: the wiki ends the table cell there and splits the link. In tables a wiki link holds only the page title, with spaces for the hyphens of the page name (`User Guide` links to `User-Guide`). |
+| Wiki links in tables | A wiki link in a table row contains `\|` (rows as markdown-it 15 reads them: CommonMark with GitHub tables, so fenced code, block quotes and the end of a table follow the Markdown rules): the wiki ends the table cell there and splits the link. In tables a wiki link holds only the page title, with spaces for the hyphens of the page name (`User Guide` links to `User-Guide`). |
 | Images | An embedded image file does not exist, or its alt text is empty |
 | Relative links | The target of a relative Markdown link does not exist |
 

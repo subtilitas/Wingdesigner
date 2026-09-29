@@ -3,8 +3,10 @@
 // Usage: node scripts/check-docs.mjs
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import MarkdownIt from 'markdown-it';
 
 const WIKI = 'docs/wiki';
+const markdown = new MarkdownIt();
 export const PAGE_PAIRS = [
   ['README.md', 'README.de.md'],
   [`${WIKI}/User-Guide.md`, `${WIKI}/Benutzerhandbuch.md`],
@@ -14,34 +16,13 @@ export const PAGE_PAIRS = [
   [`${WIKI}/Development.md`, `${WIKI}/Entwicklung.md`],
 ];
 
-// Delimiter row of a Markdown table: cells of dashes with optional colons, separated by |.
-const DELIMITER = /^\s*\|?(\s*:?-+:?\s*\|)+\s*(:?-+:?\s*\|?)?\s*$/;
-const FENCE = /^\s*(```|~~~)/;
-
 /**
- * Indexes of the lines that are table rows (header and body, not the delimiter), outside fenced
- * code blocks. A table is a header line with a | followed by a delimiter row; its body runs to the
- * next blank line. Outer pipes are optional.
+ * Indexes of the lines that start a table row (header and body rows), as a CommonMark parser with
+ * GitHub tables reads the text: fenced code, block quotes, rows without outer pipes and the end of
+ * a table at the next block follow the Markdown rules.
  */
 export function tableRows(text) {
-  const lines = text.split('\n');
-  const rows = [];
-  let fence = null;
-  for (let i = 0; i < lines.length; i++) {
-    const f = lines[i].match(FENCE);
-    if (fence) {
-      if (f && f[1] === fence) fence = null;
-      continue;
-    }
-    if (f) {
-      fence = f[1];
-      continue;
-    }
-    if (i === 0 || !DELIMITER.test(lines[i]) || !lines[i - 1].includes('|')) continue;
-    rows.push(i - 1);
-    while (i + 1 < lines.length && lines[i + 1].trim() && !FENCE.test(lines[i + 1])) rows.push(++i);
-  }
-  return rows;
+  return markdown.parse(text, {}).filter((t) => t.type === 'tr_open').map((t) => t.map[0]);
 }
 
 /** In a table row the | of [[Label|Page]] ends the cell and splits the link: tables use [[Page Name]]. */
