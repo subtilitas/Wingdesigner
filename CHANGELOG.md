@@ -76,6 +76,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ### Fixed
 
+- Wiki: links in table rows ([[Label|Page]]) split the table cell at the |; tables link with the page
+  title alone. `npm run docs:check` reports a | inside a wiki link in a table row.
 - STEP faces of symmetric airfoils: the leading-edge split parameter snaps to an existing knot
   within 1e-10.
 - Airfoil import: Lednicer detection requires the upper surface to start at the leading edge;

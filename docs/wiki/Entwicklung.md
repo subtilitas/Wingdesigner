@@ -224,7 +224,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 278 Tests in 10 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 282 Tests in 11 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -386,6 +386,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | Seitenpaare | Eine Datei der 6 englisch-deutschen Paare oben fehlt (`Home.md` ausgenommen) |
 | Markierungen der Testabdeckung | `README.md` oder `README.de.md` enthält `<!-- coverage:start -->` oder `<!-- coverage:end -->` nicht |
 | Wiki-Links | Die Zielseite eines Wiki-Links (doppelte eckige Klammern) hat keine Datei in `docs/wiki/` |
+| Wiki-Links in Tabellen | Seiten, wie markdown-it 15 sie liest (CommonMark mit GitHub-Tabellen und HTML; Codeblöcke, Zitatblöcke und das Tabellenende folgen den Markdown-Regeln): Eine Tabellenzelle enthält außerhalb von Code eine öffnende doppelte eckige Klammer ohne die schließende, weil das `\|` eines Wiki-Links mit Beschriftung die Zelle beendet hat; oder Kopf- und Trennzeile bilden keine Tabelle, weil ein `\|` im Kopf ihm mehr Zellen gab. In Tabellen enthält ein Wiki-Link nur den Seitentitel, mit Leerzeichen statt der Bindestriche des Seitennamens (`User Guide` verweist auf `User-Guide`). |
 | Bilder | Eine eingebundene Bilddatei fehlt oder ihr Alternativtext ist leer |
 | Relative Links | Das Ziel eines relativen Markdown-Links existiert nicht |
 
