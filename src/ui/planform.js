@@ -482,7 +482,8 @@ export class PlanformEditor {
                   onclick: () =>
                     this.store.update((q) => {
                       const i = addGuidePoint(q, key);
-                      this.selectedGuide = i >= 0 ? { key, index: i } : null;
+                      // No point added leaves the project, and so the form, unchanged: the selection stays.
+                      if (i >= 0) this.selectedGuide = { key, index: i };
                     }),
                 },
                 'Add point',
@@ -492,10 +493,13 @@ export class PlanformEditor {
                 {
                   type: 'button',
                   disabled: !(this.selectedGuide?.key === key && this.selectedGuide.index > 0 && this.selectedGuide.index < gd.points.length - 1),
-                  onclick: () =>
+                  onclick: () => {
+                    const sel = this.selectedGuide;
+                    if (sel?.key !== key) return;
                     this.store.update((q) => {
-                      if (removeGuidePoint(q, key, this.selectedGuide.index)) this.selectedGuide = null;
-                    }),
+                      if (removeGuidePoint(q, key, sel.index)) this.selectedGuide = null;
+                    });
+                  },
                 },
                 'Remove selected point',
               ),
