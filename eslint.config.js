@@ -8,14 +8,14 @@ export default [
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',
-      globals: { ...globals.browser },
+      globals: { ...globals.browser, __APP_VERSION__: 'readonly' },
     },
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
   {
-    files: ['scripts/**', 'test/**', '*.config.js'],
+    files: ['scripts/**', 'test/**', 'e2e/**', '*.config.js'],
     languageOptions: { globals: { ...globals.node } },
   },
 ];

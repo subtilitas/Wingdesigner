@@ -18,7 +18,8 @@
     "coverage": "vitest run --coverage",
     "coverage:readme": "node scripts/coverage-readme.mjs",
     "coverage:check": "node scripts/coverage-readme.mjs --check",
-    "airfoils:check": "node scripts/check-airfoils.mjs"
+    "airfoils:check": "node scripts/check-airfoils.mjs",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "fflate": "^0.8.3",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
     "@vitest/coverage-v8": "^5.0.2",
     "eslint": "^10.11.0",
     "globals": "^17.12.0",
