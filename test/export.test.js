@@ -231,6 +231,19 @@ describe('project JSON', () => {
       (p) => (p.settings.trailingEdge = 'closed'),
       (p) => (p.settings.tip = 'pointed'),
       (p) => (p.guides.end.enabled = 1),
+      (p) => (p.guides.end.edited = 'yes'),
+      (p) => (p.sections[1].twist = 361),
+      (p) => (p.sections[1].twist = -1e308),
+      (p) => (p.sections[1].chord = 100_001),
+      (p) => (p.sections[1].x = 1_000_001),
+      (p) => (p.sections[1].z = -1_000_001),
+      (p) => (p.sections[2].y = 1_000_001),
+      (p) => (p.guides.nose.points = Array.from({ length: 501 }, (_, i) => [0, (600 * i) / 500])),
+      (p) => (p.guides.nose.points[1] = [2e6, 300]),
+      (p) => {
+        const s = p.sections[0];
+        p.sections = Array.from({ length: 201 }, (_, i) => ({ ...s, id: `s${i}`, y: i * 3 }));
+      },
     ];
     for (const mutate of cases) {
       const p = base();
@@ -241,6 +254,10 @@ describe('project JSON', () => {
     delete p.guides.end;
     expect(validateProject(p).ok).toBe(true);
     p.sections[2].chord = 1;
+    p.sections[1].twist = -360;
+    p.sections[1].chord = 100_000;
+    p.guides.nose.edited = true;
+    p.guides.nose.points = Array.from({ length: 500 }, (_, i) => [0, (600 * i) / 499]);
     expect(validateProject(p).ok).toBe(true);
   });
 

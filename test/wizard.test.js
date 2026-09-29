@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PRESETS, chordAt, wizardProblems, wizardProject } from '../src/model/wizard.js';
 import { buildWing } from '../src/geom/wing.js';
 import { wingStats } from '../src/geom/stats.js';
-import { validateProject } from '../src/model/project.js';
+import { LIMITS, validateProject } from '../src/model/project.js';
 import { edgeCheck, exportMeshes } from '../src/geom/mesh.js';
 import {
   addAirfoil,
@@ -14,7 +14,9 @@ import {
   pruneAirfoils,
   removeGuidePoint,
   removeSection,
+  resetDisabledGuides,
   resetGuide,
+  setGuideEnabled,
   slug,
   syncGuidesToSpan,
 } from '../src/model/edit.js';
@@ -146,6 +148,48 @@ describe('edit operations', () => {
     expect(p.guides.nose.points[0]).toEqual([7, 0]);
     expect(removeGuidePoint(p, 'nose', 0)).toBe(false);
     expect(removeGuidePoint(p, 'nose', 1)).toBe(true);
+  });
+
+  it('keeps edited guide points when a guide is switched off and on again', () => {
+    const p = sampleProject();
+    setGuideEnabled(p, 'nose', true);
+    expect(p.guides.nose.points).toEqual([[0, 0], [20, 300], [60, 600]]);
+    moveGuidePoint(p, 'nose', 1, 35, 300);
+    expect(p.guides.nose.edited).toBe(true);
+    setGuideEnabled(p, 'nose', false);
+    // Section edits do not replace the edited points of a disabled guide.
+    p.sections[1].x = 25;
+    resetDisabledGuides(p);
+    setGuideEnabled(p, 'nose', true);
+    expect(p.guides.nose.points[1]).toEqual([35, 300]);
+    // Reset to sections clears the flag; a disabled unedited guide follows the sections again.
+    resetGuide(p, 'nose');
+    expect(p.guides.nose.edited).toBe(false);
+    expect(p.guides.nose.points[1]).toEqual([25, 300]);
+    setGuideEnabled(p, 'nose', false);
+    p.sections[1].x = 30;
+    resetDisabledGuides(p);
+    expect(p.guides.nose.points[1]).toEqual([30, 300]);
+    // Adding and removing points marks the guide as edited.
+    for (const edit of [(q) => addGuidePoint(q, 'end'), (q) => removeGuidePoint(q, 'end', 1)]) {
+      const q = sampleProject();
+      edit(q);
+      expect(q.guides.end.edited).toBe(true);
+    }
+  });
+
+  it('stops adding guide points at LIMITS.maxGuidePoints and sections at LIMITS.maxSections', () => {
+    const p = sampleProject();
+    while (p.guides.nose.points.length < LIMITS.maxGuidePoints) expect(addGuidePoint(p, 'nose')).toBeGreaterThan(0);
+    expect(addGuidePoint(p, 'nose')).toBe(-1);
+    expect(p.guides.nose.points.length).toBe(500);
+    const q = sampleProject();
+    while (q.sections.length < LIMITS.maxSections) expect(insertSection(q, q.sections.length - 1)).not.toBeNull();
+    expect(insertSection(q, 0)).toBeNull();
+    expect(q.sections.length).toBe(200);
+    const far = sampleProject();
+    far.sections[2].y = LIMITS.maxCoordinate - 5;
+    expect(insertSection(far, 2)).toBeNull();
   });
 
   it('manages airfoils', () => {

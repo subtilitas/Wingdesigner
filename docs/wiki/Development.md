@@ -15,7 +15,7 @@ and fflate (3MF zip). Geometry and file code has no DOM dependency and runs in N
 | `public/airfoils/` | Bundled airfoil files and `index.json` with source and license per file |
 | `scripts/` | Coverage table, airfoil library check, STEP and 3MF case export, OpenCascade and lib3mf validation |
 | `test/` | Vitest unit tests |
-| `e2e/` | Playwright tests (9 spec files, 121 tests, run on desktop 1280 x 720 and Pixel 7) and `helpers.js` (fails a test on any page or console error; touch gestures, downloads, STL parsing) |
+| `e2e/` | Playwright tests (9 spec files, 122 tests, run on desktop 1280 x 720 and Pixel 7) and `helpers.js` (fails a test on any page or console error; touch gestures, downloads, STL parsing) |
 
 Data flow: every edit mutates the project in the store → `buildWing(project)` → viewer, panels and
 checks re-render. The build takes a few milliseconds to tens of milliseconds at default resolution
@@ -42,7 +42,7 @@ validation `pip install lib3mf==2.5.0` (3MF Consortium reference library, strict
 
 | Workflow | Trigger | Jobs |
 | --- | --- | --- |
-| `ci.yml` | push to `main`, pull requests, manual | lint + unit tests + coverage + README coverage check + airfoil check; STEP validation with OpenCascade and 3MF validation with lib3mf; Playwright tests (Chromium, 242 runs; results uploaded on failure); build; deploy to GitHub Pages (push to `main` only, after all jobs pass). Runs on `main` queue; runs on other refs cancel the older run of the same ref. |
+| `ci.yml` | push to `main`, pull requests, manual | lint + unit tests + coverage + README coverage check + airfoil check; STEP validation with OpenCascade and 3MF validation with lib3mf; Playwright tests (Chromium, 244 runs; results uploaded on failure); build; deploy to GitHub Pages (push to `main` only, after all jobs pass). Runs on `main` queue; runs on other refs cancel the older run of the same ref. |
 | `docs.yml` | push to `main` touching `docs/wiki/`, manual | copies `docs/wiki/` into the repository wiki with `GITHUB_TOKEN` (`contents: write`) |
 | `release.yml` | tag `v*` | checks tag = `package.json` version, tests, builds, attaches `wingdesigner-<tag>-site.zip` to a GitHub release with the CHANGELOG section as notes |
 

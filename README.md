@@ -69,6 +69,10 @@ The project autosaves in the browser (local storage). **Save** downloads the pro
 
 - Sections lie in planes y = const. With large dihedral the sections are not perpendicular to the
   wing surface.
+- Smooth spanwise interpolation stops with an error when a blended value leaves the range of the
+  section values by more than twice that range, e.g. sections 0.1 mm apart next to a 100 mm gap.
+- Projects hold at most 200 sections and 500 points per guide curve; chords are 1 mm to
+  100,000 mm, twists within ±360 degrees, coordinates within ±1,000,000 mm.
 - The chord must stay at or above 1 mm at every span position. A pointed tip (Settings, Wing tip: Pointed) ends in the tip profile scaled to 1/100 to 1/1000 of the previous section chord (default 1/200), at least 1 mm.
 - When some airfoils have a closed trailing edge and others an open one, the closed ones are opened
   to 0.01 mm so the STEP solid keeps one face topology.
@@ -86,7 +90,7 @@ npm run dev            # development server on http://localhost:5173
 npm test               # unit tests (Vitest)
 npm run lint           # ESLint
 npm run build          # production build into dist/
-npm run e2e            # build, then 121 Playwright tests on desktop 1280 x 720 and Pixel 7 (242 runs)
+npm run e2e            # build, then 122 Playwright tests on desktop 1280 x 720 and Pixel 7 (244 runs)
 npm run coverage       # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage table below; CI runs coverage:check and fails on drift
 npm run airfoils:check # validate the bundled airfoil library and NACA presets
@@ -100,7 +104,7 @@ python scripts/validate_3mf.py step-check/cases.json    # needs: pip install lib
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.0 % | 93.2 % | 99.7 % | 98.7 % |
+| 98.0 % | 93.1 % | 99.7 % | 98.5 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

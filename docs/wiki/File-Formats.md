@@ -31,10 +31,11 @@ NURBS curve crosses itself or runs back in x ([[Geometry|Geometry]], section 1).
 | non-finite | error | a value is not a finite number |
 | too-few-points | error | fewer than 5 points |
 | zero-chord | error | all x equal |
+| outline-length | error | outline longer than 10 chords (an airfoil outline is about 2 chords long); checked before the crossing test, which is slow for long zigzag or spiral outlines |
 | self-intersection | error | two non-adjacent outline segments cross |
 | one-surface | error | upper or lower surface has fewer than 3 points |
 | crossed-surfaces | error | upper below lower by more than 0.01 % chord |
-| surfaces-touch | error | thickness at most 0.001 % chord between 1 % and 99 % chord, checked at every file point and 201 cosine-spaced positions |
+| surfaces-touch | error | thickness at most 0.001 % chord between 1 % and 99 % chord, checked at every file point and 201 cosine-spaced positions, from the lowest point of the upper to the highest point of the lower surface at each x (vertical segments and surfaces that fold back in x have several points at one x) |
 | te-crossed | error | trailing-edge gap below −0.01 % chord |
 | te-missing | error | first and last point are not at the trailing edge (5 % chord tolerance) |
 | coarse | warning | fewer than 20 points |
@@ -64,7 +65,7 @@ NURBS curve crosses itself or runs back in x ([[Geometry|Geometry]], section 1).
   "airfoils": [{ "id": "naca2412", "name": "NACA 2412", "points": [[1, 0.00126], "..."], "source": { "kind": "naca" } }],
   "sections": [{ "id": "root", "airfoil": "naca2412", "x": 0, "y": 0, "z": 0, "chord": 240, "twist": 0 }],
   "guides": {
-    "nose": { "enabled": false, "mode": "fit", "degree": 3, "points": [[0, 0], [55, 750]] },
+    "nose": { "enabled": false, "edited": false, "mode": "fit", "degree": 3, "points": [[0, 0], [55, 750]] },
     "end": { "enabled": false, "mode": "fit", "degree": 3, "points": [[240, 0], [185, 750]] }
   },
   "settings": {
@@ -82,9 +83,23 @@ NURBS curve crosses itself or runs back in x ([[Geometry|Geometry]], section 1).
 ```
 
 - Guide points are `[x, y]` in the planform. Section and guide values are in mm and degrees.
-- `enabled` and `settings.mirror` are JSON booleans, `settings.trailingEdge` and `settings.tip` objects
-  (`null` selects the default); other types are rejected on import. Section chords
-  are at least 1 mm.
+- `enabled`, `edited` and `settings.mirror` are JSON booleans, `settings.trailingEdge` and
+  `settings.tip` objects (`null` selects the default); other types are rejected on import.
+- `edited` (optional, default `false`) is `true` once guide points were added, removed or moved.
+  A disabled guide that is not edited follows the section edges; an edited one keeps its points
+  when the sections change or the guide is switched on again. Reset to sections clears it.
+- Limits on import (the Sections table clamps typed values to the same limits):
+
+  | Value | Limit |
+  | --- | --- |
+  | section chord | 1 mm to 100,000 mm |
+  | section x, y, z and guide point coordinates | within ±1,000,000 mm (y at least 0) |
+  | section twist | within ±360 degrees |
+  | sections | at most 200 |
+  | guide points | 2 to 500 per guide |
+
+  The bounds keep every computed coordinate finite (a twist of 1e308 degrees overflows the angle
+  conversion) and every rebuild interactive.
 - `derived` is written on export and ignored on import; it is recomputed from the rest.
 - `surface.controlPoints[i][j]` has i along u (around the profile) and j along v (span).
 - Profile curves are in normalized airfoil coordinates (chord 1).

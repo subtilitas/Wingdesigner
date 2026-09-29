@@ -272,8 +272,13 @@ export function collocationRows(params, p, U) {
   });
 }
 
-/** Band LU factorization of the collocation matrix (one factorization, many right-hand sides). */
+/**
+ * Band LU factorization of the collocation matrix (one factorization, many right-hand sides). The
+ * factorization does not pivot, which is stable for nondecreasing parameters only (the matrix is
+ * then totally positive); other parameters throw.
+ */
 export function collocationFactor(params, p, U) {
+  for (let k = 1; k < params.length; k++) if (!(params[k] >= params[k - 1])) throw new Error('Interpolation parameters must be nondecreasing.');
   return bandFactor(collocationRows(params, p, U));
 }
 

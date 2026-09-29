@@ -53,8 +53,10 @@ Each section places an airfoil in the plane y = const:
 - twisted by the twist angle about the pivot chord point (Settings, default 25 % chord); positive
   twist raises the leading edge.
 
-**+** inserts a section halfway to the next one (after the tip: one panel length further out).
-**×** deletes a section; at least 2 sections remain. When a guide curve is on, the x or chord values it
+**+** inserts a section halfway to the next one (after the tip: one panel length further out); it is
+disabled at 200 sections. **×** deletes a section; at least 2 sections remain. Typed values are
+clamped to the limits: chord 1 mm to 100,000 mm, twist within ±360 degrees, x, y and z within
+±1,000,000 mm (y at least 0). When a guide curve is on, the x or chord values it
 overrides are shown as `guide: value` below the input.
 
 ## Planform and guide curves
@@ -70,7 +72,10 @@ round handles set the chord.
 
 Each guide has a mode (**Through points**: the curve passes through the points; **Control points**:
 the points form the control polygon) and a degree from 1 to 5. The first and last points stay at the
-root and tip span positions; interior points stay at least 0.5 mm apart in y. A guide that doubles
+root and tip span positions; interior points stay at least 0.5 mm apart in y. **Add point** is
+disabled at 500 points. A guide that was switched off keeps its edited points and uses them again
+when it is switched on; **Reset to sections** replaces them with the section edges. A switched-off
+guide without edits follows the section edges. A guide that doubles
 back in y or makes the chord smaller than 1 mm is reported as an error. With the wing tip set to Pointed, guides may meet at the tip; the tip then ends in the profile scaled to 1/100 to 1/1000 (default 1/200) of the previous section chord, at least 1 mm. The Sections table shows the resulting tip chord, marked (min.) when the 1 mm minimum applies.
 
 ## Airfoils
@@ -94,6 +99,14 @@ back in y or makes the chord smaller than 1 mm is reported as an error. With the
 | Chordwise stations per surface | 16 to 200 | 60 |
 | Spanwise stations per panel (with guides or smooth mode) | 3 to 40 | 8 |
 | Profile parametrization | centripetal, chord length, uniform | centripetal |
+
+Smooth interpolation overshoots between unevenly spaced sections. When a blended value (chord,
+leading-edge x, z, twist or a profile coordinate) leaves the range of the section values by more
+than twice that range, the build stops with an error that names the value and the smallest section
+gap; linear interpolation or evenly spaced sections avoid it. With chord length or uniform
+parametrization, some real files give a fitted curve that runs back in x near the leading or
+trailing edge (13 of 246 files with uniform parametrization); the error then points to centripetal
+parametrization. The airfoil preview uses the parametrization set here.
 
 ## Export
 

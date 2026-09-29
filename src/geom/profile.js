@@ -3,7 +3,7 @@
 // All sections of a wing are resampled at the same chord fractions so that point j of every
 // section corresponds (same side, same relative chord position). Point N is the leading edge.
 
-import { curveDerivatives, curvePoint, interpolateCurve, solveMonotonic } from './nurbs.js';
+import { basisFuns, curveDerivatives, curvePoint, interpolateCurve, solveMonotonic } from './nurbs.js';
 import { selfIntersections } from '../airfoil/geometry.js';
 
 /** Chord fractions 0..1 with cosine clustering at LE and TE (N+1 values). */
@@ -96,10 +96,22 @@ function pointSegmentDistance(P, A, B) {
   return Math.hypot(P[0] - A[0] - t * vx, P[1] - A[1] - t * vy);
 }
 
-// Crossing loops smaller than this fraction of the chord are not reported: interpolation leaves
-// slivers of about 1.4e-4 chord at cusped closed trailing edges (e.g. MH 83), far below the 1 mm
-// resolution; crossings from coarse files measure about 9e-3 chord.
+// Crossing loops thinner than this fraction of the chord on average (loop area over loop extent)
+// are not reported: interpolation leaves long, thin slivers at cusped closed trailing edges (at
+// most 1.6e-5 chord in 246 real files) and between coarse chord samples, far below the 1 mm
+// resolution; the loop of a coarse 9-point file measures 2.5e-3 chord.
 export const CROSSING_TOLERANCE = 5e-4;
+
+/** Area of a closed polygon (shoelace formula, absolute value). */
+function polygonArea(pts) {
+  let a = 0;
+  for (let k = 0; k < pts.length; k++) {
+    const [x0, y0] = pts[k];
+    const [x1, y1] = pts[(k + 1) % pts.length];
+    a += x0 * y1 - x1 * y0;
+  }
+  return Math.abs(a) / 2;
+}
 
 function extent(pts) {
   let x0 = Infinity;
@@ -132,17 +144,29 @@ export function sampleCurve(curve, { samplesPerSpan, budget = 4000 } = {}) {
     if (!(U[k + 1] > U[k])) continue;
     let len = 0;
     for (let j = k - p; j < k; j++) len += Math.hypot(P[j + 1][0] - P[j][0], P[j + 1][1] - P[j][1]);
-    spans.push({ a: U[k], b: U[k + 1], len });
+    spans.push({ k, a: U[k], b: U[k + 1], len });
   }
   const total = spans.reduce((sum, sp) => sum + sp.len, 0) || 1;
   const pts = [];
   const ts = [];
-  for (const { a, b, len } of spans) {
+  for (const { k, a, b, len } of spans) {
     const per = samplesPerSpan ?? Math.max(1, Math.min(256, Math.round((budget * len) / total)));
     for (let s = 0; s < per; s++) {
       const t = a + ((b - a) * s) / per;
       ts.push(t);
-      pts.push(curvePoint(curve, t));
+      if (curve.weights) {
+        pts.push(curvePoint(curve, t));
+        continue;
+      }
+      // Non-rational curve with known knot span k: sum the p + 1 basis functions directly.
+      const Nb = basisFuns(k, t, p, U);
+      let x = 0;
+      let y = 0;
+      for (let j = 0; j <= p; j++) {
+        x += Nb[j] * P[k - p + j][0];
+        y += Nb[j] * P[k - p + j][1];
+      }
+      pts.push([x, y]);
     }
   }
   ts.push(U[U.length - 1]);
@@ -153,15 +177,18 @@ export function sampleCurve(curve, { samplesPerSpan, budget = 4000 } = {}) {
 /**
  * Self-crossing of a fitted 2D curve between its data points (cubic interpolation can overshoot
  * where coarse data changes quickly, e.g. near a trailing edge), on the samples of sampleCurve. The
- * size of a crossing is the extent of the smaller of the two parts the crossing splits the outline
- * into; crossings up to `tolerance` are ignored.
+ * crossing splits the outline into two parts; the size of the crossing is the mean width (area over
+ * extent) of the part with the smaller extent. Crossings up to `tolerance` are ignored.
  * @returns {{x: number, size: number}|null} position and size of the largest crossing, or null
  */
 export function curveCrossing(curve, { tolerance = 0, samplesPerSpan, samples } = {}) {
   const { pts } = samples ?? sampleCurve(curve, { samplesPerSpan });
   let worst = null;
   for (const [i, j] of selfIntersections(pts, 20)) {
-    const size = Math.min(extent(pts.slice(i + 1, j + 1)), extent([...pts.slice(0, i + 1), ...pts.slice(j + 1)]));
+    const inner = pts.slice(i + 1, j + 1);
+    const outer = [...pts.slice(0, i + 1), ...pts.slice(j + 1)];
+    const part = extent(inner) <= extent(outer) ? inner : outer;
+    const size = polygonArea(part) / (extent(part) || 1);
     if (size > tolerance && !(worst && worst.size >= size)) worst = { x: pts[i][0], size };
   }
   return worst;

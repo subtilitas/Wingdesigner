@@ -13,7 +13,7 @@ import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js'
 import { LIMITS, resolveSettings } from '../model/project.js';
 
 /**
- * Deviation (mm) between loft and intended edges above which stations are added and, if it remains,
+ * Deviation (mm) between loft and intended surface above which stations are added and, if it remains,
  * a warning is issued; small chords use 10 % of the local chord instead.
  */
 export const PLANFORM_TOLERANCE = 0.5;
@@ -28,11 +28,25 @@ const CHORD_CHECK_SAMPLES = 256;
  */
 export const FOLD_LIMIT = 0.9 * LIMITS.minChord;
 
+/**
+ * Smooth spanwise interpolation: largest distance, as a multiple of the section value range, by
+ * which an interpolated value (leading-edge x, chord, z, twist, profile coordinate) may leave that
+ * range. Natural cubic splines through closely spaced sections overshoot by thousands of times it.
+ */
+export const OVERSHOOT_LIMIT = 2;
+
 /** Stations the builder may add where the loft deviates from the intended planform. */
 const MAX_EXTRA_STATIONS = 32;
 
 /** Largest trailing-edge gap as a fraction of the local chord. */
 export const MAX_GAP_FRACTION = 0.05;
+
+/**
+ * Crossed surfaces past 99 % chord up to this fraction of the chord count as zero thickness: the
+ * resampled trailing edge of a cusped airfoil can lie in a sliver that the curve crossing check
+ * (CROSSING_TOLERANCE) accepts. Equals the crossed trailing-edge limit of the airfoil checks.
+ */
+const TE_SLIVER = 1e-4;
 
 /** Negative chord (mm) below which nose line and end line count as crossed. */
 const CROSS_TOLERANCE = 0.01;
@@ -124,7 +138,12 @@ const PROFILE_CACHE_SIZE = 32;
 function profileStage(a, parametrization, chordStations, N) {
   const key = `${parametrization}|${N}|${JSON.stringify(a.points)}`;
   const hit = PROFILE_CACHE.get(key);
-  if (hit) return hit;
+  if (hit) {
+    // Most recently used entries sit at the end of the map (insertion order).
+    PROFILE_CACHE.delete(key);
+    PROFILE_CACHE.set(key, hit);
+    return hit;
+  }
   let out;
   const check = checkAirfoil(a.points);
   if (!check.ok) {
@@ -139,7 +158,6 @@ function profileStage(a, parametrization, chordStations, N) {
     }
   }
   PROFILE_CACHE.set(key, out);
-  if (PROFILE_CACHE.size > PROFILE_CACHE_SIZE) PROFILE_CACHE.delete(PROFILE_CACHE.keys().next().value);
   return out;
 }
 
@@ -193,11 +211,17 @@ export function buildWing(project) {
     }
     const stage = profileStage(a, settings.parametrization, chordStations, N);
     if (stage.error) {
-      errors.push(`Airfoil "${a.name ?? a.id}": ${stage.error}`);
+      // Uniform and chord-length parametrization follow unevenly spaced points less closely.
+      const hint = settings.parametrization === 'centripetal' ? '' : ' Settings > Profile parametrization "centripetal" follows the points more closely.';
+      errors.push(`Airfoil "${a.name ?? a.id}": ${stage.error}${hint}`);
       continue;
     }
     result.profiles.set(s.airfoil, { ...stage.prof, id: a.id, name: a.name, points: stage.points, compat: stage.compat });
   }
+  // Every entry this build used is at the recent end; older ones go beyond the larger of
+  // PROFILE_CACHE_SIZE and the number of airfoils the sections use.
+  const keep = Math.max(PROFILE_CACHE_SIZE, new Set(sections.map((s) => s.airfoil)).size);
+  while (PROFILE_CACHE.size > keep) PROFILE_CACHE.delete(PROFILE_CACHE.keys().next().value);
   if (errors.length) return result;
 
   // Guides.
@@ -303,31 +327,61 @@ export function buildWing(project) {
   let minChordY = y0;
   let minThick = Infinity;
   let minThickY = y0;
+  let minThickX = 0;
   let minTeThick = Infinity;
   let minTeThickY = y0;
   let minTeCore = Infinity;
   let minTeCoreY = y0;
   let minTeCoreX = 0;
   // Thinnest point of a resampled shape; `core` covers chord stations from 1 % to 99 %, where
-  // thickness at or below the airfoil contact tolerance means the surfaces touch.
+  // thickness at or below the airfoil contact tolerance means the surfaces touch. Past 99 % chord a
+  // station can lie in a trailing-edge sliver that the curve crossing check tolerates: crossings
+  // there up to TE_SLIVER chord count as zero thickness.
   const thinnest = (shape) => {
     let t = Infinity;
+    let tX = 0;
     let core = Infinity;
     let coreX = 0;
     for (let k = 1; k < N; k++) {
       const d = shape[N - k][1] - shape[N + k][1];
-      t = Math.min(t, d);
       const x = chordStations[k];
+      const dt = x > 0.99 && d < 0 ? Math.min(0, d + TE_SLIVER) : d;
+      if (dt < t) {
+        t = dt;
+        tX = x;
+      }
       if (x >= 0.01 && x <= 0.99 && d < core) {
         core = d;
         coreX = x;
       }
     }
-    return { t, core, coreX };
+    return { t, tX, core, coreX };
   };
+  // Smooth mode: interpolated section values must stay within OVERSHOOT_LIMIT ranges of the section
+  // values (only the values the build uses: guide curves replace leading-edge x and chord).
+  const smooth = settings.spanwise === 'smooth';
+  const range = (values) => [Math.min(...values), Math.max(...values)];
+  const overshootChecks = [];
+  if (!guideOn.nose && !guideOn.end) overshootChecks.push({ name: 'leading-edge x', unit: 'mm', values: X, range: range(X) });
+  if (!(guideOn.nose && guideOn.end)) overshootChecks.push({ name: 'chord', unit: 'mm', values: C, range: range(C) });
+  overshootChecks.push({ name: 'z', unit: 'mm', values: Z, range: range(Z) }, { name: 'twist', unit: '°', values: T, range: range(T) });
+  const profileRanges = smooth ? compat[0].map((_, k) => range(compat.map((c) => c[k][1]))) : [];
+  const profileNames = compat[0].map((_, k) => `${k < N ? 'upper' : 'lower'} surface height at x = ${(chordStations[Math.abs(k - N)] * 100).toFixed(1)} % chord`);
+  let overshoot = null;
+  const record = (name, unit, value, [lo, hi], y) => {
+    const out = Math.max(lo - value, value - hi);
+    const ratio = out / Math.max(hi - lo, 1e-9 * Math.max(1, Math.abs(lo), Math.abs(hi)));
+    if (ratio > OVERSHOOT_LIMIT && !(overshoot && overshoot.ratio >= ratio)) overshoot = { name, unit, value, lo, hi, y, ratio };
+  };
+  let nonFiniteY = null;
   for (const y of [...checkYs].sort((a, b) => a - b)) {
     if (!(y >= y0 && y <= y1)) continue;
-    const { chord, w } = placement(y);
+    const { chord, w, xLE, z, twist } = placement(y);
+    // Placement values whose coordinates overflow (e.g. a twist of 1e308 degrees) stop the build.
+    if (![xLE, chord, z, Math.cos((twist * Math.PI) / 180)].every(Number.isFinite)) {
+      nonFiniteY = y;
+      break;
+    }
     if (chord < minChord) {
       minChord = chord;
       minChordY = y;
@@ -336,11 +390,16 @@ export function buildWing(project) {
     // again after the trailing-edge setting, whose linear taper can pull the surfaces through each
     // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendPoints(w, compat);
+    if (smooth) {
+      for (const q of overshootChecks) record(q.name, q.unit, blendScalar(w, q.values), q.range, y);
+      for (let k = 1; k < 2 * N; k++) record(profileNames[k], '% chord', shape[k][1], profileRanges[k], y);
+    }
     // Round-off level differences do not move the reported position.
-    const { t } = thinnest(shape);
+    const { t, tX } = thinnest(shape);
     if (t < minThick - 1e-12) {
       minThick = t;
       minThickY = y;
+      minThickX = tX;
     }
     if (chord >= LIMITS.minChord) {
       const { t: tTe, core, coreX } = thinnest(applyTrailingEdge(shape, te.mode, teGap(chord), N));
@@ -355,10 +414,27 @@ export function buildWing(project) {
       }
     }
   }
-  if (minThick < -1e-9) {
+  if (nonFiniteY !== null) {
+    errors.push(`Section values give non-finite coordinates at y = ${nonFiniteY.toFixed(1)} mm; check the positions, chords and twists of the sections.`);
+    return result;
+  }
+  if (overshoot) {
+    const f = (v) => (overshoot.unit === '% chord' ? (v * 100).toFixed(2) : v.toFixed(2));
+    let gap = Infinity;
+    for (let i = 0; i + 1 < ys.length; i++) gap = Math.min(gap, ys[i + 1] - ys[i]);
     errors.push(
-      `The blended profile at y = ${minThickY.toFixed(1)} mm has negative thickness (${(minThick * 100).toFixed(2)} % chord); ` +
-        'smooth spanwise interpolation overshoots between unevenly spaced sections. Use linear interpolation or add sections.',
+      `Smooth spanwise interpolation overshoots at y = ${overshoot.y.toFixed(1)} mm: ${overshoot.name} is ${f(overshoot.value)} ${overshoot.unit}, ` +
+        `while the sections range from ${f(overshoot.lo)} to ${f(overshoot.hi)} ${overshoot.unit}. The sections are unevenly spaced (smallest gap ${gap.toFixed(2)} mm). ` +
+        'Use linear interpolation, space the sections more evenly or remove sections that lie close together.',
+    );
+    return result;
+  }
+  if (minThick < -1e-9) {
+    const where = `at y = ${minThickY.toFixed(1)} mm, x = ${(minThickX * 100).toFixed(1)} % chord (${(minThick * 100).toFixed(3)} % chord)`;
+    errors.push(
+      smooth
+        ? `The blended profile has negative thickness ${where}; smooth spanwise interpolation overshoots between unevenly spaced sections. Use linear interpolation or add sections.`
+        : `The resampled profile has negative thickness ${where}: upper and lower surface of a section airfoil cross there. Check the airfoils near that position or raise Settings > Chord samples.`,
     );
     return result;
   }
@@ -385,34 +461,108 @@ export function buildWing(project) {
     return result;
   }
 
-  const teShapes = compat.map((c) => [c[0]]);
   const degreeV = dense ? 3 : 1;
+  const gapMm = (shape, chord) => (shape[0][1] - shape[shape.length - 1][1]) * chord;
+  // Final station shape: blended profile with the trailing-edge setting, closed when every station
+  // is closed, otherwise opened to at least MIN_OPEN_GAP. Both steps move each point on its own, so
+  // they apply to a subset of the points as well (le: index of the leading edge in `shape`).
+  const finalShape = (shape, chord, closedTE, le = N) => {
+    if (closedTE) return applyTrailingEdge(shape, 'closed', 0, le);
+    if (gapMm(shape, chord) < Math.min(MIN_OPEN_GAP, MAX_GAP_FRACTION * chord)) return setTrailingEdgeGap(shape, Math.min(MIN_OPEN_GAP / chord, MAX_GAP_FRACTION), { leIndex: le });
+    return shape;
+  };
 
-  /** Stations, surface and planform deviation for a sorted list of station span positions. */
+  // Deviation: the loft passes through the stations only. Compare the fitted surface at span
+  // positions yList with the intended placed profile (leading edge, trailing edge and every
+  // floor(N / 6)-th chord station per surface: 5 at N = 60), in 3D: twist moves points in z and a global cubic fit over unevenly
+  // spaced stations can swing far from the data. fitChord: chord of the fitted surface along the
+  // intended chord direction (linear rows between strongly twisted stations shrink it, fast guide
+  // changes fold it). fitThick: local thickness of the fitted surface at the probed chord stations.
+  const stepK = Math.max(1, Math.floor(N / 6));
+  const probeK = [];
+  for (let k = stepK; k < N; k += stepK) probeK.push(k);
+  // Probed points only, in profile order (upper trailing edge, upper surface, leading edge, lower
+  // surface, lower trailing edge); pos: [leading edge, upper trailing edge, (upper, lower) per
+  // probed chord station] in that subset, idx: the same points in the full profile.
+  const sub = [0, ...probeK.slice().reverse().map((k) => N - k), N, ...probeK.map((k) => N + k), 2 * N];
+  const leSub = probeK.length + 1;
+  const subCompat = compat.map((c) => sub.map((i) => c[i]));
+  const pos = [leSub, 0, ...probeK.flatMap((_, q) => [leSub - 1 - q, leSub + 1 + q])];
+  const idx = pos.map((j) => sub[j]);
+  const probe = (yList, surface, paramsU, closedTE) => {
+    const devs = [];
+    let minFit = Infinity;
+    let minFitY = y0;
+    let fitThick = Infinity;
+    let fitThickY = y0;
+    let fitCore = Infinity;
+    let fitCoreY = y0;
+    const d3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    for (const y of yList) {
+      if (!(y >= y0 && y <= y1) || !(y1 > y0)) continue;
+      const pl = placement(y);
+      const v = (y - y0) / (y1 - y0);
+      const shape = finalShape(applyTrailingEdge(blendPoints(pl.w, subCompat), te.mode, teGap(pl.chord), leSub), pl.chord, closedTE, leSub);
+      const intended = placeSection([...pos.map((j) => shape[j]), [1, 0]], { ...pl, y }, pivot);
+      const axis = intended[idx.length];
+      const fitted = idx.map((i) => surfacePoint(surface, paramsU[i], v));
+      let d = 0;
+      for (let q = 0; q < idx.length; q++) d = Math.max(d, d3(fitted[q], intended[q]));
+      devs.push([y, d, deviationTolerance(pl.chord)]);
+      const le = intended[0];
+      const dir = [axis[0] - le[0], axis[2] - le[2]];
+      const len = Math.hypot(dir[0], dir[1]) || 1;
+      const sTEl = surfacePoint(surface, 1, v);
+      const fitChord = (((fitted[1][0] + sTEl[0]) / 2 - fitted[0][0]) * dir[0] + ((fitted[1][2] + sTEl[2]) / 2 - fitted[0][2]) * dir[1]) / len;
+      if (fitChord < minFit) {
+        minFit = fitChord;
+        minFitY = y;
+      }
+      // Local frame: undo translation, chord scale and twist (inverse of placeSection).
+      const a = (pl.twist * Math.PI) / 180;
+      const c = Math.cos(a);
+      const sn = Math.sin(a);
+      const localZ = (P) => {
+        const rx = (P[0] - pl.xLE) / pl.chord - pivot;
+        const rz = (P[2] - pl.z) / pl.chord;
+        return sn * rx + c * rz;
+      };
+      for (let q = 0; q < probeK.length; q++) {
+        const x = chordStations[probeK[q]];
+        const d = localZ(fitted[2 + 2 * q]) - localZ(fitted[3 + 2 * q]);
+        const t = x > 0.99 && d < 0 ? Math.min(0, d + TE_SLIVER) : d;
+        if (t < fitThick) {
+          fitThick = t;
+          fitThickY = y;
+        }
+        if (x >= 0.01 && x <= 0.99 && t < fitCore) {
+          fitCore = t;
+          fitCoreY = y;
+        }
+      }
+    }
+    devs.sort((a, b) => a[0] - b[0]);
+    return { devs, minFit, minFitY, fitThick, fitThickY, fitCore, fitCoreY };
+  };
+
+  /** Stations, surface and the probes at the check positions for a sorted list of station span positions. */
   const fit = (yList) => {
     const stations = [];
     // Trailing-edge thickness in mm, limited to MAX_GAP_FRACTION of the local chord.
     let limited = 0;
     for (const y of yList) {
       const { w, xLE, chord, z, twist } = placement(y);
-      let gap = te.thickness / chord;
-      if (te.mode === 'thickness' && gap > MAX_GAP_FRACTION) {
-        gap = MAX_GAP_FRACTION;
-        if (!(pointed && y > yPrev)) limited++;
-      }
-      const shape = applyTrailingEdge(blendPoints(w, compat), te.mode, gap, N);
+      if (te.mode === 'thickness' && te.thickness / chord > MAX_GAP_FRACTION && !(pointed && y > yPrev)) limited++;
+      const shape = applyTrailingEdge(blendPoints(w, compat), te.mode, teGap(chord), N);
       stations.push({ xLE, y, z, chord, twist, v: y1 > y0 ? (y - y0) / (y1 - y0) : 0, shape });
     }
     // Trailing-edge topology: closed when every station is closed, otherwise open with a minimum gap.
-    const gapMm = (st) => (st.shape[0][1] - st.shape[st.shape.length - 1][1]) * st.chord;
-    const closedTE = stations.every((st) => Math.abs(gapMm(st)) < 1e-6);
+    const closedTE = stations.every((st) => Math.abs(gapMm(st.shape, st.chord)) < 1e-6);
     let widened = 0;
     for (const st of stations) {
-      if (closedTE) st.shape = applyTrailingEdge(st.shape, 'closed', 0, N);
-      else if (gapMm(st) < Math.min(MIN_OPEN_GAP, MAX_GAP_FRACTION * st.chord)) {
-        st.shape = setTrailingEdgeGap(st.shape, Math.min(MIN_OPEN_GAP / st.chord, MAX_GAP_FRACTION), { leIndex: N });
-        widened++;
-      }
+      const shape = finalShape(st.shape, st.chord, closedTE);
+      if (!closedTE && shape !== st.shape) widened++;
+      st.shape = shape;
       st.points = placeSection(st.shape, st, pivot);
     }
 
@@ -458,50 +608,57 @@ export function buildWing(project) {
     }
     const surface = { degreeU: degU, degreeV: along.degree, knotsU, knotsV: along.knots, points: ctrl };
 
-    // Deviation: the loft passes through the stations only. Compare its leading and trailing edge
-    // with the intended placement between stations, in 3D (twist moves the edges in z as well).
-    // fitChord: chord of the fitted surface along the intended chord direction; linear rows between
-    // strongly twisted stations shrink it and fast guide changes can fold it below zero.
-    const devs = [];
-    let minFit = Infinity;
-    let minFitY = y0;
-    const d3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-    for (const y of checkYs) {
-      if (!(y >= y0 && y <= y1) || !(y1 > y0)) continue;
-      const pl = placement(y);
-      const [le, teU, axis] = placeSection([[0, 0], blendPoints(pl.w, teShapes)[0], [1, 0]], { ...pl, y }, pivot);
-      const v = (y - y0) / (y1 - y0);
-      const sLE = surfacePoint(surface, paramsU[N], v);
-      const sTE = surfacePoint(surface, 0, v);
-      const sTEl = surfacePoint(surface, 1, v);
-      devs.push([y, Math.max(d3(sLE, le), d3(sTE, teU)), deviationTolerance(pl.chord)]);
-      const dir = [axis[0] - le[0], axis[2] - le[2]];
-      const len = Math.hypot(dir[0], dir[1]) || 1;
-      const fitChord = (((sTE[0] + sTEl[0]) / 2 - sLE[0]) * dir[0] + ((sTE[2] + sTEl[2]) / 2 - sLE[2]) * dir[1]) / len;
-      if (fitChord < minFit) {
-        minFit = fitChord;
-        minFitY = y;
-      }
-    }
-    devs.sort((a, b) => a[0] - b[0]);
-    return { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs, minFit, minFitY };
+    return { stations, surface, paramsU, paramsV, closedTE, limited, widened, ...probe(checkYs, surface, paramsU, closedTE) };
   };
 
   // Adaptive stations: insert stations where the loft deviates more than PLANFORM_TOLERANCE from
-  // the intended edges (fast planform changes such as pointed elliptic tips), up to MAX_EXTRA_STATIONS.
+  // the intended surface (fast planform changes such as pointed elliptic tips), up to
+  // MAX_EXTRA_STATIONS in at most 6 rounds.
   let yList = stationYs.slice();
   let fitted = fit(yList);
   let extra = 0;
   for (let round = 0; round < 6 && extra < MAX_EXTRA_STATIONS; round++) {
     const peaks = fitted.devs.filter(([, d, tol], i, arr) => d > tol && d >= (arr[i - 1]?.[1] ?? 0) && d >= (arr[i + 1]?.[1] ?? 0));
-    const fresh = peaks.map(([y]) => y).filter((y) => !yList.includes(y)).slice(0, MAX_EXTRA_STATIONS - extra);
+    // New stations keep 1e-6 of the span from every other station: equal or nearly equal
+    // positions make the interpolation singular.
+    const minGap = 1e-6 * (y1 - y0);
+    const fresh = [];
+    for (const [y] of peaks) {
+      if (fresh.length >= MAX_EXTRA_STATIONS - extra) break;
+      if (![...yList, ...fresh].some((q) => Math.abs(q - y) < minGap)) fresh.push(y);
+    }
     if (!fresh.length) break;
     yList = [...yList, ...fresh].sort((a, b) => a - b);
     extra += fresh.length;
     fitted = fit(yList);
   }
-  const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs, minFit, minFitY } = fitted;
+  const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs } = fitted;
   result.stations = stations;
+  // Quarter points of every fitted station interval: between closely spaced stations the global
+  // cubic interpolation can swing far away while every check position lies close to a station.
+  // They enter the chord, thickness and contact errors; the deviation warning and the added
+  // stations stay on the check positions (near a pointed elliptic tip the loft deviates 0.3 to
+  // 0.8 mm between stations, more than 10 % of the 1 to 3 mm chord there).
+  const inner = [];
+  for (let i = 0; i + 1 < yList.length; i++) for (const f of [0.25, 0.5, 0.75]) inner.push(yList[i] + f * (yList[i + 1] - yList[i]));
+  const between = probe(inner, surface, paramsU, closedTE);
+  const lower = (key) => (between[key] < fitted[key] ? between : fitted);
+  const { minFit, minFitY } = lower('minFit');
+  const { fitThick, fitThickY } = lower('fitThick');
+  const { fitCore, fitCoreY } = lower('fitCore');
+  if (!surface.points.every((col) => col.every((P) => P.every(Number.isFinite)))) {
+    errors.push('The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections.');
+    return result;
+  }
+  if (fitThick < -1e-9 || fitCore <= AIRFOIL_LIMITS.touchThickness) {
+    const neg = fitThick < -1e-9;
+    errors.push(
+      `The fitted surface ${neg ? 'turns inside out' : 'has zero thickness'} between stations at y = ${(neg ? fitThickY : fitCoreY).toFixed(1)} mm ` +
+        `(local thickness ${((neg ? fitThick : fitCore) * 100).toFixed(3)} % chord): the surface through the stations swings between them ` +
+        '(guide curves that change fast, or unevenly spaced sections in smooth mode). Smooth the guide curves, space the sections more evenly or add sections.',
+    );
+    return result;
+  }
   if (minFit < FOLD_LIMIT) {
     errors.push(
       `The fitted surface folds or narrows between stations at y = ${minFitY.toFixed(1)} mm (chord ${minFit.toFixed(2)} mm along the intended chord direction, ` +
@@ -509,13 +666,16 @@ export function buildWing(project) {
     );
     return result;
   }
-  // Surface rows (planes y = const) at the sections and halfway between them: a cubic row can
-  // overshoot between the resampled points and cross, which the point checks above do not see.
-  const rowY = [];
+  // Surface rows (planes y = const) at the sections, halfway between them and halfway between the
+  // fitted stations: a cubic row can overshoot between the resampled points and cross, which the
+  // point checks above do not see.
+  const rowSet = new Set();
   for (let i = 0; i < ys.length; i++) {
-    rowY.push(ys[i]);
-    if (i + 1 < ys.length) rowY.push((ys[i] + ys[i + 1]) / 2);
+    rowSet.add(ys[i]);
+    if (i + 1 < ys.length) rowSet.add((ys[i] + ys[i + 1]) / 2);
   }
+  for (let i = 0; i + 1 < yList.length; i++) rowSet.add((yList[i] + yList[i + 1]) / 2);
+  const rowY = [...rowSet].sort((a, b) => a - b);
   const rowV = rowY.map((y) => (y1 > y0 ? (y - y0) / (y1 - y0) : 0));
   const chordAtV = (v) => placement(y0 + v * (y1 - y0)).chord;
   for (const v of rowV) {
@@ -523,7 +683,7 @@ export function buildWing(project) {
     if (cross) {
       errors.push(
         `The loft surface crosses itself at y = ${(y0 + v * (y1 - y0)).toFixed(1)} mm near x = ${cross.x.toFixed(1)} mm: ` +
-          'the surface rows overshoot between the resampled points. Increase Settings > Chord samples or use airfoil files with more points.',
+          'the surface rows overshoot between the resampled points. Increase Settings > Chord samples.',
       );
       return result;
     }
@@ -549,7 +709,7 @@ export function buildWing(project) {
   result.planformDeviation = dev;
   if (over) {
     warnings.push(
-      `The loft deviates up to ${dev.toFixed(2)} mm from the intended leading or trailing edge at y = ${devY.toFixed(1)} mm ` +
+      `The loft deviates up to ${dev.toFixed(2)} mm from the intended surface at y = ${devY.toFixed(1)} mm ` +
         `after ${extra} added station(s); raise the spanwise stations per panel.`,
     );
   }

@@ -442,6 +442,19 @@ test.describe('Sections tab', () => {
     expect((await savedProject(page)).sections.map(({ airfoil, x, y, z, chord, twist }) => ({ airfoil, y, x, z, chord, twist }))).toEqual(edited);
   });
 
+  test('values beyond the project limits are clamped to them', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    // A twist of 1e308 degrees would overflow the angle conversion; the limit is 360 degrees.
+    await editField(page, 1, 'twist', '1e308');
+    await expect(field(page, 1, 'twist')).toHaveValue('360');
+    await editField(page, 1, 'chord', 5e5);
+    await expect(field(page, 1, 'chord')).toHaveValue('100000');
+    await editField(page, 1, 'x', -2e6);
+    await expect(field(page, 1, 'x')).toHaveValue('-1000000');
+    expect((await savedProject(page)).sections[1]).toMatchObject({ twist: 360, chord: 100000, x: -1000000 });
+    await expect(field(page, 1, 'twist')).toHaveAttribute('max', '360');
+  });
+
   test('clearing a number field keeps the previous value', async ({ page }) => {
     await createDesign(page, 'Sport');
     const twist = field(page, 1, 'twist');

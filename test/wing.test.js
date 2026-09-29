@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildWing, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
+import { OVERSHOOT_LIMIT, buildWing, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nurbs.js';
+import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
 import { blendPoints, blendScalar, spanwiseWeights } from '../src/geom/spanwise.js';
 import { clampedUniformKnots, defaultGuides, guideCurve, guideProblems, guideXAt, isMonotonicInY } from '../src/geom/guide.js';
@@ -8,6 +9,7 @@ import { edgeCheck, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume
 import { earClip, polygonArea } from '../src/geom/triangulate.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
+import { createProject } from '../src/model/project.js';
 import { naca, sampleProject } from './helpers.js';
 
 describe('profile curves', () => {
@@ -57,6 +59,45 @@ describe('spanwise interpolation', () => {
     // Natural cubic spline reproduces linear data exactly.
     expect(blendScalar(w(177), ys.map((y) => 3 * y + 1))).toBeCloseTo(3 * 177 + 1, 9);
     expect(w(-10)).toEqual(w(0));
+  });
+
+  it('matches a dense natural-spline solve and handles 400 sections interactively', () => {
+    // Reference: natural cubic spline through the values e_i, second derivatives from a dense solve.
+    const dense = (xs, vals, y) => {
+      const n = xs.length;
+      const h = xs.slice(1).map((x, i) => x - xs[i]);
+      const A = Array.from({ length: n - 2 }, () => new Array(n - 2).fill(0));
+      const b = [];
+      for (let r = 0; r < n - 2; r++) {
+        A[r][r] = (h[r] + h[r + 1]) / 3;
+        if (r > 0) A[r][r - 1] = h[r] / 6;
+        if (r < n - 3) A[r][r + 1] = h[r + 1] / 6;
+        b.push((vals[r + 2] - vals[r + 1]) / h[r + 1] - (vals[r + 1] - vals[r]) / h[r]);
+      }
+      const M = [0, ...solve(A, b), 0];
+      let j = 0;
+      while (j < n - 2 && y > xs[j + 1]) j++;
+      const a = (xs[j + 1] - y) / h[j];
+      const c = (y - xs[j]) / h[j];
+      return a * vals[j] + c * vals[j + 1] + (((a ** 3 - a) * M[j] + (c ** 3 - c) * M[j + 1]) * h[j] * h[j]) / 6;
+    };
+    let seed = 3;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let t = 0; t < 20; t++) {
+      const xs = [0];
+      for (let i = 1; i < 3 + Math.floor(rnd() * 12); i++) xs.push(xs[i - 1] + 0.5 + rnd() * 200);
+      const vals = xs.map(() => rnd() * 100);
+      const w = spanwiseWeights(xs, 'smooth');
+      for (let k = 0; k < 10; k++) {
+        const y = rnd() * xs[xs.length - 1];
+        expect(blendScalar(w(y), vals)).toBeCloseTo(dense(xs, vals, y), 8);
+      }
+    }
+    const ys = Array.from({ length: 400 }, (_, i) => i * 5 + (i % 3));
+    const t0 = performance.now();
+    const w = spanwiseWeights(ys, 'smooth');
+    for (let k = 0; k < 500; k++) w(k * 3.9);
+    expect(performance.now() - t0).toBeLessThan(2000);
   });
 
   it('blends point lists', () => {
@@ -547,7 +588,7 @@ describe('fitted surface between stations', () => {
       const p = sampleProject();
       p.guides = { nose: { enabled: true, mode: 'control', degree: 5, points: nose }, end: { enabled: true, mode: 'control', degree: 5, points: end } };
       const b = buildWing(p);
-      if (/folds or narrows between stations/.test(b.errors[0] ?? '')) fold = b;
+      if (/(folds or narrows|turns inside out|has zero thickness) between stations/.test(b.errors[0] ?? '')) fold = b;
     }
     expect(fold).not.toBeNull();
     expect(fold.surface).toBeNull();
@@ -562,7 +603,7 @@ describe('fitted curve and surface row crossings', () => {
     expect(checkAirfoil(coarse).ok).toBe(true);
     const { curve } = profileCurve(checkAirfoil(coarse).points);
     const cross = curveCrossing(curve, { tolerance: CROSSING_TOLERANCE });
-    expect(cross.size).toBeGreaterThan(10 * CROSSING_TOLERANCE);
+    expect(cross.size).toBeGreaterThan(4 * CROSSING_TOLERANCE);
     expect(curveCrossing(curve, { tolerance: 1 })).toBeNull();
     const p = sampleProject();
     p.airfoils = [{ id: 'c', name: 'coarse', points: coarse }];
@@ -609,5 +650,100 @@ describe('fitted curve and surface row crossings', () => {
     const j = M - i;
     for (let k = 0; k < s.points[i].length; k++) [s.points[i][k][2], s.points[j][k][2]] = [s.points[j][k][2], s.points[i][k][2]];
     expect(surfaceRowCrossing(s, 0, CROSSING_TOLERANCE * 200)).not.toBeNull();
+  });
+});
+
+describe('smooth spanwise overshoot', () => {
+  const symmetric = (codes, ys, chord = () => 100) =>
+    createProject({
+      airfoils: codes.map((c, i) => naca(c, `a${i}`, { closedTE: true })),
+      sections: ys.map((y, i) => ({ airfoil: `a${i}`, x: 0, y, z: 0, chord: chord(i), twist: 0 })),
+      settings: { spanwise: 'smooth' },
+    });
+
+  it('rejects profiles that overshoot between closely spaced sections', () => {
+    // Weights of the natural cubic spline reach +-1475 between y = 0.11 and 100 mm.
+    const p = symmetric(['0007', '0004', '0005', '0002', '0002', '0016'], [0, 0.1, 0.11, 100, 100.1, 101]);
+    const b = buildWing(p);
+    expect(b.errors[0]).toMatch(/^Smooth spanwise interpolation overshoots at y = [\d.]+ mm: (upper|lower) surface height at x = [\d.]+ % chord is /);
+    expect(b.errors[0]).toMatch(/smallest gap 0\.01 mm/);
+    expect(b.surface).toBeNull();
+    p.settings.spanwise = 'linear';
+    expect(buildWing(p).errors).toEqual([]);
+  });
+
+  it('rejects a chord overshoot from a cluster of sections at the tip', () => {
+    const chords = [200, 150, 20];
+    const b = buildWing(symmetric(['0012', '0012', '0012'], [0, 500, 510], (i) => chords[i]));
+    // The chord reaches 1388 mm at y = 286 mm from sections of 20 to 200 mm.
+    expect(b.errors[0]).toMatch(/overshoots at y = [\d.]+ mm: chord is 1[34]\d\d\.\d\d mm, while the sections range from 20\.00 to 200\.00 mm/);
+  });
+
+  it('keeps curved smooth planforms within OVERSHOOT_LIMIT section ranges', () => {
+    // Chord 100/500/100 mm at y = 0/100/1000 mm reaches 1036 mm: 1.34 ranges beyond the sections.
+    const chords = [100, 500, 100];
+    expect(OVERSHOOT_LIMIT).toBe(2);
+    expect(buildWing(symmetric(['0012', '0012', '0012'], [0, 100, 1000], (i) => chords[i])).errors).toEqual([]);
+  });
+
+  it('reports a fitted surface that turns inside out between stations', () => {
+    // Zigzag guides: the fitted surface inverts between the stations, where no check position lies.
+    let seed = 9;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    let hit = null;
+    for (let t = 0; t < 40 && !hit; t++) {
+      const n = 20 + Math.floor(rnd() * 70);
+      const ys = Array.from({ length: n }, (_, i) => (600 * i) / (n - 1));
+      const nose = ys.map((y, i) => [(i % 2 ? 60 : 0) * rnd() + 20 * rnd(), y]);
+      const end = ys.map((y, i) => [nose[i][0] + 1 + 100 * rnd() * rnd(), y]);
+      const p = sampleProject();
+      p.guides = { nose: { enabled: true, mode: 'control', degree: 5, points: nose }, end: { enabled: true, mode: 'control', degree: 5, points: end } };
+      const b = buildWing(p);
+      if (/turns inside out between stations/.test(b.errors[0] ?? '')) hit = b;
+    }
+    expect(hit).not.toBeNull();
+    expect(hit.surface).toBeNull();
+  });
+
+  it('rejects non-finite geometry from a twist that overflows the angle conversion', () => {
+    const p = sampleProject();
+    p.sections[1].twist = 1e308;
+    const b = buildWing(p);
+    expect(b.errors[0]).toMatch(/non-finite coordinates at y = /);
+    expect(b.surface).toBeNull();
+  });
+});
+
+describe('trailing-edge slivers and crossing size', () => {
+  it('accepts resampled cusped trailing edges that cross by less than 1e-4 chord', () => {
+    // Cusped trailing edge, thickness 0.24 sqrt(x) (1 - x)^1.5: at 200 chord samples the last
+    // stations lie in a sliver of the fitted curve where the surfaces cross by about 1e-9 chord.
+    const xs = Array.from({ length: 31 }, (_, i) => (1 - Math.cos((Math.PI * i) / 30)) / 2);
+    const t = (x) => 0.24 * Math.sqrt(x) * (1 - x) ** 1.5;
+    const c = (x) => 0.02 * Math.sin(Math.PI * x);
+    const pts = [...xs.slice().reverse().map((x) => [x, c(x) + t(x) / 2]), ...xs.slice(1).map((x) => [x, c(x) - t(x) / 2])];
+    expect(checkAirfoil(pts).ok).toBe(true);
+    for (const parametrization of ['uniform', 'centripetal']) {
+      const p = createProject({
+        airfoils: [{ id: 'c', name: 'cusped', points: pts }],
+        sections: [0, 300].map((y) => ({ airfoil: 'c', x: 0, y, z: 0, chord: 200, twist: 0 })),
+        settings: { parametrization, chordSamples: 200 },
+      });
+      expect(buildWing(p).errors).toEqual([]);
+    }
+  });
+
+  it('measures a crossing loop by its mean width, not its length', () => {
+    const line = (pts) => {
+      const n = pts.length;
+      return { degree: 1, knots: [0, ...Array.from({ length: n }, (_, i) => i / (n - 1)), 1], points: pts };
+    };
+    // Loop 0.2 long and 1e-5 wide: a sliver below the tolerance.
+    const sliver = line([[1, 0.05], [0.4, 0], [0.6, -1e-5], [0.8, 1e-5], [0.2, 0], [0, 0.05]]);
+    expect(curveCrossing(sliver, { tolerance: 0 })).not.toBeNull();
+    expect(curveCrossing(sliver, { tolerance: CROSSING_TOLERANCE })).toBeNull();
+    // Same length, 0.02 wide: reported.
+    const loop = line([[1, 0.05], [0.4, 0], [0.6, -0.02], [0.8, 0.02], [0.2, 0], [0, 0.05]]);
+    expect(curveCrossing(loop, { tolerance: CROSSING_TOLERANCE }).size).toBeGreaterThan(10 * CROSSING_TOLERANCE);
   });
 });

@@ -12,6 +12,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   tip; the Sections table marks a tip chord held at the minimum with (min.) and shows the actual tip
   chord when both guide curves set it; guide ends more than 0.5 mm wider than the scaled tip chord
   give a warning.
+- Switching a guide curve off and on keeps its edited points; a guide is marked `edited` in the
+  project JSON once points are added, removed or moved, and Reset to sections clears the mark.
+- Project limits: chord at most 100,000 mm, twist within ±360 degrees, coordinates within
+  ±1,000,000 mm, at most 200 sections and 500 points per guide; the Sections table clamps typed
+  values to them and disables insert at 200 sections.
+- Crossing loops of fitted curves and surface rows are measured by their mean width (area over
+  extent) instead of their extent, so long, thin trailing-edge slivers no longer fail at low chord
+  sample counts.
+- The airfoil preview uses the profile parametrization from Settings; profile errors under chord
+  length or uniform parametrization point to centripetal parametrization.
 
 ### Fixed
 
@@ -22,6 +32,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   rejected; HTML tag stripping runs in linear time.
 - Airfoil check: `te-missing` is an error; duplicate points are removed before the checks.
 - Loft: negative blended thickness in smooth spanwise mode is reported as an error.
+- Loft: smooth spanwise interpolation that leaves the range of the section values by more than twice
+  that range (sections 0.1 mm apart next to 100 mm gaps: weights of ±1475) is an error instead of an
+  exported surface thousands of millimetres off.
+- Loft: the fitted surface is probed at the quarter points of every station interval as well;
+  a surface that turns inside out or touches between stations is an error, and section rows halfway
+  between fitted stations are tested for self-crossing.
+- Loft: non-finite section placement (a twist of 1e308 degrees) is an error instead of NaN
+  coordinates in the exports.
+- Loft: cusped trailing edges whose resampled surfaces cross by up to 0.01 % chord behind 99 % chord
+  no longer stop the build (18 of 246 real files at 200 chord samples with uniform parametrization).
+- Airfoil check: contacts on vertical segments and on surfaces that fold back in x are found; outlines
+  longer than 10 chords are rejected before the crossing test (`outline-length`), and the crossing
+  test stops at its hit limit.
+- Smooth spanwise weights use one tridiagonal factorization (200 sections: 6 ms instead of 130 ms).
+- B-spline interpolation rejects decreasing parameters instead of returning control points of 1e16 mm
+  from the band LU without pivoting.
+- The profile cache keeps the most recently used entries and at least one per airfoil of the project.
 - Airfoil import: files above 5000 points are rejected instead of stalling the checks; the largest
   x is found without spreading all rows into one call; a drawn blunt trailing-edge base is removed in
   both point orders and when the outline starts on the base; a closed trailing edge reached over a

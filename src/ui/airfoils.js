@@ -48,7 +48,7 @@ export function drawThumb(canvas, points, color = cssVar('--ink', '#1d2430')) {
  * Modal preview of one airfoil candidate with sanity report.
  * Resolves with the (possibly renamed) airfoil to add, or null.
  */
-export function previewAirfoil(candidate, { title = 'Airfoil preview', allowEdit = true } = {}) {
+export function previewAirfoil(candidate, { title = 'Airfoil preview', allowEdit = true, parametrization = 'centripetal' } = {}) {
   return new Promise((resolve) => {
     const check = candidate.checked ?? checkAirfoil(candidate.points);
     const issues = [...(candidate.issues ?? []), ...(candidate.checked ? [] : check.issues)];
@@ -57,7 +57,7 @@ export function previewAirfoil(candidate, { title = 'Airfoil preview', allowEdit
     if (ok) {
       let prof = null;
       try {
-        prof = profileCurve(check.points);
+        prof = profileCurve(check.points, { parametrization });
         curve = prof.curve;
       } catch {
         curve = null;
@@ -192,7 +192,7 @@ export class AirfoilsPanel {
   }
 
   async addCandidate(candidate, title) {
-    const res = await previewAirfoil(candidate, { title });
+    const res = await previewAirfoil(candidate, { title, parametrization: this.store.project.settings?.parametrization });
     if (!res) return null;
     let id = null;
     this.store.update((p) => {
@@ -241,7 +241,7 @@ export class AirfoilsPanel {
           h('div', { class: 'grow' }, h('div', {}, a.name), h('div', { class: 'small muted' }, `${a.points.length} points${attribution ? ` · ${attribution}` : ''}${used.has(a.id) ? '' : ' · unused'}`)),
           h(
             'button',
-            { type: 'button', class: 'icon', title: 'Preview', onclick: () => previewAirfoil({ ...a }, { title: a.name, allowEdit: false }) },
+            { type: 'button', class: 'icon', title: 'Preview', onclick: () => previewAirfoil({ ...a }, { title: a.name, allowEdit: false, parametrization: this.store.project.settings?.parametrization }) },
             'View',
           ),
           h(

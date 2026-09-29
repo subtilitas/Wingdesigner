@@ -12,14 +12,16 @@ All lengths are in mm. Algorithm numbers refer to Piegl and Tiller, *The NURBS B
 3. The leading edge is the minimum-x point of the curve, found with Newton steps on x'(u) = 0 from the
    minimum-x file point.
 4. The interpolation systems are solved with a band LU factorization without pivoting (B-spline
-   collocation matrices are totally positive), in time linear in the number of points: 5000 points
-   take 13 ms.
+   collocation matrices are totally positive for nondecreasing parameters; other parameters are
+   rejected), in time linear in the number of points: 5000 points take 13 ms.
 5. The curve is sampled with a budget of about 4000 points shared among the knot spans in
    proportion to the length of their control polygon (1 to 256 per span), so coarse spans get many
    samples even in a dense file. The samples are tested for self-crossing: cubic interpolation of a
    coarse file can loop past the trailing edge although the file points pass every check; such an
-   airfoil is an error. Crossing loops up to 0.05 % of the chord are ignored: cusped closed trailing
-   edges (e.g. MH 83) leave slivers of 0.014 % chord.
+   airfoil is an error. A crossing splits the outline in two parts; its size is the mean width (area
+   divided by extent) of the part with the smaller extent. Crossings up to 0.05 % chord are ignored:
+   cusped closed trailing edges leave long, thin slivers of at most 0.0016 % chord in 246 real
+   files. The loop of a coarse 9-point file measures 0.25 % chord.
 6. The upper surface must run towards the leading edge and the lower surface away from it: an x
    reversal of the fitted curve above 0.01 % chord is an error, because the loft resamples both
    surfaces by chord position and would drop the part that runs back. None of 246 real files has a
@@ -40,19 +42,43 @@ point and the leading edge stays at one surface parameter.
 Section values (x, z, chord, twist and the resampled shape) are blended between sections:
 
 - **linear**: hat functions per panel,
-- **smooth**: cardinal functions of a natural cubic spline through the section span positions.
+- **smooth**: cardinal functions of a natural cubic spline through the section span positions. The
+  second derivatives come from one tridiagonal factorization for all sections (200 sections: 6 ms).
+
+A natural cubic spline through unevenly spaced sections overshoots: sections 0.1 mm apart next to
+sections 100 mm apart give weights of ±1475, and 20 to 200 mm chords at y = 0/500/510 mm reach
+1388 mm. In smooth mode every blended value (leading-edge x and chord where no guide sets them, z,
+twist, and each resampled profile coordinate) is checked at the check positions below: a value more
+than 2 section value ranges outside the range of the section values stops the build with an error
+that names the quantity, the span position and the smallest section gap. A curved planform with
+chords 100/500/100 mm at y = 0/100/1000 mm reaches 1036 mm (1.34 ranges) and builds.
 
 Stations are the sections only (linear mode without guides) or the sections plus `panelStations − 1`
 intermediate stations per panel (smooth mode or any guide curve on), spaced by
-(1 − cos(πk/K)) / 2 so they cluster at the panel ends. After the fit, stations are added at the span
-positions where the loft leading or trailing edge deviates more than 0.5 mm, or 10 % of the local
-chord if that is smaller (3D distance), from the intended edge, up to 32 added stations in at most 6
-rounds. Twist counts: linear rows between strongly
+(1 − cos(πk/K)) / 2 so they cluster at the panel ends. After the fit, stations are added at the check
+positions (below) where the loft deviates more than 0.5 mm, or 10 % of the local chord if that is
+smaller (3D distance), from the intended surface, up to 32 added stations in at most 6 rounds. The
+deviation is measured on the leading edge, the trailing edge and every floor(N / 6)-th chord station
+per surface (5 at N = 60). The warning text is "The loft deviates up to … mm from the intended
+surface at y = … mm after … added station(s)". New stations keep at least 1e-6 of the
+span from every other station. Twist counts: linear rows between strongly
 twisted stations average rotated shapes and shorten the chord (180° of twist would collapse midspan to
-the pivot), and the 3D deviation adds stations there. After the last round, the chord of the fitted
-surface along the intended chord direction is sampled at 257 span positions and every guide
-breakpoint; below 0.9 mm (the 1 mm minimum chord less the 10 % deviation allowed for small chords),
-or reversed, the surface folds or narrows between stations and the build stops with an error.
+the pivot), and the 3D deviation adds stations there. After the last round, the fitted surface is
+probed at 257 span positions, every guide breakpoint and the quarter points of every interval
+between fitted stations (cubic interpolation through closely spaced stations can swing between
+them, away from every other check position):
+
+- chord along the intended chord direction below 0.9 mm (the 1 mm minimum chord less the 10 %
+  deviation allowed for small chords), or reversed: the surface folds or narrows between stations,
+- local thickness (twist and chord removed) negative at a probed chord station: the surface turns
+  inside out between stations,
+- local thickness at most 0.001 % chord between 1 % and 99 % chord: the surfaces touch.
+
+Each of these stops the build with an error. The deviation warning and the added stations use the
+check positions only: within 2 mm of a pointed elliptic tip the loft deviates 0.3 to 0.8 mm between
+stations (wizard presets), more than 10 % of the 1 to 3 mm chord there. Surface points that are not
+finite (for example from a twist of 1e308 degrees, which overflows the angle conversion) stop the
+build before the fit.
 
 With guide curves, x_LE(y) and/or x_TE(y) come from the curves instead. A guide is stretched linearly
 so its first and last point y match the root and tip. Through-point guides use parameters
@@ -78,6 +104,10 @@ stations are closed, the trailing edge is closed; otherwise every station gets a
 0.01 mm (at most 5 % of the chord). The linear taper can pull the surfaces of an airfoil that is
 thinner inside than its gap through each other or make them touch; both are errors (negative
 thickness, or at most 0.001 % chord between 1 % and 99 % chord, checked at 257 span positions).
+Behind 99 % chord, surfaces that cross by up to 0.01 % chord count as zero thickness: the last
+chord stations of a cusped trailing edge can lie in a sliver that the curve crossing check accepts.
+Negative blended thickness is an error in both modes; the message names smooth overshoot in smooth
+mode and a section airfoil in linear mode.
 
 Placement of a normalized point (p_x, p_z) with twist θ about the pivot c_p:
 
@@ -100,10 +130,10 @@ Global surface interpolation (A9.4) through the station grid Q[j][k] (j chordwis
 - The root and tip control rows are set to exactly y_root and y_tip.
 
 The surface passes through every station point; the leading edge lies on the iso-curve u = u_LE.
-The surface rows (planes y = const) at every section and halfway between neighbouring sections are
-sampled with 4 points per knot span and tested for self-crossing with the same 0.05 % chord
-tolerance. Not checked: self-crossing of rows at other span positions; the thickness check on the
-blended points and the fitted-chord check cover them.
+The surface rows (planes y = const) at every section, halfway between neighbouring sections and
+halfway between neighbouring fitted stations are sampled with 4 points per knot span and tested for
+self-crossing with the same 0.05 % chord mean-width tolerance. Not checked: self-crossing of rows at
+other span positions; the probes of section 3 cover thickness and chord there.
 
 ## 5. Meshes
 

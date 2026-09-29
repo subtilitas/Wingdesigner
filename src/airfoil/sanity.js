@@ -15,6 +15,7 @@ export const LIMITS = {
   spikeDeg: 90,
   // Interior thickness (1 % to 99 % chord) at or below this fraction of the chord is a contact.
   touchThickness: 1e-5,
+  maxOutlineLength: 10,
   spacingRatio: 25,
   rotationDeg: 0.5,
 };
@@ -103,6 +104,15 @@ export function checkAirfoil(rawPointsIn) {
     issues.push(issue('error', 'te-missing', 'The first and last points are not at the trailing edge; the point order is probably not Selig.'));
   }
   const points = normalize(rawPoints);
+
+  // An airfoil outline is about 2 chords long; much longer outlines (zigzags, spirals) are not
+  // airfoils and would make the crossing test slow.
+  let outline = 0;
+  for (let i = 1; i < points.length; i++) outline += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+  if (outline > LIMITS.maxOutlineLength) {
+    issues.push(issue('error', 'outline-length', `The outline is ${outline.toFixed(1)} chords long; an airfoil outline is about 2 chords long.`));
+    return { ok: false, points, issues, stats: null };
+  }
 
   const hits = selfIntersections(points);
   if (hits.length) {

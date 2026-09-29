@@ -3,7 +3,7 @@
 
 import { curvePoint, surfacePoint } from '../geom/nurbs.js';
 import { guideCurve } from '../geom/guide.js';
-import { addGuidePoint, dragLeadingEdge, moveGuidePoint, removeGuidePoint, resetGuide, sortedSections, syncGuidesToSpan } from '../model/edit.js';
+import { addGuidePoint, dragLeadingEdge, moveGuidePoint, removeGuidePoint, resetGuide, setGuideEnabled, sortedSections, syncGuidesToSpan } from '../model/edit.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, formatNum, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
@@ -324,10 +324,7 @@ export class PlanformEditor {
               type: 'checkbox',
               checked: !!gd.enabled,
               onchange: (e) => {
-                this.store.update((q) => {
-                  q.guides[key].enabled = e.target.checked;
-                  if (e.target.checked) resetGuide(q, key);
-                });
+                this.store.update((q) => setGuideEnabled(q, key, e.target.checked));
               },
             }),
             'Use guide curve',
@@ -362,10 +359,12 @@ export class PlanformEditor {
                 'button',
                 {
                   type: 'button',
+                  disabled: gd.points.length >= LIMITS.maxGuidePoints,
+                  title: `At most ${LIMITS.maxGuidePoints} points per guide`,
                   onclick: () =>
                     this.store.update((q) => {
                       const i = addGuidePoint(q, key);
-                      this.selectedGuide = { key, index: i };
+                      this.selectedGuide = i >= 0 ? { key, index: i } : null;
                     }),
                 },
                 'Add point',

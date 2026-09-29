@@ -60,8 +60,12 @@ export function syncGuidesToSpan(project) {
   return project;
 }
 
-/** Insert a section halfway between section index i and i+1 (sorted order), or beyond the tip. */
+/**
+ * Insert a section halfway between section index i and i+1 (sorted order), or beyond the tip.
+ * Returns null at LIMITS.maxSections sections or when the new tip would leave LIMITS.maxCoordinate.
+ */
 export function insertSection(project, afterIndex) {
+  if (project.sections.length >= LIMITS.maxSections) return null;
   const s = sortedSections(project);
   const a = s[Math.min(afterIndex, s.length - 1)];
   const b = s[afterIndex + 1];
@@ -80,6 +84,7 @@ export function insertSection(project, afterIndex) {
     const prev = s[s.length - 2];
     const dy = prev ? a.y - prev.y : 100;
     sec = { id: newId('s'), airfoil: a.airfoil, x: a.x, y: a.y + Math.max(dy, 10), z: a.z, chord: a.chord, twist: a.twist };
+    if (sec.y > LIMITS.maxCoordinate) return null;
   }
   project.sections.push(sec);
   project.sections.sort((p, q) => p.y - q.y);
@@ -104,7 +109,8 @@ export function resetDisabledGuides(project) {
     const g = project.guides?.[key];
     if (!g) {
       project.guides = { ...(project.guides ?? {}), [key]: d[key] };
-    } else if (!g.enabled) {
+    } else if (!g.enabled && !g.edited) {
+      // A disabled guide nobody edited follows the section edges; edited points are kept.
       g.points = d[key].points;
     }
   }
@@ -115,12 +121,23 @@ export function resetDisabledGuides(project) {
 export function resetGuide(project, key) {
   const d = defaultGuides(project.sections);
   project.guides[key].points = d[key].points;
+  project.guides[key].edited = false;
+  return project;
+}
+
+/** Turn a guide on or off. Turning it on keeps edited points; otherwise it starts at the section edges. */
+export function setGuideEnabled(project, key, on) {
+  const g = project.guides[key];
+  g.enabled = on;
+  if (on && !g.edited) resetGuide(project, key);
   return project;
 }
 
 /** Insert a guide point in the widest span gap (x interpolated linearly). */
 export function addGuidePoint(project, key) {
   const pts = project.guides[key].points;
+  if (pts.length >= LIMITS.maxGuidePoints) return -1;
+  project.guides[key].edited = true;
   let best = 0;
   for (let i = 1; i < pts.length - 1; i++) if (pts[i + 1][1] - pts[i][1] > pts[best + 1][1] - pts[best][1]) best = i;
   const a = pts[best];
@@ -133,6 +150,7 @@ export function removeGuidePoint(project, key, index) {
   const pts = project.guides[key].points;
   if (pts.length <= 2 || index <= 0 || index >= pts.length - 1) return false;
   pts.splice(index, 1);
+  project.guides[key].edited = true;
   return true;
 }
 
@@ -143,6 +161,7 @@ export function removeGuidePoint(project, key, index) {
  */
 export function moveGuidePoint(project, key, index, x, y) {
   const pts = project.guides[key].points;
+  project.guides[key].edited = true;
   const last = pts.length - 1;
   if (index === 0 || index === last) {
     pts[index] = [x, pts[index][1]];

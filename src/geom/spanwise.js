@@ -2,35 +2,53 @@
 // Every interpolated quantity f(y) is a weighted sum of the section values: f(y) = sum_i w_i(y) f_i.
 // 'linear' uses hat functions; 'smooth' uses the cardinal functions of a natural cubic spline.
 
-import { solve } from './linalg.js';
-
-/** Natural cubic spline second derivatives for knots xs and values ys. */
-function naturalSecondDerivatives(xs, ys) {
+/**
+ * Second derivatives of the natural cubic spline cardinal functions: column i of the result holds
+ * the second derivatives at all knots of the spline that is 1 at knot i and 0 at the others. The
+ * tridiagonal system is factored once (Thomas algorithm, no pivoting: it is diagonally dominant),
+ * so n sections cost O(n^2) instead of n dense solves.
+ * @returns {number[][]} M[j][i] = second derivative at knot j of cardinal function i
+ */
+function cardinalSecondDerivatives(xs) {
   const n = xs.length;
-  if (n < 3) return new Array(n).fill(0);
+  const M = Array.from({ length: n }, () => new Array(n).fill(0));
   const m = n - 2;
-  const A = Array.from({ length: m }, () => new Array(m).fill(0));
-  const b = new Array(m).fill(0);
-  for (let i = 1; i <= m; i++) {
-    const h0 = xs[i] - xs[i - 1];
-    const h1 = xs[i + 1] - xs[i];
-    A[i - 1][i - 1] = (h0 + h1) / 3;
-    if (i > 1) A[i - 1][i - 2] = h0 / 6;
-    if (i < m) A[i - 1][i] = h1 / 6;
-    b[i - 1] = (ys[i + 1] - ys[i]) / h1 - (ys[i] - ys[i - 1]) / h0;
+  if (m < 1) return M;
+  const h = [];
+  for (let i = 0; i < n - 1; i++) h.push(xs[i + 1] - xs[i]);
+  // Row r (knot r + 1): (h[r] / 6) M[r] + ((h[r] + h[r+1]) / 3) M[r+1] + (h[r+1] / 6) M[r+2] = rhs.
+  const diag = new Array(m);
+  const upper = new Array(m);
+  const lower = new Array(m);
+  for (let r = 0; r < m; r++) {
+    diag[r] = (h[r] + h[r + 1]) / 3;
+    upper[r] = h[r + 1] / 6;
+    lower[r] = h[r] / 6;
   }
-  const M = solve(A, b);
-  return [0, ...M, 0];
-}
-
-function splineEval(xs, ys, M, x) {
-  const n = xs.length;
-  let i = 0;
-  while (i < n - 2 && x > xs[i + 1]) i++;
-  const h = xs[i + 1] - xs[i];
-  const a = (xs[i + 1] - x) / h;
-  const b = (x - xs[i]) / h;
-  return a * ys[i] + b * ys[i + 1] + (((a ** 3 - a) * M[i] + (b ** 3 - b) * M[i + 1]) * h * h) / 6;
+  const cp = new Array(m);
+  const dp = new Array(m);
+  cp[0] = upper[0] / diag[0];
+  dp[0] = diag[0];
+  for (let r = 1; r < m; r++) {
+    dp[r] = diag[r] - lower[r] * cp[r - 1];
+    cp[r] = upper[r] / dp[r];
+  }
+  const rhs = new Array(m);
+  const sol = new Array(m);
+  for (let i = 0; i < n; i++) {
+    // Right-hand side for values e_i: (e[r+2] - e[r+1]) / h[r+1] - (e[r+1] - e[r]) / h[r].
+    for (let r = 0; r < m; r++) {
+      const e0 = r === i ? 1 : 0;
+      const e1 = r + 1 === i ? 1 : 0;
+      const e2 = r + 2 === i ? 1 : 0;
+      rhs[r] = (e2 - e1) / h[r + 1] - (e1 - e0) / h[r];
+    }
+    sol[0] = rhs[0] / dp[0];
+    for (let r = 1; r < m; r++) sol[r] = (rhs[r] - lower[r] * sol[r - 1]) / dp[r];
+    for (let r = m - 2; r >= 0; r--) sol[r] -= cp[r] * sol[r + 1];
+    for (let r = 0; r < m; r++) M[r + 1][i] = sol[r];
+  }
+  return M;
 }
 
 /**
@@ -41,13 +59,19 @@ export function spanwiseWeights(ys, mode = 'linear') {
   const n = ys.length;
   if (n === 1) return () => [1];
   if (mode === 'smooth' && n >= 3) {
-    const cards = ys.map((_, i) => {
-      const e = ys.map((__, k) => (k === i ? 1 : 0));
-      return { e, M: naturalSecondDerivatives(ys, e) };
-    });
+    const M = cardinalSecondDerivatives(ys);
     return (y) => {
       const yy = Math.min(Math.max(y, ys[0]), ys[n - 1]);
-      return cards.map(({ e, M }) => splineEval(ys, e, M, yy));
+      let j = 0;
+      while (j < n - 2 && yy > ys[j + 1]) j++;
+      const h = ys[j + 1] - ys[j];
+      const a = (ys[j + 1] - yy) / h;
+      const b = (yy - ys[j]) / h;
+      const ca = ((a ** 3 - a) * h * h) / 6;
+      const cb = ((b ** 3 - b) * h * h) / 6;
+      const w = new Array(n);
+      for (let i = 0; i < n; i++) w[i] = (i === j ? a : 0) + (i === j + 1 ? b : 0) + ca * M[j][i] + cb * M[j + 1][i];
+      return w;
     };
   }
   return (y) => {

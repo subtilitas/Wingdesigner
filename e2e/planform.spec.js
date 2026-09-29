@@ -416,6 +416,14 @@ test.describe('Planform tab', () => {
       [195, 300],
       [150, 600],
     ]);
+    // Switching the end line off and on again keeps the edited points.
+    await useGuide(page, 'end').uncheck();
+    await useGuide(page, 'end').check();
+    await expect.poll(() => guidePoints(page, 'end')).toEqual([
+      [240, 0],
+      [195, 300],
+      [150, 600],
+    ]);
     await guideButton(page, 'end', 'Reset to sections').click();
     await expect.poll(() => guidePoints(page, 'end')).toEqual([
       [240, 0],

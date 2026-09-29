@@ -368,4 +368,11 @@ describe('band collocation solver', () => {
   it('reports a zero pivot', () => {
     expect(() => bandFactor([{ start: 0, values: [0] }])).toThrow(/zero pivot/);
   });
+
+  it('rejects decreasing parameters, for which the band LU without pivoting is not stable', () => {
+    const t = [0, 0.2, 0.6, 0.4, 1];
+    const U = averagingKnots([0, 0.2, 0.4, 0.6, 1], 2);
+    expect(() => collocationFactor(t, 2, U)).toThrow(/nondecreasing/);
+    expect(() => collocationFactor([0, 0.5, 0.5, 1], 1, [0, 0, 0.5, 0.5, 1, 1])).not.toThrow(/nondecreasing/);
+  });
 });

@@ -54,8 +54,8 @@ export function yAt(poly, x) {
 }
 
 /** yAt for ascending xs: one sweep when x increases along the polyline, else per-point search. */
-function yAtAll(poly, xs) {
-  for (let i = 1; i < poly.length; i++) if (poly[i][0] < poly[i - 1][0]) return xs.map((x) => yAt(poly, x));
+function yAtAll(poly, xs, pick) {
+  for (let i = 1; i < poly.length; i++) if (poly[i][0] < poly[i - 1][0]) return xs.map((x) => envelopeAt(poly, x, pick));
   const out = new Array(xs.length);
   let i = 1;
   for (let k = 0; k < xs.length; k++) {
@@ -67,9 +67,25 @@ function yAtAll(poly, xs) {
     while (i < poly.length - 1 && poly[i][0] < x) i++;
     const [x0, y0] = poly[i - 1];
     const [x1, y1] = poly[i];
-    out[k] = x >= x1 ? y1 : x1 === x0 ? y1 : y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+    let y = x >= x1 ? y1 : x1 === x0 ? y1 : y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+    // A vertical segment (repeated x): every vertex at this x counts.
+    for (let j = i; j + 1 < poly.length && poly[j + 1][0] === x; j++) y = pick(y, poly[j + 1][1]);
+    out[k] = y;
   }
   return out;
+}
+
+/** Lowest (pick = Math.min) or highest (Math.max) y at x over every segment of poly that spans x. */
+function envelopeAt(poly, x, pick) {
+  let best = NaN;
+  for (let i = 1; i < poly.length; i++) {
+    const [x0, y0] = poly[i - 1];
+    const [x1, y1] = poly[i];
+    if (x < Math.min(x0, x1) || x > Math.max(x0, x1)) continue;
+    const y = x1 === x0 ? pick(y0, y1) : y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+    best = Number.isNaN(best) ? y : pick(best, y);
+  }
+  return Number.isNaN(best) ? yAt(poly, x) : best;
 }
 
 /**
@@ -120,8 +136,10 @@ export function airfoilStats(points, samples = 201) {
     if (x >= lo && x <= hi) coreXs.push(x);
   }
   coreXs.sort((a, b) => a - b);
-  const yu = yAtAll(upper, coreXs);
-  const yl = yAtAll(lower, coreXs);
+  // Lowest point of the upper and highest point of the lower surface at each x: vertical segments
+  // and surfaces that fold back in x can touch at more than one y.
+  const yu = yAtAll(upper, coreXs, Math.min);
+  const yl = yAtAll(lower, coreXs, Math.max);
   for (let k = 0; k < coreXs.length; k++) {
     const t = yu[k] - yl[k];
     if (t < minCore) {
@@ -209,9 +227,10 @@ export function segmentsCross(a, b, c, d, eps = 1e-14) {
 }
 
 /**
- * Pairs [i, j] (i < j, sorted) of non-adjacent polyline segments that cross each other, at most
- * `limit`. Segments are binned into a uniform grid of about one cell per segment, and only segments
- * that share a cell are tested: close to linear time for airfoil outlines.
+ * Pairs [i, j] (i < j, sorted) of non-adjacent polyline segments that cross each other; the search
+ * stops after `limit` crossings. Segments are binned into a uniform grid of about one cell per
+ * segment, and only segments that share a cell are tested: close to linear time for outlines whose
+ * total length is a few times their extent (checkAirfoil rejects longer ones).
  */
 export function selfIntersections(points, limit = 10) {
   const nSeg = points.length - 1;
@@ -230,38 +249,61 @@ export function selfIntersections(points, limit = 10) {
   const cw = (xmax - xmin) / G || 1;
   const ch = (ymax - ymin) / G || 1;
   const cell = (v, v0, c) => Math.min(G - 1, Math.max(0, Math.floor((v - v0) / c)));
-  const bins = new Map();
+  // Segments whose bounding box covers at most LONG_CELLS cells are binned by that box (exact: two
+  // crossing segments both contain the crossing point, so they share its cell). A binned pair is
+  // tested only in the lower-left cell that both boxes share, so each pair is tested once. Longer
+  // segments are tested against every segment; the outline length limit of checkAirfoil bounds
+  // their number.
+  const LONG_CELLS = 16;
+  const bins = new Array(G * G);
+  const gx0 = new Int32Array(nSeg);
+  const gy0 = new Int32Array(nSeg);
+  const isLong = new Uint8Array(nSeg);
+  const long = [];
   for (let i = 0; i < nSeg; i++) {
     const [ax, ay] = points[i];
     const [bx, by] = points[i + 1];
-    const gx0 = cell(Math.min(ax, bx), xmin, cw);
+    gx0[i] = cell(Math.min(ax, bx), xmin, cw);
+    gy0[i] = cell(Math.min(ay, by), ymin, ch);
     const gx1 = cell(Math.max(ax, bx), xmin, cw);
-    const gy0 = cell(Math.min(ay, by), ymin, ch);
     const gy1 = cell(Math.max(ay, by), ymin, ch);
-    for (let gx = gx0; gx <= gx1; gx++) {
-      for (let gy = gy0; gy <= gy1; gy++) {
+    if ((gx1 - gx0[i] + 1) * (gy1 - gy0[i] + 1) > LONG_CELLS) {
+      isLong[i] = 1;
+      long.push(i);
+      continue;
+    }
+    for (let gx = gx0[i]; gx <= gx1; gx++) {
+      for (let gy = gy0[i]; gy <= gy1; gy++) {
         const key = gx * G + gy;
-        const bin = bins.get(key);
-        if (bin) bin.push(i);
-        else bins.set(key, [i]);
+        if (bins[key]) bins[key].push(i);
+        else bins[key] = [i];
       }
     }
   }
-  const seen = new Set();
   const hits = [];
-  for (const bin of bins.values()) {
-    for (let a = 0; a < bin.length; a++) {
-      for (let b = a + 1; b < bin.length; b++) {
-        const i = Math.min(bin[a], bin[b]);
-        const j = Math.max(bin[a], bin[b]);
-        if (j < i + 2) continue;
-        const key = i * nSeg + j;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        if (segmentsCross(points[i], points[i + 1], points[j], points[j + 1])) hits.push([i, j]);
+  const test = (a, b) => {
+    const i = Math.min(a, b);
+    const j = Math.max(a, b);
+    if (j >= i + 2 && segmentsCross(points[i], points[i + 1], points[j], points[j + 1])) hits.push([i, j]);
+  };
+  for (const i of long) {
+    // Long pairs are tested from their smaller index.
+    for (let j = 0; j < nSeg && hits.length < limit; j++) if (!(isLong[j] && j < i)) test(i, j);
+    if (hits.length >= limit) break;
+  }
+  for (let key = 0; key < bins.length && hits.length < limit; key++) {
+    const bin = bins[key];
+    if (!bin) continue;
+    const gx = Math.floor(key / G);
+    const gy = key - gx * G;
+    for (let a = 0; a < bin.length && hits.length < limit; a++) {
+      const i = bin[a];
+      for (let b = a + 1; b < bin.length && hits.length < limit; b++) {
+        const j = bin[b];
+        if (Math.max(gx0[i], gx0[j]) === gx && Math.max(gy0[i], gy0[j]) === gy) test(i, j);
       }
     }
   }
   hits.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
-  return hits.slice(0, limit);
+  return hits;
 }

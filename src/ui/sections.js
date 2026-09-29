@@ -4,12 +4,13 @@ import { insertSection, removeSection, sortedSections, syncGuidesToSpan, resetDi
 import { clear, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
 
+const C = LIMITS.maxCoordinate;
 const FIELDS = [
-  { key: 'y', label: 'y', unit: 'mm', title: 'Span position of the section plane', step: 5 },
-  { key: 'x', label: 'x', unit: 'mm', title: 'Leading-edge position, chordwise (positive aft = sweep back)', step: 1 },
-  { key: 'z', label: 'z', unit: 'mm', title: 'Leading-edge height (dihedral)', step: 1 },
-  { key: 'chord', label: 'Chord', unit: 'mm', title: 'Chord length (profile scale)', step: 1, min: 1 },
-  { key: 'twist', label: 'Twist', unit: 'deg', title: 'Twist about the pivot; positive = leading edge up', step: 0.1 },
+  { key: 'y', label: 'y', unit: 'mm', title: 'Span position of the section plane', step: 5, min: 0, max: C },
+  { key: 'x', label: 'x', unit: 'mm', title: 'Leading-edge position, chordwise (positive aft = sweep back)', step: 1, min: -C, max: C },
+  { key: 'z', label: 'z', unit: 'mm', title: 'Leading-edge height (dihedral)', step: 1, min: -C, max: C },
+  { key: 'chord', label: 'Chord', unit: 'mm', title: 'Chord length (profile scale)', step: 1, min: LIMITS.minChord, max: LIMITS.maxChord },
+  { key: 'twist', label: 'Twist', unit: 'deg', title: 'Twist about the pivot; positive = leading edge up', step: 0.1, min: -LIMITS.maxTwist, max: LIMITS.maxTwist },
 ];
 
 export class SectionsPanel {
@@ -34,17 +35,17 @@ export class SectionsPanel {
     const overridden = (key) => (key === 'x' && (guides.nose?.enabled || guides.end?.enabled)) || (key === 'chord' && guides.nose?.enabled && guides.end?.enabled);
     const rows = sections.map((s, i) => {
       const st = build?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
-      const commit = (key) => (v) => {
-        if (key === 'y' && p.sections.some((o) => o.id !== s.id && Math.abs(o.y - Math.max(v, 0)) < 1e-6)) {
-          this.onMessage(`Another section already lies at y = ${Math.max(v, 0)} mm; sections need distinct span positions.`, true);
+      const commit = (key) => (value) => {
+        // Values outside the project limits are clamped to them.
+        const f = FIELDS.find((q) => q.key === key);
+        const v = Math.min(Math.max(value, f.min), f.max);
+        if (key === 'y' && p.sections.some((o) => o.id !== s.id && Math.abs(o.y - v) < 1e-6)) {
+          this.onMessage(`Another section already lies at y = ${v} mm; sections need distinct span positions.`, true);
           this.render();
           return;
         }
         this.store.update((q) => {
-          const t = q.sections.find((z) => z.id === s.id);
-          if (key === 'chord') v = Math.max(v, LIMITS.minChord);
-          if (key === 'y') v = Math.max(v, 0);
-          t[key] = v;
+          q.sections.find((z) => z.id === s.id)[key] = v;
           if (key === 'y') {
             q.sections.sort((a, b) => a.y - b.y);
             resetDisabledGuides(q);
@@ -79,7 +80,7 @@ export class SectionsPanel {
           return h(
             'td',
             { dataset: { label: `${f.label} (${f.unit})` } },
-            numberInput({ value: s[f.key], step: f.step, min: f.min, title: f.title, onCommit: commit(f.key), focusKey: `sec:${s.id}:${f.key}` }),
+            numberInput({ value: s[f.key], step: f.step, min: f.min, max: f.max, title: f.title, onCommit: commit(f.key), focusKey: `sec:${s.id}:${f.key}` }),
             tipChord !== null
               ? h(
                   'div',
@@ -99,9 +100,14 @@ export class SectionsPanel {
             {
               type: 'button',
               class: 'icon',
-              title: 'Insert a section after this one',
+              title: sections.length >= LIMITS.maxSections ? `At most ${LIMITS.maxSections} sections` : 'Insert a section after this one',
               'aria-label': `Insert section after ${i + 1}`,
-              onclick: () => this.store.update((q) => this.store.select(insertSection(q, i).id)),
+              disabled: sections.length >= LIMITS.maxSections,
+              onclick: () =>
+                this.store.update((q) => {
+                  const sec = insertSection(q, i);
+                  if (sec) this.store.select(sec.id);
+                }),
             },
             '+',
           ),

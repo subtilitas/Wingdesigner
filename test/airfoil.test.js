@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodeText, parseDat, parseNumbers, toSeligDat } from '../src/airfoil/parse.js';
-import { checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
+import { LIMITS, checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
 import { nacaAirfoil, parseNacaCode } from '../src/airfoil/naca.js';
 import {
   airfoilStats,
@@ -435,6 +435,31 @@ describe('parser robustness', () => {
     expect(codes(checkAirfoil(dense).issues)).toContain('too-many-points');
   });
 
+  it('rejects outlines longer than LIMITS.maxOutlineLength chords before the crossing test', () => {
+    // Serpentine without crossings: 5000 points, 50 chords long.
+    const serpentine = [];
+    for (let row = 0; row < 50; row++) for (let i = 0; i < 100; i++) serpentine.push([row % 2 ? 1 - i / 99 : i / 99, row * 0.02]);
+    const t0 = performance.now();
+    const r = checkAirfoil(serpentine);
+    expect(performance.now() - t0).toBeLessThan(1000);
+    expect(codes(r.issues)).toContain('outline-length');
+    expect(r.issues.find((i) => i.code === 'outline-length').message).toMatch(/is 5\d\.\d chords long/);
+    expect(LIMITS.maxOutlineLength).toBe(10);
+  });
+
+  it('stops the crossing test at the hit limit for outlines of long crossing segments', () => {
+    // 5000-point zigzags across the whole chord. Scattered heights: every segment crosses most
+    // others and the test stops at 10 hits. Rising heights: no crossing, and every segment is long,
+    // so the pairwise test is quadratic; checkAirfoil rejects the 5000-chord outline by its length
+    // first (an outline of at most 10 chords holds at most about 42 long segments).
+    const crossing = Array.from({ length: 5000 }, (_, i) => [i % 2, ((i * 7919) % 5000) / 5000]);
+    const rising = Array.from({ length: 5000 }, (_, i) => [i % 2, i / 5000]);
+    const t0 = performance.now();
+    expect(selfIntersections(crossing, 10).length).toBe(10);
+    expect(codes(checkAirfoil(rising).issues)).toContain('outline-length');
+    expect(performance.now() - t0).toBeLessThan(2000);
+  });
+
   it('finds the same crossings as the pairwise test', () => {
     let seed = 5;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -448,6 +473,11 @@ describe('parser robustness', () => {
       if (rnd() < 0.3) P.push(P[0].slice());
       expect(selfIntersections(P, 1000)).toEqual(brute(P));
     }
+    // Long segments (bounding box over 16 grid cells) mixed with short ones.
+    for (let t = 0; t < 100; t++) {
+      const P = Array.from({ length: 40 + Math.floor(rnd() * 80) }, (_, i) => (i % 5 ? [rnd() * 0.05, rnd() * 0.05] : [rnd(), rnd()]));
+      expect(selfIntersections(P, 1e9)).toEqual(brute(P));
+    }
   });
 
   it('rejects surfaces that touch inside the chord', () => {
@@ -459,6 +489,19 @@ describe('parser robustness', () => {
     expect(r.ok).toBe(false);
     expect(codes(r.issues)).toContain('surfaces-touch');
     expect(r.stats.minCoreThicknessX).toBeCloseTo(0.5, 12);
+    // A vertical segment on the upper surface: its lower end touches.
+    const vertical = touch.map((q) => q.slice());
+    vertical.splice(5, 0, [0.5, 0.01]);
+    expect(codes(checkAirfoil(vertical).issues)).toContain('surfaces-touch');
+    // An upper surface that folds back: its segment (0.46, 0)-(0.54, 0) passes through the lower
+    // vertex (0.5, 0) between two file points.
+    const folded = [
+      [1, 0.002], [0.9, 0.02], [0.75, 0.03], [0.6, 0.015], [0.54, 0], [0.46, 0], [0.56, 0.02], [0.4, 0.03], [0.25, 0.05], [0.1, 0.04], [0, 0],
+      [0.1, -0.03], [0.25, -0.04], [0.4, -0.02], [0.5, 0], [0.6, -0.015], [0.75, -0.03], [0.9, -0.02], [1, -0.002],
+    ];
+    const f = checkAirfoil(folded);
+    expect(codes(f.issues)).toContain('surfaces-touch');
+    expect(f.stats.minCoreThicknessX).toBeCloseTo(0.5, 12);
     // Closed and cusped trailing edges are not contacts.
     for (const code of ['0006', '0012', '2412']) expect(checkAirfoil(nacaAirfoil(code, { closedTE: true }).points).ok).toBe(true);
   });
