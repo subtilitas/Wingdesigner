@@ -149,6 +149,12 @@ export function openWizard({ firstRun = false } = {}) {
     const pz = new PanZoomCanvas(canvas, {
       bounds: () => {
         const b = Math.max(params.span / 2, 1);
+        // The drawn outline: leading and trailing edges of the built stations (a taper above 1 widens
+        // the tip beyond the root chord).
+        if (build?.stations?.length) {
+          const xs = build.stations.flatMap((q) => [q.xLE, q.xLE + q.chord]);
+          return [-b, -Math.max(...xs), b, -Math.min(0, ...xs)];
+        }
         const c = Math.max(params.rootChord, 1);
         const sw = Math.tan((params.sweep * Math.PI) / 180) * b;
         return [-b, -(Math.max(c, sw + c)), b, -Math.min(0, sw)];

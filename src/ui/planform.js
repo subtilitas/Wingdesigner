@@ -38,6 +38,18 @@ function outlinePoints(build) {
   return [...le, ...te.reverse()];
 }
 
+/**
+ * Guide y to wing y and back. The build stretches a guide onto the root-to-tip span; Open fits the
+ * stored points to it, except on spans too narrow for distinct numbers, where they keep their y.
+ */
+function guideSpan(project, gd) {
+  const s = sortedSections(project);
+  const [y0, y1] = [s[0].y, s[s.length - 1].y];
+  const [a, b] = [gd.points[0][1], gd.points[gd.points.length - 1][1]];
+  if (!(b > a) || (a === y0 && b === y1)) return { toWing: (y) => y, toGuide: (y) => y };
+  return { toWing: (y) => y0 + ((y - a) / (b - a)) * (y1 - y0), toGuide: (y) => a + ((y - y0) / (y1 - y0)) * (b - a) };
+}
+
 /** An enabled guide curve sampled at 201 points as [x, y], or null. */
 function guideSamples(gd) {
   if (!gd?.enabled || !gd.points || gd.points.length < 2) return null;
@@ -187,13 +199,14 @@ export class PlanformEditor {
       const gd = g[key];
       if (!gd?.enabled || !gd.points || gd.points.length < 2) continue;
       const color = key === 'nose' ? cssVar('--nose', '#0f9d58') : cssVar('--end', '#b8621b');
+      const { toWing } = guideSpan(p, gd);
       const samples = guideSamples(gd);
       if (samples) {
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.beginPath();
         samples.forEach(([x, y], k) => {
-          const [sx, sy] = toS(y, x);
+          const [sx, sy] = toS(toWing(y), x);
           if (k) ctx.lineTo(sx, sy);
           else ctx.moveTo(sx, sy);
         });
@@ -205,7 +218,7 @@ export class PlanformEditor {
         ctx.lineWidth = 1;
         ctx.beginPath();
         gd.points.forEach(([x, y], i) => {
-          const [sx, sy] = toS(y, x);
+          const [sx, sy] = toS(toWing(y), x);
           if (i) ctx.lineTo(sx, sy);
           else ctx.moveTo(sx, sy);
         });
@@ -213,7 +226,7 @@ export class PlanformEditor {
         ctx.setLineDash([]);
       }
       gd.points.forEach(([x, y], i) => {
-        const [sx, sy] = toS(y, x);
+        const [sx, sy] = toS(toWing(y), x);
         const active = this.selectedGuide && this.selectedGuide.key === key && this.selectedGuide.index === i;
         diamond(ctx, sx, sy, active ? 8 : 6, active ? warn : color);
       });
@@ -228,9 +241,10 @@ export class PlanformEditor {
     for (const key of ['nose', 'end']) {
       const gd = g[key];
       if (!gd?.enabled) continue;
+      const { toWing } = guideSpan(p, gd);
       for (let i = 0; i < gd.points.length; i++) {
         const [px, py] = gd.points[i];
-        if (Math.hypot(px - x, py - y) <= tol) return { type: 'guide', key, index: i };
+        if (Math.hypot(px - x, toWing(py) - y) <= tol) return { type: 'guide', key, index: i };
       }
     }
     const build = this.getBuild();
@@ -266,11 +280,14 @@ export class PlanformEditor {
       this.store.lastKey = null;
       return;
     }
-    // Without spanwise pointer movement the point keeps its y.
-    if (this.dragStart && y === this.dragStart.y && this.dragStart.origY !== undefined) y = this.dragStart.origY;
+    // Without spanwise pointer movement the point keeps its y; otherwise a guide point takes the
+    // guide y of the pointer.
+    const still = this.dragStart && y === this.dragStart.y && this.dragStart.origY !== undefined;
+    if (still) y = this.dragStart.origY;
     const key = `drag-${hnd.type}-${hnd.id ?? hnd.key}-${hnd.index ?? ''}`;
     if (hnd.type === 'guide') {
-      this.store.update((p) => moveGuidePoint(p, hnd.key, hnd.index, x, y), { key });
+      const gy = still ? y : guideSpan(this.store.project, this.store.project.guides[hnd.key]).toGuide(y);
+      this.store.update((p) => moveGuidePoint(p, hnd.key, hnd.index, x, gy), { key });
       const pt = this.store.project.guides[hnd.key].points[hnd.index];
       this.readout.textContent = `${GUIDE_LABEL[hnd.key]} point ${hnd.index + 1}: x ${formatNum(pt[0], 1)} mm, y ${formatNum(pt[1], 1)} mm`;
     } else {

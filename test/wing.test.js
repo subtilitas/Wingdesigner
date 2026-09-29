@@ -777,6 +777,14 @@ describe('smooth spanwise overshoot', () => {
     expect(b.surface).toBeNull();
   });
 
+  it('reports an unusable airfoil once, however many sections use it', () => {
+    const p = sampleProject();
+    p.airfoils.push({ id: 'flat', name: 'Flat', points: [[1, 0], [0.5, 0], [0, 0], [0.5, 0], [1, 0]] });
+    for (const s of p.sections) s.airfoil = 'flat';
+    const b = buildWing(p);
+    expect(b.errors.filter((e) => e.startsWith('Airfoil "Flat"'))).toHaveLength(1);
+  });
+
   it('joins panel curves of one degree when panels hold different station counts', () => {
     // Panels of 1 and 3 intervals: degree 3 is not possible in the first, so both use degree 1.
     const values = [0, 1, 2, 3, 4].map((y) => [[0, y, y * y]]);

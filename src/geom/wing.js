@@ -274,8 +274,11 @@ export function buildWing(project) {
   const N = Math.round(Math.min(Math.max(settings.chordSamples, LIMITS.chordSamples[0]), LIMITS.chordSamples[1]));
   const chordStations = cosineStations(N);
   const airfoils = new Map(project.airfoils.map((a) => [a.id, a]));
+  const checkedAirfoils = new Set();
   for (const s of sections) {
-    if (result.profiles.has(s.airfoil)) continue;
+    // Each airfoil is checked once, also when it fails: one message per airfoil, not per section.
+    if (checkedAirfoils.has(s.airfoil)) continue;
+    checkedAirfoils.add(s.airfoil);
     const a = airfoils.get(s.airfoil);
     if (!a) {
       errors.push(`Section at y = ${s.y} mm uses unknown airfoil "${s.airfoil}".`);
