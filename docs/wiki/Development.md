@@ -386,7 +386,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | Page pairs | A file of the 6 English–German pairs above is missing (`Home.md` excluded) |
 | Coverage markers | `README.md` or `README.de.md` lacks `<!-- coverage:start -->` or `<!-- coverage:end -->` |
 | Wiki links | The target page of a wiki link (double square brackets) has no file in `docs/wiki/` |
-| Wiki links in tables | Pages as markdown-it 15 reads them (CommonMark with GitHub tables and HTML; fenced code, block quotes and the end of a table follow the Markdown rules): a table cell holds `[[` without `]]` after it outside code spans, because the `\|` of a labelled wiki link ended the cell; or a header and delimiter row form no table, because a `\|` in the header gave it more cells. In tables a wiki link holds only the page title, with spaces for the hyphens of the page name (`User Guide` links to `User-Guide`). |
+| Wiki links in tables | Pages as markdown-it 15 reads them (CommonMark with GitHub tables and HTML; fenced code, block quotes and the end of a table follow the Markdown rules): a table cell holds, outside code spans, an opening double square bracket without the closing one, because the `\|` of a labelled wiki link ended the cell; or a header and delimiter row form no table, because a `\|` in the header gave it more cells. In tables a wiki link holds only the page title, with spaces for the hyphens of the page name (`User Guide` links to `User-Guide`). |
 | Images | An embedded image file does not exist, or its alt text is empty |
 | Relative links | The target of a relative Markdown link does not exist |
 
