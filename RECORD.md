@@ -1,0 +1,160 @@
+# Project record
+
+Running record of the state of Wingdesigner: what exists, decisions with their reasons, facts that
+were verified and how, and open items. Treat every statement as a claim to re-check; the "Verified"
+column says how. Version history lives in CHANGELOG.md and git.
+
+Last updated: 2026-09-29
+
+## State
+
+| Area | State | Verified by |
+| --- | --- | --- |
+| NURBS core (`src/geom/nurbs.js`) | Basis functions, curve and surface evaluation, global interpolation, knot insertion, splitting | `test/nurbs.test.js` |
+| Airfoil import (`src/airfoil/`) | Selig, Lednicer, x/upper/lower tables, XML, HTML tables, decimal commas, Windows-1252; sanity checks; NACA 4/5-digit | `test/airfoil.test.js`; 247 real files (Selig, percent tables, XML, HTML pages) from aerodesign.de, mh-aerotools.de and UIUC parsed locally on 2026-09-29, 246 accepted, 1 (UIUC `mh150.dat`) rejected for a real upper/lower crossing. The files are not committed (license). |
+| Wing loft (`src/geom/wing.js`) | Sections, linear or smooth spanwise blending, nose and end guide curves, trailing-edge modes | `test/wing.test.js` |
+| Meshes (`src/geom/mesh.js`) | Closed outward meshes, mirror, merged full wing | Edge-manifold and volume tests |
+| STEP export (`src/export/step.js`) | AP214 B-rep solids with exact B-spline faces | `scripts/validate_step.py` with OpenCascade (cadquery-ocp 8.0.1): 8 cases including 2 pointed tips and 1 symmetric airfoil, all valid and closed, volume within 8e-5 of the mesh |
+| STL, 3MF, project JSON | Implemented; 3MF model XML is written and deflated in 1 MB chunks (zip entries with data descriptors) | `test/export.test.js`; `scripts/validate_3mf.py` with lib3mf 2.5.0 in strict mode: 8 cases, no reader warnings, every object manifold and oriented. Other 3MF readers (slicers) not tested. |
+| Project size (`src/model/budget.js`, `LIMITS` in `src/model/project.js`) | Warning thresholds with time and memory estimates, hard limits, export size note, Save without derived data above 100 MB | `test/budget.test.js`; `e2e/limits.spec.js` (3 tests per project) passed on desktop and Pixel 7 on 2026-09-29 |
+| UI (`src/ui/`, `src/main.js`) | 3D viewer, planform editor, sections, airfoils, settings, checks, wizard, export | Playwright: 10 spec files on desktop (1280 x 720) and Pixel 7, every test fails on a page or console error; run against a fresh build (`reuseExistingServer: false`). 137 tests, 274 runs on 2026-09-29 (local, Chromium 141): 244 passed, 30 skipped (tests for one device only), 0 failed. |
+| Unit tests (`test/`) | 207 tests in 9 files (Vitest) | `npm test` on 2026-09-29: 207 of 207 pass |
+| CI | `ci.yml` (lint, unit tests, coverage check, airfoil license check, documentation check, STEP and 3MF validation, e2e, Pages deploy; runs on `main` queue, other refs cancel older runs), `docs.yml` (wiki), `release.yml` (tags) | All jobs green on pull request #1; Pages deployment and wiki push run on `main` only and are not yet observed |
+| Documentation | `README.md`, `README.de.md`; wiki pages Home, _Sidebar and User Guide, Geometry, File Formats, Airfoil Sources, Development in English and German; 12 screenshots | Every statement checked against the code at 89c4f22 by writer and critic passes with command output as evidence; `npm run docs:check` (in CI); parser-test counts in Airfoil Sources re-run at 89c4f22 on the 1,964 local files |
+| Bundled airfoil library | 6 files: Clark Y, USA 35B, NACA M-6, NACA 8-H-12 (NACA report tables, United States public domain), RAF 34 (Royal Aircraft Establishment table reprinted by NACA, United States term expired), S9104 (CC BY 4.0 from the designer); NACA presets are generated | Each file read value by value against the page image of its primary source by two independent passes (research, then verification) and checked by a critic; licence quotes retrieved from the sources; `npm run airfoils:check` (in CI): free license per entry, restricted hosts rejected, every file indexed and listed in `public/airfoils/NOTICE.md`; e2e test adds S9104 with its source |
+
+## Decisions
+
+| Decision | Reason |
+| --- | --- |
+| Own STEP writer instead of OpenCascade in the browser | Writes the exact loft surfaces as text; no WebAssembly download of several MB; validated in CI with OpenCascade. |
+| Upper and lower surface as separate STEP faces, split at the leading edge by knot insertion | Avoids a seam edge on a periodic surface; every edge is an exact boundary iso-curve. |
+| Sections resampled at common cosine-spaced chord fractions | Point j of every section corresponds by chord position, so blending and lofting keep the leading edge at one parameter. |
+| Section origin at the NURBS leading edge (minimum x of the curve), chord to the trailing-edge midpoint | Placement refers to the interpolated shape, not to the nearest file point. |
+| Inclined airfoils are not derotated | Some tables (e.g. Göttingen 795) use a baseline instead of the leading-edge-to-trailing-edge chord; twist refers to the file's x axis. A warning reports the inclination. |
+| Spanwise C0 knots at sections in linear mode | Straight panels with kinks at sections stay exact; smooth mode uses one C2 spline. |
+| Split parameters within 1e-10 of an existing knot snap to that knot | A symmetric airfoil puts the leading edge 1 ulp (unit in the last place) from a knot; inserting a separate knot there gives multiplicity 5 and an invalid STEP face. |
+| Smooth spanwise blending reports negative blended thickness as an error | The cubic cardinal functions overshoot between sections with large chord or thickness changes; the upper surface then passes below the lower one. |
+| Smooth mode: a blended value more than 2 section ranges outside the section value range is an error (`OVERSHOOT_LIMIT`) | Sections 0.1 mm apart next to 100 mm gaps give cardinal weights of ±1475: 750 random smooth wings (NACA sections, 5 seeds) produced surfaces with inverted thickness down to -253 m and deviations of 12.8 m that every other check passed; with the limit, 0 of 750 builds without error have a negative thickness on a 4000 x 59 sample grid. Limit 2, not 1: a curved planform with chords 100/500/100 mm at y = 0/100/1000 mm reaches 1.34 ranges; tip clusters (20 to 200 mm chords at y = 0/500/510 mm) reach 6.6. 648 preset builds (6 presets x flat/pointed x linear/smooth x 3 chord samples x 3 parametrizations x 3 trailing-edge modes): no error. |
+| Fitted surface probed at 257 span positions, guide breakpoints and the quarter points of every station interval: chord, local thickness and contact are errors; the deviation warning and added stations use the check positions only | Global cubic interpolation through closely spaced stations can swing between them while every fixed check position lies near a station; zigzag degree-5 guides give inverted thickness between stations in 7 of 40 random cases, and the 32 accepted ones pass a dense check (401 rows without crossing, no negative thickness on 2001 span samples). Within 2 mm of a pointed elliptic tip the loft deviates 0.3 to 0.8 mm between stations (more than 10 % of the 1 to 3 mm chord there); with the quarter points driving added stations, 4 of 6 pointed wizard presets still warned after 13 to 21 added stations. |
+| Guide curves stretched to root-to-tip span | Guides follow span edits without manual correction. |
+| Pointed tip: tip profile scaled to 1/100 to 1/1000 (default 1/200) of the previous section chord, at least 1 mm | A zero chord has no profile and no valid B-rep face; a scaled profile keeps the tip closed, profile-shaped and exportable. Converging guide curves end in this profile. |
+| Airfoil input at most 5,000,000 characters (files above 20 MB are not read) and 100,000 points (the parser stops after 100,001 coordinate lines); above 5,000 points a warning names the time of the checks and of the first build | Bounds import time and memory. At 5,000 points the checks take 41 ms (grid-binned self-intersection test, sorted thickness sweep) and the NURBS interpolation 13 ms (band LU); Node.js 24, sandbox CPU. The estimate is 30 µs per point (100,000 points: about 3 s). |
+| Band LU without pivoting for B-spline interpolation; decreasing parameters throw | Collocation matrices are banded and totally positive for nondecreasing parameters (de Boor and Pinkus, 1977); dense LU needed about 200 MB and O(n^3) time at 5000 points. Band and dense solutions agree to 0 on 41 to 401 NACA points. A guide with decreasing y (only from a hand-edited file) gave control points of 1.6e16 mm in the planform preview. |
+| Fitted profile curves and section rows tested for self-crossing; loops with a mean width (area over extent) up to 0.05 % chord ignored | Cubic interpolation of coarse files can loop past the trailing edge while the points pass every check (6 of 6314 random 9-point outlines). Cusped closed trailing edges leave long, thin slivers: at most 1.6e-5 chord mean width on 246 real files under all 3 parametrizations; the coarse-file loop measures 2.5e-3. The extent measure rejected slivers by their length (48 % of real files at 16 chord samples with uniform parametrization). Rows are tested at sections, halfway between sections and halfway between fitted stations. |
+| Behind 99 % chord, crossed surfaces up to 1e-4 chord count as zero thickness | The last chord stations of a cusped trailing edge can lie in a sliver that the crossing check accepts; the -1e-9 thickness test rejected 18 of 246 real files at 200 chord samples with uniform parametrization. 1e-4 is the crossed trailing-edge limit of the airfoil check. |
+| Project limits: chord 1 to 100,000 mm, twist ±360 degrees, coordinates ±1,000,000 mm (counts and sizes: see the size decision below) | A twist of 1e308 degrees overflows the angle conversion to NaN coordinates. The Sections table clamps typed values to the same limits; the build also stops on non-finite placement. |
+| Guide curves carry an `edited` flag; files without it get it from the points | Switching a guide off and on replaced edited points with the section edges; a switched-off guide without edits still follows the sections. Files written before the flag: points that differ from the section edges by more than 1e-9 mm count as edited. |
+| At most 10,000 airfoils per project and 100,000 points per airfoil, also in project files; the UI refuses the 10,001st airfoil, and an airfoil that takes the project past 1,000,000 airfoil points, before the preview | A 3.55 MB project with 50,000 airfoils passed validation and rendered 400,145 DOM nodes (Codex security review); with older code 50,000 airfoils took 10 to 15 s to open at 2.3 GB. Every section can still use its own airfoil. |
+| buildWing reports the project limits (shared `limitErrors`) | Values beyond the limits block autosave; without the check in the build, exports stayed enabled for a project that cannot be saved (planform drags could produce them). Drags clamp to the same limits. |
+| Guide control points and interpolated placement within the geometry extent (±1,200,000 mm) and the chord limit at every check position | A B-spline lies within the hull of its control points, so the control points bound the whole guide. A through-point end line over (0, 0), (1e6, 0.1), (-1e6, 0.11), (1e6, 599.9), (0, 600) passed validation and reached 7.6e13 mm. Smooth overshoot within the 2-range limit can still pass the coordinate limit (x 0 / 1e6 / 0 mm at y 0 / 100 / 1000 mm reaches 2.3e6 mm). |
+| Section x within ±1,000,000 mm, guide x within ±1,100,000 mm, built geometry within ±1,200,000 mm (`maxExtent`) | Disabled guides follow the section edges, so end lines reach x + chord (up to 1,100,000 mm); a guide limit of ±1,000,000 mm made such projects fail validation and stopped autosave, and ±900,000 mm did the same for nose lines. An end line at x = -1,000,000 mm derives a leading edge of -1,000,001 mm; with the extent at the guide limit plus the largest chord every valid combination builds and only interpolation overshoot is rejected. |
+| Counts before contents in validation | 300,000 empty section objects took 7.2 s to reject; the section, guide-point and airfoil counts are checked before any entry is read. |
+| Loft grid (stations times 2N + 1 profile points, before added stations) used as set up to 5,000,000 points, with the size warning above 60,000; above 5,000,000 the stations per panel go down with a warning, and the build stops when one station per panel exceeds it; surface rows are tested halfway between the 64 widest station intervals | The fit to the browser measurements gives about 58 s and 3.3 GB per change at 5,000,000 grid points. 20 sections with 40 stations per panel and 200 chord samples (761 stations) took 4.05 s when rows were tested in every interval, 54 % of it in row crossing tests. |
+| Consecutive airfoil points closer than 1e-9 chord are removed | A point one unit in the last place from its neighbour passed every check and made the interpolation throw (zero pivot) in 506 of 2370 NACA 2412 variants; after the merge 0 of 2370. |
+| Fitted airfoil curve: x reversal above 1e-4 chord is an error | The loft resamples each surface by chord position with a monotonic root search and would drop a part that runs back. 246 real files: no reversal at all. |
+| Curve samples shared by control-polygon length (about 4000, 1 to 256 per span) | One sample per span missed a loop in a coarse span of a 4509-point file whose other spans were dense. |
+| Profile stage cached per airfoil, most recently used first, at least 32 entries and one per airfoil of the project | The crossing test costs 10 to 60 ms per airfoil; first-in-first-out eviction of 32 entries never hit for projects with more than 32 airfoils. |
+| Profile thickness checked before and after the trailing-edge setting | The linear taper of the closed and fixed-thickness modes pulls the surfaces through each other where an airfoil is thinner inside than its trailing-edge gap. |
+| Loft deviation measured in 3D against min(0.5 mm, 10 % chord); fitted chord below 0.9 mm or reversed is an error | Linear rows between stations twisted by 180° collapse to the pivot at midspan while the x-only deviation stays 0; zigzag degree-5 guides that 32 added stations cannot follow fold the fitted chord to -24 mm. |
+| Planform statistics by 5-point Gauss-Legendre quadrature of the intended planform between the stations, the sections and every guide knot and control point; an interval is halved while the halves change an integral by more than 1e-10 of its scale (at most 12 halvings) | Trapezoids over stations were off by 1.45 % (8 stations per panel) to more than 2 % (3 stations) in smooth mode; the quadrature is exact for cubic spanwise splines between breakpoints. Node.js 24: statistics of 5,000 linear sections take 20 ms. |
+| Interior contact (thickness at most 1e-5 chord between 1 % and 99 % chord) is an error, in the airfoil check and again after the trailing-edge setting | Touching surfaces give a zero-thickness solid. Thickness between polylines is smallest at a vertex, so every file point is checked, from the lowest upper to the highest lower point at each x (vertical segments, surfaces folding back in x). 247 real files: no new rejection. |
+| Airfoil outlines longer than 10 chords are rejected before the crossing test | A 5000-point serpentine without crossings took 4 s in the grid-binned crossing test; the length check rejects it in 45 ms. Airfoil outlines are about 2 chords long. |
+| Airfoil camber measured from the chord line (leading edge to trailing-edge midpoint) | Standard geometric definition; the previous horizontal reference through the leading edge mixed in the chord inclination (NACA 4415: 3.56 %). The designated camber (4 %) is not recoverable from coordinates: the camber line starts behind the geometric leading edge and thickness is applied normal to it. |
+| Minimum chord 1 mm for every section and span position, also the floor of a pointed tip | Owner requirement: below 1 mm the profile falls under the resolution of meshes, STEP modelling tolerances and manufacturing. With the default 1/200 ratio the tip chord reaches the floor for previous chords below 200 mm (4 of 6 wizard presets with a pointed tip). |
+| Trailing-edge thickness limited to 5 % of the local chord | Keeps small tip profiles free of self-intersection with a fixed thickness in mm. |
+| Through-point guide curves parametrized by span position | y(t) is exactly linear, so a guide cannot double back in span; x(y) is a spline function. |
+| Adaptive spanwise stations (up to 32 extra) | Stations are added where the loft deviates more than 0.5 mm (10 % of smaller chords) from the intended surface (leading edge, trailing edge, 5 chord stations per surface at N = 60), e.g. at pointed elliptic tips (pointed glider preset: 6 extra, 0.16 mm). |
+| Chord and planform checks on 257 span samples plus every guide breakpoint | The loft passes through the stations only; a guide crossing or guide detail between stations is reported (error below 1 mm chord, stations added above 0.5 mm edge deviation, warning if still above after 32 added stations). |
+| aerodesign.de and mh-aerotools.de coordinates not bundled | Their terms grant personal use and restrict redistribution (quotes in the wiki page Airfoil-Sources). The app links to them and fills in attribution on upload. |
+| MIT license for the code | Chosen by the owner. Airfoil data keeps its own terms. |
+| Bundled airfoils: share-alike and copyleft data excluded; United States public-domain tables bundled with "status outside the United States is not established"; RAF 34 shipped with its 7 uncertain cells listed; PROFOIL test sections not bundled | Owner decisions of 2026-09-29. The only designer-licensed RC families found are share-alike (JX library, CC BY-SA 4.0) or copyleft (Drela DAE and HT, GPL-2.0-or-later). The PROFOIL test sections (MIT) are generic designs without polars or flight history. |
+| Bundled airfoils only under a free license: public domain (by law, expired copyright or dedication) or CC0-1.0, Unlicense, CC-BY-4.0, CC-BY-3.0, MIT, BSD-2-Clause, BSD-3-Clause | Owner requirement: bundled airfoils are free to use. Personal-use, non-commercial, no-derivatives, share-alike, "ask first" and inferred permissions are excluded. `scripts/check-airfoils.mjs` enforces the list. |
+| Undo and redo history: at most 100 steps and 64,000,000 characters of serialized project together; the newest undo step always stays | 100 steps of a 100 MB project (the Open limit) would hold 10,000 MB. The default project serializes to 14,630 characters, so projects up to 640,000 characters keep all 100 steps. |
+| Autosave with the rebuild frame, flushed on `pagehide` and `visibilitychange` (hidden) | Saving on every store update would serialize and validate the project at pointer-event rate during drags; the flush saves an edit committed less than one frame before a reload or tab close. |
+| Ignored crossings and crossed trailing-edge slivers: their chord fraction (5e-4 for loops, 1e-4 for slivers) and at most 0.1 mm | The fractions keep real cusped trailing edges buildable (slivers up to 1.6e-5 chord in 246 files); 0.1 mm caps them at chords above 200 mm (loops) and 1000 mm (slivers). The 36 real-file combinations and 648 preset builds give the same results with the cap. |
+| Points of all project airfoils together at most 1,000,000, with the size warning above 100,000 | 100 airfoils of 20,001 points opened in 17 s and took 2.3 s per edit at 546 MB heap; 200 of them 35 s, 5.8 to 7.9 s and 1.1 GB. 1,000,000 points take about 40 MB of project file, within the 100 MB Open limit. Real designs use 2 to 20 airfoils of 60 to 400 points. |
+| Names (project, airfoils) at most 10,000 characters, the parser cuts a longer name line; ids at most 200 characters, airfoil source texts at most 2,000; lists and messages show the first 200 characters of a name followed by `…`, download file names the first 120; unknown keys, also unknown `settings` keys, dropped on import | The longest name line among 1,964 real airfoil files has 179 characters. A 2,000,000-character name rendered in full took 59 s in 200 section lists and crashed the tab; with the shortened display the name length only adds file size. A deeply nested unknown key overflowed `structuredClone` at every start. |
+| Display mesh: cubic lofts refined up to 3 times in v while the display mesh stays at or below 100,000 vertices. Mesh export: size warning above 2,000,000 triangles, Download off above 10,000,000; Fine density always offered | At 20 sections with maximum settings, the refined display of 160,000 grid points took 3,641 ms (Node.js 24). STL of 8.5 million triangles: 6.9 s, 423 MB file, 2.7 GB browser peak; 20 million failed and 80 million crashed the tab. 3MF of 8.5 million triangles: 49 s, 97 MB file. |
+| STL and 3MF exports refused when 32-bit coordinates collapse or turn over a triangle at least 4 coordinate spacings long; 3MF writes 9 significant digits | STL stores 32-bit floats: 0.0625 mm spacing at 1,000,000 mm. 9 significant digits represent every 32-bit float; 5 decimals merged corners of 12 triangles at 1 mm chord and 200 chord samples. STEP carries the double-precision coordinates. |
+| Autosave failure: notice, status bar note, `wingdesigner.project.v1.stale` marker; unloadable save without room for a copy stays in place | Browser storage holds 5,242,880 characters per site in Chromium; a failed save left the older project to reload without a message. |
+| Project size warns; hard stops only at crash sizes and for invalid geometry. Warning thresholds (`WARN`): 200 sections, 200 airfoils, 5,000 points in one airfoil, 100,000 airfoil points in all, 500 points in an enabled guide curve, 60,000 loft grid points, 2,000,000 export triangles, 200-character names. Above any threshold the build adds one warning, `Large project: <sizes>. Each change takes about X s and about Y MB of browser memory.`, and a toast shows it when a size newly crosses its threshold (edit, Open, restored autosave); the Sections **+** title (above 200 sections), the Planform **Add point** title (above 500 guide points) and the Settings loft grid note (above 60,000 points) name the estimate. Hard limits (`LIMITS`): 20,000 sections, 10,000 airfoils, 1,000,000 airfoil points in all, 100,000 points per airfoil, 20,000 points per guide curve, 5,000,000 loft grid points, 10,000,000 export triangles, 10,000-character names, 100 MB project files | Owner decision of 2026-09-29. Each hard limit lies where a desktop browser tab runs out of memory or a change takes about a minute (Measurements): 20,000 linear sections take 24 s of JavaScript and 57 s of page time per change at 969 MB; the Planform tab with 50,000 guide points opened in 36 s at 3.4 GB; 200 airfoils of 20,001 points opened in 35 s at 1.1 GB; 50,000 airfoils (older code) opened in 10 to 15 s at 2.3 GB; the fit gives about 58 s and 3.3 GB at 5,000,000 grid points and about 3 s for the checks of a 100,000-point airfoil; an STL of 8.5 million triangles peaked at 2.7 GB and 20 million failed; 1,000,000 airfoil points take about 40 MB of the 100 MB file limit. The estimate is a linear fit (see Measurements). |
+| Save and JSON export leave out the derived NURBS data when the file would exceed 100 MB, with a toast; Open rejects files above 100 MB unread | Every saved project reopens: the project data of every project within the limits fits, the derived data of large wings may not. Open recomputes the derived data; STEP export writes the exact surfaces. |
+| Builds take time linear in the section count: binary search for the spanwise interval, placement blended from the two neighbouring sections in linear mode, local spline evaluation in smooth mode, grid evaluation with precomputed basis functions; the 3D view draws all section outlines as one line set | The code before commit beca001 crashed the tab at 5,250 sections (memory grew with the square of the section count); 5,000 sections took 25 to 43 s per change at up to 3.8 GB. Now 6.9 to 7.4 s and 345 to 361 MB (Chromium 141). Surfaces are bit-identical on 48 test builds. |
+| Selecting a section marks the row, the 3D section outline and the planform handle without a rebuild; a click in a row outside its fields and buttons selects it | Selecting takes 2 to 100 ms of JavaScript at 200 to 20,000 sections; a rebuild at 20,000 sections takes 24 s. |
+| Above 20,000 section-airfoil list entries (sections times airfoils) each airfoil list of the Sections table holds its chosen airfoil until it is focused or pressed | Each list entry costs 8.5 µs and 0.5 KB per change. 1,000 linear sections: 1.5 to 1.6 s per chord edit; with 200 airfoils and full lists 3.0 to 3.6 s. |
+| Insert refuses a section when no span position lies between the two neighbours, beyond the tip past 1,000,000 mm, and at 20,000 sections | The midpoint of two span positions one unit in the last place apart equals one of them, and equal span positions are invalid. The toast names the two positions. |
+| Airfoil surfaces that run back in x at more than 50 points are an error (`folds`); the thickness envelope evaluates each x once and the crossing search subdivides crowded grid cells (at most 6 levels) | Accepted real airfoils have up to 13 such points (a slat of a multi-element section); 1,915 of 1,927 files have none. Zigzags and clustered or vertical point runs are checked in linear time. The parser counts on the 1,964 real files are unchanged. |
+| GitHub Actions: checkout v7, setup-node v7, setup-python v7, cache v6, upload-artifact v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5 | Latest majors on 2026-09-29; all `runs.using: node24` (upload-pages-artifact is composite on upload-artifact v7), checked in each `action.yml`. |
+
+## Measurements
+
+Node.js 24.21, sandbox x86-64 CPU, 2026-09-29 (`buildWing`, `exportMeshes(..., 'merged')`, `wingToStep`):
+
+| Case | Chord stations | Build | Mesh | STEP write | STEP size |
+| --- | --- | --- | --- | --- | --- |
+| Sport preset, 2 sections | 60 | 17 ms | 1 ms | 3 ms | 99 KB |
+| Sport preset, 2 sections | 200 | 40 ms | 1 ms | 4 ms | 303 KB |
+| Glider preset, elliptic guides, 17 stations | 60 | 36 ms | 12 ms | 6 ms | 445 KB |
+| Glider preset, elliptic guides, 17 stations | 200 | 89 ms | 42 ms | 19 ms | 1398 KB |
+
+Mean of 10 runs after 2 warm-up runs (STEP: 3 runs), load average 3.3 (other processes running).
+Build times include the smooth overshoot check, the section-row crossing test at sections and
+station midpoints, the 3D deviation on 5 chord stations per surface and the fitted-surface probes
+at the quarter points of every station interval;
+the profile stage is cached after the warm-up runs (first build of a new airfoil: 35 to 100 ms more). Cap triangulation pairs upper and lower points per chord station (linear time); ear clipping
+(cubic time) is the fallback.
+
+Large projects in the browser, current code: Chromium 141 headless with software rendering, 4
+shared cores of a 2.1 GHz Xeon server CPU, load average 2 to 8, 2026-09-29. JavaScript time per
+chord edit and JS heap after the rebuild; page time includes drawing with software rendering:
+
+| Sections | Spanwise | Time per chord edit | JS heap |
+| --- | --- | --- | --- |
+| 200 (399 stations) | smooth | 0.5 to 0.65 s | 38 to 48 MB |
+| 1,000 | linear | 1.5 to 1.6 s | 78 to 91 MB |
+| 2,000 | smooth | 2.9 to 3.8 s | 159 to 175 MB |
+| 5,000 | linear | 6.9 to 7.4 s | 345 to 361 MB |
+| 5,000 | smooth | 6.2 to 8.3 s | 237 to 413 MB |
+| 10,000 | linear | 15.8 to 16.4 s | 490 MB |
+| 15,000 | linear | 19 to 23 s | 678 MB |
+| 20,000 | linear | 24 s (57 s page time) | 969 MB |
+
+- 20,000 sections, opening the file: 24 s JavaScript, 59 s page time, 496 MB kept.
+- 1,000 linear sections with 200 airfoils and full airfoil lists (before the lists filled on use):
+  3.0 to 3.6 s per chord edit.
+- Code before commit beca001: 5,000 sections took 25 to 43 s per change at up to 3.8 GB; the tab
+  crashed at 5,250 sections.
+- Selecting a section: 2 to 100 ms of JavaScript at 200 to 20,000 sections.
+- Airfoil points: 100 airfoils of 20,001 points open in 17 s, an edit takes 2.3 s, 546 MB heap; 200
+  of them open in 35 s, an edit takes 5.8 to 7.9 s, 1.1 GB. 50,000 airfoils (audit, older code):
+  open 10 to 15 s, 2.3 GB.
+- Guide points: the Planform tab with 10,000 points opens in 6 s, with 50,000 in 36 s at 3.4 GB.
+- Exports (16 sections, 40 stations per panel, 200 chord samples): STL of 8.5 million triangles
+  6.9 s, 423 MB file, 2.7 GB browser peak; STL of 20 million failed, 80 million crashed the tab; 3MF
+  of 8.5 million 49 s, 97 MB file; STEP 81 MB in 2.2 s (1,041 stations) and 330 MB in 8.4 s (4,161
+  stations).
+
+Node.js 24, same day: 5,000 linear sections build in 5.1 s, statistics take 20 ms, 363 MB kept;
+builds with a 50,000-point guide curve take 5.1 to 6.1 s.
+
+Estimate model (`src/model/budget.js`, linear fits to the browser measurements, JavaScript time
+without drawing the 3D view): base 0.2 s and 15 MB per change; per loft grid point 11.5 µs and
+0.65 KB; per airfoil list entry in the Sections table 8.5 µs and 0.5 KB (sections times airfoils up
+to 20,000, above that one entry per section); per airfoil point 1.5 µs and 0.2 KB; per point of an
+enabled guide curve 110 µs and 50 KB; checks and first build of an airfoil 30 µs per point. Export
+per triangle: STL 0.8 µs, 210 bytes of memory, 50 bytes of file; 3MF 5.8 µs, 110 bytes, 11.5 bytes
+of file.
+
+## Open items
+
+- Bundled library: RAF 34 has 7 cells that the 1-bit NTRS scan does not settle (largest possible
+  difference 0.20 % of chord at the lower surface at 60 % of chord); an independent scan of NACA
+  Report No. 286 or the original RAE report would settle them. Not bundled for lack of a written
+  grant, with the designers named in the research: Gerald Taylor (DLG, F3J/F5J sections), Michael
+  Selig (SD7037, SD7003, S5010, S1223), Mark Drela (HT, AG, DAE41), Peter Wick (PW planks).
+- Written permission from Hartmut Siegmann (postal only, per his site) or Martin Hepperle
+  (e-mail in his page footer) would allow bundling HS or MH airfoils.
+- First run on `main`: confirm Pages deployment and the wiki push with `GITHUB_TOKEN`.
+- Not measured: build time and memory on phones; the drawing time of the 3D view on a graphics card
+  (the estimates cover JavaScript time only).
