@@ -54,7 +54,8 @@ consecutive points closer than 1e-9 of the x range (info `duplicates`): their pa
 ### 1.1 Normalization
 
 - File leading edge P: the file point farthest from the TE midpoint (mean of the first and the last
-  point). Ties go to the smaller x.
+  point). Squared distances within a relative 1e-15 of the largest count as ties; ties go to the smaller x,
+  so every scale of the same outline picks the same point.
 - Translation and uniform scaling only. The airfoil is not rotated.
 
 ```
@@ -227,6 +228,11 @@ Example: **Glider** preset, 3 sections, K = 8: 17 stations.
 ```
 y_(i,k) = y_i + (y_(i+1) − y_i) (1 − cos(π k / K)) / 2          k = 0 … K − 1
 ```
+
+Distinct span fractions: a < b are distinct when b − a > max(4 ε · max(|a|, |b|), 2^-1021), ε = 2^-52
+(`paramsApart` in `src/geom/nurbs.js`). Two sections that are not distinct are an error; an
+intermediate station that is not distinct from the previous kept station or from the tip is left out;
+through-point guide curves apply the same rule to the normalized y of their points.
 
 Loft grid (`loftGrid` in `src/model/budget.js`): stations times profile points before stations are
 added, ((sections − 1) · K + 1) · (2N + 1) points. **Linear** without a guide curve uses K_set = 1.

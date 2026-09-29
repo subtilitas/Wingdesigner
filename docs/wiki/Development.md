@@ -169,13 +169,14 @@ Sizes above a warning threshold work as usual. The build then adds 1 warning to 
 | Points of a guide curve | 500 (enabled guide curves) | 20,000 |
 | Loft grid points | 60,000 | 5,000,000 |
 | Export triangles (STL, 3MF) | 2,000,000 | 10,000,000 |
+| Export control points (STEP) | 1,000,000 | 3,000,000 |
 | Characters in a name (project, airfoils) | 200 | 10,000 |
 
-- Where the warnings appear: points in one airfoil in the airfoil preview (`many-points`); export triangles in the export dialog, which disables **Download** above 10,000,000 triangles; all other sizes in the `Large project` warning. The **Settings** tab shows `Loft grid: N points.` under the resolution fields, with the time and memory above 60,000 points.
+- Where the warnings appear: points in one airfoil in the airfoil preview (`many-points`); export triangles and STEP control points in the export dialog, which disables **Download** above 10,000,000 triangles or 3,000,000 control points; all other sizes in the `Large project` warning. The **Settings** tab shows `Loft grid: N points.` under the resolution fields, with the time and memory above 60,000 points.
 - Further hard limits: ids 200 characters; airfoil source texts 2,000 characters; airfoil input 5,000,000 characters (`MAX_INPUT` in `src/airfoil/parse.js`); airfoil files above 20 MB are not read; the parser stops after 100,001 coordinate lines (`MAX_POINTS`); **Open** rejects project files above 100 MB unread (`MAX_PROJECT_BYTES` in `src/model/io.js`).
 - Loft grid: spanwise stations × (2N + 1) profile points before added stations, N = **Chordwise stations per surface** (`loftGrid` in `src/model/budget.js`). Up to 5,000,000 grid points the build uses the settings as entered. Above, it uses fewer stations per panel and warns `Spanwise stations per panel reduced from K to k: S sections with N chord samples keep the loft within 5,000,000 grid points.` When 1 station per panel still exceeds the limit, the build stops with `The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.`
 
-Estimate model: linear fits to the browser measurements above, JavaScript time without drawing the 3D view. The 3D view adds the drawing time of the graphics card. Phones: not measured. The coefficients are `COST` (each change) and `EXPORT` (mesh export) in `src/model/budget.js`. Units: 1 MB = 1000 KB = 1,000,000 bytes.
+Estimate model: linear fits to the browser measurements above, JavaScript time without drawing the 3D view. The 3D view adds the drawing time of the graphics card. Phones: not measured. The coefficients are `COST` (each change) and `EXPORT` (export) in `src/model/budget.js`. Units: 1 MB = 1000 KB = 1,000,000 bytes.
 
 | Unit (`COST`) | Time | Memory |
 | --- | ---: | ---: |
@@ -190,6 +191,7 @@ Estimate model: linear fits to the browser measurements above, JavaScript time w
 | --- | ---: | ---: | ---: |
 | STL | 0.8 µs | 210 bytes | 50 bytes |
 | 3MF | 5.8 µs | 110 bytes | 11.5 bytes |
+| STEP, per control point | 2.5 µs | 620 bytes | 98 bytes |
 
 The export memory adds the base of 15 MB. Tests: `test/budget.test.js` (thresholds, estimates, loft grid as the build computes it, shortened names), `e2e/limits.spec.js` (warning above 200 sections and the title of the **+** button, airfoil lists of large sections tables, export dialog note and the hard limit).
 

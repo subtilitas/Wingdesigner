@@ -169,13 +169,14 @@ Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt
 | Punkte einer Leitkurve | 500 (eingeschaltete Leitkurven) | 20 000 |
 | Punkte des Loft-Gitters | 60 000 | 5 000 000 |
 | Dreiecke beim Export (STL, 3MF) | 2 000 000 | 10 000 000 |
+| Kontrollpunkte beim Export (STEP) | 1 000 000 | 3 000 000 |
 | Zeichen eines Namens (Projekt, Profile) | 200 | 10 000 |
 
-- Wo die Warnungen erscheinen: Punkte eines Profils in der Profilvorschau (`many-points`); Dreiecke beim Export im Exportdialog, der **Download** über 10 000 000 Dreiecken sperrt; alle anderen Größen in der Warnung `Large project`. Die Registerkarte **Settings** zeigt unter den Feldern der Auflösung `Loft grid: N points.`, über 60 000 Punkten mit Rechenzeit und Speicher.
+- Wo die Warnungen erscheinen: Punkte eines Profils in der Profilvorschau (`many-points`); Dreiecke und STEP-Kontrollpunkte beim Export im Exportdialog, der **Download** über 10 000 000 Dreiecken oder 3 000 000 Kontrollpunkten sperrt; alle anderen Größen in der Warnung `Large project`. Die Registerkarte **Settings** zeigt unter den Feldern der Auflösung `Loft grid: N points.`, über 60 000 Punkten mit Rechenzeit und Speicher.
 - Weitere harte Grenzen: IDs 200 Zeichen; Quellentexte eines Profils 2000 Zeichen; Profileingabe 5 000 000 Zeichen (`MAX_INPUT` in `src/airfoil/parse.js`); Profildateien über 20 MB werden nicht gelesen; der Parser hört nach 100 001 Koordinatenzeilen auf (`MAX_POINTS`); **Open** weist Projektdateien über 100 MB ungelesen ab (`MAX_PROJECT_BYTES` in `src/model/io.js`).
 - Loft-Gitter: Stationen in Spannweitenrichtung × (2N + 1) Profilpunkte vor dem Einfügen zusätzlicher Stationen, N = **Chordwise stations per surface** (`loftGrid` in `src/model/budget.js`). Bis 5 000 000 Gitterpunkte verwendet der Aufbau die Einstellungen wie eingegeben. Darüber verwendet er weniger Stationen je Feld und warnt `Spanwise stations per panel reduced from K to k: S sections with N chord samples keep the loft within 5,000,000 grid points.` Überschreitet schon 1 Station je Feld die Grenze, bricht der Aufbau ab mit `The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.`
 
-Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit ohne das Zeichnen der 3D-Ansicht. Die 3D-Ansicht kommt mit der Zeichenzeit der Grafikkarte hinzu. Smartphones: nicht gemessen. Die Koeffizienten stehen in `COST` (jede Änderung) und `EXPORT` (Export als Dreiecksnetz) in `src/model/budget.js`. Einheiten: 1 MB = 1000 KB = 1 000 000 Byte.
+Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit ohne das Zeichnen der 3D-Ansicht. Die 3D-Ansicht kommt mit der Zeichenzeit der Grafikkarte hinzu. Smartphones: nicht gemessen. Die Koeffizienten stehen in `COST` (jede Änderung) und `EXPORT` (Export) in `src/model/budget.js`. Einheiten: 1 MB = 1000 KB = 1 000 000 Byte.
 
 | Einheit (`COST`) | Zeit | Speicher |
 | --- | ---: | ---: |
@@ -190,6 +191,7 @@ Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit o
 | --- | ---: | ---: | ---: |
 | STL | 0,8 µs | 210 Byte | 50 Byte |
 | 3MF | 5,8 µs | 110 Byte | 11,5 Byte |
+| STEP, je Kontrollpunkt | 2,5 µs | 620 Byte | 98 Byte |
 
 Der Speicher beim Export enthält zusätzlich den Grundwert von 15 MB. Tests: `test/budget.test.js` (Schwellen, Schätzungen, Loft-Gitter wie im Aufbau, gekürzte Namen), `e2e/limits.spec.js` (Warnung über 200 Schnitten und Titel der Schaltfläche **+**, Profillisten großer Schnitttabellen, Hinweis im Exportdialog und harte Grenze).
 

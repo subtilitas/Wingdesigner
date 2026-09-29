@@ -36,7 +36,8 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
       const n = stepPoints(build, half);
       const c = exportCost(n, 'step');
       over = n > LIMITS.maxStepPoints;
-      const what = `${(n / 1e6).toFixed(n < 1e5 ? 2 : 1)} million control points, file ${formatMegabytes(c.fileMB)}`;
+      const count = n < 1e6 ? n.toLocaleString('en-US') : `${(n / 1e6).toFixed(1)} million`;
+      const what = `${count} control points, file ${formatMegabytes(c.fileMB)}`;
       sizeNote.className = `small${over ? ' sev-error' : n > WARN.stepPoints ? ' sev-warning' : ' muted'}`;
       sizeNote.textContent = over
         ? `${what}: above the limit of ${LIMITS.maxStepPoints / 1e6} million control points, where the file takes more memory than a desktop browser tab holds. Use one half, or fewer chord samples or panel stations.`

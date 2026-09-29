@@ -23,6 +23,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   loft grid note name the estimate.
 - Export dialog: a note under the mesh density gives the triangles and file size of the chosen
   format, halves and density, with time and memory above 2,000,000 triangles.
+- Export dialog: for STEP a note gives the surface control points and the file size, with time and
+  memory above 1,000,000 control points; above 3,000,000 **Download** is disabled (3.3 million wrote
+  330 MB in 8.4 s, about 5.4 million exceed the 512 MB string limit of the browser).
 
 ### Changed
 
@@ -236,6 +239,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   dialog is open; input focus survives a rebuild; empty or invalid number fields restore their
   value; export formats are disabled while the wing has errors; equal section span positions are
   rejected.
+- Project files keep the derived NURBS data at full double precision; rounding to 12 significant
+  digits merged the span parameters and knots of close sections.
+- Span fractions, stations, knots and guide points count as distinct only when they differ by more
+  than 4 units in the last place and by more than 2^-1021, so subnormal gaps next to v = 0 are an
+  error instead of a failed build.
+- The file leading edge of an airfoil is the same point at every scale of the outline:
+  squared distances within a relative 1e-15 of the largest count as ties, and ties go to the
+  smaller x.
+- Number fields show the shortest decimal that reads back to the stored value instead of 3 decimal
+  places (a y of 600.0000002 mm showed as 600).
+- Adding an airfoil, or removing one that no section uses, updates the lists, the size warning and
+  the autosave without rebuilding the wing; selecting a section or changing the display redraws
+  the planform canvas without rendering its forms; Save or Export right after an edit renders the
+  planform forms of the new build.
+- The STEP size note shows the exact count below 1,000,000 control points (`4,114 control points`
+  for the Glider preset instead of `0.00 million`).
 
 ## [0.1.0] - 2026-09-29
 

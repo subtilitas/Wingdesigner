@@ -166,7 +166,7 @@ Die Prüfungen laufen:
 | --- | --- |
 | Doppelte Punkte | Aufeinanderfolgende Punkte, die näher als 1e-9 des x-Bereichs (x_max − x_min, der Profiltiefe) am vorigen Punkt liegen, werden zuerst entfernt (Info `duplicates`: `<n> consecutive point(s) closer than 1e-9 chord to the previous point removed.`), auch bei Punkten aus einer Projektdatei. |
 | Normierung | x → (x − x_min) / c, y → (y − y_LE) / c, c = x_max − x_min; keine Drehung |
-| Profilnase | Punkt mit dem größten Abstand zur Endleistenmitte (Mittel aus erstem und letztem Punkt); y_LE ist ihr y |
+| Profilnase | Punkt mit dem größten Abstand zur Endleistenmitte (Mittel aus erstem und letztem Punkt); quadrierte Abstände, die relativ höchstens 1e-15 unter dem größten liegen, gelten als gleich, und von diesen gilt der Punkt mit dem kleinsten x; y_LE ist ihr y |
 | % der Profiltiefe | Anteil der normierten Profiltiefe 1 |
 | Prüfungen auf Rohkoordinaten (Dateien: nach den Schritten beim Einlesen) | `too-few-points`, `too-many-points`, `many-points`, `coarse`, `zero-chord`, `not-normalized`, `rotated`, `te-missing` |
 | Prüfungen auf normierten Koordinaten | alle übrigen Prüfungen, beginnend mit `outline-length`; `curve-shape` prüft die NURBS-Kurve durch die normierten Punkte |
@@ -238,7 +238,7 @@ Die Prüfungen laufen:
 | Von **Open** gelesene Größe | höchstens 100 MB (100 000 000 Byte) |
 | Einheiten | mm, Winkel in Grad (°) |
 | Achsen | x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende, z nach oben; Spiegelebene y = 0 |
-| Zahlen in `derived` | auf 12 signifikante Stellen gerundet |
+| Zahlen in `derived` | volle 64-Bit-Genauigkeit: die kürzeste Dezimalzahl, die denselben Wert ergibt (bis 17 signifikante Stellen) |
 
 ### Schlüssel der obersten Ebene
 

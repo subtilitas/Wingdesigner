@@ -166,7 +166,7 @@ The checks run:
 | --- | --- |
 | Duplicates | Consecutive points closer than 1e-9 of the x range (x_max − x_min, the chord) to the previous point are removed first (info `duplicates`: `<n> consecutive point(s) closer than 1e-9 chord to the previous point removed.`), also for points from a project file. |
 | Normalization | x → (x − x_min) / c, y → (y − y_LE) / c, c = x_max − x_min; no rotation |
-| LE point | point farthest from the TE midpoint (mean of the first and the last point); y_LE is its y |
+| LE point | point farthest from the TE midpoint (mean of the first and the last point); squared distances within a relative 1e-15 of the largest count as equal, and of those the point with the smallest x wins; y_LE is its y |
 | % chord | fraction of the normalized chord 1 |
 | Checks on raw coordinates (files: after the parser steps) | `too-few-points`, `too-many-points`, `many-points`, `coarse`, `zero-chord`, `not-normalized`, `rotated`, `te-missing` |
 | Checks on normalized coordinates | all other checks, starting with `outline-length`; `curve-shape` tests the NURBS curve through the normalized points |
@@ -238,7 +238,7 @@ The checks run:
 | Size read by **Open** | at most 100 MB (100,000,000 bytes) |
 | Units | mm, angles in degrees (°) |
 | Axes | x chordwise towards the TE, y spanwise towards the right tip, z up; mirror plane y = 0 |
-| Numbers in `derived` | rounded to 12 significant digits |
+| Numbers in `derived` | full 64-bit precision: the shortest decimal that reads back to the same value (up to 17 significant digits) |
 
 ### Top-level keys
 

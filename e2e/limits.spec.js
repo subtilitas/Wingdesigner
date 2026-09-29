@@ -65,7 +65,7 @@ test.describe('project size', () => {
     let dlg = await openExport(page);
     const note = dlg.locator('p[aria-live="polite"]');
     // STEP (preselected): 121 stations x 401 control points per half, both halves.
-    await expect(note).toHaveText(/^0\.10 million control points, file about [\d.]+ MB\.$/);
+    await expect(note).toHaveText(/^97,042 control points, file about 9\.5 MB\.$/);
     await expect(note).toHaveClass(/muted/);
     await dlg.getByLabel(/^Project JSON/).check();
     await expect(note).toBeHidden();

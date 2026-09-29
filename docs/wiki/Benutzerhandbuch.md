@@ -81,6 +81,7 @@ Auf Touchscreens (grober Zeiger) sind Schaltflächen und Eingabefelder mindesten
 - Fangradius für Punkte im Grundriss-Editor: 9 px mit Maus oder Stift, 18 px mit Touchscreen.
 - Tastenkürzel wirken nicht, solange der Fokus in einem Eingabefeld, Textbereich oder einer Auswahlliste liegt oder solange ein Dialog offen ist.
 - Eingabefelder für Zahlen übernehmen den Wert mit Enter, beim Verlassen des Eingabefelds und bei jedem Schritt mit den Pfeiltasten oder den Pfeilen im Eingabefeld. Eine nicht numerische Eingabe springt auf den vorherigen Wert zurück.
+- Ein Eingabefeld für Zahlen zeigt die kürzeste Dezimalzahl, die den gespeicherten Wert genau wiedergibt, z. B. `600.0000002`; die Anzeige rundet keinen Wert.
 - Ein Ziehvorgang ist ein Rückgängig-Schritt: Änderungen desselben Ziehvorgangs mit weniger als 800 ms Abstand werden zusammengefasst.
 
 | Schaltfläche der 3D-Ansicht | Kamera |
@@ -293,6 +294,8 @@ Bedienelemente je Leitkurve (Kästen **Nose line (leading edge)** und **End line
 | **×** | Entfernt das Profil. Gesperrt, solange ein Schnitt es verwendet. |
 | **Remove unused** | Entfernt alle Profile, die kein Schnitt verwendet |
 
+Das Hinzufügen eines Profils und das Entfernen eines Profils, das kein Schnitt verwendet, aktualisiert die Profillisten, die Größenwarnung und die automatische Speicherung, ohne den Flügel neu aufzubauen.
+
 **Add to project** legt keinen zweiten Eintrag an, behält den vorhandenen Eintrag und verwirft den neuen Namen und die neue Quellenangabe, wenn:
 
 - ein Projektprofil denselben Namen und dieselben Punkte hat;
@@ -504,7 +507,7 @@ Einfluss der Auflösung auf Rechenzeit und Größe der STEP-Datei (STEP: Standar
 | Airfoil "…": the NURBS curve through the points crosses itself near x = … % chord; … | Fehler | die Kurve durch die Profilpunkte kreuzt sich selbst. Die Kreuzung teilt die Kontur in 2 Teile; der Teil mit der kleineren Diagonale des Hüllrechtecks hat eine mittlere Breite (Fläche / Diagonale des Hüllrechtecks) über 0,05 % der Profiltiefe. Ein Profil, das bei einer Profiltiefe über 200 mm verwendet wird, scheitert auch, wenn diese Breite bei seiner größten Profiltiefe 0,1 mm übersteigt; die Meldung lautet dann `…; the loop is … mm wide at … mm chord, above 0.1 mm. …` |
 | Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | Fehler | die Kurve durch die Profilpunkte läuft um mehr als 0,01 % der Profiltiefe in x zurück. Im Einlesetest mit 1964 realen Profildateien weist diese Prüfung mit **Centripetal** 4 Dateien ab, mit **Chord length** 12 und mit **Uniform** 82 ([[Profilquellen|Profilquellen]], Abschnitt Einlesetest). |
 | Airfoil "…": The upper surface runs back in x at … points; the limit is 50. (ebenso `lower`) | Fehler | eine Seite des Profils läuft an mehr als 50 Punkten in x zurück (Prüfung `folds`, [[Dateiformate|Dateiformate]]) |
-| Nose line: … / End line: … | Fehler | y der Leitkurvenpunkte steigt nicht streng an, oder die Kurve läuft in y zurück; Modus Durchgangspunkte: `Points … and … at y = … mm and y = … mm lie too close together for the curve parameters; move them apart.`, wenn zwei normierte y-Werte höchstens 4 Einheiten der letzten Stelle auseinanderliegen |
+| Nose line: … / End line: … | Fehler | y der Leitkurvenpunkte steigt nicht streng an, oder die Kurve läuft in y zurück; Modus Durchgangspunkte: `Points … and … at y = … mm and y = … mm lie too close together for the curve parameters; move them apart.`, wenn zwei normierte y-Werte höchstens 4 Einheiten der letzten Stelle des größeren Werts oder höchstens 2^-1021 (etwa 4,5e-308) auseinanderliegen |
 | Nose line: the curve through the points reaches x = … mm, beyond ±1200000 mm; space the points more evenly in y or use control-point mode. (ebenso End line) | Fehler | ein Kontrollpunkt der Leitkurve liegt jenseits von x = ±1 200 000 mm |
 | Section values give non-finite coordinates at y = … mm; … | Fehler | x der Profilnase, Profiltiefe, z oder Schränkung einer geprüften Spannweitenposition ergibt eine nicht endliche Koordinate, z. B. bei **Smooth** mit 2 Schnitten im Abstand 5e-324 mm. **Open** und die Tabelle **Sections** akzeptieren solche Positionen; die Tabelle **Sections** weist nur ein y ab, das dem eines anderen Schnitts gleicht. |
 | At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves, or use linear interpolation. | Fehler | an einer geprüften Spannweitenposition: x der Profilnase, x der Endleiste oder z jenseits von ±1 200 000 mm, oder Profiltiefe über 100 000 mm |
@@ -543,7 +546,7 @@ Aufbaufehler, die die Bedienelemente und **Open** verhindern (nur über Programm
 | guides.….points: at most 20,000 points (found …). / guides.….points: x must be within ±1100000 mm and y within ±1000000 mm. | eine Leitkurve mit mehr als 20 000 Punkten, mit einem Punkt-x außerhalb von ±1 100 000 mm oder einem Punkt-y außerhalb von ±1 000 000 mm | **Add point** ist bei 20 000 Punkten gesperrt; Ziehen und Punkttabelle halten x innerhalb von ±1 100 000 mm; **Open** weist die Datei ab |
 | Section at y = … mm lies on the mirrored side; … | y des Wurzelschnitts unter 0 | das Eingabefeld y setzt negative Werte auf 0; **Open** weist die Datei ab |
 | Sections … and … share span position y = … mm. | zwei Schnitte mit gleichem y | die Schnitttabelle weist den Wert ab; **Open** weist die Datei ab |
-| Sections … and … at y = … mm and y = … mm lie too close together for the surface parameters (span fractions … and …); move them apart. | zwei Schnitte, deren Spannweitenanteile (y − y Wurzel) / (y Rand − y Wurzel) sich höchstens um 4 Einheiten der letzten Stelle unterscheiden, z. B. y = 714063,9936875999 und 714063,9936876 mm zwischen Wurzel bei 169026,9 mm und Rand bei 816583,4 mm | einen der beiden Schnitte verschieben |
+| Sections … and … at y = … mm and y = … mm lie too close together for the surface parameters (span fractions … and …); move them apart. | zwei Schnitte, deren Spannweitenanteile (y − y Wurzel) / (y Rand − y Wurzel) sich höchstens um 4 Einheiten der letzten Stelle des größeren Werts oder höchstens um 2^-1021 (etwa 4,5e-308) unterscheiden, z. B. y = 714063,9936875999 und 714063,9936876 mm zwischen Wurzel bei 169026,9 mm und Rand bei 816583,4 mm | einen der beiden Schnitte verschieben |
 | Section at y = … mm uses unknown airfoil "…". | Profil-ID fehlt im Projekt | **×** ist für verwendete Profile gesperrt; **Open** weist die Datei ab |
 
 Bei einem Fehler wird der Flügel nicht aufgebaut: 3D-Ansicht und Kennwerte bleiben leer, und **Export** bietet nur das Projekt-JSON an.
@@ -567,6 +570,7 @@ Bei einem Fehler wird der Flügel nicht aufgebaut: 3D-Ansicht und Kennwerte blei
 | Punkte einer eingeschalteten Leitkurve | 500 | 20 000 (jede Leitkurve) | **Add point** gesperrt; **Open** weist die Datei ab |
 | Gitterpunkte des Lofts | 60 000 | 5 000 000 | weniger Stationen je Feld; Aufbaufehler, wenn eine Station je Feld die Grenze überschreitet |
 | Dreiecke eines STL- oder 3MF-Exports | 2 000 000 (Exportdialog) | 10 000 000 | **Download** gesperrt |
+| Kontrollpunkte eines STEP-Exports | 1 000 000 (Exportdialog) | 3 000 000 | **Download** gesperrt |
 | Zeichen des Projektnamens oder eines Profilnamens | 200 | 10 000 | Namensfelder nehmen höchstens 10 000 Zeichen an; der Profil-Parser behält die ersten 10 000; **Open** weist die Datei ab |
 | Projektdatei | – | 100 MB | **Open** weist die Datei ungelesen ab; **Save** lässt die abgeleiteten NURBS-Daten weg |
 
@@ -620,7 +624,7 @@ Gemessen je Änderung einer Profiltiefe im Browser: Chromium 141 headless, Softw
 | Mesh density (STL, 3MF) (Netzdichte) | **Normal** | ausgewählt |
 | Mesh density (STL, 3MF) | **Fine (4x triangles)** (fein, 4-fache Dreiecksanzahl): verdoppelt die Unterteilung in beiden Flächenrichtungen | – |
 
-Für STL und 3MF nennt ein Hinweis unter der Netzdichte die Dreiecke und die Dateigröße für Format, Flügelhälften und Netzdichte der Auswahl, z. B. Vorlage Glider, STL, beide Hälften, **Normal**: `0.02 million triangles, file about 1.2 MB.` STEP und Project JSON zeigen keinen Hinweis.
+Für STL und 3MF nennt ein Hinweis unter der Netzdichte die Dreiecke und die Dateigröße für Format, Flügelhälften und Netzdichte der Auswahl, z. B. Vorlage Glider, STL, beide Hälften, **Normal**: `0.02 million triangles, file about 1.2 MB.` Project JSON zeigt keinen Hinweis.
 
 | Dreiecke | Hinweis | **Download** |
 | --- | --- | --- |
@@ -630,6 +634,17 @@ Für STL und 3MF nennt ein Hinweis unter der Netzdichte die Dreiecke und die Dat
 
 - Schätzung je Million Dreiecke: STL 0,8 s, 210 MB Browser-Speicher, 50 MB Datei; 3MF 5,8 s, 110 MB Browser-Speicher, 11,5 MB Datei. Die Speicherschätzung addiert 15 MB.
 - Gemessen (Chromium 141, 4 Kerne einer Xeon-Server-CPU mit 2,1 GHz): STL mit 8,5 Millionen Dreiecken: 6,9 s, 423 MB Datei, 2,7 GB Browser-Speicher in der Spitze; 3MF mit 8,5 Millionen Dreiecken: 49 s, 97 MB Datei; STL mit 20 Millionen Dreiecken scheiterte.
+
+Für STEP nennt der Hinweis die Kontrollpunkte der Flächen in der Datei und die Dateigröße für die gewählten Flügelhälften (die linke Hälfte verdoppelt die Anzahl; die Netzdichte gilt nicht), z. B. Vorlage Glider, beide Hälften: `4,114 control points, file about 1 MB.` Über 1 000 000 Kontrollpunkten lautet die Anzahl `… million`.
+
+| Kontrollpunkte | Hinweis | **Download** |
+| --- | --- | --- |
+| bis 1 000 000 | `… control points, file ….` | bedienbar |
+| über 1 000 000 | Warnfarbe; ergänzt `The export takes … and … of browser memory.` | bedienbar |
+| über 3 000 000 | Fehlerfarbe: `… million control points, file …: above the limit of 3 million control points, where the file takes more memory than a desktop browser tab holds. Use one half, or fewer chord samples or panel stations.` | gesperrt |
+
+- Schätzung je Million Kontrollpunkte: 2,5 s, 620 MB Browser-Speicher, 98 MB Datei. Die Speicherschätzung addiert 15 MB.
+- Gemessen: 3,3 Millionen Kontrollpunkte (4161 Stationen) schrieben eine Datei von 330 MB in 8,4 s (Chromium 141); Node.js 24 brauchte je Kontrollpunkt 1,6 bis 3,4 µs, 98 Byte Datei und 620 Byte Speicher in der Spitze. Etwa 5,4 Millionen Kontrollpunkte überschreiten die Grenze des Browsers von 512 MB je Zeichenkette. Zwischen 3,3 und 5,4 Millionen: nicht gemessen.
 
 | Schaltfläche | Wirkung |
 | --- | --- |

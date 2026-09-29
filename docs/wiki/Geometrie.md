@@ -57,7 +57,9 @@ das lineare Gleichungssystem singulär.
 ### 1.1 Normierung
 
 - Profilnase der Datei P: der Dateipunkt mit dem größten Abstand zur Endleistenmitte (Mittel aus erstem
-  und letztem Punkt). Bei Gleichstand gilt der Punkt mit kleinerem x.
+  und letztem Punkt). Quadrierte Abstände, die relativ höchstens 1e-15 unter dem größten liegen, gelten als
+  gleich; dann gilt der Punkt mit kleinerem x, sodass jede Skalierung derselben Kontur denselben Punkt
+  wählt.
 - Nur Verschiebung und gleichmäßige Skalierung. Das Profil wird nicht gedreht.
 
 ```
@@ -236,6 +238,11 @@ Beispiel: Vorlage **Glider** (Segelflugmodell), 3 Profilschnitte, K = 8: 17 Stat
 ```
 y_(i,k) = y_i + (y_(i+1) − y_i) (1 − cos(π k / K)) / 2          k = 0 … K − 1
 ```
+
+Unterscheidbare Spannweitenanteile: a < b sind unterscheidbar, wenn b − a > max(4 ε · max(|a|, |b|), 2^-1021),
+ε = 2^-52 (`paramsApart` in `src/geom/nurbs.js`). Zwei nicht unterscheidbare Profilschnitte sind ein Fehler;
+eine Zwischenstation, die von der letzten behaltenen Station oder vom Rand nicht unterscheidbar ist, entfällt;
+Leitkurven im Modus Durchgangspunkte wenden dieselbe Regel auf das normierte y ihrer Punkte an.
 
 Flächengitter (`loftGrid` in `src/model/budget.js`): Stationen mal Konturpunkte vor dem Einfügen
 zusätzlicher Stationen, ((Profilschnitte − 1) · K + 1) · (2N + 1) Punkte. **Linear** ohne Leitkurve
