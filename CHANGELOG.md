@@ -289,7 +289,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   ear clipping and took 2.6 s per export.
 - STL and 3MF precision notice: `at … mm` gives the largest coordinate of the damaged triangles
   instead of the whole mesh; when the first damaged triangle still collapses or turns over with its
-  x and z moved next to 0, the notice ends `Sections or stations near y = … mm lie closer together
+  x and z moved next to 0 and the root moved to y = 0, the notice ends `Sections or stations near y = … mm lie closer together
   than the spacing there (… mm); move them apart, or export STEP.` (sections at y = 300 and
   300.00001 mm: moving the wing does not help).
 - Size warning: when the first build (Open, restored autosave, a change of the profile

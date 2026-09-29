@@ -65,16 +65,20 @@ export function damagedTriangles(P, I, round) {
 /**
  * Throw MeshPrecisionError when rounding damages a triangle. `stores` names the format in the
  * message ("STL stores", "3MF readers store"). The remedy depends on the cause: when the damaged
- * triangle still flips with its x and z moved next to 0, its span position alone is too coarse, so
- * sections or stations lie closer together than the spacing and moving the wing does not help.
+ * triangle still flips with its x and z moved next to 0 and the root moved to y = 0, its distance
+ * from the root alone is too coarse, so sections or stations lie closer together than the spacing
+ * and moving the wing does not help.
  */
 export function checkPrecision(P, I, round, stores) {
   const { bad, far, first } = damagedTriangles(P, I, round);
   if (!bad) return;
+  // The root can move to y = 0 (on a mirrored wing both halves move): the smallest |y| of the mesh.
+  let root = Infinity;
+  for (let k = 1; k < P.length; k += 3) root = Math.min(root, Math.abs(P[k]));
   const [a, b, c] = first;
   const x0 = P[a];
   const z0 = P[a + 2];
-  const moved = [a, b, c].flatMap((k) => [P[k] - x0, P[k + 1], P[k + 2] - z0]);
+  const moved = [a, b, c].flatMap((k) => [P[k] - x0, Math.sign(P[k + 1]) * (Math.abs(P[k + 1]) - root), P[k + 2] - z0]);
   const ys = [a, b, c].map((k) => P[k + 1]);
   const remedy = flips(moved, moved.map(round), 0, 3, 6)
     ? `Sections or stations near y = ${Number(Math.abs(ys[0]).toPrecision(10))} mm lie closer together than the spacing there (${float32Spacing(Math.max(...ys.map(Math.abs))).toPrecision(2)} mm); move them apart, or export STEP.`

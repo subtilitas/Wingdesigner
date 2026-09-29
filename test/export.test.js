@@ -3,7 +3,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import { buildWing } from '../src/geom/wing.js';
 import { concatMeshes, edgeCheck, exportMeshes, exportTriangles, meshVolume, mirrorMesh } from '../src/geom/mesh.js';
 import { meshToStl, parseStl } from '../src/export/stl.js';
-import { MeshPrecisionError } from '../src/export/precision.js';
+import { MeshPrecisionError, checkPrecision } from '../src/export/precision.js';
 import { meshesTo3mf, modelXml, xmlEscape } from '../src/export/threemf.js';
 import { stepReal, stepString, wingToStep } from '../src/export/step.js';
 import { MAX_PROJECT_BYTES, formatJson, projectFileText, projectFromJsonText, projectToJson, projectToJsonText, utf8Length } from '../src/model/io.js';
@@ -124,6 +124,10 @@ describe('STL', () => {
     for (const write of [() => meshToStl(mesh), () => meshesTo3mf([{ name: 'w', mesh }])]) {
       expect(write).toThrow(/^(STL stores|3MF readers store) 32-bit coordinates: at 300 mm their spacing is 0\.000031 mm, and \d+ of \d+ triangles collapse or turn over\. Sections or stations near y = 300(\.00001)? mm lie closer together than the spacing there \(0\.000031 mm\); move them apart, or export STEP\.$/);
     }
+    // A half-wing with its root at y = 1,000,000 mm: moving the root to y = 0 separates the corners,
+    // so the notice points to moving the wing.
+    const offset = [0, 1e6, 0, 1, 1e6, 0, 0, 1e6 + 0.01, 0];
+    expect(() => checkPrecision(offset, [0, 1, 2], Math.fround, 'STL stores')).toThrow(/\. Move the wing towards the origin, or export STEP\.$/);
     // At 1000 mm the spacing is 6.1e-5 mm; no corners merge.
     const near = at(1000, 0);
     const tris = parseStl(meshToStl(near));
