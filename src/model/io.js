@@ -56,8 +56,28 @@ export function projectToJson(project, build, meta = {}) {
   return out;
 }
 
+/**
+ * JSON with one-space indentation, and every array of numbers (a point, a knot vector) on one line:
+ * one number per line tripled the size of airfoil and surface data.
+ */
+export function formatJson(value, indent = '') {
+  if (Array.isArray(value)) {
+    if (value.every((x) => x === null || typeof x !== 'object')) return `[${value.map((x) => JSON.stringify(x) ?? 'null').join(', ')}]`;
+    if (!value.length) return '[]';
+    const inner = `${indent} `;
+    return `[\n${value.map((x) => inner + formatJson(x, inner)).join(',\n')}\n${indent}]`;
+  }
+  if (value !== null && typeof value === 'object') {
+    const keys = Object.keys(value).filter((k) => value[k] !== undefined && typeof value[k] !== 'function');
+    if (!keys.length) return '{}';
+    const inner = `${indent} `;
+    return `{\n${keys.map((k) => `${inner}${JSON.stringify(k)}: ${formatJson(value[k], inner)}`).join(',\n')}\n${indent}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
 export function projectToJsonText(project, build, meta) {
-  return JSON.stringify(projectToJson(project, build, meta), null, 1);
+  return formatJson(projectToJson(project, build, meta));
 }
 
 /**

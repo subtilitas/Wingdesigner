@@ -101,6 +101,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   entries before).
 - Planform **Fit** covers the evaluated guide curves and the built outline: a through-point guide
   over unevenly spaced points swung to x = -53,087 mm outside the fitted view.
+- Project JSON writes every array of numbers (a point, a knot vector) on one line: 30 to 32 % smaller
+  files for the 6 presets; a failed Save shows a message instead of stopping silently.
+- STEP string escaping runs in one pass (7,000,000 characters: 385 ms instead of 823 ms).
 - Airfoil check: both ends of the outline lie at the trailing edge (`te-missing`); an outline with
   one surface ending at mid-chord passed and lofted a trailing-edge face across the chord.
 - Loft: fitted-curve crossings, surface-row crossings and crossed trailing-edge slivers are ignored

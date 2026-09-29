@@ -6,7 +6,7 @@ import { meshToStl, parseStl } from '../src/export/stl.js';
 import { MeshPrecisionError } from '../src/export/precision.js';
 import { meshesTo3mf, modelXml, xmlEscape } from '../src/export/threemf.js';
 import { stepReal, stepString, wingToStep } from '../src/export/step.js';
-import { MAX_PROJECT_BYTES, projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
+import { MAX_PROJECT_BYTES, formatJson, projectFromJsonText, projectToJson, projectToJsonText } from '../src/model/io.js';
 import { createProject, validateProject } from '../src/model/project.js';
 import { setGuideEnabled } from '../src/model/edit.js';
 import { sampleProject } from './helpers.js';
@@ -315,6 +315,18 @@ describe('project JSON', () => {
     const r = projectFromJsonText(JSON.stringify(json));
     expect(r.ok).toBe(false);
     expect(r.errors[0]).toMatch(/has 5001 points; the limit is 5000/);
+  });
+
+  it('writes numbers of a point or knot vector on one line and parses to the same data', () => {
+    const project = sampleProject();
+    const json = projectToJson(project, buildWing(project));
+    const text = projectToJsonText(project, buildWing(project), { exportedAt: json.exportedAt });
+    expect(JSON.parse(text)).toEqual(JSON.parse(JSON.stringify(json)));
+    const [x, y] = json.airfoils[0].points[1];
+    expect(text).toContain(`[${x}, ${y}]`);
+    expect(text.length).toBeLessThan(0.75 * JSON.stringify(json, null, 1).length);
+    const odd = { a: [1, null, undefined, Number.NaN, 'x'], b: {}, c: [], d: [[]], e: { f: undefined, g: [1.5e-7, -0] } };
+    expect(JSON.parse(formatJson(odd))).toEqual(JSON.parse(JSON.stringify(odd)));
   });
 
   it('names airfoils without a name after their id on import', () => {

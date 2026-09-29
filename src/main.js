@@ -161,7 +161,14 @@ const header = h(
         type: 'button',
         title: 'Save the project as JSON',
         // Build from the current project: an edit committed by this click's blur is not yet in `build`.
-        onclick: () => download(slugFile(store.project.name, 'json'), projectToJsonText(store.project, safeBuild(store.project), { generatorVersion: VERSION }), 'application/json'),
+        onclick: () => {
+          try {
+            download(slugFile(store.project.name, 'json'), projectToJsonText(store.project, safeBuild(store.project), { generatorVersion: VERSION }), 'application/json');
+          } catch (e) {
+            // String length and memory limits of the browser end here.
+            message(`Save failed: ${e.message}.`, true);
+          }
+        },
       },
       'Save',
     ),

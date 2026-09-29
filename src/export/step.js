@@ -24,15 +24,14 @@ export function stepReal(x) {
 
 /** STEP string literal with ISO 10303-21 escapes. */
 export function stepString(text) {
-  let out = '';
-  for (const ch of String(text ?? '')) {
+  // One replace over the characters that need escaping: linear in the length of the text.
+  const out = String(text ?? '').replace(/'|\\|[^\x20-\x7e]/gu, (ch) => {
+    if (ch === "'") return "''";
+    if (ch === '\\') return '\\\\';
     const code = ch.codePointAt(0);
-    if (ch === "'") out += "''";
-    else if (ch === '\\') out += '\\\\';
-    else if (code >= 0x20 && code <= 0x7e) out += ch;
-    else if (code <= 0xffff) out += `\\X2\\${code.toString(16).toUpperCase().padStart(4, '0')}\\X0\\`;
-    else out += `\\X4\\${code.toString(16).toUpperCase().padStart(8, '0')}\\X0\\`;
-  }
+    if (code <= 0xffff) return `\\X2\\${code.toString(16).toUpperCase().padStart(4, '0')}\\X0\\`;
+    return `\\X4\\${code.toString(16).toUpperCase().padStart(8, '0')}\\X0\\`;
+  });
   return `'${out}'`;
 }
 
