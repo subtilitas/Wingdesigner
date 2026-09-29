@@ -2,7 +2,7 @@
 // A guide is a 2D NURBS curve in planform coordinates [x, y] (x chordwise, y spanwise) that
 // runs from the root to the tip with strictly increasing y.
 //
-// mode 'fit':     the curve interpolates the points (global cubic interpolation).
+// mode 'fit':     the curve interpolates the points (global interpolation, parameters proportional to y).
 // mode 'control': the points are the control polygon of a clamped uniform B-spline.
 
 import { curvePoint, interpolateCurve, solveMonotonic } from './nurbs.js';
@@ -47,7 +47,12 @@ export function guideCurve(guide) {
     const { knots, degree: p } = clampedUniformKnots(pts.length, degree);
     return { degree: p, knots, points: pts };
   }
-  const c = interpolateCurve(pts, degree, { parametrization: 'centripetal' });
+  // Parameters proportional to span position: y(t) is then exactly linear (splines reproduce
+  // linear functions), so the curve never doubles back in y; x(y) is a cubic spline function.
+  const ya = pts[0][1];
+  const yb = pts[pts.length - 1][1];
+  const params = pts.map((p) => (yb > ya ? (p[1] - ya) / (yb - ya) : 0));
+  const c = interpolateCurve(pts, degree, { params });
   return { degree: c.degree, knots: c.knots, points: c.points };
 }
 

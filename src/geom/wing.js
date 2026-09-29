@@ -19,7 +19,16 @@ export const PLANFORM_TOLERANCE = 0.5;
 /** Span samples for the chord check (in addition to stations and guide breakpoints). */
 const CHORD_CHECK_SAMPLES = 256;
 
-/** Smallest trailing-edge gap in mm for an open trailing edge. */
+/** Stations the builder may add where the loft deviates from the intended planform. */
+const MAX_EXTRA_STATIONS = 32;
+
+/** Largest trailing-edge gap as a fraction of the local chord. */
+export const MAX_GAP_FRACTION = 0.05;
+
+/** Negative chord (mm) below which nose line and end line count as crossed. */
+const CROSS_TOLERANCE = 0.01;
+
+/** Smallest trailing-edge gap in mm for an open trailing edge (at most MAX_GAP_FRACTION of the chord). */
 export const MIN_OPEN_GAP = 0.01;
 
 /** Place normalized profile points into 3D. */
@@ -167,12 +176,11 @@ export function buildWing(project) {
   const dense = guideOn.nose || guideOn.end || settings.spanwise === 'smooth';
   const K = dense ? Math.max(LIMITS.panelStations[0], Math.min(settings.panelStations, LIMITS.panelStations[1])) : 1;
 
+  // Intermediate stations cluster towards the panel ends (cosine spacing), where guide curves
+  // and pointed tips change fastest.
   const stationYs = [];
-  const panels = [];
   for (let i = 0; i < sections.length - 1; i++) {
-    const a = stationYs.length;
-    for (let k = 0; k < K; k++) stationYs.push(ys[i] + ((ys[i + 1] - ys[i]) * k) / K);
-    panels.push([a, a + K]);
+    for (let k = 0; k < K; k++) stationYs.push(ys[i] + (ys[i + 1] - ys[i]) * (dense ? (1 - Math.cos((Math.PI * k) / K)) / 2 : k / K));
   }
   stationYs.push(y1);
 
@@ -184,6 +192,9 @@ export function buildWing(project) {
   const T = vals('twist');
   const pivot = settings.twistPivot;
   const te = settings.trailingEdge;
+  const pointed = settings.tip.mode === 'pointed';
+  const yPrev = ys[ys.length - 2];
+  let tipChord = 0;
   const placed = new Map();
   const placement = (y) => {
     const hit = placed.get(y);
@@ -191,18 +202,30 @@ export function buildWing(project) {
     const w = weights(y);
     let xLE = blendScalar(w, X);
     let chord = blendScalar(w, C);
-    if (guideOn.nose && guideOn.end) {
-      xLE = guideXAt(result.guides.nose, y, y0, y1);
-      chord = guideXAt(result.guides.end, y, y0, y1) - xLE;
-    } else if (guideOn.nose) {
-      xLE = guideXAt(result.guides.nose, y, y0, y1);
-    } else if (guideOn.end) {
-      xLE = guideXAt(result.guides.end, y, y0, y1) - chord;
-    }
+    const xTE = guideOn.end ? guideXAt(result.guides.end, y, y0, y1) : null;
+    if (guideOn.nose) xLE = guideXAt(result.guides.nose, y, y0, y1);
+    if (guideOn.nose && guideOn.end) chord = xTE - xLE;
+    // Pointed tip: in the last panel the chord does not fall below the tip chord, so guide
+    // curves that meet at the tip end in a scaled-down profile instead of a zero chord.
+    if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
+    if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
     const out = { w, xLE, chord, z: blendScalar(w, Z), twist: blendScalar(w, T) };
     placed.set(y, out);
     return out;
   };
+  if (pointed) {
+    // The tip profile is scaled to tip.ratio of the chord at the previous section.
+    tipChord = Math.max(settings.tip.ratio * placement(yPrev).chord, LIMITS.minChord);
+    C[C.length - 1] = tipChord;
+    placed.clear();
+    if (guideOn.nose && guideOn.end) {
+      const gap = guideXAt(result.guides.end, y1, y0, y1) - guideXAt(result.guides.nose, y1, y0, y1);
+      if (gap > 10 * tipChord) {
+        warnings.push(`Pointed tip: nose line and end line end ${gap.toFixed(1)} mm apart; move their last points together to close the tip.`);
+      }
+    }
+  }
+  result.tipChord = pointed ? tipChord : null;
 
   // Chord check on a dense span sampling plus every guide breakpoint (control points and knots),
   // so a crossing between two loft stations is reported too.
@@ -228,94 +251,125 @@ export function buildWing(project) {
     }
   }
   if (minChord < LIMITS.minChord) {
-    errors.push(`Chord drops to ${minChord.toFixed(2)} mm at y = ${minChordY.toFixed(1)} mm; nose line and end line must not touch or cross.`);
+    const hint = !pointed && minChordY === y1 && minChord > -CROSS_TOLERANCE ? ' For a tip that ends in a point, set Settings > Wing tip to Pointed.' : '';
+    errors.push(`Chord drops to ${minChord.toFixed(2)} mm at y = ${minChordY.toFixed(1)} mm; nose line and end line must not touch or cross.${hint}`);
     return result;
   }
 
-  for (const y of stationYs) {
-    const { w, xLE, chord, z, twist } = placement(y);
-    const shape = applyTrailingEdge(blendPoints(w, compat), te.mode, te.thickness / chord, N);
-    const place = { xLE, y, z, chord, twist };
-    result.stations.push({ ...place, v: y1 > y0 ? (y - y0) / (y1 - y0) : 0, shape });
-  }
-  if (te.mode === 'thickness') {
-    const maxGap = Math.max(...result.stations.map((s) => te.thickness / s.chord));
-    if (maxGap > 0.05) warnings.push(`Trailing-edge thickness ${te.thickness} mm exceeds 5 % of the smallest chord.`);
-  }
+  const teShapes = compat.map((c) => [c[0]]);
+  const degreeV = dense ? 3 : 1;
 
-  // Trailing-edge topology: closed when every station is closed, otherwise open with a minimum gap.
-  const gapMm = (st) => (st.shape[0][1] - st.shape[st.shape.length - 1][1]) * st.chord;
-  const closedTE = result.stations.every((st) => Math.abs(gapMm(st)) < 1e-6);
-  let widened = 0;
-  for (const st of result.stations) {
-    if (closedTE) st.shape = applyTrailingEdge(st.shape, 'closed', 0, N);
-    else if (gapMm(st) < MIN_OPEN_GAP) {
-      st.shape = setTrailingEdgeGap(st.shape, MIN_OPEN_GAP / st.chord, { leIndex: N });
-      widened++;
+  /** Stations, surface and planform deviation for a sorted list of station span positions. */
+  const fit = (yList) => {
+    const stations = [];
+    // Trailing-edge thickness in mm, limited to MAX_GAP_FRACTION of the local chord.
+    let limited = 0;
+    for (const y of yList) {
+      const { w, xLE, chord, z, twist } = placement(y);
+      let gap = te.thickness / chord;
+      if (te.mode === 'thickness' && gap > MAX_GAP_FRACTION) {
+        gap = MAX_GAP_FRACTION;
+        if (!(pointed && y > yPrev)) limited++;
+      }
+      const shape = applyTrailingEdge(blendPoints(w, compat), te.mode, gap, N);
+      stations.push({ xLE, y, z, chord, twist, v: y1 > y0 ? (y - y0) / (y1 - y0) : 0, shape });
     }
-    st.points = placeSection(st.shape, st, pivot);
+    // Trailing-edge topology: closed when every station is closed, otherwise open with a minimum gap.
+    const gapMm = (st) => (st.shape[0][1] - st.shape[st.shape.length - 1][1]) * st.chord;
+    const closedTE = stations.every((st) => Math.abs(gapMm(st)) < 1e-6);
+    let widened = 0;
+    for (const st of stations) {
+      if (closedTE) st.shape = applyTrailingEdge(st.shape, 'closed', 0, N);
+      else if (gapMm(st) < Math.min(MIN_OPEN_GAP, MAX_GAP_FRACTION * st.chord)) {
+        st.shape = setTrailingEdgeGap(st.shape, Math.min(MIN_OPEN_GAP / st.chord, MAX_GAP_FRACTION), { leIndex: N });
+        widened++;
+      }
+      st.points = placeSection(st.shape, st, pivot);
+    }
+
+    // u parameters: average of per-station parametrizations (A9.4, eq. 9.10).
+    const rows = stations.map((st) => st.points);
+    const M = rows[0].length;
+    const paramsU = new Array(M).fill(0);
+    for (const row of rows) {
+      const t = parametrize(row, settings.parametrization);
+      for (let j = 0; j < M; j++) paramsU[j] += t[j] / rows.length;
+    }
+    paramsU[0] = 0;
+    paramsU[M - 1] = 1;
+    const degU = 3;
+    const knotsU = averagingKnots(paramsU, degU);
+    const luU = luFactor(collocationMatrix(paramsU, degU, knotsU));
+    const rowCtrl = rows.map((row) => {
+      const out = row.map(() => [0, 0, 0]);
+      for (let c = 0; c < 3; c++) {
+        const x = luSolve(
+          luU,
+          row.map((q) => q[c]),
+        );
+        for (let j = 0; j < M; j++) out[j][c] = x[j];
+      }
+      return out;
+    });
+
+    const paramsV = stations.map((st) => st.v);
+    const panelIdx = [];
+    for (let i = 0; i < ys.length - 1; i++) panelIdx.push([yList.indexOf(ys[i]), yList.indexOf(ys[i + 1])]);
+    const scheme =
+      settings.spanwise === 'smooth'
+        ? { kind: 'global', params: paramsV, degree: degreeV }
+        : { kind: 'panels', params: paramsV, panels: panelIdx, degree: degreeV };
+    const along = interpolateAlongV(rowCtrl, scheme);
+    // Root and tip boundaries lie exactly in their planes y = const (removes solver round-off).
+    const ctrl = along.columns;
+    const last = ctrl[0].length - 1;
+    for (const col of ctrl) {
+      col[0][1] = y0;
+      col[last][1] = y1;
+    }
+    const surface = { degreeU: degU, degreeV: along.degree, knotsU, knotsV: along.knots, points: ctrl };
+
+    // Planform deviation: the loft passes through the stations only. Compare its leading and
+    // trailing edge with the intended placement between stations.
+    const devs = [];
+    for (const y of checkYs) {
+      if (!(y >= y0 && y <= y1) || !(y1 > y0)) continue;
+      const pl = placement(y);
+      const [le, teU] = placeSection([[0, 0], blendPoints(pl.w, teShapes)[0]], { ...pl, y }, pivot);
+      const v = (y - y0) / (y1 - y0);
+      const d = Math.max(Math.abs(surfacePoint(surface, paramsU[N], v)[0] - le[0]), Math.abs(surfacePoint(surface, 0, v)[0] - teU[0]));
+      devs.push([y, d]);
+    }
+    devs.sort((a, b) => a[0] - b[0]);
+    return { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs };
+  };
+
+  // Adaptive stations: insert stations where the loft deviates more than PLANFORM_TOLERANCE from
+  // the intended edges (fast planform changes such as pointed elliptic tips), up to MAX_EXTRA_STATIONS.
+  let yList = stationYs.slice();
+  let fitted = fit(yList);
+  let extra = 0;
+  for (let round = 0; round < 6 && extra < MAX_EXTRA_STATIONS; round++) {
+    const peaks = fitted.devs.filter(([, d], i, arr) => d > PLANFORM_TOLERANCE && d >= (arr[i - 1]?.[1] ?? 0) && d >= (arr[i + 1]?.[1] ?? 0));
+    const fresh = peaks.map(([y]) => y).filter((y) => !yList.includes(y)).slice(0, MAX_EXTRA_STATIONS - extra);
+    if (!fresh.length) break;
+    yList = [...yList, ...fresh].sort((a, b) => a - b);
+    extra += fresh.length;
+    fitted = fit(yList);
+  }
+  const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs } = fitted;
+  result.stations = stations;
+  result.surface = surface;
+  result.extraStations = extra;
+  if (limited) {
+    warnings.push(`Trailing-edge thickness ${te.thickness} mm exceeds ${MAX_GAP_FRACTION * 100} % of the chord at ${limited} station(s); it is limited to ${MAX_GAP_FRACTION * 100} % there.`);
   }
   if (widened) {
     warnings.push(`The trailing edge is closed on some stations and open on others; ${widened} station(s) were opened to ${MIN_OPEN_GAP} mm.`);
   }
-
-  // u parameters: average of per-station parametrizations (A9.4, eq. 9.10).
-  const rows = result.stations.map((s) => s.points);
-  const M = rows[0].length;
-  const paramsU = new Array(M).fill(0);
-  for (const row of rows) {
-    const t = parametrize(row, settings.parametrization);
-    for (let j = 0; j < M; j++) paramsU[j] += t[j] / rows.length;
-  }
-  paramsU[0] = 0;
-  paramsU[M - 1] = 1;
-  const degU = 3;
-  const knotsU = averagingKnots(paramsU, degU);
-  const luU = luFactor(collocationMatrix(paramsU, degU, knotsU));
-  const rowCtrl = rows.map((row) => {
-    const out = row.map(() => [0, 0, 0]);
-    for (let c = 0; c < 3; c++) {
-      const x = luSolve(
-        luU,
-        row.map((p) => p[c]),
-      );
-      for (let j = 0; j < M; j++) out[j][c] = x[j];
-    }
-    return out;
-  });
-
-  const paramsV = result.stations.map((s) => s.v);
-  const scheme =
-    settings.spanwise === 'smooth'
-      ? { kind: 'global', params: paramsV, degree: 3 }
-      : { kind: 'panels', params: paramsV, panels, degree: Math.min(3, K) };
-  const along = interpolateAlongV(rowCtrl, scheme);
-  // Root and tip boundaries lie exactly in their planes y = const (removes solver round-off).
-  const ctrl = along.columns;
-  const last = ctrl[0].length - 1;
-  for (const col of ctrl) {
-    col[0][1] = y0;
-    col[last][1] = y1;
-  }
-  result.surface = {
-    degreeU: degU,
-    degreeV: along.degree,
-    knotsU,
-    knotsV: along.knots,
-    points: ctrl,
-  };
-  // Planform deviation: the loft passes through the stations only. Compare its leading and
-  // trailing edge with the intended placement between stations (guide detail finer than the
-  // station spacing shows up here).
-  const teShapes = compat.map((c) => [c[0]]);
   let dev = 0;
   let devY = y0;
-  for (const y of checkYs) {
-    if (!(y >= y0 && y <= y1) || !(y1 > y0)) continue;
-    const pl = placement(y);
-    const [le, teU] = placeSection([[0, 0], blendPoints(pl.w, teShapes)[0]], { ...pl, y }, pivot);
-    const v = (y - y0) / (y1 - y0);
-    const d = Math.max(Math.abs(surfacePoint(result.surface, paramsU[N], v)[0] - le[0]), Math.abs(surfacePoint(result.surface, 0, v)[0] - teU[0]));
+  for (const [y, d] of devs) {
     if (d > dev) {
       dev = d;
       devY = y;
@@ -324,8 +378,8 @@ export function buildWing(project) {
   result.planformDeviation = dev;
   if (dev > PLANFORM_TOLERANCE) {
     warnings.push(
-      `The loft deviates up to ${dev.toFixed(2)} mm from the intended leading or trailing edge at y = ${devY.toFixed(1)} mm; ` +
-        `guide-curve detail is finer than the spanwise stations (${K} per panel).`,
+      `The loft deviates up to ${dev.toFixed(2)} mm from the intended leading or trailing edge at y = ${devY.toFixed(1)} mm ` +
+        `after ${extra} added station(s); raise the spanwise stations per panel.`,
     );
   }
   result.paramsU = paramsU;

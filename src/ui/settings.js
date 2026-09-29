@@ -65,6 +65,38 @@ export class SettingsPanel {
             'Trailing edge mode',
           ),
         ),
+        h(
+          'label',
+          { class: 'field' },
+          'Wing tip',
+          select(
+            s.tip.mode,
+            [
+              ['flat', 'Flat (cut at the tip section)'],
+              ['pointed', 'Pointed (tip profile scaled down)'],
+            ],
+            (v) => set((q) => (q.tip = { ...q.tip, mode: v })),
+            'Wing tip',
+          ),
+        ),
+        s.tip.mode === 'pointed'
+          ? h(
+              'label',
+              { class: 'field' },
+              `Tip profile scale 1 : N of the previous section chord (N = ${Math.round(1 / LIMITS.tipRatio[1])} to ${Math.round(1 / LIMITS.tipRatio[0])})`,
+              numberInput({
+                value: Math.round(1 / s.tip.ratio),
+                step: 50,
+                min: Math.round(1 / LIMITS.tipRatio[1]),
+                max: Math.round(1 / LIMITS.tipRatio[0]),
+                title: 'Tip profile scale denominator',
+                onCommit: (v) => {
+                  const nDen = Math.min(Math.max(Math.round(v), 1 / LIMITS.tipRatio[1]), 1 / LIMITS.tipRatio[0]);
+                  set((q) => (q.tip = { ...q.tip, ratio: 1 / nDen }));
+                },
+              }),
+            )
+          : null,
         s.trailingEdge.mode === 'thickness'
           ? h(
               'label',

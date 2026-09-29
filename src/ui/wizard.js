@@ -99,9 +99,21 @@ export function openWizard({ firstRun = false } = {}) {
             },
           }),
         );
+      const tip = h(
+        'select',
+        {
+          onchange: (e) => {
+            params.tip = e.target.value;
+            refresh();
+          },
+        },
+        h('option', { value: 'flat', selected: params.tip !== 'pointed' }, 'Flat'),
+        h('option', { value: 'pointed', selected: params.tip === 'pointed' }, 'Pointed (1/200 scale)'),
+      );
       clear(fieldsBox).append(
         ...rows,
         h('label', { class: 'field' }, 'Planform', planform),
+        h('label', { class: 'field' }, 'Tip', tip),
         airfoil('rootAirfoil', 'Root airfoil (NACA)'),
         airfoil('tipAirfoil', 'Tip airfoil (NACA)'),
       );

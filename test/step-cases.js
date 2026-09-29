@@ -19,5 +19,13 @@ export function stepCases() {
   reflex.airfoils = [naca('23112', 'root'), naca('0008', 'tip', { closedTE: true })];
   reflex.settings.trailingEdge = { mode: 'closed', thickness: 0 };
   cases.push({ name: 'reflex-closed', project: reflex, mirror: true });
+  const pointed = sampleProject({ settings: { tip: { mode: 'pointed', ratio: 0.002 }, trailingEdge: { mode: 'thickness', thickness: 0.4 } } });
+  cases.push({ name: 'pointed-tip', project: pointed, mirror: true });
+  const pointedGuided = sampleProject({ settings: { tip: { mode: 'pointed', ratio: 0.005 }, trailingEdge: { mode: 'closed' } } });
+  pointedGuided.guides.nose.enabled = true;
+  pointedGuided.guides.end.enabled = true;
+  pointedGuided.guides.nose.points = [[0, 0], [10, 300], [60, 560], [115, 600]];
+  pointedGuided.guides.end.points = [[200, 0], [195, 300], [160, 560], [115, 600]];
+  cases.push({ name: 'pointed-elliptic-closed', project: pointedGuided, mirror: true });
   return cases;
 }

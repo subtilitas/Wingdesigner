@@ -204,6 +204,8 @@ describe('project JSON', () => {
       (p) => (p.guides.nose.points = [[0, 0]]),
       (p) => (p.guides.end.points = [['a', 0], [1, 1]]),
       (p) => (p.guides.end.degree = 9),
+      (p) => (p.settings.tip = { mode: 'round', ratio: 0.005 }),
+      (p) => (p.settings.tip = { mode: 'pointed', ratio: 0.5 }),
     ];
     for (const mutate of cases) {
       const p = base();

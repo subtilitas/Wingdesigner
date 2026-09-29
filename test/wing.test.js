@@ -192,10 +192,12 @@ describe('wing surface', () => {
     back.guides.nose.enabled = true;
     back.guides.nose.points = [[0, 0], [0, 300], [0, 200]];
     expect(buildWing(back).errors[0]).toMatch(/Nose line/);
+    // Through-point guides are parametrized by span, so a zig-zag in x cannot double back in y.
     const wiggle = sampleProject();
     wiggle.guides.end.enabled = true;
-    wiggle.guides.end.points = [[0, 0], [500, 1], [0, 2], [0, 600]];
-    expect(buildWing(wiggle).errors[0]).toMatch(/End line/);
+    wiggle.guides.end.points = [[200, 0], [500, 1], [200, 2], [170, 600]];
+    const w = buildWing(wiggle);
+    expect(w.errors.some((e) => /doubles back/.test(e))).toBe(false);
   });
 
   it('handles trailing-edge modes', () => {
@@ -349,5 +351,69 @@ describe('guide crossing between stations', () => {
     p.guides.end.degree = 1;
     p.guides.end.points = [[200, 0], [195, 300], [180, 330], [170, 600]];
     expect(buildWing(p).errors).toEqual([]);
+  });
+});
+
+describe('pointed wing tip', () => {
+  const pointedProject = (settings = {}) => {
+    const p = sampleProject({ settings: { tip: { mode: 'pointed', ratio: 0.002 }, ...settings } });
+    return p;
+  };
+
+  it('scales the tip profile to the ratio of the previous section chord', () => {
+    const b = buildWing(pointedProject());
+    expect(b.errors).toEqual([]);
+    const tip = b.stations[b.stations.length - 1];
+    expect(tip.chord).toBeCloseTo(0.002 * 170, 12);
+    expect(b.tipChord).toBeCloseTo(0.34, 12);
+    // Leading edge stays at the tip section position; the tip is a scaled copy of the profile.
+    expect(tip.xLE).toBeCloseTo(60, 9);
+    const half = halfWingMesh(tessellateHalf(b));
+    expect(edgeCheck(half).closed).toBe(true);
+    expect(meshVolume(half)).toBeGreaterThan(0);
+    // The trailing-edge gap scales with the chord near the tip (at most 5 % of the chord).
+    for (const st of b.stations) expect(st.shape[0][1] - st.shape[st.shape.length - 1][1]).toBeLessThanOrEqual(0.05 + 1e-12);
+  });
+
+  it('accepts guide curves that meet at the tip', () => {
+    const p = pointedProject();
+    p.guides.nose.enabled = true;
+    p.guides.end.enabled = true;
+    p.guides.nose.points = [[0, 0], [20, 300], [120, 600]];
+    p.guides.end.points = [[200, 0], [190, 300], [120, 600]];
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    const tip = b.stations[b.stations.length - 1];
+    expect(tip.chord).toBeCloseTo(b.tipChord, 12);
+    expect(tip.xLE).toBeCloseTo(120, 6);
+    expect(edgeCheck(halfWingMesh(tessellateHalf(b))).closed).toBe(true);
+    // The same guides without pointed mode are rejected with a hint.
+    p.settings.tip.mode = 'flat';
+    expect(buildWing(p).errors[0]).toMatch(/Pointed/);
+  });
+
+  it('warns when guides do not meet at a pointed tip', () => {
+    const p = pointedProject();
+    p.guides.nose.enabled = true;
+    p.guides.end.enabled = true;
+    expect(buildWing(p).warnings.some((w) => /end [\d.]+ mm apart/.test(w))).toBe(true);
+  });
+
+  it('keeps crossings an error in pointed mode', () => {
+    const p = pointedProject();
+    p.guides.nose.enabled = true;
+    p.guides.end.enabled = true;
+    p.guides.nose.points = [[0, 0], [20, 300], [130, 600]];
+    p.guides.end.points = [[200, 0], [190, 300], [120, 600]];
+    expect(buildWing(p).errors[0]).toMatch(/Chord drops/);
+  });
+
+  it('works with only the end line and in smooth mode', () => {
+    const p = pointedProject({ spanwise: 'smooth' });
+    p.guides.end.enabled = true;
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    const tip = b.stations[b.stations.length - 1];
+    expect(tip.xLE + tip.chord).toBeCloseTo(170, 6);
   });
 });

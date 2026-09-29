@@ -35,7 +35,7 @@ export class SectionsPanel {
       const commit = (key) => (v) =>
         this.store.update((q) => {
           const t = q.sections.find((z) => z.id === s.id);
-          if (key === 'chord') v = Math.max(v, 0.1);
+          if (key === 'chord') v = Math.max(v, 0.01);
           if (key === 'y') v = Math.max(v, 0);
           t[key] = v;
           if (key === 'y') {
@@ -67,11 +67,16 @@ export class SectionsPanel {
         ),
         FIELDS.map((f) => {
           const eff = overridden(f.key) && st ? (f.key === 'x' ? st.xLE : st.chord) : null;
+          const tipChord = f.key === 'chord' && i === sections.length - 1 && build?.tipChord ? build.tipChord : null;
           return h(
             'td',
             { dataset: { label: `${f.label} (${f.unit})` } },
             numberInput({ value: s[f.key], step: f.step, min: f.min, title: f.title, onCommit: commit(f.key) }),
-            eff !== null && Math.abs(eff - s[f.key]) > 0.05 ? h('div', { class: 'muted small', title: 'Value set by the guide curve' }, `guide: ${eff.toFixed(1)}`) : null,
+            tipChord !== null
+              ? h('div', { class: 'muted small', title: 'Pointed tip: chord scaled from the previous section' }, `tip: ${tipChord.toFixed(2)}`)
+              : eff !== null && Math.abs(eff - s[f.key]) > 0.05
+                ? h('div', { class: 'muted small', title: 'Value set by the guide curve' }, `guide: ${eff.toFixed(1)}`)
+                : null,
           );
         }),
         h(

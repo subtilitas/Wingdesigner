@@ -9,6 +9,8 @@
 //   washout    twist at the tip (negative = leading edge down)
 //   sections   number of sections (2 .. 8), evenly spaced along the half span
 //   planform   'straight' (linear taper) or 'elliptic' (nose and end guide curves)
+//   tip        'flat' (cut at the tip section) or 'pointed' (tip profile scaled to 1/200 of the
+//              previous section; an elliptic planform then converges to the 25 % line at the tip)
 //   rootAirfoil, tipAirfoil  NACA designations
 
 import { parseNacaCode } from '../airfoil/naca.js';
@@ -19,32 +21,32 @@ export const PRESETS = {
   trainer: {
     label: 'Trainer',
     description: 'Rectangular high-lift wing with dihedral for stable, slow flight.',
-    params: { span: 1400, rootChord: 250, taper: 1, sweep: 0, dihedral: 3, washout: 0, sections: 2, planform: 'straight', rootAirfoil: '2412', tipAirfoil: '2412' },
+    params: { span: 1400, rootChord: 250, taper: 1, sweep: 0, dihedral: 3, washout: 0, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: '2412', tipAirfoil: '2412' },
   },
   sport: {
     label: 'Sport',
     description: 'Tapered wing with little dihedral and slight washout.',
-    params: { span: 1200, rootChord: 240, taper: 0.6, sweep: 0, dihedral: 1.5, washout: -1, sections: 2, planform: 'straight', rootAirfoil: '2412', tipAirfoil: '2410' },
+    params: { span: 1200, rootChord: 240, taper: 0.6, sweep: 0, dihedral: 1.5, washout: -1, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: '2412', tipAirfoil: '2410' },
   },
   glider: {
     label: 'Glider',
     description: 'High aspect ratio with elliptic planform, dihedral and washout.',
-    params: { span: 2000, rootChord: 200, taper: 0.45, sweep: 0, dihedral: 4, washout: -1.5, sections: 3, planform: 'elliptic', rootAirfoil: '2410', tipAirfoil: '2408' },
+    params: { span: 2000, rootChord: 200, taper: 0.45, sweep: 0, dihedral: 4, washout: -1.5, sections: 3, tip: 'flat', planform: 'elliptic', rootAirfoil: '2410', tipAirfoil: '2408' },
   },
   flyingWing: {
     label: 'Swept flying wing',
     description: 'Swept tailless wing with reflexed root section and washout for pitch stability.',
-    params: { span: 1200, rootChord: 280, taper: 0.45, sweep: 25, dihedral: 0, washout: -4, sections: 3, planform: 'straight', rootAirfoil: '23112', tipAirfoil: '0010' },
+    params: { span: 1200, rootChord: 280, taper: 0.45, sweep: 25, dihedral: 0, washout: -4, sections: 3, tip: 'flat', planform: 'straight', rootAirfoil: '23112', tipAirfoil: '0010' },
   },
   plank: {
     label: 'Plank',
     description: 'Unswept tailless wing with reflexed sections.',
-    params: { span: 1000, rootChord: 220, taper: 0.8, sweep: 0, dihedral: 1, washout: 0, sections: 2, planform: 'straight', rootAirfoil: '23112', tipAirfoil: '23112' },
+    params: { span: 1000, rootChord: 220, taper: 0.8, sweep: 0, dihedral: 1, washout: 0, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: '23112', tipAirfoil: '23112' },
   },
   tail: {
     label: 'Tail surface',
     description: 'Symmetric horizontal stabilizer.',
-    params: { span: 500, rootChord: 130, taper: 0.7, sweep: 5, dihedral: 0, washout: 0, sections: 2, planform: 'straight', rootAirfoil: '0009', tipAirfoil: '0009' },
+    params: { span: 500, rootChord: 130, taper: 0.7, sweep: 5, dihedral: 0, washout: 0, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: '0009', tipAirfoil: '0009' },
   },
 };
 
@@ -67,15 +69,17 @@ export function wizardProblems(params) {
   }
   if (!Number.isInteger(params.sections)) out.push('sections must be an integer.');
   if (!['straight', 'elliptic'].includes(params.planform)) out.push('planform must be "straight" or "elliptic".');
-  if (params.planform === 'elliptic' && params.taper >= 1) out.push('An elliptic planform needs taper < 1.');
+  if (!['flat', 'pointed', undefined].includes(params.tip)) out.push('tip must be "flat" or "pointed".');
+  if (params.planform === 'elliptic' && params.tip !== 'pointed' && params.taper >= 1) out.push('An elliptic planform needs taper < 1.');
   for (const k of ['rootAirfoil', 'tipAirfoil']) if (!parseNacaCode(params[k] ?? '')) out.push(`${k} must be a NACA 4- or 5-digit designation.`);
   return out;
 }
 
 /** Chord at span fraction eta (0 root, 1 tip). */
 export function chordAt(params, eta) {
-  const { rootChord: c0, taper } = params;
-  if (params.planform === 'elliptic') return c0 * Math.sqrt(1 - (1 - taper * taper) * eta * eta);
+  const { rootChord: c0 } = params;
+  const taper = params.planform === 'elliptic' && params.tip === 'pointed' ? 0 : params.taper;
+  if (params.planform === 'elliptic') return c0 * Math.sqrt(Math.max(0, 1 - (1 - taper * taper) * eta * eta));
   return c0 * (1 + (taper - 1) * eta);
 }
 
@@ -105,7 +109,8 @@ export function wizardProject(params, name) {
   for (let i = 0; i < n; i++) {
     const eta = i / (n - 1);
     const y = eta * b;
-    const chord = chordAt(params, eta);
+    // A pointed tip section carries the scaled chord (1/200 of the previous section).
+    const chord = i === n - 1 && params.tip === 'pointed' ? chordAt(params, (n - 2) / (n - 1)) * 0.005 : chordAt(params, eta);
     sections.push({
       id: `s${i + 1}`,
       airfoil: i === n - 1 ? tipId : rootId,
@@ -118,7 +123,7 @@ export function wizardProject(params, name) {
   }
   const project = createProject({ name: name || `${params.span} mm wing`, airfoils, sections });
   if (params.planform === 'elliptic') {
-    const etas = [0, 0.3, 0.55, 0.75, 0.9, 1];
+    const etas = params.tip === 'pointed' ? [0, 0.3, 0.55, 0.75, 0.88, 0.96, 1] : [0, 0.3, 0.55, 0.75, 0.9, 1];
     const pts = (edge) =>
       etas.map((eta) => {
         const y = eta * b;
@@ -132,5 +137,6 @@ export function wizardProject(params, name) {
     };
   }
   project.settings.trailingEdge = { mode: 'thickness', thickness: Math.max(0.3, r(params.rootChord * 0.002)) };
+  project.settings.tip = { mode: params.tip === 'pointed' ? 'pointed' : 'flat', ratio: 0.005 };
   return project;
 }

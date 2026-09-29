@@ -141,3 +141,28 @@ describe('edit operations', () => {
     expect(buildWing(p).errors).toEqual([]);
   });
 });
+
+describe('wizard tips', () => {
+  it('builds an elliptic wing that ends in a point', () => {
+    const params = { ...PRESETS.glider.params, tip: 'pointed' };
+    expect(wizardProblems(params)).toEqual([]);
+    const p = wizardProject(params);
+    expect(p.settings.tip).toEqual({ mode: 'pointed', ratio: 0.005 });
+    expect(validateProject(p).ok).toBe(true);
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.stations[b.stations.length - 1].chord).toBeLessThan(1);
+    for (const { mesh } of exportMeshes(b, 'merged')) expect(edgeCheck(mesh).closed).toBe(true);
+    // Elliptic chord with a pointed tip reaches zero at the tip before scaling.
+    expect(chordAt(params, 1)).toBe(0);
+    expect(wizardProblems({ ...params, taper: 1 })).toEqual([]);
+    expect(wizardProblems({ ...params, tip: 'round' })).toContain('tip must be "flat" or "pointed".');
+  });
+
+  it('builds a straight wing with a pointed last panel', () => {
+    const p = wizardProject({ ...PRESETS.sport.params, sections: 3, tip: 'pointed' });
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.tipChord).toBeCloseTo(0.005 * p.sections[1].chord, 9);
+  });
+});

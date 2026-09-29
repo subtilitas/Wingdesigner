@@ -20,5 +20,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   project JSON export.
 - Browser UI: 3D view with touch controls, planform editor, sections table, airfoil library and
   upload, settings, checks with planform statistics, new-design wizard, undo and redo, autosave.
+- Wing tip modes: flat, or pointed with the tip profile scaled to 1/100 to 1/1000 of the previous
+  section chord; wizard tip option.
+- Adaptive spanwise stations where the loft deviates more than 0.5 mm from the intended planform.
 - CI with unit tests, README coverage check, OpenCascade STEP validation, browser smoke test and
   GitHub Pages deployment; wiki publishing; tagged releases.

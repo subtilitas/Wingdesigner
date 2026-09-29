@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   spanwise: 'linear',
   twistPivot: 0.25,
   trailingEdge: Object.freeze({ mode: 'asis', thickness: 0.4 }),
+  tip: Object.freeze({ mode: 'flat', ratio: 0.005 }),
   chordSamples: 60,
   panelStations: 8,
   parametrization: 'centripetal',
@@ -21,7 +22,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
 });
 
 export const LIMITS = Object.freeze({
-  minChord: 0.1,
+  minChord: 0.01,
+  tipRatio: [0.001, 0.01],
   chordSamples: [16, 200],
   panelStations: [3, 40],
 });
@@ -36,13 +38,14 @@ export function cloneProject(p) {
   return structuredClone(p);
 }
 
-/** Merge settings with defaults (deep for trailingEdge). */
+/** Merge settings with defaults (deep for trailingEdge and tip). */
 export function resolveSettings(settings) {
   const s = isObject(settings) ? settings : {};
   return {
     ...DEFAULT_SETTINGS,
     ...s,
     trailingEdge: { ...DEFAULT_SETTINGS.trailingEdge, ...(isObject(s.trailingEdge) ? s.trailingEdge : {}) },
+    tip: { ...DEFAULT_SETTINGS.tip, ...(isObject(s.tip) ? s.tip : {}) },
   };
 }
 
@@ -122,6 +125,10 @@ export function validateProject(p) {
   if (!['linear', 'smooth'].includes(st.spanwise)) errors.push('settings.spanwise must be "linear" or "smooth".');
   if (!['asis', 'closed', 'thickness'].includes(st.trailingEdge.mode)) errors.push('settings.trailingEdge.mode must be "asis", "closed" or "thickness".');
   if (!isNum(st.trailingEdge.thickness) || st.trailingEdge.thickness < 0) errors.push('settings.trailingEdge.thickness must be >= 0.');
+  if (!['flat', 'pointed'].includes(st.tip.mode)) errors.push('settings.tip.mode must be "flat" or "pointed".');
+  if (!isNum(st.tip.ratio) || st.tip.ratio < LIMITS.tipRatio[0] || st.tip.ratio > LIMITS.tipRatio[1]) {
+    errors.push(`settings.tip.ratio must be within ${LIMITS.tipRatio.join('..')} (1/1000 to 1/100).`);
+  }
   if (!isNum(st.twistPivot) || st.twistPivot < 0 || st.twistPivot > 1) errors.push('settings.twistPivot must be within 0..1.');
   if (!Number.isInteger(st.chordSamples) || st.chordSamples < LIMITS.chordSamples[0] || st.chordSamples > LIMITS.chordSamples[1]) {
     errors.push(`settings.chordSamples must be an integer within ${LIMITS.chordSamples.join('..')}.`);

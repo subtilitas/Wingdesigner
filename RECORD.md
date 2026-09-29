@@ -14,7 +14,7 @@ Last updated: 2026-09-29
 | Airfoil import (`src/airfoil/`) | Selig, Lednicer, x/upper/lower tables, XML, HTML tables, decimal commas, Windows-1252; sanity checks; NACA 4/5-digit | `test/airfoil.test.js`; 191 real files from aerodesign.de, mh-aerotools.de and UIUC parsed locally, 190 accepted, 1 (UIUC `mh150.dat`) rejected for a real upper/lower crossing. The files are not committed (license). |
 | Wing loft (`src/geom/wing.js`) | Sections, linear or smooth spanwise blending, nose and end guide curves, trailing-edge modes | `test/wing.test.js` |
 | Meshes (`src/geom/mesh.js`) | Closed outward meshes, mirror, merged full wing | Edge-manifold and volume tests |
-| STEP export (`src/export/step.js`) | AP214 B-rep solids with exact B-spline faces | `scripts/validate_step.py` with OpenCascade (cadquery-ocp 8.0.1): 5 cases, all valid and closed, volume within 8e-5 of the mesh |
+| STEP export (`src/export/step.js`) | AP214 B-rep solids with exact B-spline faces | `scripts/validate_step.py` with OpenCascade (cadquery-ocp 8.0.1): 7 cases including 2 pointed tips, all valid and closed, volume within 8e-5 of the mesh |
 | STL, 3MF, project JSON | Implemented | `test/export.test.js` |
 | UI (`src/ui/`, `src/main.js`) | 3D viewer, planform editor, sections, airfoils, settings, checks, wizard, export | Playwright smoke test on desktop (1280 x 720) and Pixel 7 viewports, no console errors |
 | CI | `ci.yml` (lint, unit tests, coverage check, STEP validation, e2e, Pages deploy), `docs.yml` (wiki), `release.yml` (tags) | Not yet run on GitHub at the time of writing |
@@ -31,6 +31,10 @@ Last updated: 2026-09-29
 | Inclined airfoils are not derotated | Some tables (e.g. Göttingen 795) use a baseline instead of the leading-edge-to-trailing-edge chord; twist refers to the file's x axis. A warning reports the inclination. |
 | Spanwise C0 knots at sections in linear mode | Straight panels with kinks at sections stay exact; smooth mode uses one C2 spline. |
 | Guide curves stretched to root-to-tip span | Guides follow span edits without manual correction. |
+| Pointed tip: tip profile scaled to 1/100 to 1/1000 (default 1/200) of the previous section chord | A zero chord has no profile and no valid B-rep face; a scaled profile keeps the tip closed, profile-shaped and exportable. Converging guide curves end in this profile. |
+| Trailing-edge thickness limited to 5 % of the local chord | Keeps small tip profiles free of self-intersection with a fixed thickness in mm. |
+| Through-point guide curves parametrized by span position | y(t) is exactly linear, so a guide cannot double back in span; x(y) is a spline function. |
+| Adaptive spanwise stations (up to 32 extra) | Stations are added where the loft deviates more than 0.5 mm from the intended edges, e.g. at pointed elliptic tips (pointed glider preset: 6 extra, 0.14 mm). |
 | Chord and planform checks on 257 span samples plus every guide breakpoint | The loft passes through the stations only; a guide crossing or guide detail between stations is reported (error below 0.1 mm chord, warning above 0.5 mm edge deviation). |
 | aerodesign.de and mh-aerotools.de coordinates not bundled | Their terms grant personal use and restrict redistribution (quotes in the wiki page Airfoil-Sources). The app links to them and fills in attribution on upload. |
 | MIT license for the code | Chosen by the owner. Airfoil data keeps its own terms. |
