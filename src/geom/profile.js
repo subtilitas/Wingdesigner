@@ -277,9 +277,11 @@ export function curveReversal(curve, tLE, { tolerance = 0, samples } = {}) {
   return worst;
 }
 
-/** Error message for a fitted airfoil curve that crosses itself or runs back in x, or null. */
-export function profileProblem({ curve, tLE }) {
-  const samples = sampleCurve(curve);
+/**
+ * Error message for a fitted airfoil curve that crosses itself or runs back in x, or null.
+ * `samples` (sampleCurve of the curve) can be shared with a later crossing test.
+ */
+export function profileProblem({ curve, tLE }, samples = sampleCurve(curve)) {
   const cross = curveCrossing(curve, { tolerance: CROSSING_TOLERANCE, samples });
   if (cross) {
     return (

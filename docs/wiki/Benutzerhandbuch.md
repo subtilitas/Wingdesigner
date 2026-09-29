@@ -54,12 +54,12 @@ Auf Touchscreens (grober Zeiger) sind Schaltflächen und Eingabefelder mindesten
 
 - Nach jeder Änderung speichert der Browser das Projekt in `localStorage` unter dem Schlüssel `wingdesigner.project.v1`. Der nächste Aufruf stellt es wieder her.
 - Gespeichert werden nur Projekte, die die Prüfung von **Open** bestehen. Sonst bleibt das letzte gültige Projekt gespeichert.
-- Ein gespeichertes Projekt, das sich nicht laden lässt, bleibt unter `wingdesigner.project.v1.rejected` erhalten. Eine Fehlermeldung erscheint, und der Assistent öffnet sich wie beim ersten Aufruf. Ist für diese Kopie kein Platz, bleibt das Projekt unter `wingdesigner.project.v1`, und die automatische Speicherung bleibt aus.
+- Ein gespeichertes Projekt, das sich nicht laden lässt, bleibt unter `wingdesigner.project.v1.rejected` erhalten. Eine Fehlermeldung erscheint, und der Assistent öffnet sich wie beim ersten Aufruf. Ist für diese Kopie kein Platz, bleibt das Projekt unter `wingdesigner.project.v1`, und die automatische Speicherung bleibt für die Sitzung aus; die Statusleiste zeigt von Anfang an `Autosave off: use Save`.
 - Die aktive Registerkarte steht unter `wingdesigner.tab`.
 - Ohne gespeichertes Projekt (erster Aufruf) öffnet sich der Assistent. Solange dieser Assistent offen ist, wird nichts gespeichert; ein Neuladen zeigt den Assistenten erneut.
 - Bei gesperrtem Speicher (privates Fenster) existiert das Projekt nur im geöffneten Browser-Tab. **Save** sichert es als Datei.
 - Weist der Browser das Projekt ab (Browser behalten etwa 5 000 000 Zeichen je Website), erscheint einmal die rote Meldung `Autosave is off: browser storage refused the project (… characters; browsers keep about 5,000,000 per site). Use Save to keep it.` Die Statusleiste zeigt `Autosave off: use Save`, bis eine automatische Speicherung wieder gelingt; dann erscheint die Meldung `Autosave works again.`
-- Solange die automatische Speicherung scheitert, steht der Zeitpunkt des ersten Fehlschlags unter dem Schlüssel `wingdesigner.project.v1.stale`. Der nächste Aufruf stellt das zuletzt gespeicherte Projekt wieder her und meldet `This is the project as last saved; autosave stopped at … because browser storage was full, and later edits were not saved.`
+- Solange die automatische Speicherung scheitert, steht der Zeitpunkt des ersten Fehlschlags unter dem Schlüssel `wingdesigner.project.v1.stale`. Der nächste Aufruf stellt das zuletzt gespeicherte Projekt wieder her und meldet `This is the project as last saved; autosave stopped at … because browser storage was full, and later edits were not saved.` Bringt das wiederhergestellte Projekt die Warnung `Large project` mit, erscheinen beide Texte in einer Meldung in der Fehlerfarbe.
 - Der Bearbeitungsverlauf (Rückgängig/Wiederholen) wird nicht gespeichert.
 
 ## Bedienung
@@ -78,11 +78,14 @@ Auf Touchscreens (grober Zeiger) sind Schaltflächen und Eingabefelder mindesten
 | Rückgängig | Strg+Z (macOS: Cmd+Z) | **Undo** |
 | Wiederholen | Strg+Umschalt+Z oder Strg+Y (macOS: Cmd) | **Redo** |
 
-- Fangradius für Punkte im Grundriss-Editor: 9 px mit Maus oder Stift, 18 px mit Touchscreen.
+- Fangradius für Punkte im Grundriss-Editor: 9 px mit Maus oder Stift, 18 px mit Touchscreen. Innerhalb des Radius wird der nächstgelegene Punkt gewählt.
 - Tastenkürzel wirken nicht, solange der Fokus in einem Eingabefeld, Textbereich oder einer Auswahlliste liegt oder solange ein Dialog offen ist.
+- Der Tastaturfokus bleibt auf Zahlenfeldern, den Profillisten der Tabelle **Sections**, den Auswahllisten unter **Settings** und der Leitkurven (**Mode**, **Degree**), den Kontrollkästchen unter **Settings** und **Use guide curve**, dem Feld für den Projektnamen und den Zeilenschaltflächen **+** und **×** der Tabelle **Sections**, wenn die Registerkarte nach einer Änderung neu aufgebaut wird. Text- und Zahlenfelder markieren ihren Text erneut.
 - Eingabefelder für Zahlen übernehmen den Wert mit Enter, beim Verlassen des Eingabefelds und bei jedem Schritt mit den Pfeiltasten oder den Pfeilen im Eingabefeld. Eine nicht numerische Eingabe springt auf den vorherigen Wert zurück.
 - Ein Eingabefeld für Zahlen zeigt die kürzeste Dezimalzahl, die den gespeicherten Wert genau wiedergibt, z. B. `600.0000002`; die Anzeige rundet keinen Wert.
-- Ein Ziehvorgang ist ein Rückgängig-Schritt: Änderungen desselben Ziehvorgangs mit weniger als 800 ms Abstand werden zusammengefasst.
+- Ein Ziehvorgang ist ein Rückgängig-Schritt, wie lange er auch pausiert: Seine Änderungen werden zusammengefasst, bis der Zeiger losgelassen wird.
+- **Undo** oder **Redo** während eines Ziehvorgangs beendet den Ziehvorgang; weitere Zeigerbewegungen bis zum Loslassen bewegen nichts. **Redo** stellt einen rückgängig gemachten Ziehvorgang oder Punkt wieder her.
+- Eine Aktion, die nichts ändert, ergibt keinen Rückgängig-Schritt und behält die Wiederholen-Schritte, z. B. **Remove unused**, wenn jedes Profil verwendet wird, **Add to project** eines Profils, das das Projekt schon enthält, oder die Eingabe des Werts, den ein Feld schon hat.
 
 | Schaltfläche der 3D-Ansicht | Kamera |
 | --- | --- |
@@ -126,10 +129,10 @@ Tiefenverlauf (η = Spannweitenanteil, 0 an der Wurzel, 1 am Rand; λ = Zuspitzu
 | --- | --- | --- | --- |
 | Straight taper | flach | c_root · (1 + (λ − 1) · η) | aus |
 | Straight taper | spitz | wie flach; Randschnitt: max(c(η_prev) / 200, 1 mm) | aus |
-| Elliptic | flach | c_root · √(1 − (1 − λ²) · η²) | Nasenlinie und Endlinie an; je 6 Punkte bei η = 0; 0,3; 0,55; 0,75; 0,9; 1 |
-| Elliptic | spitz | c_root · √(1 − η²); Randschnitt: max(c(η_prev) / 200, 1 mm) | Nasenlinie und Endlinie an; je 7 Punkte bei η = 0; 0,3; 0,55; 0,75; 0,88; 0,96; 1; beide Linien enden auf der 25-%-Linie |
+| Elliptic | flach | c_root · √(1 − (1 − λ²) · η²) | Nasenlinie und Endlinie an; je 11 Punkte bei η_i = sin(π i / 20), i = 0 … 10: 0; 0,156; 0,309; 0,454; 0,588; 0,707; 0,809; 0,891; 0,951; 0,988; 1 (zum Rand hin dichter) |
+| Elliptic | spitz | c_root · √(1 − η²); Randschnitt: max(c(η_prev) / 200, 1 mm) | Nasenlinie und Endlinie an; je 11 Punkte bei denselben η wie flach; beide Linien enden auf der 25-%-Linie |
 
-Erzeugte Leitkurven verwenden **Through points** (durch Punkte) und Grad 3.
+Erzeugte Leitkurven verwenden **Through points** (durch Punkte) und Grad 3. x der Endlinie: das gerundete x der Nasenlinie plus die gerundete Profiltiefe. Größte Abweichung der Profiltiefe der Leitkurven vom elliptischen Verlauf, Vorlage **Glider**, in % der Wurzeltiefe: Zuspitzung 0,1: 0,55 %; 0,2: 0,10 %; 0,3: 0,02 %; 0,45: 0,004 %; **Pointed**: 2,87 %, innerhalb der letzten 0,3 % der Spannweite (1 000 001 Spannweitenpositionen).
 
 Erzeugte Werte:
 
@@ -195,7 +198,7 @@ Berechnung: [[Geometrie|Geometrie]].
 
 **+** weist das Einfügen mit einer Fehlermeldung ab, wenn:
 
-- zwischen den y-Werten der beiden Nachbarschnitte keine Zahl liegt: `No span position lies between y = … mm and y = … mm. Move the two sections apart first.`
+- der Mittelwert der y-Werte der beiden Nachbarschnitte nicht echt zwischen ihnen liegt oder sich sein Spannweitenanteil nicht von denen beider Nachbarn unterscheidet (unterscheidbar: mehr als 4 Einheiten der letzten Stelle und mehr als 2^-1021, wie unter [Prüfungen](#prüfungen)): `No span position lies between y = … mm and y = … mm. Move the two sections apart first.`
 - die Kopie des Randschnitts jenseits von y = 1 000 000 mm läge: `A section beyond the tip would lie beyond y = 1000000 mm.`
 
 Tooltip von **+**: `Insert a section after this one`. Ergibt das Einfügen mehr als 200 Schnitte, ergänzt der Tooltip die Schätzung aus Abschnitt [Projektgröße](#projektgröße): `Insert a section after this one. With … sections, each change takes … and … of browser memory.`
@@ -230,13 +233,15 @@ Der Grundriss-Editor zeigt den Halbflügel von oben: Spannweite y nach rechts, P
 
 | Griff | Sichtbar, wenn | Wirkung beim Ziehen |
 | --- | --- | --- |
-| Blaues Quadrat an der Profilnase eines Schnitts | Nasenlinie aus | Verschiebt x und y des Schnitts; x bleibt innerhalb von ±1 000 000 mm. Die Endleiste bleibt stehen (Endlinie an: die Endlinie beim geänderten y); die Profiltiefe ändert sich im Bereich 1 bis 100 000 mm. y hält 1 mm Abstand zu den Nachbarschnitten (Nachbarn näher als 4 mm: ein Viertel der Lücke). Der Wurzelschnitt behält sein y. y des Randschnitts bleibt höchstens 1 000 000 mm. |
-| Blauer Kreis an der Endleiste eines Schnitts | Endlinie aus | Setzt die Profiltiefe (1 bis 100 000 mm) |
-| Raute auf einer Leitkurve (grün: Nasenlinie, braun: Endlinie) | Leitkurve an | Verschiebt den Punkt; x bleibt innerhalb von ±1 100 000 mm. Wurzel- und Randpunkt bewegen sich nur in x. Innere Punkte halten in y 0,5 mm Abstand zu ihren Nachbarn (Nachbarn näher als 2 mm: ein Viertel der Lücke). |
+| Blaues Quadrat an der Profilnase eines Schnitts | Nasenlinie aus; nicht an einem Randschnitt mit **Pointed**, solange die Endlinie an ist | Verschiebt x und y des Schnitts; x bleibt innerhalb von ±1 000 000 mm. Die Endleiste bleibt stehen (Endlinie an: die Endlinie beim geänderten y); die Profiltiefe ändert sich im Bereich 1 bis 100 000 mm. y hält 1 mm Abstand zu den Nachbarschnitten (Nachbarn näher als 4 mm: ein Viertel der Lücke). Der Wurzelschnitt behält sein y. y des Randschnitts bleibt höchstens 1 000 000 mm. Ein y, dessen Spannweitenanteil sich nicht von dem eines Nachbarn unterscheiden würde (4 Einheiten der letzten Stelle, 2^-1021), wird nicht übernommen; der Schnitt behält sein y. |
+| Blauer Kreis an der Endleiste eines Schnitts | Endlinie aus; nicht an einem Randschnitt mit **Pointed** | Setzt die Profiltiefe (1 bis 100 000 mm) |
+| Raute auf einer Leitkurve (grün: Nasenlinie, braun: Endlinie) | Leitkurve an | Verschiebt den Punkt; x bleibt innerhalb von ±1 100 000 mm. Wurzel- und Randpunkt bewegen sich nur in x. Innere Punkte halten in y 0,5 mm Abstand zu ihren Nachbarn (Nachbarn näher als 2 mm: ein Viertel der Lücke). Ein y, dessen normierter Wert sich nicht von dem eines Nachbarn unterscheiden würde, lässt das y des Punkts unverändert; die Punkttabelle wendet dieselbe Regel an. |
 
 - Gezogene Werte werden auf 0,1 mm gerundet.
 - Die Zeile unter der Zeichenfläche zeigt die Werte während des Ziehens.
-- Der ausgewählte Schnitt und der ausgewählte Leitkurvenpunkt sind rot. Ein Klick auf den Hintergrund hebt die Auswahl des Leitkurvenpunkts auf.
+- Der ausgewählte Schnitt und der ausgewählte Leitkurvenpunkt sind rot. Ein Klick auf den Hintergrund, **Reset to sections** und das Ein- oder Ausschalten der Leitkurve heben die Auswahl des Leitkurvenpunkts auf.
+- Ein Randschnitt mit **Pointed** hat keinen Griff an der Endleiste: Seine Profiltiefe ist die skalierte Profiltiefe des vorigen Schnitts. Bei eingeschalteter Endlinie hat er auch keinen Griff an der Profilnase: Sein x der Profilnase ist x der Endlinie minus Profiltiefe.
+- Das Ziehen eines Schnitts setzt ausgeschaltete, nicht bearbeitete Leitkurven auf die neuen Schnittkanten, wie eine Änderung in der Tabelle **Sections**. Nach einem Neuladen beginnt eine solche Leitkurve beim Einschalten an den gezogenen Kanten.
 
 ### Leitkurven
 
@@ -264,7 +269,8 @@ Einschränkungen und Fehler:
 - Über 60 000 Gitterpunkten ergänzt der Aufbau die Warnung `Large project` (Abschnitt [Projektgröße](#projektgröße)). Bis 5 000 000 Gitterpunkte verwendet der Flügel die Einstellungen wie eingegeben.
 - Über 5 000 000 Gitterpunkten verwendet der Flügel weniger Intervalle je Feld, mit Warnung. Überschreitet auch ein Intervall je Feld 5 000 000 Gitterpunkte, bricht der Aufbau mit einem Fehler ab ([Prüfungen](#prüfungen)).
 - Beispiele mit **Smooth**, 40 Intervallen je Feld und N = 200: 20 Schnitte: 761 Stationen, 305 161 Gitterpunkte; 1000 Schnitte: 12 Intervalle je Feld, 11 989 Stationen, 4 807 589 Gitterpunkte. Mit N = 200 überschreiten mehr als 12 468 Schnitte bei einer Station je Feld 5 000 000 Gitterpunkte; mit N = 60 (Vorgabe) ergeben 20 000 Schnitte 2 420 000 Gitterpunkte.
-- Hinzugefügte Stationen: bis zu 32 (höchstens 6 Durchläufe). Die App setzt sie an den geprüften Spannweitenpositionen, an denen die Fläche um mehr als 0,5 mm oder 10 % der örtlichen Profiltiefe (der kleinere Wert gilt; Abstand im Raum) vom vorgesehenen Profil abweicht. Verglichene Punkte: Profilnase, oberer Endleistenpunkt und jede k-te Tiefenstation je Profilseite, k = **Chordwise stations per surface** / 6, abgerundet (5 Tiefenstationen bei der Vorgabe 60). Auch Schränkung zwischen den Stationen fügt Stationen hinzu: Vorlage Swept flying wing, 3 Schnitte, 2 hinzugefügte Stationen.
+- Hinzugefügte Stationen: bis zu 32 in höchstens 6 Durchläufen; über 60 000 Gitterpunkten des Lofts 1 Durchlauf, denn jeder Durchlauf passt den ganzen Loft neu an. Die App setzt sie an den geprüften Spannweitenpositionen, an denen die Fläche um mehr als 0,5 mm oder 10 % der örtlichen Profiltiefe (der kleinere Wert gilt; Abstand im Raum) vom vorgesehenen Profil abweicht: je eine Station an jedem lokalen Maximum der Abweichung im Verhältnis zu dieser Toleranz. Verglichene Punkte: Profilnase, oberer Endleistenpunkt und jede k-te Tiefenstation je Profilseite, k = **Chordwise stations per surface** / 6, abgerundet (5 Tiefenstationen bei der Vorgabe 60). Auch Schränkung zwischen den Stationen fügt Stationen hinzu: Vorlage Swept flying wing, 3 Schnitte, 2 hinzugefügte Stationen.
+- Behaltene Anpassung: Von den Anpassungen vor und nach jedem Durchlauf behält der Aufbau die mit der kleinsten größten Abweichung im Verhältnis zu ihrer Toleranz, bei Gleichstand die frühere. Dicht beieinander hinzugefügte Stationen können die Anpassung ausschwingen lassen. Beispiel: 2 Schnitte, Nasenlinie mit einer Beule von 4 mm Höhe und 0,06 mm Breite: 3,67 mm Abweichung ohne hinzugefügte Stationen, 18 797 mm nach 32 hinzugefügten Stationen; der Aufbau behält die Anpassung ohne hinzugefügte Stationen und zeigt die Abweichungswarnung.
 - Fehler zwischen den Stationen, geprüft an den geprüften Spannweitenpositionen und bei 0,25, 0,5 und 0,75 jedes Intervalls zwischen benachbarten Stationen: Die Profiltiefe der angepassten Fläche, gemessen in der vorgesehenen Tiefenrichtung, fällt unter 0,9 mm oder kehrt sich um (die Fläche faltet sich oder schnürt sich ein); die örtliche Dicke an einer verglichenen Tiefenstation fällt unter 0 (die Fläche stülpt sich um); die örtliche Dicke an einer verglichenen Tiefenstation zwischen 1 % und 99 % der Profiltiefe beträgt höchstens 0,001 % der Profiltiefe (Dicke null).
 - Die hinzugefügten Stationen und die Abweichungswarnung verwenden nur die geprüften Spannweitenpositionen, nicht die Punkte bei 0,25, 0,5 und 0,75 der Stationsintervalle.
 
@@ -299,7 +305,9 @@ Das Hinzufügen eines Profils und das Entfernen eines Profils, das kein Schnitt 
 **Add to project** legt keinen zweiten Eintrag an, behält den vorhandenen Eintrag und verwirft den neuen Namen und die neue Quellenangabe, wenn:
 
 - ein Projektprofil denselben Namen und dieselben Punkte hat;
-- ein Projektprofil ein erzeugtes NACA-Profil mit derselben Kennung und derselben Einstellung **Closed trailing edge** ist (Name beliebig).
+- ein Projektprofil ein erzeugtes NACA-Profil mit derselben Kennung und derselben Einstellung **Closed trailing edge** ist (Name beliebig) und seine gespeicherten Punkte die der NACA-Gleichungen sind (innerhalb von 1e-9) oder den neuen Punkten gleichen (den geprüften Punkten der Vorschau).
+
+Die Meldung lautet dann `The project already holds this airfoil as "…".` statt `Added airfoil "…".`, und der Bearbeitungsverlauf erhält keinen Schritt.
 
 Grenzen der Projektprofile (Abschnitt [Projektgröße](#projektgröße)):
 
@@ -416,7 +424,7 @@ Der Kasten **More airfoils (external, not bundled)** verlinkt 3 Sammlungen. Die 
 
 | Gruppe | Einstellung | Werte | Vorgabe | Wirkung |
 | --- | --- | --- | --- | --- |
-| Geometry | **Project name** (Projektname) | Text | Name der Vorlage | Name in der Projektdatei; Grundlage der Dateinamen von **Save** und **Export**. `.dat`-Downloads verwenden den Profilnamen. |
+| Geometry | **Project name** (Projektname) | Text | Name der Vorlage | Name in der Projektdatei; Grundlage der Dateinamen von **Save** und **Export**. `.dat`-Downloads verwenden den Profilnamen. Ein Name über 200 Zeichen ergänzt `a name of … characters (warning above 200)` in der Warnung `Large project`, sobald der Name übernommen ist; ein kürzerer Name entfernt es. |
 | Geometry | **Spanwise interpolation** (Interpolation in Spannweitenrichtung) | **Linear between sections (straight panels)** (linear, gerade Felder), **Smooth (natural cubic spline through sections)** (glatt, natürlicher kubischer Spline durch die Schnitte) | Linear | Übergang der Schnittwerte entlang der Spannweite. Siehe Liste unten. |
 | Geometry | **Twist pivot (fraction of chord)** (Drehpunkt der Schränkung) | 0 bis 1, Schritt 0,05 | 0,25 | Punkt auf der Profilsehne, um den die Schränkung dreht |
 | Geometry | **Trailing edge** (Endleiste) | **As in the airfoil files** (wie in den Profildateien), **Closed (sharp)** (geschlossen, scharf), **Fixed thickness in mm** (feste Dicke in mm) | Fixed thickness (Assistent, Beispielflügel); As in the airfoil files für Projektdateien ohne diese Einstellung | Endleistendicke jeder Station |
@@ -427,7 +435,7 @@ Der Kasten **More airfoils (external, not bundled)** verlinkt 3 Sammlungen. Die 
 | Resolution | **Spanwise stations per panel with guides or smooth mode** (Stationen je Feld) | 3 bis 40 | 8 | Intervalle je Feld, Kosinusverteilung; nur wirksam mit eingeschalteter Leitkurve oder mit Smooth. Weniger Intervalle erst über 5 000 000 Gitterpunkten des Lofts (Abschnitt [Leitkurven](#leitkurven)). |
 | Resolution | **Profile parametrization** (Parametrisierung der Profile) | **Centripetal (recommended)** (zentripetal), **Chord length** (Sehnenlänge), **Uniform** (gleichabständig) | Centripetal | Parameterverteilung der NURBS-Interpolation der Profile, im Flügelaufbau und in der Profilvorschau |
 | Display | **Show mirrored half (y < 0)** (gespiegelte Hälfte zeigen) | an, aus | an | Nur 3D-Ansicht. Checks, Statusleiste und Assistent nennen immer beide Hälften. Wird im Projekt gespeichert. |
-| Display | **Show NURBS control net** (NURBS-Kontrollnetz zeigen) | an, aus | aus | Nur 3D-Ansicht; wird nicht gespeichert. Über 100 000 Netzsegmenten zeichnet die Ansicht jede k-te Kontrolllinie in jeder Richtung, erste und letzte eingeschlossen. |
+| Display | **Show NURBS control net** (NURBS-Kontrollnetz zeigen) | an, aus | aus | Nur 3D-Ansicht; wird nicht gespeichert. Über 100 000 Netzsegmenten zeichnet die Ansicht jede k-te Kontrolllinie in jeder Richtung, erste und letzte eingeschlossen. Überschreiten schon die erste und letzte Linie 100 000 Segmente (z. B. 33 × 151 000 Kontrollpunkte), verläuft jede gezeichnete Linie zudem nur durch jeden k-ten Kontrollpunkt, erster und letzter eingeschlossen. |
 | Display | **Show section outlines** (Schnittkonturen zeigen) | an, aus | an | Nur 3D-Ansicht; wird nicht gespeichert. Über 100 000 Kontursegmenten (2 · N je Schnitt, 2 · N + 1 bei offener Endleiste) zeichnet die Ansicht jede k-te Kontur, Wurzel und Rand eingeschlossen; der ausgewählte Schnitt wird immer gezeichnet. |
 
 Unter **Spanwise stations per panel** nennt ein Hinweis die Gitterpunkte des Lofts bei den aktuellen Einstellungen (Abschnitt [Leitkurven](#leitkurven)), z. B. Vorlage Glider: `Loft grid: 2,057 points.`
@@ -438,7 +446,7 @@ Unter **Spanwise stations per panel** nennt ein Hinweis die Gitterpunkte des Lof
 Interpolation in Spannweitenrichtung:
 
 - **Linear** ohne Leitkurve: Stationen an den Schnitten und hinzugefügte Stationen (Abschnitt [Leitkurven](#leitkurven)); gerade Linien zwischen den Stationen (Grad 1 in Spannweitenrichtung).
-- **Linear** mit eingeschalteter Leitkurve: **Spanwise stations per panel** Intervalle je Feld; Grad 3 innerhalb jedes Felds, Knick an jedem Schnitt möglich.
+- **Linear** mit eingeschalteter Leitkurve: **Spanwise stations per panel** Intervalle je Feld; Grad 3 innerhalb jedes Felds, Knick an jedem Schnitt möglich. Senkt die Gittergrenze des Lofts die Intervalle je Feld auf 2 oder 1, ist der Grad 2 oder 1 (z. B. 4200 Schnitte mit 200 **Chordwise stations per surface**: 2 Intervalle, Grad 2).
 - **Smooth**: Die Schnittwerte folgen einem natürlichen kubischen Spline durch alle Schnitte; **Spanwise stations per panel** Intervalle je Feld (Vorgabe 8); Grad 3 in Spannweitenrichtung.
 - Fehler bei **Smooth**: Ein interpolierter Wert liegt um mehr als das 2-Fache des Bereichs seiner Schnittwerte außerhalb dieses Bereichs. Geprüfte Werte: x der Profilnase (keine Leitkurve an), Profiltiefe (nicht beide Leitkurven an), z, Schränkung und die Höhe jedes neu abgetasteten Konturpunkts außer den 2 Endleistenpunkten. Geprüft an den geprüften Spannweitenpositionen ([Leitkurven](#leitkurven)). Typische Ursache: ungleichmäßig verteilte Schnitte.
 - Bei 2 Schnitten ergeben beide dieselben Werte für x, z, Profiltiefe und Schränkung.
@@ -454,8 +462,8 @@ Spitzes Flügelende (**Wing tip** = Pointed):
 - Die eingegebene Randtiefe wird nicht verwendet.
 - Im letzten Feld bleibt die Profiltiefe mindestens gleich der Randtiefe. Zusammenlaufende Leitkurven enden im verkleinerten Randprofil.
 - Mit eingeschalteter Nasenlinie und Endlinie legt ihr Abstand am Rand die Randtiefe fest, wenn er größer als die verkleinerte Randtiefe ist. Ist er mehr als 0,5 mm größer, erscheint eine Warnung.
-- Vorlage Glider mit **Tip** = Pointed: Randtiefe 1,00 mm (Untergrenze 1 mm), 23 Stationen (17 + 6 hinzugefügt), größte Abweichung an den geprüften Spannweitenpositionen 0,16 mm, keine Warnung. Auch die übrigen Vorlagen des Assistenten mit **Tip** = Pointed ergeben keine Warnung.
-- Innerhalb von 2 mm vor einem spitzen elliptischen Flügelende weicht die Fläche zwischen den Stationen um bis zu 0,8 mm von der vorgesehenen Fläche ab, mehr als 10 % der örtlichen Profiltiefe dort. Die Abweichungswarnung erfasst diese Positionen nicht.
+- Vorlage Glider mit **Tip** = Pointed: Randtiefe 1,00 mm (Untergrenze 1 mm), 22 Stationen (17 + 5 hinzugefügt), größte Abweichung an den geprüften Spannweitenpositionen 0,263 mm, keine Warnung. Auch die übrigen Vorlagen des Assistenten mit **Tip** = Pointed ergeben keine Warnung.
+- Innerhalb von 2 mm vor einem spitzen elliptischen Flügelende (Vorlagen des Assistenten) weichen x von Nasen- und Endleiste der Fläche höchstens 0,031 mm vom vorgesehenen Grundriss ab (2001 Spannweitenpositionen); die übrigen Konturpunkte dort sind nicht gemessen. Die Abweichungswarnung erfasst diese Positionen nicht.
 
 Regeln für die Endleiste:
 
@@ -495,8 +503,8 @@ Einfluss der Auflösung auf Rechenzeit und Größe der STEP-Datei (STEP: Standar
 | Surface (Fläche) | NURBS-Grad (Tiefenrichtung × Spannweitenrichtung) und Anzahl der Kontrollpunkte |
 | Trailing edge (Endleiste) | `closed` (geschlossen) oder `open` (offen) |
 
-- Flügelfläche, MAC und Lage der MAC: 5-Punkt-Gauß-Legendre-Quadratur des vorgesehenen Grundrisses (Profiltiefe und Nasenleiste über y) in jedem Intervall zwischen benachbarten Stationen. Exakt für gerade Felder sowie für **Smooth** mit flachem Flügelende und ohne Leitkurven.
-- Mit Leitkurven, Quadraturfehler der Flügelfläche gegenüber der Mittelpunktregel mit 200 000 Intervallen: −2,8 × 10⁻⁷ % (Vorlage Glider), 3,1 × 10⁻⁵ % (Vorlage Glider mit spitzem Flügelende). Weitere Werte: [[Geometrie|Geometrie]].
+- Flügelfläche, MAC und Lage der MAC: 5-Punkt-Gauß-Legendre-Quadratur des vorgesehenen Grundrisses (Profiltiefe und Nasenleiste über y) in jedem Intervall zwischen benachbarten Teilungspunkten: Wurzel, Rand, Schnitte und jeder Knoten und Kontrollpunkt einer eingeschalteten Leitkurve. Exakt für gerade Felder sowie für **Smooth** mit flachem Flügelende und ohne Leitkurven.
+- Mit Leitkurven, Quadraturfehler der Flügelfläche gegenüber der Mittelpunktregel mit 200 000 Intervallen: −2,2 × 10⁻¹⁰ % (Vorlage Glider), −2,1 × 10⁻⁹ % (Vorlage Glider mit spitzem Flügelende). Weitere Werte: [[Geometrie|Geometrie]].
 - Wurzelschnitt nicht bei y = 0: Die Lücke zwischen den Hälften zählt zur Spannweite, nicht zur Flügelfläche.
 - Der 25-%-MAC-Punkt ist ein geometrischer Bezugspunkt. Er ist keine Berechnung von Neutralpunkt oder Schwerpunkt.
 
@@ -525,12 +533,12 @@ Einfluss der Auflösung auf Rechenzeit und Größe der STEP-Datei (STEP: Standar
 | The loft surface crosses itself at y = … mm near x = … mm: … | Fehler | eine Flächenzeile kreuzt sich zwischen den neu abgetasteten Punkten selbst; mittlere Breite des kleineren Teils wie bei Profilen, über 0,05 % der örtlichen Profiltiefe oder über 0,1 mm, je nachdem, was kleiner ist. Geprüfte Zeilen: jeder Schnitt, die Mitte zwischen 2 Schnitten und die Mitte zwischen 2 benachbarten Stationen in den 64 breitesten Stationsintervallen. |
 | The loft grid needs … points with one station per panel (… sections, … chord samples); the limit is 5,000,000. Reduce the chord samples or the sections. | Fehler | Schnitte × (2 · **Chordwise stations per surface** + 1) über 5 000 000, z. B. mehr als 12 468 Schnitte bei 200 Tiefenstationen ([Leitkurven](#leitkurven)) |
 | Internal error: … | Fehler | Ausnahme im Flügelaufbau (Programmfehler) |
-| Large project: … (warning above …). Each change takes … and … of browser memory. | Warnung | eine Projektgröße über ihrer Warnschwelle; die Meldung nennt jede solche Größe, z. B. `1,000 sections (warning above 200) and 121,000 loft grid points (warning above 60,000)`. Schwellen und Schätzung: Abschnitt [Projektgröße](#projektgröße). |
+| Large project: … (warning above …). Each change takes … and … of browser memory. | Warnung | eine Projektgröße über ihrer Warnschwelle; die Meldung nennt jede solche Größe, z. B. `1,000 sections (warning above 200) and 121,000 loft grid points (warning above 60,000)`. Dauert der erste Aufbau mindestens 1 s länger als eine Änderung, endet die Meldung mit `Opening it or changing the profile parametrization takes ….` Schwellen und Schätzung: Abschnitt [Projektgröße](#projektgröße). |
 | Spanwise stations per panel reduced from … to …: … sections with … chord samples keep the loft within 5,000,000 grid points. | Warnung | Loft-Gitter über 5 000 000 Punkten mit dem eingestellten Wert **Spanwise stations per panel**, mit eingeschalteter Leitkurve oder mit **Smooth** ([Leitkurven](#leitkurven)) |
 | Pointed tip: nose line and end line end … mm apart, so the tip chord is … mm instead of … mm; … | Warnung | spitzes Flügelende, beide Leitkurven an, Abstand am Rand mehr als 0,5 mm größer als die verkleinerte Randtiefe |
 | Trailing-edge thickness … mm exceeds 5 % of the chord at … station(s); it is limited to 5 % there. | Warnung | feste Dicke größer als 5 % der örtlichen Profiltiefe |
 | The trailing edge is closed on some stations and open on others; … station(s) were opened to 0.01 mm. | Warnung | nicht jede Station geschlossen, und mindestens eine Station mit einer Endleistendicke unter 0,01 mm |
-| The loft deviates up to … mm from the intended surface at y = … mm after … added station(s); raise the spanwise stations per panel. | Warnung | Abweichung vom vorgesehenen Profil (Profilnase, oberer Endleistenpunkt, jede k-te Tiefenstation je Profilseite, k = **Chordwise stations per surface** / 6, abgerundet: 5 bei 60) über 0,5 mm (oder 10 % der örtlichen Profiltiefe, wenn kleiner) an einer geprüften Spannweitenposition bleibt nach den hinzugefügten Stationen (höchstens 32 in 6 Durchläufen) |
+| The loft deviates up to … mm from the intended surface at y = … mm after … added station(s); raise the spanwise stations per panel. | Warnung | Abweichung vom vorgesehenen Profil (Profilnase, oberer Endleistenpunkt, jede k-te Tiefenstation je Profilseite, k = **Chordwise stations per surface** / 6, abgerundet: 5 bei 60) über 0,5 mm (oder 10 % der örtlichen Profiltiefe, wenn kleiner) an einer geprüften Spannweitenposition bleibt nach den hinzugefügten Stationen (höchstens 32 in 6 Durchläufen, 1 Durchlauf über 60 000 Gitterpunkten des Lofts). Die Meldung nennt die Anpassung, die der Aufbau behält (die kleinste größte Abweichung im Verhältnis zur Toleranz), und deren hinzugefügte Stationen ([Leitkurven](#leitkurven)). |
 
 - Geprüfte Spannweitenpositionen: Abschnitt [Leitkurven](#leitkurven).
 - Meldungen, die `Settings > Chord samples` nennen, meinen **Settings** > **Chordwise stations per surface**.
@@ -559,6 +567,7 @@ Bei einem Fehler wird der Flügel nicht aufgebaut: 3D-Ansicht und Kennwerte blei
 `Large project: <sizes>. Each change takes … and … of browser memory.`
 
 - Jede Größe lautet z. B. `1,000 sections (warning above 200)`.
+- Dauert der geschätzte erste Aufbau mindestens 1 s länger als eine Änderung, endet die Warnung mit `Opening it or changing the profile parametrization takes ….` Der erste Aufbau läuft nach **Open**, für das wiederhergestellte Projekt beim nächsten Aufruf und nach einer Änderung von **Profile parametrization**; er prüft und interpoliert jedes Profil neu.
 - Eine Meldung mit demselben Text erscheint, wenn eine Größe ihre Schwelle überschreitet: nach einer Änderung, nach **Open** und für das wiederhergestellte Projekt beim nächsten Aufruf.
 - Die festen Grenzen liegen dort, wo einem Browser-Tab am Desktop der Speicher ausgeht oder eine Änderung etwa eine Minute dauert.
 
@@ -573,7 +582,9 @@ Bei einem Fehler wird der Flügel nicht aufgebaut: 3D-Ansicht und Kennwerte blei
 | Dreiecke eines STL- oder 3MF-Exports | 2 000 000 (Exportdialog) | 10 000 000 | **Download** gesperrt |
 | Kontrollpunkte eines STEP-Exports | 1 000 000 (Exportdialog) | 3 000 000 | **Download** gesperrt |
 | Zeichen des Projektnamens oder eines Profilnamens | 200 | 10 000 | Namensfelder nehmen höchstens 10 000 Zeichen an; der Profil-Parser behält die ersten 10 000; **Open** weist die Datei ab |
-| Projektdatei | – | 100 MB | **Open** weist die Datei ungelesen ab; **Save** lässt die abgeleiteten NURBS-Daten weg |
+| Projektdatei | – | 100 MB | **Open** weist die Datei ungelesen ab; **Save** lässt die abgeleiteten NURBS-Daten weg; ein Projekt, das auch ohne sie über 100 MB liegt, wird nicht gespeichert |
+
+- Ein Projekt innerhalb aller Grenzen kann als Datei 100 MB überschreiten, wenn seine Namen und Quelltexte nahe an ihren Grenzen liegen. Beispiel: 10 000 Profile mit Namen von 10 000 Zeichen enthalten 100 000 000 Namenszeichen; mit 5 Punkten je Profil belegt die Datei 100,8 MB. **Save** schreibt dann keine Datei und zeigt `Save failed: the project takes 100.8 MB as a file, above the 100 MB that Open reads.`; **Export** > **Project JSON** zeigt `Export failed: the project takes 100.8 MB as a file, …`. Projekte mit kürzeren Namen und Quelltexten passen: 1 000 000 Profilpunkte belegen etwa 40 MB.
 
 Die Schätzung in der Warnung ist eine lineare Anpassung an Messungen in Chromium 141 auf 4 Kernen einer Xeon-Server-CPU mit 2,1 GHz (JavaScript-Zeit, ohne Zeichnen der 3D-Ansicht):
 
@@ -584,8 +595,11 @@ Die Schätzung in der Warnung ist eine lineare Anpassung an Messungen in Chromiu
 | Je Punkt einer eingeschalteten Leitkurve (der mit mehr Punkten) | 0,11 ms | 0,05 MB |
 | Je 1000 Profilpunkte | 1,5 ms | 0,2 MB |
 | Je 1000 Einträge der Profil-Auswahllisten in der Tabelle Sections (Schnitte × Profile; über 20 000 einer je Schnitt) | 8,5 ms | 0,5 MB |
+| Nur erster Aufbau, zusätzlich zu einer Änderung: je Projektprofil | 4,4 ms | nicht geschätzt |
+| Nur erster Aufbau, zusätzlich zu einer Änderung: je 1000 Profilpunkte | 30 ms | nicht geschätzt |
 
 - Zeiten lauten `under 1 s`, `about 1.5 s` (halbe Sekunden unter 10 s) oder `about 14 s`; der Speicher hat 2 signifikante Stellen, z. B. `about 94 MB`, `about 1.6 GB`.
+- Anteile des ersten Aufbaus: gemessen in Node.js 24, nicht im Browser: 7,4 ms je Profil mit 99 Punkten bei 1000 und 2000 Profilen, davon 3 ms durch den Punktanteil. Beispiel: 20 000 Schnitte (**Linear**, 16 **Chordwise stations per surface**: 660 000 Gitterpunkte des Lofts) und 10 000 Profile mit 99 Punkten: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
 - Das Zeichnen der 3D-Ansicht kommt mit der Zeit der Grafikkarte hinzu. Smartphones: nicht gemessen.
 
 Gemessen je Änderung einer Profiltiefe im Browser: Chromium 141 headless, Software-Rendering, 4 geteilte Kerne, Load Average 2 bis 8; **Linear**, 1 Profil, 60 Tiefenstationen; JavaScript-Zeit und JavaScript-Heap nach der Änderung.
@@ -665,6 +679,7 @@ Für STEP nennt der Hinweis die Kontrollpunkte der Flächen in der Datei und die
 - Brächten die abgeleiteten NURBS-Daten die Datei über 100 MB, die größte Datei, die **Open** liest, lassen **Save** und Project JSON sie weg und melden `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
 - Dateiname: Projektname ohne Akzente; jede Folge von Zeichen außerhalb von `A–Z a–z 0–9 . _ -` wird zu einem `_`; `_` am Anfang und Ende entfällt; die ersten 120 Zeichen bleiben. Endung `.step`, `.stl`, `.3mf` oder `.json`. Leerer Name: `wing`.
 - Einheit: mm in allen Formaten. Achsen wie in der App.
-- Reicht der Speicher des Browsers nicht oder wird eine eigene Größengrenze des Browsers erreicht, bricht der Export mit der roten Meldung `Export failed: <reason>. Use Normal mesh density or fewer chord samples and panel stations.` ab.
-- STL und 3MF speichern 32-Bit-Koordinaten. Fällt durch die Rundung ein bei dieser Auflösung sichtbares Dreieck zusammen oder kippt es um, schreibt der Export keine Datei und zeigt die rote Meldung `STL stores 32-bit coordinates: at … mm their spacing is … mm, and … of … triangles collapse or turn over. Move the wing towards the origin, or export STEP.` (3MF: `3MF readers store 32-bit coordinates: …`).
+- Reicht der Speicher des Browsers nicht oder wird eine eigene Größengrenze des Browsers erreicht, bricht der Export mit der roten Meldung `Export failed: <reason>.` ab, bei STL und 3MF gefolgt von `Use Normal mesh density or fewer chord samples and panel stations.`, bei STEP von `Use one half, or fewer chord samples and panel stations.`
+- STL und 3MF speichern 32-Bit-Koordinaten. Fällt durch die Rundung ein bei dieser Auflösung sichtbares Dreieck zusammen oder kippt es um, schreibt der Export keine Datei und zeigt die rote Meldung `STL stores 32-bit coordinates: at … mm their spacing is … mm, and … of … triangles collapse or turn over. Move the wing towards the origin, or export STEP.` (3MF: `3MF readers store 32-bit coordinates: …`). `at … mm` nennt die größte Koordinate der beschädigten Dreiecke.
+- Fällt das erste beschädigte Dreieck auch dann zusammen oder kippt um, wenn seine x- und z-Werte neben 0 verschoben sind, ist schon seine Spannweitenposition zu grob: Schnitte oder Stationen liegen dichter beieinander als der 32-Bit-Abstand, und Verschieben des Flügels hilft nicht. Der letzte Satz lautet dann `Sections or stations near y = … mm lie closer together than the spacing there (… mm); move them apart, or export STEP.` Beispiel: 4 Schnitte, 2 davon bei y = 300 mm und y = 300,00001 mm: `STL stores 32-bit coordinates: at 300 mm their spacing is 0.000031 mm, and 484 of 1928 triangles collapse or turn over. Sections or stations near y = 300 mm lie closer together than the spacing there (0.000031 mm); move them apart, or export STEP.`
 - Dateiinhalte: [[Dateiformate|Dateiformate]].

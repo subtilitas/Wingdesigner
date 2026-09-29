@@ -26,6 +26,9 @@ import {
 } from '../src/model/edit.js';
 import { defaultProject } from '../src/model/defaults.js';
 import { sampleProject } from './helpers.js';
+import { checkAirfoil } from '../src/airfoil/sanity.js';
+import { guideProblems } from '../src/geom/guide.js';
+import { formatMegabytes, sizeWarning } from '../src/model/budget.js';
 
 describe('wizard', () => {
   for (const [key, preset] of Object.entries(PRESETS)) {
@@ -448,5 +451,104 @@ describe('section drag clamp', () => {
       expect(p.guides.nose.points[i][1]).toBeGreaterThan(0);
       expect(p.guides.nose.points[i][1]).toBeLessThan(0.4);
     }
+  });
+});
+
+describe('statistics and edits at large sizes', () => {
+  it('integrates between the planform breakpoints only, with the result of the station split', () => {
+    const p = wizardProject({ ...PRESETS.glider.params, sections: 8 });
+    p.settings.panelStations = 40;
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    let calls = 0;
+    const counted = { ...b, planformAt: (y) => (calls++, b.planformAt(y)) };
+    const s = wingStats(counted);
+    // The station split evaluates at least 15 times per station interval.
+    expect(calls).toBeLessThan(15 * (b.stations.length - 1));
+    const withStations = wingStats({ ...b, planformBreaks: [...b.planformBreaks, ...b.stations.map((q) => q.y).slice(1, -1)] });
+    for (const k of ['area', 'mac', 'macY', 'macXLE']) expect(s[k] / withStations[k]).toBeCloseTo(1, 9);
+  });
+
+  it('finds a free airfoil id in linear time', () => {
+    // 9,000 airfoils named "Wing root" with the ids addAirfoil gives them: wing-root, wing-root-2, ...
+    const p = wizardProject(PRESETS.sport.params);
+    const pts = nacaAirfoil('2412', { pointsPerSide: 5 }).points;
+    for (let k = 1; k <= 9000; k++) p.airfoils.push({ id: k === 1 ? 'wing-root' : `wing-root-${k}`, name: 'Wing root', points: pts });
+    const t0 = performance.now();
+    const id = addAirfoil(p, { name: 'Wing root', points: pts.map(([x, y]) => [x, 3 * y]) });
+    expect(performance.now() - t0).toBeLessThan(100);
+    expect(id).toBe('wing-root-9001');
+  });
+});
+
+describe('wizard planform, edits and estimates at the edges', () => {
+  it('keeps an elliptic planform within 0.6 % of the root chord of its chord law', () => {
+    for (const taper of [0.1, 0.2, 0.45]) {
+      const params = { ...PRESETS.glider.params, taper };
+      const b = buildWing(wizardProject(params));
+      expect(b.errors).toEqual([]);
+      let worst = 0;
+      for (let k = 0; k < 1000; k++) worst = Math.max(worst, Math.abs(b.planformAt((k / 1000) * (params.span / 2)).chord - chordAt(params, k / 1000)));
+      expect(worst / params.rootChord, String(taper)).toBeLessThan(0.006);
+    }
+  });
+
+  it('builds a 1 mm elliptic tip from 10 mm root chord and taper 0.1', () => {
+    const p = wizardProject({ span: 150, rootChord: 10, taper: 0.1, sweep: 10, dihedral: 0, washout: 0, sections: 2, planform: 'elliptic', tip: 'flat', rootAirfoil: '2412', tipAirfoil: '2412' });
+    expect(buildWing(p).errors).toEqual([]);
+  });
+
+  it('adds stations where the deviation exceeds its shrinking tolerance', () => {
+    const b = buildWing(wizardProject({ span: 1000, rootChord: 10, taper: 0.99, sweep: -45, dihedral: 5, washout: 15, sections: 2, planform: 'straight', tip: 'pointed', rootAirfoil: '6409', tipAirfoil: '2410' }));
+    expect(b.errors).toEqual([]);
+    expect(b.extraStations).toBeGreaterThan(0);
+    expect(b.warnings.filter((w) => w.startsWith('The loft deviates'))).toEqual([]);
+  });
+
+  it('keeps one entry for a cambered NACA section added twice through the preview', () => {
+    const p = wizardProject(PRESETS.trainer.params);
+    // The preview stores the checked points, which differ from the generator's for cambered sections.
+    const entry = (name) => ({ name, points: checkAirfoil(nacaAirfoil('4412').points).points, source: { kind: 'naca', code: '4412', closedTE: false } });
+    const first = addAirfoil(p, entry('Main wing section'));
+    const second = addAirfoil(p, entry('NACA 4412'));
+    expect(second).toBe(first);
+  });
+
+  it('refuses inserts, drags and guide moves that the build could not keep apart', () => {
+    const at = (ys) => ({ ...sampleProject(), sections: ys.map((y, i) => ({ id: `s${i}`, airfoil: 'root', x: 0, y, z: 0, chord: 200, twist: 0 })) });
+    // u: one unit in the last place at y = 500,000 mm. Sections 16 u apart build; their midpoint lies
+    // 8 u from each, and the build keeps span fractions apart only above 4 units of the fraction.
+    const u = 2 ** -34;
+    const close = at([0, 500000, 500000 + 16 * u, 1000000]);
+    expect(buildWing(close).errors).toEqual([]);
+    expect(insertProblem(close, 1)).toMatch(/^No span position lies between y = 500000 mm and y = 500000\.00000000093 mm/);
+    // Sections 12 u apart build; a drag of the middle one to y = 0 clamps to 3 u from its neighbour,
+    // which the build refuses, so the section keeps its y.
+    const three = at([0, 500000, 500000 + 12 * u, 500000 + 24 * u, 1000000]);
+    expect(buildWing(three).errors).toEqual([]);
+    const sorted = sortedSections(three);
+    expect(clampSectionY(sorted, 2, 0)).toBe(sorted[2].y);
+    // Guide points 6 units in the last place apart at y = 300 mm (w) pass the guide check; a move of
+    // the middle one to y = 0 clamps to 3 w from its neighbour, which the check refuses, so the point
+    // keeps its y.
+    const w = 2 ** -44;
+    const g = sampleProject();
+    g.guides.nose = { enabled: true, mode: 'fit', degree: 3, points: [[0, 0], [10, 300], [20, 300 + 6 * w], [30, 300 + 12 * w], [60, 600]] };
+    expect(guideProblems(g.guides.nose)).toEqual([]);
+    moveGuidePoint(g, 'nose', 2, 25, 0);
+    expect(g.guides.nose.points[2]).toEqual([25, 300 + 6 * w]);
+  });
+
+  it('estimates projects without settings and rounds megabytes before the unit', () => {
+    const p = defaultProject();
+    delete p.settings;
+    expect(buildWing(p).errors).toEqual([]);
+    const q = defaultProject();
+    q.settings = { spanwise: 'smooth' };
+    q.sections = Array.from({ length: 300 }, (_, i) => ({ ...q.sections[0], id: `s${i}`, y: 2 * i }));
+    expect(sizeWarning(q)).not.toMatch(/NaN/);
+    expect(sizeWarning(q)).toMatch(/loft grid points/);
+    expect(formatMegabytes(996)).toBe('about 1 GB');
+    expect(formatMegabytes(994)).toBe('about 990 MB');
   });
 });

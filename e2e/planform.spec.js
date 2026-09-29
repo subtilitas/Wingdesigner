@@ -473,8 +473,8 @@ test.describe('Planform tab', () => {
     await openPlanform(page);
     await expect(useGuide(page, 'nose')).toBeChecked();
     await expect(useGuide(page, 'end')).toBeChecked();
-    await expect(guideRows(page, 'nose')).toHaveCount(6);
-    await expect(guideRows(page, 'end')).toHaveCount(6);
+    await expect(guideRows(page, 'nose')).toHaveCount(11);
+    await expect(guideRows(page, 'end')).toHaveCount(11);
     const pts = { nose: await guidePoints(page, 'nose'), end: await guidePoints(page, 'end') };
     const base = await figures(page);
     expect(base.span).toBe(2000);
@@ -805,12 +805,12 @@ test.describe('Planform tab', () => {
     await createDesign(page, 'Glider');
     await openPlanform(page);
     const nose0 = await guidePoints(page, 'nose');
-    expect(nose0).toHaveLength(6);
+    expect(nose0).toHaveLength(11);
     await guideButton(page, 'nose', 'Add point').click();
-    await expect(guideRows(page, 'nose')).toHaveCount(7);
+    await expect(guideRows(page, 'nose')).toHaveCount(12);
     await expect(group(page, 'nose').locator('tbody tr.selected')).toHaveCount(1);
     await page.getByRole('button', { name: 'Undo' }).click();
-    await expect(guideRows(page, 'nose')).toHaveCount(6);
+    await expect(guideRows(page, 'nose')).toHaveCount(11);
     expect(await guidePoints(page, 'nose')).toEqual(nose0);
     await expect(group(page, 'nose').locator('tbody tr.selected')).toHaveCount(0, { timeout: 2000 });
     await expect(guideButton(page, 'nose', 'Remove selected point')).toBeDisabled({ timeout: 2000 });
@@ -843,5 +843,77 @@ test.describe('Planform tab', () => {
     await frames(page);
     expect(await guidePoints(page, 'end')).toEqual(end0);
     expect((await status(page).innerText()).trim()).toBe(before.text);
+  });
+});
+
+test.describe('Planform drags and history', () => {
+  test('a dragged trailing edge moves the unedited end line; after a reload switching it on keeps the new edge', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await openPlanform(page);
+    const v = await planformView(page);
+    const tip = (await sectionValues(page)).at(-1);
+    // The tip trailing-edge handle, 36 mm further back (chord x runs downwards on the canvas).
+    await mouseDrag(page, v.toPage(tip.x + tip.chord, tip.y), v.toPage(tip.x + tip.chord + 36, tip.y));
+    const moved = (await sectionValues(page)).at(-1);
+    expect(moved.chord).toBeGreaterThan(tip.chord + 30);
+    await page.reload();
+    await openPlanform(page);
+    await afterRebuild(page, () => useGuide(page, 'end').check());
+    const end = await guidePoints(page, 'end');
+    expect(end.at(-1)[0]).toBeCloseTo(moved.x + moved.chord, 6);
+    expect((await sectionValues(page)).at(-1)).toMatchObject({ x: moved.x, chord: moved.chord });
+  });
+
+  test('undo during a drag stops moving the removed point without errors; Redo restores it', async ({ page }) => {
+    await createDesign(page, 'Glider');
+    await openPlanform(page);
+    await afterRebuild(page, () => guideButton(page, 'nose', 'Add point').click());
+    await expect(guideRows(page, 'nose')).toHaveCount(12);
+    const v = await planformView(page);
+    const last = (await guidePoints(page, 'nose')).at(-1);
+    const at = v.toPage(last[0], last[1]);
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x, at.y + 10, { steps: 4 });
+    await frames(page);
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    await page.mouse.move(at.x, at.y + 20, { steps: 4 });
+    await page.mouse.up();
+    await frames(page);
+    await expect(guideRows(page, 'nose')).toHaveCount(11);
+    const redo = page.getByRole('button', { name: 'Redo', exact: true });
+    await expect(redo).toBeEnabled();
+    await redo.click();
+    await expect(guideRows(page, 'nose')).toHaveCount(12);
+  });
+
+  test('Reset to sections leaves no point selected for removal', async ({ page }) => {
+    await createDesign(page, 'Glider');
+    await openPlanform(page);
+    await afterRebuild(page, () => guideButton(page, 'nose', 'Add point').click());
+    await expect(guideButton(page, 'nose', 'Remove selected point')).toBeEnabled();
+    await afterRebuild(page, () => guideButton(page, 'nose', 'Reset to sections').click());
+    await expect(guideRows(page, 'nose')).toHaveCount(3);
+    await expect(guideButton(page, 'nose', 'Remove selected point')).toBeDisabled();
+    await expect(group(page, 'nose').locator('tr.selected')).toHaveCount(0);
+  });
+
+  test('a drag with a pause of 1 s is one undo step', async ({ page }) => {
+    await createDesign(page, 'Glider');
+    await openPlanform(page);
+    const before = await guidePoints(page, 'nose');
+    const v = await planformView(page);
+    const at = v.toPage(before[2][0], before[2][1]);
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x, at.y + 10, { steps: 4 });
+    await page.waitForTimeout(1000);
+    await page.mouse.move(at.x, at.y + 20, { steps: 4 });
+    await page.mouse.up();
+    await frames(page);
+    expect((await guidePoints(page, 'nose'))[2][0]).toBeGreaterThan(before[2][0] + 1);
+    await afterRebuild(page, () => page.getByRole('button', { name: 'Undo', exact: true }).click());
+    expect(await guidePoints(page, 'nose')).toEqual(before);
   });
 });

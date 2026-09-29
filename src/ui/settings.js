@@ -32,7 +32,8 @@ export class SettingsPanel {
     const select = (value, options, onChange, label) =>
       h(
         'select',
-        { 'aria-label': label, onchange: (e) => onChange(e.target.value) },
+        // The label names the list across re-renders, so keyboard focus stays on it.
+        { 'aria-label': label, onchange: (e) => onChange(e.target.value), dataset: { focusKey: `set:${label}` } },
         options.map(([v, t]) => h('option', { value: v, selected: v === value }, t)),
       );
     clear(this.root).append(
@@ -40,7 +41,7 @@ export class SettingsPanel {
         'fieldset',
         {},
         h('legend', {}, 'Geometry'),
-        h('label', { class: 'field' }, 'Project name', h('input', { type: 'text', value: this.store.project.name, maxLength: LIMITS.maxName, onchange: (e) => this.store.update((p) => (p.name = e.target.value), { reason: 'meta' }) })),
+        h('label', { class: 'field' }, 'Project name', h('input', { type: 'text', value: this.store.project.name, maxLength: LIMITS.maxName, dataset: { focusKey: 'set:name' }, onchange: (e) => this.store.update((p) => (p.name = e.target.value), { reason: 'meta' }) })),
         h(
           'label',
           { class: 'field' },
@@ -175,6 +176,7 @@ export class SettingsPanel {
           h('input', {
             type: 'checkbox',
             checked: s.mirror,
+            dataset: { focusKey: 'set:mirror' },
             // Display only: the wing is drawn again from the current build.
             onchange: (e) => this.store.update((p) => (p.settings.mirror = e.target.checked), { reason: 'display' }),
           }),
@@ -183,13 +185,13 @@ export class SettingsPanel {
         h(
           'label',
           { class: 'check' },
-          h('input', { type: 'checkbox', checked: this.viewer.options.controlNet, onchange: (e) => this.viewer.setOption('controlNet', e.target.checked) }),
+          h('input', { type: 'checkbox', checked: this.viewer.options.controlNet, dataset: { focusKey: 'set:controlNet' }, onchange: (e) => this.viewer.setOption('controlNet', e.target.checked) }),
           'Show NURBS control net',
         ),
         h(
           'label',
           { class: 'check' },
-          h('input', { type: 'checkbox', checked: this.viewer.options.sections, onchange: (e) => this.viewer.setOption('sections', e.target.checked) }),
+          h('input', { type: 'checkbox', checked: this.viewer.options.sections, dataset: { focusKey: 'set:sections' }, onchange: (e) => this.viewer.setOption('sections', e.target.checked) }),
           'Show section outlines',
         ),
       ),

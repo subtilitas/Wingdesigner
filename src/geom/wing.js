@@ -7,11 +7,11 @@
 import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
 import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, paramsApart, surfacePoint } from './nurbs.js';
-import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
+import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile, sampleCurve } from './profile.js';
 import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
-import { displayName, loftGrid, sizeWarning } from '../model/budget.js';
+import { WARN, displayName, loftGrid, sizeWarning } from '../model/budget.js';
 
 /**
  * Deviation (mm) between loft and intended surface above which stations are added and, if it remains,
@@ -191,9 +191,12 @@ function profileStage(a, parametrization, chordStations, N) {
     } else {
       try {
         const prof = profileCurve(check.points, { parametrization });
-        const problem = profileProblem(prof);
+        // The samples serve the crossing test at the chord of the build too (stageCrossing), then
+        // go: kept for every airfoil they would take 64 KB each.
+        const samples = sampleCurve(prof.curve);
+        const problem = profileProblem(prof, samples);
         if (problem) entry.error = problem;
-        else Object.assign(entry, { prof, points: check.points });
+        else Object.assign(entry, { prof, points: check.points, samples });
       } catch (e) {
         entry.error = `the NURBS interpolation failed (${e.message}).`;
       }
@@ -214,7 +217,7 @@ function profileStage(a, parametrization, chordStations, N) {
  */
 function stageCrossing(stage, tolerance) {
   stage.crossings ??= new Map();
-  if (!stage.crossings.has(tolerance)) stage.crossings.set(tolerance, curveCrossing(stage.prof.curve, { tolerance }));
+  if (!stage.crossings.has(tolerance)) stage.crossings.set(tolerance, curveCrossing(stage.prof.curve, { tolerance, samples: stage.samples }));
   return stage.crossings.get(tolerance);
 }
 
@@ -317,6 +320,7 @@ export function buildWing(project) {
     // the loop is measured against CROSSING_LIMIT mm at the largest chord using this airfoil.
     const chordMax = chordMaxOf.get(s.airfoil);
     const cross = CROSSING_TOLERANCE * chordMax > CROSSING_LIMIT ? stageCrossing(stage, CROSSING_LIMIT / chordMax) : null;
+    delete stage.samples;
     if (cross) {
       errors.push(
         `Airfoil "${displayName(a.name ?? a.id)}": the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
@@ -804,7 +808,10 @@ export function buildWing(project) {
 
   // Adaptive stations: insert stations where the loft deviates more than PLANFORM_TOLERANCE from
   // the intended surface (fast planform changes such as pointed elliptic tips), up to
-  // MAX_EXTRA_STATIONS in at most 6 rounds.
+  // MAX_EXTRA_STATIONS in at most 6 rounds. Each round fits the whole loft again, so above the
+  // loft grid warning threshold one round adds every peak at once (a 4 mm guide bump at 2,000
+  // sections took 3 fits and 22.8 s instead of 9.2 s).
+  const rounds = grid.points > WARN.gridPoints ? 1 : 6;
   // Stations closer than the solver resolves (span fractions near 1e-300, and their powers in the
   // cubic basis) make the surface fit singular: reported with the closest pair of sections.
   const singular = () => {
@@ -813,7 +820,9 @@ export function buildWing(project) {
     errors.push(`The surface fit is singular: sections ${k} and ${k + 1} at y = ${ys[k - 1]} mm and y = ${ys[k]} mm lie too close together; move them apart.`);
     return result;
   };
+  let fits = 0;
   const tryFit = (list) => {
+    fits++;
     try {
       return fit(list);
     } catch (e) {
@@ -825,8 +834,17 @@ export function buildWing(project) {
   let fitted = tryFit(yList);
   if (!fitted) return singular();
   let extra = 0;
-  for (let round = 0; round < 6 && extra < MAX_EXTRA_STATIONS; round++) {
-    const peaks = fitted.devs.filter(([, d, tol], i, arr) => d > tol && d >= (arr[i - 1]?.[1] ?? 0) && d >= (arr[i + 1]?.[1] ?? 0));
+  // Largest deviation relative to its tolerance. The rounds keep the fit where it is smallest, the
+  // first one on a tie: stations added very close together can make the cubic fit swing (a 0.06 mm
+  // wide guide bump on a 2-section wing went from 4 mm to 18,797 mm deviation after 32 stations),
+  // while a round that raises it can still lead to a better one.
+  const worst = (f) => f.devs.reduce((m, [, d, tol]) => Math.max(m, d / tol), 0);
+  let best = { fitted, yList, extra, worst: worst(fitted) };
+  for (let round = 0; round < rounds && extra < MAX_EXTRA_STATIONS; round++) {
+    // Peaks of the deviation relative to its tolerance: the tolerance shrinks with the chord, so the
+    // largest deviation can lie below it while smaller ones further out exceed theirs.
+    const ratio = (q) => (q ? q[1] / q[2] : 0);
+    const peaks = fitted.devs.filter((q, i, arr) => q[1] > q[2] && ratio(q) >= ratio(arr[i - 1]) && ratio(q) >= ratio(arr[i + 1]));
     // New stations keep 1e-6 of the span from every other station: equal or nearly equal
     // positions make the interpolation singular.
     const minGap = 1e-6 * (y1 - y0);
@@ -840,7 +858,10 @@ export function buildWing(project) {
     extra += fresh.length;
     fitted = tryFit(yList);
     if (!fitted) return singular();
+    const w = worst(fitted);
+    if (w < best.worst) best = { fitted, yList, extra, worst: w };
   }
+  ({ fitted, yList, extra } = best);
   const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs } = fitted;
   result.stations = stations;
   // Quarter points of every fitted station interval: between closely spaced stations the global
@@ -903,6 +924,7 @@ export function buildWing(project) {
   }
   result.surface = surface;
   result.extraStations = extra;
+  result.fits = fits;
   if (limited) {
     warnings.push(`Trailing-edge thickness ${te.thickness} mm exceeds ${MAX_GAP_FRACTION * 100} % of the chord at ${limited} station(s); it is limited to ${MAX_GAP_FRACTION * 100} % there.`);
   }

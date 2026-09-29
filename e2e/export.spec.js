@@ -461,6 +461,25 @@ test.describe('project file errors', () => {
     expect(await page.evaluate((key) => localStorage.getItem(`${key}.stale`), STORAGE_KEY)).toBeNull();
   });
 
+  test('the notice of a lost autosave stays readable next to the size warning of the restored project', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const p = await savedProject(page);
+    p.sections = Array.from({ length: 250 }, (_, i) => ({ ...p.sections[0], id: `s${i}`, y: 2 * i }));
+    delete p.guides;
+    await page.evaluate(
+      ([key, text]) => {
+        localStorage.setItem(key, text);
+        localStorage.setItem(`${key}.stale`, '2026-09-29 12:00 UTC');
+      },
+      [STORAGE_KEY, JSON.stringify(p)],
+    );
+    await page.reload();
+    await expect(toastOf(page)).toHaveText(
+      /^This is the project as last saved; autosave stopped at 2026-09-29 12:00 UTC because browser storage was full, and later edits were not saved\. Large project: 250 sections \(warning above 200\)/,
+    );
+    await expect(toastOf(page)).toHaveClass(/error/);
+  });
+
   test('an unloadable save that has no room for a copy stays in place and autosave stays off', async ({ page }) => {
     await createDesign(page, 'Sport');
     const bad = JSON.stringify({ format: 'wingdesigner-project', version: 1, name: 'x'.repeat(100_000), airfoils: [], sections: [] });
@@ -474,6 +493,7 @@ test.describe('project file errors', () => {
     await wizard.getByRole('radio', { name: /^Plank/ }).click();
     await wizard.getByRole('button', { name: 'Create design' }).click();
     await expect(status(page)).toHaveText(/^Span 1000 mm/);
+    await expect(status(page)).toContainText('Autosave off: use Save');
     await page.evaluate(() => localStorage.removeItem('filler'));
     await openTab(page, 'Settings');
     await page.locator('#pane-settings').getByRole('textbox', { name: 'Project name' }).fill('Plank 2');

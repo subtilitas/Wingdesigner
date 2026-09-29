@@ -595,11 +595,11 @@ describe('fitted surface between stations', () => {
 
   it('reports a surface that folds between stations', () => {
     // Zigzag degree-5 control guides that 32 added stations cannot follow. The guides are drawn for
-    // 40 trials from one seeded sequence; trial 37 folds (trials 2, 7, 14, ... turn inside out).
+    // 40 trials from one seeded sequence; trial 26 folds (trials 2, 18 and 23 turn inside out).
     let seed = 9;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     let guides = null;
-    for (let t = 0; t <= 37; t++) {
+    for (let t = 0; t <= 26; t++) {
       const n = 20 + Math.floor(rnd() * 70);
       const ys = Array.from({ length: n }, (_, i) => (600 * i) / (n - 1));
       const nose = ys.map((y, i) => [(i % 2 ? 60 : 0) * rnd() + 20 * rnd(), y]);
@@ -1053,6 +1053,23 @@ describe('builds at the edges of double precision', () => {
     expect(buildWing(fitGuide).errors[0]).toMatch(/^Nose line: /);
   });
 
+  it('triangulates Fine caps of a closed trailing edge by strips', () => {
+    const p = createProject({
+      airfoils: [{ id: 'a', name: 'NACA 4415', points: nacaAirfoil('4415').points }],
+      sections: [
+        { airfoil: 'a', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+        { airfoil: 'a', x: 0, y: 600, z: 0, chord: 120, twist: 0 },
+      ],
+      settings: { chordSamples: 200, trailingEdge: { mode: 'closed', thickness: 0 } },
+    });
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    const t0 = performance.now();
+    const meshes = exportMeshes(b, 'halves', { uRefine: 2, vRefine: 2 });
+    expect(performance.now() - t0).toBeLessThan(500);
+    for (const { mesh } of meshes) expect(edgeCheck(mesh).closed).toBe(true);
+  });
+
   it('triangulates the caps of a wing far from the origin by strips', () => {
     const square = [[1e5, 1e3], [1e5 + 20, 1e3], [1e5 + 20, 1e3 + 1], [1e5, 1e3 + 1]];
     expect(polygonArea(square)).toBe(20);
@@ -1063,5 +1080,34 @@ describe('builds at the edges of double precision', () => {
     const [{ mesh }] = exportMeshes(b, 'right', { uRefine: 2, vRefine: 2 });
     expect(performance.now() - t0).toBeLessThan(500);
     expect(edgeCheck(mesh).closed).toBe(true);
+  });
+});
+
+describe('added stations', () => {
+  // A nose line with a bump 4 mm high and 0.06 mm wide at y = 713 mm (control points).
+  const bumped = (n) => {
+    const ys = Array.from({ length: n }, (_, i) => (1000 * i) / (n - 1));
+    const p = createProject({ airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }], sections: ys.map((y) => ({ airfoil: 'a', x: 0, y, z: 0, chord: 200, twist: 0 })) });
+    p.guides = defaultGuides(p.sections);
+    const line = [];
+    for (let y = 0; y <= 1000; y += 50) if (y < 712 || y > 714) line.push([0, y]);
+    const bump = [[0, 712.97], [1, 712.98], [3, 712.99], [4, 713], [3, 713.01], [1, 713.02], [0, 713.03]];
+    p.guides.nose = { enabled: true, mode: 'control', degree: 3, points: [...line, ...bump].sort((a, b) => a[1] - b[1]) };
+    return p;
+  };
+
+  it('undoes a round of added stations that makes the deviation larger', () => {
+    const b = buildWing(bumped(2));
+    expect(b.errors).toEqual([]);
+    // Without the check, 32 stations clustered at the bump made the loft deviate 18,797 mm.
+    expect(b.planformDeviation).toBeLessThan(5);
+    expect(b.warnings.find((w) => w.startsWith('The loft deviates'))).toMatch(/^The loft deviates up to 3\.\d\d mm from the intended surface at y = 713\.0 mm/);
+  });
+
+  it('fits the loft at most twice above the loft grid warning threshold', () => {
+    const b = buildWing(bumped(200));
+    expect(b.errors).toEqual([]);
+    expect(b.fits).toBe(2);
+    expect(b.extraStations).toBeGreaterThan(0);
   });
 });

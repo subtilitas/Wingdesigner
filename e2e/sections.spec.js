@@ -538,4 +538,18 @@ test.describe('Sections tab', () => {
     await expect(status(page)).toHaveText(SPORT_STATUS);
     expect((await savedProject(page)).sections[1]).toMatchObject({ twist: -1, chord: 144 });
   });
+
+  test('an airfoil list changed with the arrow keys keeps the focus after the table renders again', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const list = airfoilSelect(page, 0);
+    await list.focus();
+    await list.press('ArrowDown');
+    await expect.poll(async () => (await savedProject(page)).sections[0].airfoil).toBe('naca2410');
+    await frames(page);
+    await expect(airfoilSelect(page, 0)).toBeFocused();
+    await airfoilSelect(page, 0).press('ArrowUp');
+    await expect.poll(async () => (await savedProject(page)).sections[0].airfoil).toBe('naca2412');
+    await frames(page);
+    await expect(airfoilSelect(page, 0)).toBeFocused();
+  });
 });

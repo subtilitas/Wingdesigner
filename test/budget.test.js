@@ -6,6 +6,7 @@ import {
   costSentence,
   displayName,
   exportCost,
+  firstBuildSeconds,
   formatMegabytes,
   formatSeconds,
   largeSizes,
@@ -50,6 +51,17 @@ describe('project size warnings', () => {
     expect(w).toMatch(/Each change takes about [\d.]+ s and about \d+ MB of browser memory\.$/);
     // The build carries the warning.
     expect(buildWing(p).warnings[0]).toBe(w);
+  });
+
+  it('names the time of the first build when many airfoils make it at least 1 s longer than a change', () => {
+    // 10,000 airfoils of 99 points used by 20,000 sections: 74 s for the first build in Node.js 24.
+    const size = { sections: 20_000, airfoils: 10_000, airfoilPoints: 990_000, largestAirfoil: 99, guidePoints: 0, gridPoints: 20_000 * 33, longestName: 10 };
+    expect(firstBuildSeconds(size) - changeCost(size).seconds).toBeCloseTo(10_000 * 4.4e-3 + 990_000 * 30e-6, 6);
+    const p = withSections(1000);
+    const w = sizeWarning(p, size);
+    expect(w).toMatch(/Each change takes about 9\.5 s and about 650 MB of browser memory\. Opening it or changing the profile parametrization takes about 83 s\.$/);
+    // Few airfoils: no sentence on the first build.
+    expect(sizeWarning(p)).not.toMatch(/Opening it/);
   });
 
   it('counts enabled guide curves only, and airfoil points of the largest airfoil and of all', () => {

@@ -42,13 +42,24 @@ export function controlNetSegments(P, origin = [0, 0, 0], maxSegments = MAX_NET_
   const nI = P.length;
   const nJ = P[0].length;
   const lines = (n, step) => Math.floor((n - 1) / step) + 1 + ((n - 1) % step ? 1 : 0);
-  const segments = (step) => lines(nI, step) * (nJ - 1) + lines(nJ, step) * (nI - 1);
+  // Every `step`-th line in each direction, each through every `along`-th point.
+  const segments = (step, along = 1) => lines(nI, step) * (lines(nJ, along) - 1) + lines(nJ, step) * (lines(nI, along) - 1);
   let step = Math.max(1, Math.ceil(segments(1) / maxSegments));
   while (step > 1 && segments(step) > maxSegments && step < Math.max(nI, nJ)) step++;
-  const keep = (n) => Array.from({ length: n }, (_, k) => k).filter((k) => k % step === 0 || k === n - 1);
-  const rows = keep(nI);
-  const cols = keep(nJ);
-  const pos = new Float32Array((rows.length * (nJ - 1) + cols.length * (nI - 1)) * 6);
+  let along = 1;
+  if (segments(step) > maxSegments) {
+    // The first and last lines alone exceed the cap (e.g. 33 x 151,000 points): the kept lines
+    // also pass through every step-th point only.
+    step = 2;
+    while (segments(step, step) > maxSegments) step++;
+    along = step;
+  }
+  const keep = (n, s) => Array.from({ length: n }, (_, k) => k).filter((k) => k % s === 0 || k === n - 1);
+  const rows = keep(nI, step);
+  const cols = keep(nJ, step);
+  const rowPts = keep(nJ, along);
+  const colPts = keep(nI, along);
+  const pos = new Float32Array((rows.length * (rowPts.length - 1) + cols.length * (colPts.length - 1)) * 6);
   let at = 0;
   const seg = (A, B) => {
     for (let c = 0; c < 3; c++) {
@@ -57,9 +68,9 @@ export function controlNetSegments(P, origin = [0, 0, 0], maxSegments = MAX_NET_
     }
     at += 6;
   };
-  for (const i of rows) for (let j = 0; j + 1 < nJ; j++) seg(P[i][j], P[i][j + 1]);
-  for (const j of cols) for (let i = 0; i + 1 < nI; i++) seg(P[i][j], P[i + 1][j]);
-  return { positions: pos, step };
+  for (const i of rows) for (let k = 0; k + 1 < rowPts.length; k++) seg(P[i][rowPts[k]], P[i][rowPts[k + 1]]);
+  for (const j of cols) for (let k = 0; k + 1 < colPts.length; k++) seg(P[colPts[k]][j], P[colPts[k + 1]][j]);
+  return { positions: pos, step, along };
 }
 
 /**

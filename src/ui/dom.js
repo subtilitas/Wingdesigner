@@ -70,6 +70,11 @@ export function numberInput({ value, step = 1, min, max, title, onCommit, width,
       return;
     }
     onCommit(v);
+    // A commit that changes nothing (a value clamped to the stored one, a refused edit) renders no
+    // panel again: the field then shows the stored value after the frame's rebuild.
+    requestAnimationFrame(() => {
+      if (input.isConnected) input.value = inputText(value);
+    });
   });
   return input;
 }

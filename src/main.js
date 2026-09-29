@@ -134,6 +134,8 @@ const getBuild = () => build;
 // Layout.
 const statusText = h('span', { class: 'status-text' });
 const autosaveNote = h('span', { class: 'sev-error' });
+// A saved project that could not be loaded nor copied aside keeps autosave off for the session.
+if (keepSaved) autosaveNote.textContent = ' · Autosave off: use Save';
 const toast = h('div', { class: 'toast', role: 'status', 'aria-live': 'polite' });
 const undoBtn = h('button', { type: 'button', title: 'Undo (Ctrl+Z)', onclick: () => store.undo() }, 'Undo');
 const redoBtn = h('button', { type: 'button', title: 'Redo (Ctrl+Shift+Z)', onclick: () => store.redo() }, 'Redo');
@@ -301,9 +303,10 @@ function noteLargeSizes() {
   const size = projectSize(store.project);
   const keys = new Set(largeSizes(size).map((q) => q.key));
   if ([...keys].some((k) => !largeKeys.has(k))) {
-    // After a notice of the same change ("Added airfoil ..."), both stay readable.
-    const shown = toast.classList.contains('show') && !toast.classList.contains('error') ? `${toast.textContent} ` : '';
-    message(shown + sizeWarning(store.project, size));
+    // After a notice of the same change ("Added airfoil ...") or of the start (a lost autosave),
+    // both stay readable, and an error notice keeps its colour.
+    const showing = toast.classList.contains('show');
+    message((showing ? `${toast.textContent} ` : '') + sizeWarning(store.project, size), showing && toast.classList.contains('error'));
   }
   largeKeys = keys;
 }
@@ -316,6 +319,8 @@ let geometryPending = false;
 let viewPending = true;
 // Airfoils added or removed without a section using them: the table and Checks refresh, the wing stays.
 let tablePending = false;
+// The project name changed: its length enters the size warning; the wing and the panels stay.
+let namePending = false;
 // The project geometry changed and was built by currentBuild (Save, Export) before the next frame:
 // the planform forms still render the new project there.
 let formsPending = false;
@@ -329,11 +334,13 @@ function rebuild() {
     const changed = geometryPending;
     const redraw = changed || viewPending;
     const table = tablePending && !redraw;
+    const sizes = (table || namePending) && !redraw;
     geometryPending = false;
     viewPending = false;
     tablePending = false;
+    namePending = false;
     if (changed) build = safeBuild(store.project);
-    if (table) {
+    if (sizes) {
       // The size warning follows the airfoil count without a rebuild.
       const large = sizeWarning(store.project);
       const at = build.warnings.findIndex((w) => w.startsWith('Large project'));
@@ -362,7 +369,7 @@ function rebuild() {
       settings.update();
       refreshPanels = false;
     }
-    if (redraw || table) {
+    if (redraw || sizes) {
       renderChecks();
       noteLargeSizes();
     }
@@ -370,7 +377,8 @@ function rebuild() {
       const el = document.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
       if (el && el !== document.activeElement) {
         el.focus();
-        el.select?.();
+        // Text is selected in text and number fields only: lists, boxes and buttons keep focus alone.
+        if (el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'number')) el.select();
       }
     }
     undoBtn.disabled = !store.canUndo();
@@ -401,7 +409,8 @@ store.subscribe((project, reason) => {
     // removed that no section uses) changes the airfoil lists and the size warning only.
     if (reason === 'display') viewPending = true;
     else if (reason === 'airfoils') tablePending = true;
-    else if (reason !== 'meta') geometryPending = true;
+    else if (reason === 'meta') namePending = true;
+    else geometryPending = true;
   }
   rebuild();
 });

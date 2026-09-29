@@ -85,10 +85,10 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 
 ### Data flow
 
-1. A tab (class in `src/ui/`) calls `store.update(mutate, { key })`.
-   The store pushes the previous project onto the undo stack and clears the redo stack.
+1. A tab (class in `src/ui/`) calls `store.update(mutate, { key, session })`.
+   The store pushes the previous project onto the undo stack and clears the redo stack. A mutation that leaves the serialized project unchanged pushes nothing, keeps the redo stack and notifies nobody.
    The undo stack holds at most 100 steps. Undo and redo stack together hold at most 64,000,000 characters of serialized project (JSON). Above that, the oldest undo steps are dropped first, then the redo steps farthest from the current project. The newest step of each stack stays.
-   Consecutive updates with the same key, each less than 800 ms after the one before, form one undo step, e.g. a point drag.
+   Consecutive updates with the same key, each less than 800 ms after the one before, form one undo step. With `session: true` (planform drags) updates with the same key form one step however long the pauses, until the drag ends on pointer release or cancel (`lastKey` reset); undo and redo also reset it, so a drag in progress continues as a new step.
 2. The store notifies its subscribers.
    `main.js` schedules at most 1 rebuild in the next animation frame; further notifications before that frame share it.
 3. The rebuild runs `buildWing(project)`.
@@ -158,7 +158,7 @@ Build time and memory use on phones: not measured.
 
 ### Size warnings and limits
 
-Sizes above a warning threshold work as usual. The build then adds 1 warning to the **Checks** tab: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Each size reads `<value> (warning above <threshold>)`, for example `250 sections (warning above 200)`. `<time>` reads `under 1 s` or `about X s`; `<memory>` reads `about X MB` or `about X GB`. The status bar counts the warning. When a size rises above its threshold (an edit, **Open**, the restored autosave), a short message shows the same text. Beyond a hard limit a desktop browser tab runs out of memory or a change takes about 1 minute; the app refuses such projects and changes.
+Sizes above a warning threshold work as usual. The build then adds 1 warning to the **Checks** tab: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Each size reads `<value> (warning above <threshold>)`, for example `250 sections (warning above 200)`. `<time>` reads `under 1 s` or `about X s`; `<memory>` reads `about X MB` or `about X GB`. When the estimated first build takes at least 1 s longer than a change (`firstBuildSeconds`), the warning ends with `Opening it or changing the profile parametrization takes <time>.` The first build runs after **Open**, for the restored autosave and after a change of **Profile parametrization**; it checks and fits every airfoil again. The status bar counts the warning. When a size rises above its threshold (an edit, **Open**, the restored autosave), a short message shows the same text. Beyond a hard limit a desktop browser tab runs out of memory or a change takes about 1 minute; the app refuses such projects and changes.
 
 | Size | Warning above (`WARN` in `src/model/budget.js`) | Hard limit (`LIMITS` in `src/model/project.js`) |
 | --- | ---: | ---: |
@@ -185,13 +185,16 @@ Estimate model: linear fits to the browser measurements above, JavaScript time w
 | Airfoil list entry in the **Sections** table: sections × airfoils up to 20,000 entries (`LAZY_OPTIONS`), above that 1 per section | 8.5 µs | 0.5 KB |
 | Airfoil point | 1.5 µs | 0.2 KB |
 | Point of an enabled guide curve | 110 µs | 50 KB |
-| Airfoil point, checks on import and first build of a wing that uses the airfoil (`many-points` warning only) | 30 µs | not used |
+| Airfoil point, checks on import and first build of a wing that uses the airfoil (`airfoilFirstUse`: `many-points` warning and first build) | 30 µs | not used |
+| Airfoil, first build whatever its points: curve sampling and crossing tests (`airfoilFirstBuild`: first build only) | 4.4 ms | not used |
 
 | Export, per triangle (`EXPORT`) | Time | Memory | File |
 | --- | ---: | ---: | ---: |
 | STL | 0.8 µs | 210 bytes | 50 bytes |
 | 3MF | 5.8 µs | 110 bytes | 11.5 bytes |
 | STEP, per control point | 2.5 µs | 620 bytes | 98 bytes |
+
+First build (`firstBuildSeconds`): the time of a change plus 4.4 ms per project airfoil plus 30 µs per airfoil point. Basis: 7.4 ms per airfoil of 99 points in Node.js 24 at 1,000 and 2,000 airfoils, of it 3 ms by the point term; not measured in the browser. Example: 20,000 sections (**Linear**, 16 **Chordwise stations per surface**: 660,000 loft grid points) and 10,000 airfoils of 99 points: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
 
 The export memory adds the base of 15 MB. Tests: `test/budget.test.js` (thresholds, estimates, loft grid as the build computes it, shortened names), `e2e/limits.spec.js` (warning above 200 sections and the title of the **+** button, airfoil lists of large sections tables, export dialog note and the hard limit).
 

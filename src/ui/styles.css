@@ -489,10 +489,17 @@ legend {
   border-bottom: 1px solid var(--line);
 }
 
-canvas.thumb {
+svg.thumb {
   width: 110px;
   height: 36px;
   flex: none;
+}
+
+svg.thumb polyline {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
 }
 
 .library {

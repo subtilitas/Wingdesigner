@@ -343,13 +343,14 @@ Unbekannte Schlüssel in `settings` entfallen bei **Open**. **Save** schreibt di
 | `profiles[]` | ein Eintrag je Profil, das ein Profilschnitt verwendet: `airfoil` (ID), `name`, `curve`, `leadingEdgeParameter` (Kurvenparameter an der Profilnase) |
 | `guides.nose`, `guides.end` | Leitkurve, Kontrollpunkte `[x, y]` in mm; `null` bei ausgeschalteter Leitkurve |
 | `stations[]` | jede Station in Spannweitenrichtung: `y` (mm), `v` (Spannweitenanteil 0–1), `xLE`, `z`, `chord` (mm), `twist` (°) |
-| `surface` | Fläche des rechten Halbflügels: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` ohne Leitkurven; 3: `"smooth"` oder eine Leitkurve eingeschaltet), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
+| `surface` | Fläche des rechten Halbflügels: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` ohne Leitkurven; `"linear"` mit eingeschalteter Leitkurve: 3, oder 2 bzw. 1, wenn die Gittergrenze des Lofts die Stationen je Feld auf 2 oder 1 senkt; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
 
 - Kurvenobjekt: `degree`, `knots` (Knotenvektor), `controlPoints`. Alle Kurven und die Fläche sind nicht-rational; ein Schlüssel `weights` wird nicht geschrieben.
 - `profiles[].curve.controlPoints`: `[x, y]` in normierten Profilkoordinaten (Profiltiefe 1).
 - `surface.controlPoints[i][j]`: `[x, y, z]` in mm. i läuft entlang u: u = 0 obere Endleiste, u = `leadingEdgeU` Profilnase, u = 1 untere Endleiste. j läuft entlang v: v = 0 Wurzel, v = 1 Rand.
 - Algorithmen: [[Geometrie|Geometrie]].
-- Größe: Würde die Datei mit `derived` 100 MB überschreiten, lassen **Save** und **Export** > **Project JSON** `derived` weg und zeigen die Meldung `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
+- Größe: **Save** und **Export** > **Project JSON** schätzen die Zeichen von `derived`: Anzahl der Zahlen mal mittlere Länge der Koordinaten von höchstens 1000 über die Fläche verteilten Kontrollpunkten, zuzüglich 2 Zeichen je Zahl. Bis 110 MB nach dieser Schätzung schreiben sie die Datei mit `derived` und messen sie. Überschreitet die Schätzung 110 MB oder die geschriebene Datei 100 MB, lassen sie `derived` weg und zeigen die Meldung `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
+- Ohne `derived` wird ein Text über 100 MB ohne Einrückung geschrieben. Überschreitet er auch dann 100 MB (Namen und Quelltexte nahe an ihren Grenzen, z. B. 10 000 Profile mit Namen von 10 000 Zeichen), entsteht keine Datei; **Save** zeigt `Save failed: the project takes … MB as a file, above the 100 MB that Open reads.`
 
 ### Prüfungen bei **Open**
 
@@ -538,7 +539,7 @@ Abschnitt 6 „STEP-Topologie“.
 | `<model>` | `unit="millimeter"`, `xml:lang="en-US"` |
 | Metadaten | `Title` = `<name>` (Abschnitt „Dateinamen beim Export“), `Application` = `Wingdesigner` |
 | Objekte | 1 `<object type="model">` je Hülle, 1 `<build><item>` je Objekt; Namen: Tabelle „Körper je Datei“ |
-| Eckpunkte | bis zu 5 Nachkommastellen (0,00001 mm), Nullen am Ende entfernt |
+| Eckpunkte | 9 signifikante Stellen (genug für jede 32-Bit-Gleitkommazahl), kürzeste Form ohne Nullen am Ende, z. B. `1000000.12`, `0.123456789`, `12`; Beträge unter 1e-6 mm in Exponentenschreibweise, z. B. `-1e-7`; null als `0` |
 | Dreiecke | `v1`, `v2`, `v3`: Eckpunktindizes ab 0, von außen gesehen gegen den Uhrzeigersinn |
 | Datum der Zip-Einträge | fest 01.01.2026 00:00 UTC, gespeichert in der Ortszeit des Browsers; nicht die Exportzeit |
 
@@ -549,6 +550,6 @@ Profilseite in Tiefenrichtung). 1 KB = 1024 Byte. Dreieckszahlen in Klammern.
 
 | Projekt | Schnitte | Stationen in Spannweitenrichtung | STEP | STL **Normal** | STL **Fine** | 3MF **Normal** | 3MF **Fine** | JSON |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Beispielflügel `Sport wing 1500` | 3 | 3 | 122 KB | 71 KB (1444) | 235 KB (4812) | 18 KB | 56 KB | 77 KB |
-| Vorlage **Sport** im Assistenten | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 10 KB | 35 KB | 69 KB |
-| Vorlage **Glider** im Assistenten, elliptische Leitkurven | 3 | 17 | 445 KB | 1158 KB (23708) | 4566 KB (93500) | 254 KB | 1000 KB | 205 KB |
+| Beispielflügel `Sport wing 1500` | 3 | 3 | 122 KB | 71 KB (1444) | 235 KB (4812) | 20 KB | 61 KB | 63 KB |
+| Vorlage **Sport** im Assistenten | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 11 KB | 38 KB | 56 KB |
+| Vorlage **Glider** im Assistenten, elliptische Leitkurven | 3 | 17 | 444 KB | 1158 KB (23708) | 4566 KB (93500) | 279 KB | 1099 KB | 175 KB |

@@ -83,14 +83,12 @@ export function projectToJsonText(project, build, meta) {
 }
 
 /**
- * Largest project file read (bytes). The project data of every project within LIMITS fits (1,000,000
- * airfoil points take about 40 MB); the derived NURBS data of large wings may not.
+ * Largest project file read (bytes). 1,000,000 airfoil points take about 40 MB; names and source
+ * texts near their limits can exceed it (10,000 airfoils with 10,000-character names take 102 MB,
+ * and Save then fails with its size); the derived NURBS data of large wings may not fit either.
  */
 export const MAX_PROJECT_BYTES = 100_000_000;
 
-// Characters per number of derived data in the file (up to 17 significant digits, sign, exponent,
-// separator).
-const CHARS_PER_NUMBER = 26;
 
 /** Bytes of a string in UTF-8, the encoding of the downloaded file (Open limits File.size). */
 export function utf8Length(s) {
@@ -117,13 +115,35 @@ function derivedNumbers(build) {
 }
 
 /**
+ * Expected characters of the derived data: its number count times the mean length, with separator,
+ * of the coordinates of at most 1,000 surface control points spread over the surface. The largest
+ * possible length per number (26 characters) left the derived data out of files of 70 MB.
+ */
+function derivedChars(build) {
+  const P = build.surface.points;
+  const nJ = P[0].length;
+  const total = P.length * nJ;
+  const step = Math.max(1, Math.ceil(total / 1000));
+  let chars = 0;
+  let count = 0;
+  for (let k = 0; k < total; k += step) {
+    for (const v of P[Math.floor(k / nJ)][k % nJ]) {
+      chars += String(v).length + 2;
+      count++;
+    }
+  }
+  return (chars / count) * derivedNumbers(build);
+}
+
+/**
  * Text of a project file (Save, JSON export). The derived NURBS data is left out when the file would
  * exceed MAX_PROJECT_BYTES, so that Open reads every file the app writes; Open recomputes it. Above
  * the limit without indentation it throws.
  * @returns {{text: string, derived: boolean, omitted: boolean}} omitted: derived data left out for size
  */
 export function projectFileText(project, build, meta) {
-  if (build?.surface && CHARS_PER_NUMBER * derivedNumbers(build) <= MAX_PROJECT_BYTES) {
+  // Within 10 % of the limit by the estimate, the written text decides.
+  if (build?.surface && derivedChars(build) <= 1.1 * MAX_PROJECT_BYTES) {
     const full = formatJson(projectToJson(project, build, meta));
     if (utf8Length(full) <= MAX_PROJECT_BYTES) return { text: full, derived: true, omitted: false };
   }

@@ -55,6 +55,8 @@ export class SectionsPanel {
     const stations = build?.stations ?? [];
     // One option per section and airfoil: 1,000 sections with 200 airfoils took 1.7 s per render.
     const lazyLists = sections.length * p.airfoils.length > LAZY_OPTIONS;
+    // One lookup per row: a filter over the airfoils per row took 1.7 s at 20,000 x 10,000.
+    const airfoilById = new Map(p.airfoils.map((a) => [a.id, a]));
     const option = (a, chosen) => h('option', { value: a.id, selected: a.id === chosen }, displayName(a.name));
     const fillList = (e) => {
       const el = e.currentTarget;
@@ -105,6 +107,7 @@ export class SectionsPanel {
             'select',
             {
               'aria-label': `Airfoil of section ${i + 1}`,
+              dataset: { focusKey: `sec:${s.id}:airfoil` },
               onchange: (e) =>
                 this.store.update((q) => {
                   q.sections.find((z) => z.id === s.id).airfoil = e.target.value;
@@ -112,7 +115,7 @@ export class SectionsPanel {
               // Large tables list only the chosen airfoil until the list is used.
               ...(lazyLists ? { onfocus: fillList, onpointerdown: fillList } : {}),
             },
-            (lazyLists ? p.airfoils.filter((a) => a.id === s.airfoil) : p.airfoils).map((a) => option(a, s.airfoil)),
+            (lazyLists ? [airfoilById.get(s.airfoil)].filter(Boolean) : p.airfoils).map((a) => option(a, s.airfoil)),
           ),
         ),
         FIELDS.map((f) => {
@@ -143,6 +146,7 @@ export class SectionsPanel {
               class: 'icon',
               title: insertTitle,
               'aria-label': `Insert section after ${i + 1}`,
+              dataset: { focusKey: `sec:${s.id}:insert` },
               disabled: sections.length >= LIMITS.maxSections,
               onclick: () => {
                 const problem = insertProblem(this.store.project, i);
@@ -165,6 +169,7 @@ export class SectionsPanel {
               class: 'icon',
               title: 'Delete section',
               'aria-label': `Delete section ${i + 1}`,
+              dataset: { focusKey: `sec:${s.id}:delete` },
               disabled: sections.length <= 2,
               onclick: () => this.store.update((q) => removeSection(q, s.id)),
             },

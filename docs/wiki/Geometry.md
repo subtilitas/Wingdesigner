@@ -219,7 +219,8 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | Condition | Stations per panel | Spacing inside a panel | Surface degree along v |
 | --- | --- | --- | --- |
 | **Linear**, no guide curve enabled | 1 (the section) | – | 1 |
-| **Smooth**, or a guide curve enabled | K (the section and K − 1 intermediate stations) | cosine | 3 |
+| **Linear**, a guide curve enabled | K (the section and K − 1 intermediate stations) | cosine | min(3, K): 3 for K ≥ 3; 2 or 1 when the loft grid limit lowers K to 2 or 1 |
+| **Smooth** | K (the section and K − 1 intermediate stations) | cosine | 3 (stations − 1 below 4 stations) |
 
 The tip section is the last station. Station count with K per panel: (sections − 1) · K + 1, plus the
 added stations below (in every mode).
@@ -247,6 +248,7 @@ The limits apply in every mode.
 | Error (more than 5,000,000 grid points with the K used) | "The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections." No surface is built. |
 | Example | 200 sections, K_set = 8, N = 60 (defaults): K = 8, 1,593 stations, 192,753 grid points: warning with time and memory |
 | Example | 2,000 sections, K_set = 8, N = 200: K = 6, 11,995 stations, 4,809,995 grid points |
+| Example | 4,200 sections, K_set = 8, N = 200, **Linear** with a guide curve: K = 2, 8,399 stations, 3,367,999 grid points; surface degree along v 2 |
 | Example | 20,000 sections, N = 200, any mode: K = 1, 8,020,000 grid points: error |
 
 Added stations: the surface passes through the stations only. Between stations it can deviate from
@@ -260,8 +262,9 @@ surface points with the points of a station placed at y (sections 3.4, 3.7, 3.8)
 | Compared chord stations per surface | N = 16: 7. N = 60: 5 (k = 10, 20, 30, 40, 50; s_k = 6.7 %, 25 %, 50 %, 75 %, 93.3 % of the chord). N = 200: 6. |
 | Deviation at y | max over j of \|S(u_j, v) − P_j\|, 3D distance; u_j = surface parameter of profile point j (section 4), P_j = point j of the station placed at y |
 | Tolerance | min(0.5 mm, 0.1 · c(y)) |
-| Insertion | deviation at every check position y of section 3.6; one station at each local maximum above the tolerance; a new station keeps at least 1e-6 · (y_tip − y_root) from every other station |
-| Limit | 6 rounds, 32 added stations in total |
+| Insertion | deviation at every check position y of section 3.6; one station at each local maximum of deviation / tolerance where the deviation exceeds the tolerance (the tolerance shrinks with the chord, so the largest deviation can lie below its tolerance while smaller ones further out exceed theirs); a new station keeps at least 1e-6 · (y_tip − y_root) from every other station |
+| Limit | 6 rounds, 32 added stations in total; above 60,000 grid points (`WARN.gridPoints`) 1 round, because each round fits the whole loft again |
+| Kept fit | of the fits before and after each round, the one with the smallest max over the check positions of deviation / tolerance; on a tie the earlier one. Stations added close together can make the cubic fit swing: 2 sections, nose line with a bump 4 mm high and 0.06 mm wide (control points): 3.67 mm without added stations, 18,797 mm after 32 added stations; the build keeps the first fit and warns |
 | After the final fit | fitted chord and local thickness (section 3.6) also at 0.25, 0.5 and 0.75 of every station interval (quarter points); they enter only the errors of section 3.6: no station is added there, and the deviation there does not enter the warning |
 | Deviation above the tolerance at a check position | warning with the largest deviation at the check positions, its y and the number of added stations; remedy: raise K |
 
@@ -271,11 +274,13 @@ Example: **Swept flying wing** preset (3 sections, **Linear**, tip twist −4°)
 y = 150.0 mm and y = 450.0 mm. The same preset with tip twist 0°: no added station.
 
 Pointed elliptic tips (wizard: **Planform** = **Elliptic (guide curves)**, **Tip** =
-**Pointed (1/200 scale)**), every preset: 1 to 5 added stations. Largest deviation at the check
-positions: 0.159 mm (**Plank**) to 0.376 mm (**Trainer**), below the tolerance; no warning. The nose
-line and the end line end a quarter and three quarters of the tip chord around the sweep line, so
-the tip section keeps its quarter chord on that line. The deviation between stations within 2 mm of
-the tip is not measured for these guide ends; the warning does not cover those positions.
+**Pointed (1/200 scale)**), every preset: 5 to 9 added stations. Largest deviation at the check
+positions: 0.077 mm (**Tail surface**) to 0.371 mm (**Swept flying wing**), below the tolerance; no
+warning. The nose line and the end line end a quarter and three quarters of the tip chord around
+the sweep line, so the tip section keeps its quarter chord on that line. Within 2 mm of the tip the
+leading and trailing edge x of the loft deviate at most 0.031 mm (**Swept flying wing**; 2,001 span
+samples) from the intended planform; the other profile points there are not measured, and the
+warning does not cover those positions.
 
 ### 3.3 Guide curves
 
@@ -476,8 +481,8 @@ Tensor-product B-spline surface S(u, v) through the station grid Q (2N + 1 point
 | Direction | Parameters | Degree | Knot vector |
 | --- | --- | --- | --- |
 | u (around the profile) | mean of the per-station parametrizations; u_0 = 0, u_2N = 1 | 3 | clamped, by averaging |
-| v (span), **Linear** | v = (y − y_root) / (y_tip − y_root) | 1 without guides, 3 with a guide | one interpolation per panel; panels joined at the sections with interior knot multiplicity p (C0: position-continuous, kinks at sections) |
-| v (span), **Smooth** | same | 3 | one interpolation over all stations, averaging (C2: continuous up to the second derivative) |
+| v (span), **Linear** | v = (y − y_root) / (y_tip − y_root) | 1 without guides; with a guide min(3, K) (2 or 1 when the loft grid limit lowers K, section 3.2) | one interpolation per panel; panels joined at the sections with interior knot multiplicity p (C0: position-continuous, kinks at sections) |
+| v (span), **Smooth** | same | 3 (stations − 1 below 4 stations) | one interpolation over all stations, averaging (C2: continuous up to the second derivative) |
 
 Procedure:
 
@@ -504,7 +509,7 @@ as shading.
 | **Sport** | 2 | 121 × 2 | 3 × 1 |
 | **Swept flying wing** | 5 (2 added, section 3.2) | 121 × 5 | 3 × 1 |
 | **Glider** (elliptic guide curves, **Tip** = **Flat**) | 17 | 121 × 17 | 3 × 3 |
-| **Glider** (elliptic guide curves, **Tip** = **Pointed (1/200 scale)**) | 18 (1 added, section 3.2; largest deviation 0.356 mm, no warning) | 121 × 18 | 3 × 3 |
+| **Glider** (elliptic guide curves, **Tip** = **Pointed (1/200 scale)**) | 22 (5 added, section 3.2; largest deviation 0.263 mm, no warning) | 121 × 22 | 3 × 3 |
 
 ## 5. Meshes
 
@@ -513,7 +518,7 @@ Triangle meshes for STL (stereolithography) and 3MF (3D Manufacturing Format) ex
 | Direction | Samples |
 | --- | --- |
 | u | station parameters u_j; each interval divided into d parts |
-| v | station parameters v_k; each interval divided into r · d parts; r = 1 (degree 1 along v), r = 3 (degree 3) |
+| v | station parameters v_k; each interval divided into r · d parts; r = 1 (degree 1 along v), r = 3 (degree 2 or 3) |
 
 d = **Mesh density (STL, 3MF)**: 1 (**Normal**) or 2 (**Fine (4x triangles)**). The 3D view samples
 with d = 1. The counts below apply to the export meshes.
@@ -532,9 +537,13 @@ Example: **Sport** preset, N = 60, d = 1, open TE: 242 vertices, 480 triangles p
 - Orientation: every triangle faces outward (normal S_v × S_u).
 - Caps: the root and tip outlines are triangulated in the x-z plane. Upper point k pairs with lower
   point k (same chord station): 2 triangles per station interval, linear time.
-- Cap fallback: ear clipping. It applies when a strip triangle is not counterclockwise. It also
-  applies when the triangle areas differ from the outline area by more than 1e-9 (relative). Both areas
-  are summed relative to a vertex of the outline, so a wing 1,000,000 mm from the origin keeps the strips.
+- Other diagonal: when a triangle of a quad is not counterclockwise, the quad uses its other diagonal
+  (refined chord stations do not pair exactly). With one diagonal only, a **Fine** cap with a closed
+  trailing edge (NACA 4415, 200 chord stations per surface) falls back to ear clipping: 2.2 s.
+- Cap fallback: ear clipping. It applies when a quad has a triangle that is not counterclockwise with
+  either diagonal. It also applies when the triangle areas differ from the outline area by more than
+  1e-9 (relative). Both areas are summed relative to a vertex of the outline, so a wing 1,000,000 mm
+  from the origin keeps the strips.
 - Left half: y → −y, triangle winding reversed.
 
 | **Wing halves** | Shells |
@@ -609,10 +618,12 @@ Pass criteria per file:
 MAC: mean aerodynamic chord. The integrals use the intended planform: x_LE(y) and c(y) of section 3.4,
 including guide curves and the chord floor of a pointed tip (`planformAt` in `src/geom/wing.js`).
 Quadrature: 5-point Gauss-Legendre, exact for polynomials up to degree 9, on each interval [y_a, y_b]
-between neighbouring breakpoints. Breakpoints: the stations, the sections and, for each enabled guide
+between neighbouring breakpoints. Breakpoints: root, tip, the sections and, for each enabled guide
 curve, every knot and control point mapped to the wing span (`planformBreaks` in `src/geom/wing.js`).
-An interval is halved while the two halves change one of the 4 integrals by more than 1e-10 of its
-scale, at most 12 times (`REL_TOLERANCE`, `MAX_DEPTH` in `src/geom/stats.js`).
+Stations are no breakpoints: the intended planform does not bend there, and splitting at 139,994
+stations (20,000 sections, guides of 20,000 points) took 27 s. An interval is halved while the two
+halves change one of the 4 integrals by more than 1e-10 of its scale, at most 12 times
+(`REL_TOLERANCE`, `MAX_DEPTH` in `src/geom/stats.js`).
 
 ```
 S_half   = ∫ c dy
@@ -643,8 +654,8 @@ within the error of the midpoint rule itself):
 
 | Case | S | MAC | y_MAC | x_LE,MAC |
 | --- | --- | --- | --- | --- |
-| **Glider**, **Tip** = **Flat** | −2.1e-10 % | −3.4e-12 % | −4.1e-10 % | 2.0e-12 mm |
-| **Glider**, **Tip** = **Pointed (1/200 scale)** | −7.7e-10 % | 7.0e-10 % | −1.3e-9 % | −3.0e-10 mm |
+| **Glider**, **Tip** = **Flat** | −2.2e-10 % | −6.7e-12 % | −4.2e-10 % | 3.2e-12 mm |
+| **Glider**, **Tip** = **Pointed (1/200 scale)** | −2.1e-9 % | 2.0e-9 % | −3.1e-9 % | −8.6e-10 mm |
 | other planforms with guide curves | not measured | not measured | not measured | not measured |
 
 - b: span, S: wing area, AR: aspect ratio. b, S and AR cover both halves.
@@ -668,7 +679,7 @@ within the error of the midpoint rule itself):
 | **Trailing edge** | `closed` or `open` (section 3.7) | – |
 
 Example: **Glider** preset (**Tip** = **Flat**, N = 60, K = 8): **Span** 2000.0 mm, **Wing area**
-33.72 dm², **Aspect ratio** 11.86, **MAC** 174.1 mm, **MAC position** y 450.6 mm, x 6.5 mm, **25 % MAC**
+33.73 dm², **Aspect ratio** 11.86, **MAC** 174.2 mm, **MAC position** y 450.6 mm, x 6.5 mm, **25 % MAC**
 x 50.0 mm, **Root / tip chord** 200.0 / 90.0 mm, **Surface** degree 3 × 3, 121 × 17 control points,
 **Trailing edge** `open`.
 

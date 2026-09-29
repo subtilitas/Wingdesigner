@@ -85,10 +85,10 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 
 ### Datenfluss
 
-1. Eine Registerkarte (Klasse in `src/ui/`) ruft `store.update(mutate, { key })` auf.
-   Der Store legt das vorherige Projekt auf den Rückgängig-Stapel und leert den Wiederholen-Stapel.
+1. Eine Registerkarte (Klasse in `src/ui/`) ruft `store.update(mutate, { key, session })` auf.
+   Der Store legt das vorherige Projekt auf den Rückgängig-Stapel und leert den Wiederholen-Stapel. Eine Änderung, die das serialisierte Projekt gleich lässt, legt nichts ab, behält den Wiederholen-Stapel und benachrichtigt niemanden.
    Der Rückgängig-Stapel fasst höchstens 100 Schritte. Rückgängig- und Wiederholen-Stapel zusammen fassen höchstens 64 000 000 Zeichen serialisiertes Projekt (JSON). Darüber werden zuerst die ältesten Rückgängig-Schritte verworfen, dann die vom aktuellen Projekt am weitesten entfernten Wiederholen-Schritte. Der neueste Schritt jedes Stapels bleibt.
-   Aufeinanderfolgende Änderungen mit demselben Schlüssel, jede weniger als 800 ms nach der vorigen, bilden einen Rückgängig-Schritt, z. B. das Ziehen eines Punkts.
+   Aufeinanderfolgende Änderungen mit demselben Schlüssel, jede weniger als 800 ms nach der vorigen, bilden einen Rückgängig-Schritt. Mit `session: true` (Ziehen im Grundriss) bilden Änderungen mit demselben Schlüssel einen Schritt, wie lang die Pausen auch sind, bis der Ziehvorgang beim Loslassen oder Abbrechen endet (`lastKey` zurückgesetzt); Rückgängig und Wiederholen setzen ihn ebenfalls zurück, sodass ein laufender Ziehvorgang als neuer Schritt weitergeht.
 2. Der Store benachrichtigt seine Abonnenten.
    `main.js` plant höchstens 1 Neuberechnung im nächsten Animations-Frame; weitere Benachrichtigungen davor nutzen dieselbe.
 3. Die Neuberechnung ruft `buildWing(project)` auf.
@@ -158,7 +158,7 @@ Rechenzeit und Speicherbedarf auf Smartphones: nicht gemessen.
 
 ### Größenwarnungen und Grenzen
 
-Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt dann 1 Warnung in der Registerkarte **Checks**: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Jede Größe lautet `<value> (warning above <threshold>)`, zum Beispiel `250 sections (warning above 200)`. `<time>` lautet `under 1 s` oder `about X s`; `<memory>` lautet `about X MB` oder `about X GB`. Die Statusleiste zählt die Warnung. Steigt eine Größe über ihre Schwelle (Bearbeitung, **Open**, wiederhergestellte automatische Sicherung), zeigt eine Kurzmeldung denselben Text. Jenseits einer harten Grenze läuft einem Browser-Tab auf dem Desktop der Speicher aus oder eine Änderung dauert etwa 1 Minute; die App weist solche Projekte und Änderungen ab.
+Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt dann 1 Warnung in der Registerkarte **Checks**: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Jede Größe lautet `<value> (warning above <threshold>)`, zum Beispiel `250 sections (warning above 200)`. `<time>` lautet `under 1 s` oder `about X s`; `<memory>` lautet `about X MB` oder `about X GB`. Dauert der geschätzte erste Aufbau mindestens 1 s länger als eine Änderung (`firstBuildSeconds`), endet die Warnung mit `Opening it or changing the profile parametrization takes <time>.` Der erste Aufbau läuft nach **Open**, für die wiederhergestellte automatische Sicherung und nach einer Änderung von **Profile parametrization**; er prüft und interpoliert jedes Profil neu. Die Statusleiste zählt die Warnung. Steigt eine Größe über ihre Schwelle (Bearbeitung, **Open**, wiederhergestellte automatische Sicherung), zeigt eine Kurzmeldung denselben Text. Jenseits einer harten Grenze läuft einem Browser-Tab auf dem Desktop der Speicher aus oder eine Änderung dauert etwa 1 Minute; die App weist solche Projekte und Änderungen ab.
 
 | Größe | Warnung über (`WARN` in `src/model/budget.js`) | Harte Grenze (`LIMITS` in `src/model/project.js`) |
 | --- | ---: | ---: |
@@ -185,13 +185,16 @@ Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit o
 | Eintrag einer Profilliste in der Tabelle **Sections**: Schnitte × Profile bis 20 000 Einträge (`LAZY_OPTIONS`), darüber 1 je Schnitt | 8,5 µs | 0,5 KB |
 | Profilpunkt | 1,5 µs | 0,2 KB |
 | Punkt einer eingeschalteten Leitkurve | 110 µs | 50 KB |
-| Profilpunkt, Prüfung beim Import und erster Aufbau eines Flügels mit dem Profil (nur Warnung `many-points`) | 30 µs | nicht verwendet |
+| Profilpunkt, Prüfung beim Import und erster Aufbau eines Flügels mit dem Profil (`airfoilFirstUse`: Warnung `many-points` und erster Aufbau) | 30 µs | nicht verwendet |
+| Profil, erster Aufbau unabhängig von seinen Punkten: Abtastung der Kurve und Kreuzungstests (`airfoilFirstBuild`: nur erster Aufbau) | 4,4 ms | nicht verwendet |
 
 | Export, je Dreieck (`EXPORT`) | Zeit | Speicher | Datei |
 | --- | ---: | ---: | ---: |
 | STL | 0,8 µs | 210 Byte | 50 Byte |
 | 3MF | 5,8 µs | 110 Byte | 11,5 Byte |
 | STEP, je Kontrollpunkt | 2,5 µs | 620 Byte | 98 Byte |
+
+Erster Aufbau (`firstBuildSeconds`): die Zeit einer Änderung plus 4,4 ms je Projektprofil plus 30 µs je Profilpunkt. Grundlage: 7,4 ms je Profil mit 99 Punkten in Node.js 24 bei 1000 und 2000 Profilen, davon 3 ms durch den Punktanteil; im Browser nicht gemessen. Beispiel: 20 000 Schnitte (**Linear**, 16 **Chordwise stations per surface**: 660 000 Punkte des Loft-Gitters) und 10 000 Profile mit 99 Punkten: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
 
 Der Speicher beim Export enthält zusätzlich den Grundwert von 15 MB. Tests: `test/budget.test.js` (Schwellen, Schätzungen, Loft-Gitter wie im Aufbau, gekürzte Namen), `e2e/limits.spec.js` (Warnung über 200 Schnitten und Titel der Schaltfläche **+**, Profillisten großer Schnitttabellen, Hinweis im Exportdialog und harte Grenze).
 

@@ -123,8 +123,10 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         notify(e.message, true);
         return;
       }
-      // Out-of-memory and size limits of the browser end here, e.g. very dense meshes.
-      notify(`Export failed: ${e.message}. Use Normal mesh density or fewer chord samples and panel stations.`, true);
+      // Out-of-memory and size limits of the browser end here, e.g. very dense meshes; a project
+      // file above the Open limit ends here too, where mesh settings do not help.
+      const remedy = fmt === 'json' ? '' : fmt === 'step' ? ' Use one half, or fewer chord samples and panel stations.' : ' Use Normal mesh density or fewer chord samples and panel stations.';
+      notify(`Export failed: ${e.message}.${remedy}`, true);
     }
   });
   dialog.showModal();

@@ -9,7 +9,7 @@
 // server CPU, JavaScript time without drawing the 3D view (RECORD.md lists the measurements). The
 // 3D view adds the drawing time of the graphics card; phones compute slower (not measured).
 
-import { LIMITS } from './project.js';
+import { LIMITS, resolveSettings } from './project.js';
 
 /** Sizes above which a warning names the expected time and memory. */
 export const WARN = Object.freeze({
@@ -40,6 +40,10 @@ const COST = Object.freeze({
   guidePoint: { s: 110e-6, mb: 0.05 },
   // Point of an airfoil once: the checks on import and the first build of a wing that uses it.
   airfoilFirstUse: { s: 30e-6, mb: 1e-3 },
+  // Airfoil once, whatever its points: curve sampling and crossing tests of the first build (7.4 ms
+  // per airfoil of 99 points at 1,000 and 2,000 airfoils, of it 3 ms by the point term; Node.js 24,
+  // not measured in the browser).
+  airfoilFirstBuild: { s: 4.4e-3 },
 });
 
 // Export cost per triangle by format (8.5 million triangles: STL 6.9 s, 1.7 GB above the open
@@ -93,7 +97,8 @@ export function projectSize(project) {
     airfoilPoints,
     largestAirfoil,
     guidePoints: Math.max(0, ...enabled.map((k) => guides[k].points?.length ?? 0)),
-    gridPoints: loftGrid(project.sections.length, project.settings, enabled.length > 0).points,
+    // Settings with their defaults: a project from the module API may carry some or none.
+    gridPoints: loftGrid(project.sections.length, resolveSettings(project.settings), enabled.length > 0).points,
     longestName,
   };
 }
@@ -114,6 +119,14 @@ export function changeCost(size) {
     mb += COST[k].mb * n;
   }
   return { seconds: s, megabytes: mb };
+}
+
+/**
+ * Expected time (s) of the first build of the project: Open, the restored autosave and a change of
+ * the profile parametrization check and fit every airfoil again.
+ */
+export function firstBuildSeconds(size) {
+  return changeCost(size).seconds + COST.airfoilFirstBuild.s * size.airfoils + COST.airfoilFirstUse.s * size.airfoilPoints;
 }
 
 /** Expected time (s) of checking an airfoil of `points` points and of its first build. */
@@ -138,8 +151,10 @@ export function formatSeconds(s) {
 
 /** "about 250 MB", "about 1.2 GB" (two significant digits). */
 export function formatMegabytes(mb) {
-  if (mb >= 1000) return `about ${Number((mb / 1000).toPrecision(2))} GB`;
-  return `about ${Number(Math.max(mb, 1).toPrecision(2))} MB`;
+  // Rounded before the unit is chosen: 996 MB reads "about 1 GB", not "about 1000 MB".
+  const v = Number(Math.max(mb, 1).toPrecision(2));
+  if (v >= 1000) return `about ${Number((v / 1000).toPrecision(2))} GB`;
+  return `about ${v} MB`;
 }
 
 /** Time and memory of one change: "each change takes about 3 s and about 250 MB of browser memory". */
@@ -175,7 +190,10 @@ export function sizeWarning(project, size = projectSize(project)) {
   const large = largeSizes(size).map((q) => q.text);
   if (!large.length) return null;
   const list = large.length === 1 ? large[0] : `${large.slice(0, -1).join(', ')} and ${large[large.length - 1]}`;
-  return `Large project: ${list}. ${costSentence(size)}`;
+  // The first build names its own time when it takes at least 1 s more than a change.
+  const first = firstBuildSeconds(size);
+  const open = first - changeCost(size).seconds >= 1 ? ` Opening it or changing the profile parametrization takes ${formatSeconds(first)}.` : '';
+  return `Large project: ${list}. ${costSentence(size)}${open}`;
 }
 
 /** A name for lists and messages: at most WARN.name characters. */

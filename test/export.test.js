@@ -76,7 +76,7 @@ describe('STL', () => {
     // high, below the 0.0625 mm spacing, turn over without merging corners (flipped triangles with
     // 0.08 mm edges stay under 4 spacings).
     const far = concatMeshes(exportMeshes(wing(801579, 955903, 7.41, { chordSamples: 16 }), 'halves', { uRefine: 1, vRefine: 1 }).map((m) => m.mesh));
-    expect(() => meshToStl(far)).toThrow('STL stores 32-bit coordinates: at 955904 mm their spacing is 0.063 mm, and 4 of 256 triangles collapse or turn over.');
+    expect(() => meshToStl(far)).toThrow('STL stores 32-bit coordinates: at 955903 mm their spacing is 0.063 mm, and 4 of 256 triangles collapse or turn over. Move the wing towards the origin, or export STEP.');
     expect(() => meshesTo3mf([{ name: 'w', mesh: far }])).toThrow(MeshPrecisionError);
     // 1 mm chord of the default design with a closed trailing edge and 200 chord samples: at Fine
     // density 2 triangles of 1.4e-4 mm turn over; they are under 4 spacings and stay below the resolution.
@@ -113,6 +113,17 @@ describe('STL', () => {
     expect(() => meshToStl(at(1e6, 1e6))).toThrow(MeshPrecisionError);
     expect(() => meshToStl(at(1e6, 1e6))).toThrow(/^STL stores 32-bit coordinates: at 1000001 mm their spacing is 0\.063 mm, and \d+ of \d+ triangles collapse or turn over/);
     expect(() => meshesTo3mf([{ name: 'w', mesh: at(1e6, 1e6) }])).toThrow(/^3MF readers store 32-bit coordinates: at 1000001 mm/);
+    expect(() => meshToStl(at(1e6, 1e6))).toThrow(/\. Move the wing towards the origin, or export STEP\.$/);
+    // Two sections 1e-5 mm apart at y = 300 mm, below the 3.1e-5 mm spacing there: moving the wing
+    // does not help, and the message names the span position.
+    const close = sampleProject();
+    close.sections.push({ id: 'd', airfoil: 'root', x: 20, y: 300.00001, z: 10, chord: 170, twist: -1 });
+    const build = buildWing(close);
+    expect(build.errors).toEqual([]);
+    const mesh = concatMeshes(exportMeshes(build, 'halves').map((m) => m.mesh));
+    for (const write of [() => meshToStl(mesh), () => meshesTo3mf([{ name: 'w', mesh }])]) {
+      expect(write).toThrow(/^(STL stores|3MF readers store) 32-bit coordinates: at 300 mm their spacing is 0\.000031 mm, and \d+ of \d+ triangles collapse or turn over\. Sections or stations near y = 300(\.00001)? mm lie closer together than the spacing there \(0\.000031 mm\); move them apart, or export STEP\.$/);
+    }
     // At 1000 mm the spacing is 6.1e-5 mm; no corners merge.
     const near = at(1000, 0);
     const tris = parseStl(meshToStl(near));
@@ -573,13 +584,21 @@ describe('import hardening', () => {
     const small = projectFileText(p, b);
     expect(small).toMatchObject({ derived: true, omitted: false });
     expect(JSON.parse(small.text).derived.surface.degreeU).toBe(3);
-    // A surface whose control points alone take more than MAX_PROJECT_BYTES (22 characters a number).
-    const huge = { ...b, surface: { ...b.surface, points: [{ length: Math.ceil(MAX_PROJECT_BYTES / 66) + 1 }] } };
+    // A surface whose control points alone take more than MAX_PROJECT_BYTES: 2.2 million points of
+    // 3 numbers with 16 characters and a separator each.
+    const long = [123.456789012345, 1.23456789012345, 0.123456789012345];
+    const huge = { ...b, surface: { ...b.surface, points: [new Array(Math.ceil((1.1 * MAX_PROJECT_BYTES) / 54) + 1).fill(long)] } };
     const big = projectFileText(p, huge);
     expect(big).toMatchObject({ derived: false, omitted: true });
     expect(JSON.parse(big.text).derived).toBeUndefined();
     expect(projectFromJsonText(big.text).ok).toBe(true);
     expect(projectFileText(p, null)).toMatchObject({ derived: false, omitted: false });
+    // 5.1 million short numbers (27 MB of text) are written, although 26 characters a number would
+    // exceed the limit.
+    const zeros = { ...b, surface: { ...b.surface, points: [new Array(1_700_000).fill([0, 0, 0])] } };
+    const kept = projectFileText(p, zeros);
+    expect(kept).toMatchObject({ derived: true, omitted: false });
+    expect(utf8Length(kept.text)).toBeLessThan(MAX_PROJECT_BYTES / 3);
   });
 
   it('returns errors instead of throwing on malformed containers', () => {

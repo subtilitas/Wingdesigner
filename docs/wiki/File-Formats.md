@@ -343,13 +343,14 @@ Unknown keys inside `settings` are dropped on **Open**. **Save** writes the keys
 | `profiles[]` | one entry per airfoil that a section uses: `airfoil` (id), `name`, `curve`, `leadingEdgeParameter` (curve parameter at the LE) |
 | `guides.nose`, `guides.end` | guide curve, control points `[x, y]` in mm; `null` when the guide is disabled |
 | `stations[]` | every spanwise station: `y` (mm), `v` (span fraction 0–1), `xLE`, `z`, `chord` (mm), `twist` (°) |
-| `surface` | surface of the right half: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` without guides; 3: `"smooth"` or a guide enabled), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
+| `surface` | surface of the right half: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` without guides; `"linear"` with a guide enabled: 3, or 2 or 1 when the loft grid limit lowers the stations per panel to 2 or 1; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
 
 - Curve object: `degree`, `knots`, `controlPoints`. All curves and the surface are non-rational; no `weights` key is written.
 - `profiles[].curve.controlPoints`: `[x, y]` in normalized airfoil coordinates (chord 1).
 - `surface.controlPoints[i][j]`: `[x, y, z]` in mm. i runs along u: u = 0 upper TE, u = `leadingEdgeU` LE, u = 1 lower TE. j runs along v: v = 0 root, v = 1 tip.
 - Algorithms: [[Geometry|Geometry]].
-- Size: when the file with `derived` would exceed 100 MB, **Save** and **Export** > **Project JSON** leave `derived` out and show the notice `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
+- Size: **Save** and **Export** > **Project JSON** estimate the characters of `derived`: its count of numbers times the mean length of the coordinates of at most 1,000 surface control points spread over the surface, plus 2 characters per number. Up to 110 MB by this estimate they write the file with `derived` and measure it. When the estimate exceeds 110 MB or the written file exceeds 100 MB, they leave `derived` out and show the notice `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
+- Without `derived`, a text above 100 MB is written without indentation. When it still exceeds 100 MB (names and source texts near their limits, e.g. 10,000 airfoils with 10,000-character names), no file is written; **Save** shows `Save failed: the project takes … MB as a file, above the 100 MB that Open reads.`
 
 ### Checks on **Open**
 
@@ -536,7 +537,7 @@ Faces, edges, orientation flags and the OpenCascade validation: [[Geometry|Geome
 | `<model>` | `unit="millimeter"`, `xml:lang="en-US"` |
 | Metadata | `Title` = `<name>` (section "Export file names"), `Application` = `Wingdesigner` |
 | Objects | 1 `<object type="model">` per shell, 1 `<build><item>` per object; names: table "Bodies per file" |
-| Vertices | up to 5 decimal places (0.00001 mm), trailing zeros removed |
+| Vertices | 9 significant digits (enough for every 32-bit float), shortest form without trailing zeros, e.g. `1000000.12`, `0.123456789`, `12`; magnitudes below 1e-6 mm in exponent notation, e.g. `-1e-7`; zero as `0` |
 | Triangles | `v1`, `v2`, `v3`: vertex indices from 0, counterclockwise seen from outside |
 | Zip entry date | fixed at 2026-01-01 00:00 UTC, stored in the local time of the browser; not the export time |
 
@@ -547,6 +548,6 @@ stations per surface). 1 KB = 1024 bytes. Triangle counts in parentheses.
 
 | Project | Sections | Spanwise stations | STEP | STL **Normal** | STL **Fine** | 3MF **Normal** | 3MF **Fine** | JSON |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Sample wing `Sport wing 1500` | 3 | 3 | 122 KB | 71 KB (1444) | 235 KB (4812) | 18 KB | 56 KB | 77 KB |
-| Wizard preset **Sport** | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 10 KB | 35 KB | 69 KB |
-| Wizard preset **Glider**, elliptic guides | 3 | 17 | 445 KB | 1158 KB (23708) | 4566 KB (93500) | 254 KB | 1000 KB | 205 KB |
+| Sample wing `Sport wing 1500` | 3 | 3 | 122 KB | 71 KB (1444) | 235 KB (4812) | 20 KB | 61 KB | 63 KB |
+| Wizard preset **Sport** | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 11 KB | 38 KB | 56 KB |
+| Wizard preset **Glider**, elliptic guides | 3 | 17 | 444 KB | 1158 KB (23708) | 4566 KB (93500) | 279 KB | 1099 KB | 175 KB |

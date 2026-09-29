@@ -3,6 +3,7 @@ import { buildWing } from '../src/geom/wing.js';
 import { createProject } from '../src/model/project.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { surfacePoint } from '../src/geom/nurbs.js';
+import { sampleProject } from './helpers.js';
 import { MAX_EDGE_SAMPLES, MAX_NET_SEGMENTS, MAX_OUTLINE_SEGMENTS, controlNetSegments, displayGeometry, edgeParams, outlineIndices } from '../src/ui/viewer3d.js';
 
 describe('3D view geometry', () => {
@@ -77,6 +78,14 @@ describe('3D view geometry', () => {
     const ends = new Set();
     for (let k = 0; k < big.positions.length; k += 3) ends.add(`${big.positions[k]},${big.positions[k + 1]}`);
     for (const corner of ['0,0', '400,0', '0,999', '400,999']) expect(ends.has(corner)).toBe(true);
+    // 33 x 151,000 points: the first and last rows alone hold 302,000 segments, so the kept lines
+    // also pass through every k-th point only.
+    const long = controlNetSegments(net(33, 151_000));
+    expect(long.along).toBe(long.step);
+    expect(long.positions.length / 6).toBeLessThanOrEqual(MAX_NET_SEGMENTS);
+    const longEnds = new Set();
+    for (let k = 0; k < long.positions.length; k += 3) longEnds.add(`${long.positions[k]},${long.positions[k + 1]}`);
+    for (const corner of ['0,0', '32,0', '0,150999', '32,150999']) expect(longEnds.has(corner)).toBe(true);
   });
 
   it('keeps the display mesh within 100,000 vertices when the loft grid alone is larger', () => {
@@ -92,5 +101,21 @@ describe('3D view geometry', () => {
     const vertices = displayGeometry(build).surface.getAttribute('position').count;
     expect(vertices).toBeLessThanOrEqual(100_000);
     expect(vertices).toBeGreaterThan(90_000);
+  });
+});
+
+describe('planform edge handles', () => {
+  it('offers no handle on a pointed tip edge that the build sets', async () => {
+    const { edgeHandles } = await import('../src/ui/planform.js');
+    const p = sampleProject();
+    const tip = p.sections.at(-1);
+    const root = p.sections[0];
+    expect(edgeHandles(p, tip, tip.id)).toEqual({ le: true, te: true });
+    p.settings.tip = { mode: 'pointed', ratio: 0.005 };
+    expect(edgeHandles(p, tip, tip.id)).toEqual({ le: true, te: false });
+    expect(edgeHandles(p, root, tip.id)).toEqual({ le: true, te: true });
+    p.guides.end.enabled = true;
+    expect(edgeHandles(p, tip, tip.id)).toEqual({ le: false, te: false });
+    expect(edgeHandles(p, root, tip.id)).toEqual({ le: true, te: false });
   });
 });
