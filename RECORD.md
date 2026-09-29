@@ -35,6 +35,20 @@ Last updated: 2026-09-29
 | MIT license for the code | Chosen by the owner. Airfoil data keeps its own terms. |
 | GitHub Actions: checkout v7, setup-node v7, setup-python v7, cache v6, upload-artifact v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5 | Latest majors on 2026-09-29; all `runs.using: node24` (upload-pages-artifact is composite on upload-artifact v7), checked in each `action.yml`. |
 
+## Measurements
+
+Node.js 24.21, sandbox x86-64 CPU, 2026-09-29 (`buildWing`, `exportMeshes(..., 'merged')`, `wingToStep`):
+
+| Case | Chord stations | Build | Mesh | STEP write | STEP size |
+| --- | --- | --- | --- | --- | --- |
+| Sport preset, 2 sections | 60 | 10 ms | 12 ms | 2 ms | 99 KB |
+| Sport preset, 2 sections | 200 | 19 ms | 9 ms | 4 ms | 303 KB |
+| Glider preset, elliptic guides, 17 stations | 60 | 18 ms | 18 ms | 5 ms | 441 KB |
+| Glider preset, elliptic guides, 17 stations | 200 | 60 ms | 39 ms | 17 ms | 1393 KB |
+
+Cap triangulation pairs upper and lower points per chord station (linear time); ear clipping
+(cubic time) is the fallback.
+
 ## Open items
 
 - Bundled library: decide which additional airfoils have a clear license for redistribution
@@ -42,4 +56,4 @@ Last updated: 2026-09-29
 - Written permission from Hartmut Siegmann (postal only, per his site) or Martin Hepperle
   (e-mail in his page footer) would allow bundling HS or MH airfoils.
 - First CI run on GitHub: confirm Pages deployment and the wiki push with `GITHUB_TOKEN`.
-- Not measured: build time and memory on low-end phones; rebuild time above 200 chord stations.
+- Not measured: build time and memory on phones.

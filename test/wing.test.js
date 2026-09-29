@@ -292,3 +292,29 @@ describe('mesh', () => {
     expect(meshVolume(full)).toBeCloseTo(2 * meshVolume(halfWingMesh(half)), 3);
   });
 });
+
+describe('strip triangulation', () => {
+  it('matches the polygon area for open and closed outlines and falls back when invalid', async () => {
+    const { stripTriangulate } = await import('../src/geom/triangulate.js');
+    const open = nacaAirfoil('2412', { pointsPerSide: 41 }).points; // LE at index 40
+    const t = stripTriangulate(open, 40);
+    expect(t.length).toBe(open.length - 2);
+    const sum = t.reduce((s, [a, b, c]) => s + polygonArea([open[a], open[b], open[c]]), 0);
+    expect(sum).toBeCloseTo(polygonArea(open), 12);
+    const closed = nacaAirfoil('0012', { pointsPerSide: 41, closedTE: true }).points.slice(0, -1);
+    const tc = stripTriangulate(closed, 40);
+    expect(tc.length).toBe(closed.length - 2);
+    for (const [a, b, c] of tc) expect(polygonArea([closed[a], closed[b], closed[c]])).toBeGreaterThan(0);
+    // A leading-edge index that does not match the point count falls back to ear clipping.
+    const fb = stripTriangulate(open, 10);
+    expect(fb.reduce((s, [a, b, c]) => s + polygonArea([open[a], open[b], open[c]]), 0)).toBeCloseTo(polygonArea(open), 10);
+    expect(stripTriangulate([[0, 0], [1, 0], [1, 1], [0, 1]], 0).length).toBe(2);
+  });
+
+  it('keeps meshes closed with refined sampling', () => {
+    const b = buildWing(sampleProject({ settings: { trailingEdge: { mode: 'closed' } } }));
+    const hm = halfWingMesh(tessellateHalf(b, { uRefine: 2, vRefine: 2 }));
+    expect(edgeCheck(hm).closed).toBe(true);
+    expect(meshVolume(hm)).toBeGreaterThan(0);
+  });
+});

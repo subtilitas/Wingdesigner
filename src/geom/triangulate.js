@@ -96,3 +96,40 @@ export function earClip(poly) {
   if (idx.length === 3) tris.push([idx[0], idx[1], idx[2]]);
   return ccw ? tris : tris.map(([a, b, c]) => [a, c, b]);
 }
+
+/**
+ * Triangulate an airfoil outline whose leading edge is at index `le` and whose upper and lower
+ * points pair up by index distance from the leading edge (common chord stations). Each pair of
+ * neighbouring rungs forms a quad of 2 triangles, so the cost is linear in the point count.
+ * Falls back to ear clipping when a triangle is not counterclockwise or the triangles do not
+ * cover exactly the polygon area. Input must be counterclockwise.
+ */
+export function stripTriangulate(poly, le) {
+  const n = poly.length;
+  const closed = n === 2 * le; // closing trailing-edge point merged into index 0
+  if (!(le > 0 && (n === 2 * le + 1 || closed))) return earClip(poly);
+  const upper = (k) => (le - k + n) % n;
+  const lower = (k) => (le + k) % n;
+  const tris = [];
+  const area = (a, b, c) => ((poly[b][0] - poly[a][0]) * (poly[c][1] - poly[a][1]) - (poly[b][1] - poly[a][1]) * (poly[c][0] - poly[a][0])) / 2;
+  let sum = 0;
+  for (let k = 0; k < le; k++) {
+    const u0 = upper(k);
+    const u1 = upper(k + 1);
+    const l0 = lower(k);
+    const l1 = lower(k + 1);
+    for (const t of [
+      [l0, l1, u1],
+      [l0, u1, u0],
+    ]) {
+      if (t[0] === t[1] || t[1] === t[2] || t[0] === t[2]) continue;
+      const a = area(t[0], t[1], t[2]);
+      if (!(a > 0)) return earClip(poly);
+      sum += a;
+      tris.push(t);
+    }
+  }
+  const total = polygonArea(poly);
+  if (Math.abs(sum - total) > 1e-9 * Math.max(Math.abs(total), 1e-12) + 1e-12) return earClip(poly);
+  return tris;
+}

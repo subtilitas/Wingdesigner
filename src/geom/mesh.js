@@ -2,7 +2,7 @@
 // and mesh measures (volume, area, edge manifold check).
 
 import { surfacePoint } from './nurbs.js';
-import { earClip } from './triangulate.js';
+import { stripTriangulate } from './triangulate.js';
 
 function refine(params, r) {
   if (r <= 1) return params.slice();
@@ -58,12 +58,13 @@ export function tessellateHalf(build, { uRefine = 1, vRefine } = {}) {
     }
   }
   const loop = (k) => Array.from({ length: cols }, (_, j) => id(j, k));
+  const leIndex = build.leIndex * uRefine;
   const rootLoop = loop(0);
   const tipLoop = loop(V - 1);
   const cap = (ring, flip) => {
     const poly = ring.map((i) => [positions[i * 3], positions[i * 3 + 2]]);
     const out = [];
-    for (const [a, b, c] of earClip(poly)) {
+    for (const [a, b, c] of stripTriangulate(poly, leIndex)) {
       if (flip) out.push(ring[a], ring[c], ring[b]);
       else out.push(ring[a], ring[b], ring[c]);
     }

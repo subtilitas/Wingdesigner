@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { surfaceDerivatives1, surfacePoint } from '../geom/nurbs.js';
-import { earClip } from '../geom/triangulate.js';
+import { stripTriangulate } from '../geom/triangulate.js';
 
 function refine(params, r) {
   const out = [];
@@ -73,7 +73,7 @@ export function displayGeometry(build) {
   const cap = (row, flip) => {
     const ring = build.closedTE ? row.slice(0, -1) : row;
     const poly = ring.map((P) => [P[0], P[2]]);
-    for (const [a, b, c] of earClip(poly)) {
+    for (const [a, b, c] of stripTriangulate(poly, build.leIndex)) {
       if (flip) tri(ring[a], ring[c], ring[b]);
       else tri(ring[a], ring[b], ring[c]);
     }
