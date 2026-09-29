@@ -214,7 +214,7 @@ The Playwright tests run the DOM (Document Object Model) code; its coverage is n
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 97.8 % | 92.1 % | 99.2 % | 98.6 % |
+| 97.7 % | 92.0 % | 99.2 % | 98.7 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->
