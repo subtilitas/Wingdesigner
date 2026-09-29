@@ -734,3 +734,124 @@ describe('parser robustness', () => {
     expect(checkAirfoil(rolled).ok).toBe(false);
   });
 });
+
+describe('parser time, tables and round trips', () => {
+  const selig = (name, pts) => `${name}\n${pts.map(([x, y]) => `${x} ${y}`).join('\n')}\n`;
+  const naca = (n = 41) => nacaAirfoil('2412', { pointsPerSide: (n + 1) / 2 }).points;
+
+  it('reads long letter runs, digit runs, unclosed titles and many comment signs in linear time', () => {
+    const cases = [
+      'Name\n' + 'x'.repeat(20000) + '!\n1 0\n0 0\n1 -0.01\n',
+      'Name\n' + 'xy'.repeat(10000) + '!\n1 0\n0 0\n1 -0.01\n',
+      'Name\n1 ' + '1'.repeat(200000) + 'x\n1 0\n0 0\n1 -0.01\n',
+      '<html>' + '<title>'.repeat(100000),
+      'Name\n' + '#'.repeat(200000) + ' \n1 0\n0 0\n1 -0.01\n',
+    ];
+    for (const text of cases) {
+      const t0 = performance.now();
+      parseDat(text);
+      expect(performance.now() - t0).toBeLessThan(500);
+    }
+  });
+
+  it('skips column headers with comma or semicolon separators without a message', () => {
+    for (const header of ['x;y', 'x, y', 'X;Yo;Yu', 'x y', 'x/c y/c']) {
+      const r = parseDat(`Foil\n${header}\n1 0\n0.5 0.06\n0 0\n0.5 -0.04\n1 0\n`);
+      expect(codes(r.issues)).not.toContain('ignored-lines');
+    }
+    expect(codes(parseDat('Foil\nxyz!\n1 0\n0.5 0.06\n0 0\n0.5 -0.04\n1 0\n').issues)).toContain('ignored-lines');
+  });
+
+  it('cuts a comment at "#" also when the line holds U+2028', () => {
+    const r = parseDat('Foil\n1 0 # TE upper\n0.5 0.06\n0 0\n0.5 -0.04\n1 0\n');
+    expect(r.points).toEqual([[1, 0], [0.5, 0.06], [0, 0], [0.5, -0.04], [1, 0]]);
+  });
+
+  it('reads HTML tables whatever their source line breaks, cell markup and optional end tags', () => {
+    const pts = naca();
+    const cell = (v, wrap) => wrap(String(v));
+    const tables = {
+      pretty: `<table>\n${pts.map(([x, y]) => `  <tr>\n    <td>${x}</td>\n    <td>${y}</td>\n  </tr>`).join('\n')}\n</table>`,
+      word: `<table>${pts.map(([x, y]) => `<tr><td><p class=MsoNormal>${x}</p></td><td><p class=MsoNormal>${y}&nbsp;</p></td></tr>`).join('\n')}</table>`,
+      div: `<table>${pts.map(([x, y]) => `<tr><td>${cell(x, (s) => `<div>${s}</div>`)}</td><td><div>${y}</div></td></tr>`).join('')}</table>`,
+      omitted: `<table>${pts.map(([x, y]) => `<tr><td>${x}<td>${y}`).join('\n')}</table>`,
+      caption: `<table><caption>MH 32 coordinates</caption>${pts.map(([x, y]) => `<tr><td>${x}</td><td>${y}</td></tr>`).join('')}</table>`,
+    };
+    for (const [kind, table] of Object.entries(tables)) {
+      const r = parseDat(`<html><body>${table}</body></html>`);
+      expect(r.points.length, kind).toBe(pts.length);
+      expect(r.points[0], kind).toEqual(pts[0]);
+    }
+    expect(parseDat(`<html><body>${tables.caption}</body></html>`).name).toBe('MH 32 coordinates');
+  });
+
+  it('writes .dat names that read back unchanged when they end in a tag name', () => {
+    const pts = naca(161);
+    for (const name of ['Test <title <body', 'HQ <style <html', 'x <script <pre', 'E387 <head <body', 'R&amp;D <b>12</b> <pre', 'Foil <pre']) {
+      const r = importAirfoilText(toSeligDat(name, pts, 7), 'a.dat');
+      expect(r.ok, name).toBe(true);
+      expect(r.points.length, name).toBe(pts.length);
+      expect(r.name, name).toBe(name.replace(/<(?=pre|body|html)/g, '‹'));
+      expect(codes(r.issues), name).not.toContain('html');
+    }
+  });
+
+  it('reads XML numbers with the rules of text lines', () => {
+    const xml = (fmt) => `<airfoil><coordinates>${naca().map(([x, y]) => `<point><x>${fmt(x)}</x><y>${fmt(y)}</y></point>`).join('')}</coordinates></airfoil>`;
+    const d = parseDat(xml((v) => v.toExponential().replace('e', 'D')));
+    expect(d.points).toEqual(naca());
+    const comma = parseDat(xml((v) => String(v).replace('.', ',')));
+    expect(comma.points).toEqual(naca());
+    expect(codes(parseDat('<coordinates><point><x>0x1</x><y>0</y></point><point><x>0</x><y>0</y></point></coordinates>').issues)).toContain('non-finite');
+  });
+
+  it('removes a closing point written twice after a blunt trailing edge', () => {
+    const blunt = nacaAirfoil('2412', { pointsPerSide: 31 }).points.map((p) => p.slice());
+    blunt[blunt.length - 1][0] = blunt[0][0];
+    const once = importAirfoilText(selig('b', [...blunt, blunt[0]]), 'b.dat');
+    const twice = importAirfoilText(selig('b', [...blunt, blunt[0], blunt[0]]), 'b.dat');
+    expect(once.points.length).toBe(blunt.length);
+    expect(twice.points).toEqual(once.points);
+    expect(twice.stats.teGap).toBeCloseTo(once.stats.teGap, 12);
+  });
+
+  it('keeps every point of a dense stored airfoil through the .dat download', () => {
+    const stored = importAirfoilText(selig('dense', nacaAirfoil('0012', { pointsPerSide: 10000 }).points), 'd.dat').points;
+    const back = importAirfoilText(toSeligDat('dense', stored, 7), 'd.dat');
+    expect(back.points.length).toBe(stored.length);
+    expect(codes(back.issues)).not.toContain('duplicates');
+    // Unit-chord outlines of normal density keep 7 decimals.
+    expect(toSeligDat('n', [[1, 0], [0, 0.05], [1, -0.001]], 7).split('\n')[1]).toBe(' 1.0000000  0.0000000');
+  });
+
+  it('orients and finds the leading edge of clockwise outlines at any scale', () => {
+    const pts = nacaAirfoil('4412', { pointsPerSide: 81 }).points;
+    const ref = importAirfoilText(selig('n', pts.slice().reverse()), 'n.dat');
+    expect(codes(ref.issues)).toContain('reversed');
+    const le = leadingEdgeIndex(pts);
+    const checks = codes(checkAirfoil(pts).issues);
+    // Outlines not at unit chord add the info not-normalized.
+    const scaleFree = (issues) => codes(issues).filter((c) => c !== 'not-normalized');
+    for (const s of [1e-170, 1e160]) {
+      const scaled = pts.map(([x, y]) => [x * s, y * s]);
+      const r = importAirfoilText(selig('n', scaled.slice().reverse()), 'n.dat');
+      expect(scaleFree(r.issues), String(s)).toEqual(codes(ref.issues));
+      expect(leadingEdgeIndex(scaled), String(s)).toBe(le);
+      expect(scaleFree(checkAirfoil(scaled).issues), String(s)).toEqual(checks);
+    }
+  });
+
+  it('finds crossings of a narrow zigzag in close to linear time', () => {
+    const base = nacaAirfoil('0012', { pointsPerSide: 101 }).points;
+    const K = 20000;
+    // K points 1e-9 apart in x, alternating 3 / K above and below the lower surface near x = 0.5.
+    const i = base.findIndex(([x], k) => k > 100 && x > 0.5);
+    const x0 = (base[i - 1][0] + base[i][0]) / 2;
+    const y0 = (base[i - 1][1] + base[i][1]) / 2;
+    const zig = Array.from({ length: K }, (_, k) => [x0 + k * 1e-9, y0 + (k % 2 ? 1 : -1) * (3 / K)]);
+    const pts = [...base.slice(0, i), ...zig, ...base.slice(i)];
+    const t0 = performance.now();
+    expect(selfIntersections(pts)).toEqual([]);
+    expect(performance.now() - t0).toBeLessThan(1500);
+  });
+});

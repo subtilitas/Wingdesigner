@@ -28,6 +28,9 @@ const CHORD_CHECK_SAMPLES = 256;
  * minimum chord less the 10 % deviation that small chords may keep.
  */
 export const FOLD_LIMIT = 0.9 * LIMITS.minChord;
+// Chord minimum with the relative round-off of the blends: equal 1 mm sections blend to
+// 0.9999999999999999 mm, and guide curves through them to 1 mm less a few units in the last place.
+const MIN_CHORD = LIMITS.minChord * (1 - 1e-9);
 
 /**
  * Smooth spanwise interpolation: largest distance, as a multiple of the section value range, by
@@ -340,7 +343,16 @@ export function buildWing(project) {
       errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: ${problems.join(' ')}`);
       continue;
     }
-    const curve = guideCurve(g);
+    let curve;
+    try {
+      curve = guideCurve(g);
+    } catch (e) {
+      // Points closer than the solver resolves (normalized y gaps near 1e-300) make the
+      // interpolation singular.
+      if (!/zero pivot/.test(e.message)) throw e;
+      errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: the curve fit is singular; move the points further apart in y or use control-point mode.`);
+      continue;
+    }
     if (!isMonotonicInY(curve)) {
       errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: the curve doubles back in span direction; move the points apart or use control-point mode.`);
       continue;
@@ -562,7 +574,7 @@ export function buildWing(project) {
       minThickY = y;
       minThickX = tX;
     }
-    if (chord >= LIMITS.minChord) {
+    if (chord >= MIN_CHORD) {
       const { t: tTe, core, coreX } = thinnest(applyTrailingEdge(shape, te.mode, teGap(chord), N), teSliver(chord));
       if (tTe < minTeThick - 1e-12) {
         minTeThick = tTe;
@@ -624,9 +636,12 @@ export function buildWing(project) {
     );
     return result;
   }
-  if (minChord < LIMITS.minChord) {
+  if (minChord < MIN_CHORD) {
     const hint = !pointed && minChordY === y1 && minChord > -CROSS_TOLERANCE ? ' For a tip that ends in a point, set Settings > Wing tip to Pointed.' : '';
-    errors.push(`Chord drops to ${minChord.toFixed(2)} mm at y = ${minChordY.toFixed(1)} mm; nose line and end line must not touch or cross.${hint}`);
+    // With both guide curves the chord is their distance; otherwise it is the blend of the section
+    // chords, which only the smooth blend takes below the section values.
+    const cause = guideOn.nose && guideOn.end ? 'nose line and end line must not touch or cross' : `the smooth blend of the section chords falls below the minimum of ${LIMITS.minChord} mm; use linear interpolation or add sections`;
+    errors.push(`Chord drops to ${minChord.toFixed(2)} mm at y = ${minChordY.toFixed(1)} mm; ${cause}.${hint}`);
     return result;
   }
 
@@ -790,8 +805,25 @@ export function buildWing(project) {
   // Adaptive stations: insert stations where the loft deviates more than PLANFORM_TOLERANCE from
   // the intended surface (fast planform changes such as pointed elliptic tips), up to
   // MAX_EXTRA_STATIONS in at most 6 rounds.
+  // Stations closer than the solver resolves (span fractions near 1e-300, and their powers in the
+  // cubic basis) make the surface fit singular: reported with the closest pair of sections.
+  const singular = () => {
+    let k = 1;
+    for (let i = 2; i < ys.length; i++) if (ys[i] - ys[i - 1] < ys[k] - ys[k - 1]) k = i;
+    errors.push(`The surface fit is singular: sections ${k} and ${k + 1} at y = ${ys[k - 1]} mm and y = ${ys[k]} mm lie too close together; move them apart.`);
+    return result;
+  };
+  const tryFit = (list) => {
+    try {
+      return fit(list);
+    } catch (e) {
+      if (!/zero pivot/.test(e.message)) throw e;
+      return null;
+    }
+  };
   let yList = stationYs.slice();
-  let fitted = fit(yList);
+  let fitted = tryFit(yList);
+  if (!fitted) return singular();
   let extra = 0;
   for (let round = 0; round < 6 && extra < MAX_EXTRA_STATIONS; round++) {
     const peaks = fitted.devs.filter(([, d, tol], i, arr) => d > tol && d >= (arr[i - 1]?.[1] ?? 0) && d >= (arr[i + 1]?.[1] ?? 0));
@@ -806,7 +838,8 @@ export function buildWing(project) {
     if (!fresh.length) break;
     yList = [...yList, ...fresh].sort((a, b) => a - b);
     extra += fresh.length;
-    fitted = fit(yList);
+    fitted = tryFit(yList);
+    if (!fitted) return singular();
   }
   const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs } = fitted;
   result.stations = stations;

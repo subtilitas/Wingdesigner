@@ -115,7 +115,7 @@ Profilkurve und für die Flächenzeilen (Abschnitt 4).
 | Abtastwerte je Knotenintervall | per = max(1, min(256, round(4000 · L_span / L_total))); L_span = Länge des Kontrollpolygons des Knotenintervalls (p Strecken), L_total = Summe über die nicht leeren Knotenintervalle | 4 |
 | Abtastwerte insgesamt | Σ per + 1, etwa 4001 | 4 · spans + 1 |
 | Test | echte Kreuzungen nicht benachbarter Polygonsegmente; jede gefundene Kreuzung wird vermessen; Kreuzungen bis zur Toleranz zählen nicht; die Suche endet nach 20 Kreuzungen über der Toleranz; die größte wird gemeldet | ebenso |
-| Suche | gleichmäßiges Gitter mit etwa einer Zelle je Segment; nur Segmente mit einer gemeinsamen Zelle werden geprüft; eine Zelle mit mehr als 32 Segmenten erhält ein eigenes Gitter über den Bereich ihrer Segmente, höchstens 6 Ebenen tief (`selfIntersections` in `src/airfoil/geometry.js`) | ebenso |
+| Suche | Gitter aus etwa √n × √n Zellen über n Segmente, jede Zelle in x und in y mindestens doppelt so groß wie der Median der Segment-Begrenzungsrechtecke; nur Segmente mit einer gemeinsamen Zelle werden geprüft; eine Zelle mit mehr als 32 Segmenten erhält ein eigenes Gitter über den Bereich ihrer Segmente, höchstens 6 Ebenen tief (`selfIntersections` in `src/airfoil/geometry.js`) | ebenso |
 | Größe einer Kreuzung (mittlere Breite) | die Kreuzung teilt das Polygon in 2 Teile; Teil P = der Teil mit der kleineren Diagonale des achsparallelen Hüllrechtecks; Größe = Fläche(P) / Diagonale(P), Fläche von P als geschlossenes Polygon (Gaußsche Trapezformel) | ebenso |
 | Toleranz | Größe > 5e-4 der Profiltiefe (0,05 %) ist ein Fehler. Spitz auslaufende geschlossene Endleisten von 246 echten Dateien hinterlassen schmale Schleifen von höchstens 1,6e-5 der Profiltiefe (0,0016 %); die Schleife einer grob aufgelösten Datei mit 9 Punkten misst 2,5e-3 der Profiltiefe (0,25 %). Beim Flügelaufbau ist die Schleife außerdem auf 0,1 mm begrenzt (`CROSSING_LIMIT` in `src/geom/profile.js`), bei der größten Profiltiefe der Profilschnitte mit diesem Profil: Über 200 mm Profiltiefe ist eine Schleife breiter als 0,1 mm ein Fehler, und die Meldung ergänzt „the loop is … mm wide at … mm chord, above 0.1 mm.“ | Größe > min(5e-4 · c, 0,1 mm), c = Profiltiefe beim y der Zeile |
 | Meldung | „the NURBS curve through the points crosses itself near x = … % chord“ | „The loft surface crosses itself at y = … mm near x = … mm“ |
@@ -555,7 +555,8 @@ Beispiel: Vorlage **Sport**, N = 60, d = 1, offene Endleiste: 242 Eckpunkte, 480
   lineare Laufzeit.
 - Rückfall für Abschlussflächen: Ear Clipping (Abschneiden von Ohren). Er greift, wenn ein
   Streifendreieck nicht gegen den Uhrzeigersinn läuft. Er greift auch, wenn die Dreiecksflächen um mehr
-  als 1e-9 (relativ) von der Konturfläche abweichen.
+  als 1e-9 (relativ) von der Konturfläche abweichen. Beide Flächen werden relativ zu einem Eckpunkt der
+  Kontur summiert, sodass ein Flügel 1 000 000 mm vom Ursprung entfernt die Streifen behält.
 - Linker Halbflügel: y → −y, Umlaufsinn der Dreiecke umgekehrt.
 
 | **Wing halves** | Hüllen |

@@ -6,7 +6,7 @@ import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
 import { blendPoints, blendScalar, spanwiseBlender, spanwiseWeights } from '../src/geom/spanwise.js';
 import { clampedUniformKnots, defaultGuides, guideCurve, guideProblems, guideXAt, isMonotonicInY, sampleGuide } from '../src/geom/guide.js';
-import { edgeCheck, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume, tessellateHalf } from '../src/geom/mesh.js';
+import { edgeCheck, exportMeshes, fullWingMesh, halfWingMesh, meshArea, meshBounds, meshVolume, tessellateHalf } from '../src/geom/mesh.js';
 import { earClip, polygonArea } from '../src/geom/triangulate.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { defaultProject } from '../src/model/defaults.js';
@@ -1012,5 +1012,56 @@ describe('span fractions near zero', () => {
   it('merges knots closer than MIN_PARAM_GAP', () => {
     expect(knotMultiplicities([0, 0, Number.MIN_VALUE, 1, 1])).toEqual({ knots: [0, 1], mults: [3, 2] });
     expect(knotMultiplicities([0, 0, 1e-300, 1, 1])).toEqual({ knots: [0, 1e-300, 1], mults: [2, 1, 2] });
+  });
+});
+
+describe('builds at the edges of double precision', () => {
+  const foil = [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }];
+  const project = (sections, settings = {}, guides) =>
+    createProject({ airfoils: foil, sections: sections.map((s) => ({ airfoil: 'a', x: 0, z: 0, chord: 200, twist: 0, ...s })), settings, ...(guides ? { guides } : {}) });
+
+  it('builds sections of exactly the minimum chord, smooth or between two guide curves', () => {
+    const smooth = project([{ y: 0 }, { y: 169.7 }, { y: 436.6 }, { y: 881.4 }].map((s) => ({ ...s, chord: 1 })), { spanwise: 'smooth' });
+    expect(buildWing(smooth).errors).toEqual([]);
+    for (const x of [20, 123.4, 5e5]) {
+      const p = project([{ y: 0, chord: 1 }, { y: 600, x, chord: 1 }]);
+      p.guides = defaultGuides(p.sections);
+      p.guides.nose.enabled = true;
+      p.guides.end.enabled = true;
+      expect(buildWing(p).errors, String(x)).toEqual([]);
+    }
+  });
+
+  it('names the smooth blend, not the guide curves, when the blended chord drops below 1 mm', () => {
+    const p = project([{ y: 0, chord: 1 }, { y: 500, chord: 1 }, { y: 600, chord: 5 }, { y: 1000, chord: 5 }], { spanwise: 'smooth' });
+    expect(buildWing(p).errors).toEqual(['Chord drops to -2.56 mm at y = 289.1 mm; the smooth blend of the section chords falls below the minimum of 1 mm; use linear interpolation or add sections.']);
+  });
+
+  it('reports a singular fit of sections or guide points 1e-300 of the span apart as an error', () => {
+    const near = [{ y: 0 }, { y: 1e-300 }, { y: 600, chord: 150 }];
+    const withNose = project(near);
+    withNose.guides = defaultGuides(withNose.sections);
+    withNose.guides.nose.enabled = true;
+    expect(() => buildWing(withNose)).not.toThrow();
+    expect(buildWing(withNose).errors[0]).toMatch(/^(Nose line: the curve fit is singular|The surface fit is singular)/);
+    const smooth = buildWing(project([{ y: 0 }, { y: 1e-200 }, { y: 600, chord: 150 }], { spanwise: 'smooth' }));
+    expect(smooth.errors[0]).toMatch(/^The surface fit is singular: sections 1 and 2 at y = 0 mm and y = 1e-200 mm lie too close together; move them apart\.$/);
+    const fitGuide = project([{ y: 0 }, { y: 600, chord: 150 }]);
+    fitGuide.guides = defaultGuides(fitGuide.sections);
+    fitGuide.guides.nose = { ...fitGuide.guides.nose, enabled: true, mode: 'fit', points: [[0, 0], [1, 1e-300], [0, 600]] };
+    expect(() => buildWing(fitGuide)).not.toThrow();
+    expect(buildWing(fitGuide).errors[0]).toMatch(/^Nose line: /);
+  });
+
+  it('triangulates the caps of a wing far from the origin by strips', () => {
+    const square = [[1e5, 1e3], [1e5 + 20, 1e3], [1e5 + 20, 1e3 + 1], [1e5, 1e3 + 1]];
+    expect(polygonArea(square)).toBe(20);
+    const p = project([{ y: 0, x: 1e5, z: 1e3, chord: 20 }, { y: 600, x: 1e5, z: 1e3, chord: 20 }], { chordSamples: 200 });
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    const t0 = performance.now();
+    const [{ mesh }] = exportMeshes(b, 'right', { uRefine: 2, vRefine: 2 });
+    expect(performance.now() - t0).toBeLessThan(500);
+    expect(edgeCheck(mesh).closed).toBe(true);
   });
 });

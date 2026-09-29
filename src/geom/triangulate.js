@@ -13,12 +13,18 @@ function pointInTriangle(p, a, b, c) {
   return !(neg && pos);
 }
 
+/**
+ * Signed area, positive for counterclockwise order. Summed relative to the first vertex: products
+ * of raw coordinates 1e5 mm from the origin lose the area of a 20 mm chord to round-off.
+ */
 export function polygonArea(poly) {
+  if (poly.length < 3) return 0;
+  const [ox, oy] = poly[0];
   let a = 0;
-  for (let i = 0; i < poly.length; i++) {
+  for (let i = 1; i + 1 < poly.length; i++) {
     const p = poly[i];
-    const q = poly[(i + 1) % poly.length];
-    a += p[0] * q[1] - q[0] * p[1];
+    const q = poly[i + 1];
+    a += (p[0] - ox) * (q[1] - oy) - (q[0] - ox) * (p[1] - oy);
   }
   return a / 2;
 }

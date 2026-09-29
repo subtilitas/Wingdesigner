@@ -109,7 +109,7 @@ coarse file. The same test runs on each airfoil curve and on the surface rows (s
 | Samples per knot span | per = max(1, min(256, round(4000 · L_span / L_total))); L_span = length of the control polygon of the span (p segments), L_total = sum over the non-empty knot spans | 4 |
 | Samples in total | Σ per + 1, about 4001 | 4 · spans + 1 |
 | Test | proper crossings of non-adjacent polyline segments; every crossing found is sized; crossings up to the tolerance do not count; the search stops after 20 crossings above the tolerance; the largest is reported | same |
-| Search | uniform grid of about one cell per segment; only segments that share a cell are tested; a cell with more than 32 segments gets its own grid over the part its segments cover, at most 6 levels deep (`selfIntersections` in `src/airfoil/geometry.js`) | same |
+| Search | grid of about √n × √n cells over n segments, each cell at least twice the median segment box in x and in y; only segments that share a cell are tested; a cell with more than 32 segments gets its own grid over the part its segments cover, at most 6 levels deep (`selfIntersections` in `src/airfoil/geometry.js`) | same |
 | Size of a crossing (mean width) | the crossing splits the polyline into 2 parts; part P = the part with the smaller bounding-box diagonal; size = area(P) / diagonal(P), area of P as a closed polygon (shoelace formula) | same |
 | Tolerance | size > 5e-4 of the chord (0.05 %) is an error. Cusped closed TEs of 246 real files leave slivers of at most 1.6e-5 of the chord (0.0016 %); the loop of a coarse 9-point file measures 2.5e-3 of the chord (0.25 %). In the wing build the loop is also limited to 0.1 mm (`CROSSING_LIMIT` in `src/geom/profile.js`) at the largest chord of the sections that use the airfoil: above 200 mm chord a loop wider than 0.1 mm is an error, and the message adds "the loop is … mm wide at … mm chord, above 0.1 mm." | size > min(5e-4 · c, 0.1 mm), c = chord at the y of the row |
 | Message | "the NURBS curve through the points crosses itself near x = … % chord" | "The loft surface crosses itself at y = … mm near x = … mm" |
@@ -533,7 +533,8 @@ Example: **Sport** preset, N = 60, d = 1, open TE: 242 vertices, 480 triangles p
 - Caps: the root and tip outlines are triangulated in the x-z plane. Upper point k pairs with lower
   point k (same chord station): 2 triangles per station interval, linear time.
 - Cap fallback: ear clipping. It applies when a strip triangle is not counterclockwise. It also
-  applies when the triangle areas differ from the outline area by more than 1e-9 (relative).
+  applies when the triangle areas differ from the outline area by more than 1e-9 (relative). Both areas
+  are summed relative to a vertex of the outline, so a wing 1,000,000 mm from the origin keeps the strips.
 - Left half: y → −y, triangle winding reversed.
 
 | **Wing halves** | Shells |

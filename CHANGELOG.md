@@ -255,6 +255,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   planform forms of the new build.
 - The STEP size note shows the exact count below 1,000,000 control points (`4,114 control points`
   for the Glider preset instead of `0.00 million`).
+- Airfoil parser: numbers, column headers and HTML titles are read in linear time (a 4,000-letter
+  line took 79 s, an 80,000-digit token 11 s, 80,000 unclosed `<title>` tags 13 s); a comment is cut
+  at the first `#`; column headers may use commas and semicolons; HTML tables read row by row
+  whatever their source line breaks, cell markup and end tags, and a caption no longer joins the first
+  row; `&nbsp;` reads as a space; XML values follow the text number rules; a closing point written
+  twice after a blunt trailing edge is removed; point order and the file leading edge do not depend
+  on the scale of the coordinates.
+- The `.dat` download writes as many decimals as needed to keep consecutive points distinct, and
+  escapes `<html`, `<pre` and `<body` at the end of a name.
+- The self-crossing search sizes its grid cells from the median segment box: a narrow zigzag of
+  40,201 points took 54 s.
+- Sections of exactly 1 mm chord build (blend round-off counted as a chord below the minimum); the
+  chord error names the smooth blend when no pair of guide curves sets the chord; sections or guide
+  points about 1e-300 of the span apart give a build error instead of an internal error.
+- Cap triangulation sums areas relative to a vertex: a wing 100,000 mm from the origin fell back to
+  ear clipping and took 2.6 s per export.
 
 ## [0.1.0] - 2026-09-29
 

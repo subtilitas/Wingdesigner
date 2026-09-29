@@ -13,13 +13,31 @@ export function signedArea(points) {
 }
 
 /**
+ * True when the points run clockwise. Scale-free: the shoelace products of raw coordinates
+ * underflow to 0 below about 1e-162 and overflow above about 1e154, so the sum is taken relative to
+ * the first point and in units of the extent.
+ */
+export function runsClockwise(points) {
+  const [x0, y0] = points[0];
+  let e = 0;
+  for (const [x, y] of points) e = Math.max(e, Math.abs(x - x0), Math.abs(y - y0));
+  if (!(e > 0 && e < Infinity)) return false;
+  return signedArea(points.map(([x, y]) => [(x - x0) / e, (y - y0) / e])) < 0;
+}
+
+/**
  * Index of the leading-edge point: the point farthest from the trailing-edge midpoint
  * (ties resolved towards minimum x). Works for rotated and unnormalized data.
  */
 export function leadingEdgeIndex(points) {
   const n = points.length;
   const te = [(points[0][0] + points[n - 1][0]) / 2, (points[0][1] + points[n - 1][1]) / 2];
-  const d2 = (p) => (p[0] - te[0]) ** 2 + (p[1] - te[1]) ** 2;
+  // Distances in units of the largest coordinate difference: raw squares overflow above about
+  // 1e154 and underflow below about 1e-162.
+  let e = 0;
+  for (const p of points) e = Math.max(e, Math.abs(p[0] - te[0]), Math.abs(p[1] - te[1]));
+  if (!(e > 0 && e < Infinity)) e = 1;
+  const d2 = (p) => ((p[0] - te[0]) / e) ** 2 + ((p[1] - te[1]) / e) ** 2;
   let maxD = 0;
   for (const p of points) maxD = Math.max(maxD, d2(p));
   // Ties within 1e-15 of the largest squared distance (relative, so every scale picks the same
@@ -314,17 +332,27 @@ export function selfIntersections(points, limit = 10, accept = null) {
       return;
     }
     const { gx0, gy0, isLong } = level(depth);
+    // About sqrt(n) cells per direction, but each cell at least twice the median segment box: over
+    // a narrow zigzag (points 1e-9 apart in x, alternating in y) square cells were crossed by every
+    // segment, which then counted as long and was tested against all others.
     const G = Math.max(1, Math.ceil(Math.sqrt(n)));
-    const cw = (xmax - xmin) / G || 1;
-    const ch = (ymax - ymin) / G || 1;
-    const cell = (v, v0, c) => Math.min(G - 1, Math.max(0, Math.floor((v - v0) / c)));
+    const median = (lo, hi) => {
+      const d = new Float64Array(n);
+      for (let k = 0; k < n; k++) d[k] = hi[ids[k]] - lo[ids[k]];
+      return d.sort()[n >> 1];
+    };
+    const cw = Math.max((xmax - xmin) / G, 2 * median(bx0, bx1)) || 1;
+    const ch = Math.max((ymax - ymin) / G, 2 * median(by0, by1)) || 1;
+    const Gx = Math.max(1, Math.ceil((xmax - xmin) / cw));
+    const Gy = Math.max(1, Math.ceil((ymax - ymin) / ch));
+    const cell = (v, v0, c, g) => Math.min(g - 1, Math.max(0, Math.floor((v - v0) / c)));
     const long = [];
     const bins = new Map();
     for (const i of ids) {
-      gx0[i] = cell(bx0[i], xmin, cw);
-      gy0[i] = cell(by0[i], ymin, ch);
-      const gx1 = cell(bx1[i], xmin, cw);
-      const gy1 = cell(by1[i], ymin, ch);
+      gx0[i] = cell(bx0[i], xmin, cw, Gx);
+      gy0[i] = cell(by0[i], ymin, ch, Gy);
+      const gx1 = cell(bx1[i], xmin, cw, Gx);
+      const gy1 = cell(by1[i], ymin, ch, Gy);
       isLong[i] = (gx1 - gx0[i] + 1) * (gy1 - gy0[i] + 1) > LONG_CELLS ? 1 : 0;
       if (isLong[i]) {
         long.push(i);
@@ -332,7 +360,7 @@ export function selfIntersections(points, limit = 10, accept = null) {
       }
       for (let gx = gx0[i]; gx <= gx1; gx++) {
         for (let gy = gy0[i]; gy <= gy1; gy++) {
-          const key = gx * G + gy;
+          const key = gx * Gy + gy;
           const bin = bins.get(key);
           if (bin) bin.push(i);
           else bins.set(key, [i]);
@@ -348,14 +376,14 @@ export function selfIntersections(points, limit = 10, accept = null) {
     }
     for (const [key, bin] of bins) {
       if (hits.length >= limit) return;
-      const gx = Math.floor(key / G);
-      const gy = key - gx * G;
+      const gx = Math.floor(key / Gy);
+      const gy = key - gx * Gy;
       const here = (i, j) => Math.max(gx0[i], gx0[j]) === gx && Math.max(gy0[i], gy0[j]) === gy && owns(i, j);
       if (bin.length > CROWDED) {
         const [sx0, sx1, sy0, sy1] = boundsOf(bin);
         const cx0 = xmin + gx * cw;
         const cy0 = ymin + gy * ch;
-        const sub = [Math.max(sx0, cx0), Math.min(sx1, gx === G - 1 ? Infinity : cx0 + cw), Math.max(sy0, cy0), Math.min(sy1, gy === G - 1 ? Infinity : cy0 + ch)];
+        const sub = [Math.max(sx0, cx0), Math.min(sx1, gx === Gx - 1 ? Infinity : cx0 + cw), Math.max(sy0, cy0), Math.min(sy1, gy === Gy - 1 ? Infinity : cy0 + ch)];
         if (sub[1] - sub[0] < xmax - xmin || sub[3] - sub[2] < ymax - ymin) {
           search(bin, sub, here, depth + 1);
           continue;

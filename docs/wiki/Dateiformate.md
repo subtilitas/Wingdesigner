@@ -61,9 +61,9 @@ Name in STEP-, STL- und 3MF-Dateien, unten `<name>` geschrieben: Projektname; le
 | Zahlenzeile | 2 oder mehr Zahlen, sonst nichts |
 | Trennzeichen | Leerzeichen, Tabulator, Komma, Semikolon |
 | Dezimalkomma | `0,125  1,250` wird als `0.125  1.250` gelesen. Bedingungen: Mindestens 2 Werte. Trennzeichen: Leerzeichen, Tabulatoren oder Semikolons. Jeder Wert ist eine Dezimalkommazahl oder eine ganze Zahl, jeweils mit optionalem Exponent (`e`, `E`, `d` oder `D`), z. B. `1,25e-1`. Mindestens 1 Wert enthält ein Komma. Eine Zeile mit 1 Feld, z. B. `0,5`, wird am Komma getrennt: Werte `0` und `5`. |
-| Zahlenschreibweise | Vorzeichen optional, Dezimalpunkt, Exponent mit `e`, `E`, `d` oder `D` (`1.0D-3`) |
+| Zahlenschreibweise | Vorzeichen optional, Dezimalpunkt, Exponent mit `e`, `E`, `d` oder `D` (`1.0D-3`). Werte in XML-`<x>` und `<y>` folgen derselben Schreibweise und der Regel für Dezimalkommas; anderer Text, z. B. `0x1`, ist keine Zahl (Fehler `non-finite`). |
 | Name | Erste Nicht-Zahlenzeile vor der ersten Zahlenzeile. Die Namenszeile behält einen `#`-Kommentar: `NACA 0012 # from UIUC` → Name `NACA 0012 # from UIUC`. HTML: der `<title>`, wenn er nicht leer ist. XML: das erste `<name>`-Element. Kein Name gefunden: Dateiname ohne Endung; eingefügter Text: `pasted`. Ein Name mit mehr als 10 000 Zeichen wird auf die ersten 10 000 gekürzt (Info `long-name`). |
-| Spaltenkopfzeilen | 2 oder 3 Wörter, die mit `x`, `y` oder `z` beginnen (`x y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). Nach der Namenszeile: ohne Meldung übersprungen. Als erste Nicht-Zahlenzeile vor der ersten Zahlenzeile: wird als Name übernommen (z. B. `X Yo Yu`), keine Info `no-name`. |
+| Spaltenkopfzeilen | 2 oder 3 Wörter, die mit `x`, `y` oder `z` beginnen, getrennt durch Leerzeichen, Tabulatoren, Kommas oder Semikolons (`x y`, `x;y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). Nach der Namenszeile: ohne Meldung übersprungen. Als erste Nicht-Zahlenzeile vor der ersten Zahlenzeile: wird als Name übernommen (z. B. `X Yo Yu`), keine Info `no-name`. |
 | Andere Nicht-Zahlenzeilen | Übersprungen, Warnung `ignored-lines` |
 
 ### Dateiaufbau
@@ -73,7 +73,7 @@ Geprüft in dieser Reihenfolge. Der erste Treffer gilt.
 | Reihenfolge | Aufbau | Bedingung | Punktreihenfolge |
 | --- | --- | --- | --- |
 | 1 | XML | Text enthält `<coordinates>` | Liste `<point><x>…</x><y>…</y></point>` des ersten `<coordinates>`-Elements |
-| 2 | HTML | Text enthält ein Tag `<html`, `<pre` oder `<body` | Text aller `<pre>`-Blöcke. Ohne `<pre>`: Seitentext, Tabellenzellen als Spalten, Tabellenzeilen als Zeilen. Danach gelten die Regeln 3–5 für diesen Text. |
+| 2 | HTML | Text enthält ein Tag `<html`, `<pre` oder `<body` | Text aller `<pre>`-Blöcke. Ohne `<pre>`: Seitentext; innerhalb einer `<table>` fallen Leerräume zusammen, jede Zeile (`<tr>`), Überschrift (`<caption>`), Zeilengruppe und `<br>` beginnt eine Zeile, und jede Zelle wird eine Spalte, gleich welches Markup sie enthält (`<p>`, `<div>`) und mit oder ohne End-Tags. Danach gelten die Regeln 3–5 für diesen Text. |
 | 3 | Tabelle | jede Zahlenzeile hat 3 Werte, 3 oder mehr Zeilen, x streng steigend oder streng fallend, y_oben ≥ y_unten in ≥ 90 % der Zeilen | x, y_oben, y_unten je Zeile (z. B. Tabellen „X Yo Yu“); eine Tabelle mit fallendem x wird in umgekehrter Reihenfolge gelesen |
 | 4 | Lednicer | alle 3 Lednicer-Bedingungen unten | Anzahlzeile, Oberseite Profilnase → Endleiste, Unterseite Profilnase → Endleiste |
 | 5 | Selig | alle anderen Dateien | obere Endleiste → Profilnase → untere Endleiste |
@@ -87,7 +87,7 @@ Lednicer-Bedingungen:
 
 Weitere Regeln:
 
-- XML und HTML: Dekodiert werden die Entitäten `&lt;` `&gt;` `&quot;` `&apos;` `&amp;`, `&#NNN;` und `&#xHHHH;` (als Unicode-Codepunkte, in einem Durchgang, sodass `&amp;lt;` zu `&lt;` wird). Ein Verweis auf ein Ersatzzeichen (Surrogat) oder über U+10FFFF bleibt wie geschrieben. Ohne `<pre>` entfällt der Inhalt von `<head>`, `<title>`, `<script>` und `<style>`.
+- XML und HTML: Dekodiert werden die Entitäten `&lt;` `&gt;` `&quot;` `&apos;` `&amp;`, `&nbsp;` (als Leerzeichen gelesen), `&#NNN;` und `&#xHHHH;` (als Unicode-Codepunkte, in einem Durchgang, sodass `&amp;lt;` zu `&lt;` wird). Ein Verweis auf ein Ersatzzeichen (Surrogat) oder über U+10FFFF bleibt wie geschrieben. Ohne `<pre>` entfällt der Inhalt von `<head>`, `<title>`, `<script>` und `<style>`.
 - Lednicer: Passen die Anzahlen nicht zur Punktzahl, werden die Seiten am ersten x-Rücksprung getrennt. x-Rücksprung: x fällt um mehr als 25 % des vorherigen x.
 - Zeilen mit mehr als 2 Werten, die keine Tabelle bilden: Spalten 1 und 2 werden verwendet.
 
@@ -98,13 +98,13 @@ Schritte in dieser Reihenfolge:
 1. Ein Wert, der keine endliche Zahl ist, bricht den Import ab (Fehler `non-finite`).
 2. Kein Punkt gefunden: Der Import bricht ab (Fehler `no-points`).
 3. Mehr als 100 000 Punkte: Der Import bricht ab (Fehler `too-many-points`: `<n> points; the limit is 100,000.`).
-4. Geschlossene Kontur mit stumpfer Endleiste: Punkte auf der gezeichneten Endleistenstirn werden entfernt (Warnung `closing-point`, Regeln unten). Endleistenstirn: der steile Abschluss einer stumpfen Endleiste.
-5. Aufeinanderfolgende doppelte Punkte (gleiches x und gleiches y) werden entfernt.
+4. Aufeinanderfolgende doppelte Punkte (gleiches x und gleiches y) werden entfernt (Info `duplicates`), sodass ein doppelt geschriebener Schlusspunkt in Schritt 5 einmal zählt.
+5. Geschlossene Kontur mit stumpfer Endleiste: Punkte auf der gezeichneten Endleistenstirn werden entfernt (Warnung `closing-point`, Regeln unten). Endleistenstirn: der steile Abschluss einer stumpfen Endleiste.
 6. Größtes x über 5 und höchstens 110: Die Koordinaten gelten als Prozent der Profiltiefe und werden durch 100 geteilt.
-7. Punkte im Uhrzeigersinn (Unterseite zuerst): Die Reihenfolge wird in Selig-Reihenfolge umgedreht.
+7. Punkte im Uhrzeigersinn (Unterseite zuerst): Die Reihenfolge wird in Selig-Reihenfolge umgedreht. Die vorzeichenbehaftete Fläche wird relativ zum ersten Punkt in Einheiten der Konturausdehnung summiert, sodass der Test bei jedem Maßstab dasselbe ergibt.
 8. Die Plausibilitätsprüfungen laufen (Abschnitt „Plausibilitätsprüfungen“).
 
-Regeln für Schritt 4. Sie gelten bei mehr als 4 Punkten, wenn der letzte Punkt gleich dem ersten Punkt ist (gleiches x und gleiches y).
+Regeln für Schritt 5. Sie gelten bei mehr als 4 Punkten, wenn der letzte Punkt gleich dem ersten Punkt ist (gleiches x und gleiches y).
 
 | Begriff | Definition |
 | --- | --- |
@@ -205,7 +205,7 @@ Die Prüfungen laufen:
 
 | Bedingung | Ergebnis |
 | --- | --- |
-| HTML-Tabellenzellen mit anderen Entitäten, z. B. `&nbsp;` | Die Zeile gilt als Nicht-Zahlenzeile. Sind alle Zeilen betroffen: Fehler `no-points`. |
+| HTML-Tabellenzellen mit anderen benannten Entitäten, z. B. `&ensp;` | Die Zeile gilt als Nicht-Zahlenzeile. Sind alle Zeilen betroffen: Fehler `no-points`. |
 | XML-Datei mit mehr als 1 `<coordinates>`-Element | Nur das erste wird gelesen (Warnung `multi-element`). |
 
 ### Test mit echten Dateien
@@ -221,9 +221,9 @@ Die Prüfungen laufen:
 
 | Eigenschaft | Wert |
 | --- | --- |
-| Aufbau | Selig: Namenszeile, dann eine Zeile `x y` je Punkt. Ein Name, der sich als Koordinatenzeile oder als Kommentar liest (z. B. `123 456` oder `# custom`, da der Leser `#` bis zum Zeilenende verwirft), erhält das Präfix `Airfoil `; `<` vor `coordinates>`, `html`, `pre` oder `body` wird als `‹` geschrieben, damit die Datei nicht als XML oder HTML gelesen wird. |
+| Aufbau | Selig: Namenszeile, dann eine Zeile `x y` je Punkt. Ein Name, der sich als Koordinatenzeile oder als Kommentar liest (z. B. `123 456` oder `# custom`, da der Leser `#` bis zum Zeilenende verwirft), erhält das Präfix `Airfoil `; `<` vor `coordinates>` oder vor `html`, `pre` oder `body`, gefolgt von Leerzeichen, `>` oder dem Ende des Namens, wird als `‹` geschrieben, damit die Datei nicht als XML oder HTML gelesen wird. |
 | Punkte | die gespeicherten Punkte des Profils, Selig-Reihenfolge |
-| Zahlen | 7 Nachkommastellen bei einer Ausdehnung der Kontur von 1 oder mehr (Ausdehnung: der größere Wert aus x-Bereich und y-Bereich); darunter 7 − floor(log10(Ausdehnung)) Nachkommastellen, z. B. 13 bei 1e-6 Profiltiefe mit beliebigem x-Versatz; über 100 Nachkommastellen 17 signifikante Stellen. Jeder Wert rechtsbündig in mindestens 10 Zeichen, 1 Leerzeichen zwischen x und y |
+| Zahlen | 7 Nachkommastellen bei einer Ausdehnung der Kontur von 1 oder mehr (Ausdehnung: der größere Wert aus x-Bereich und y-Bereich); darunter 7 − floor(log10(Ausdehnung)) Nachkommastellen, z. B. 13 bei 1e-6 Profiltiefe mit beliebigem x-Versatz; mehr, wenn 2 aufeinanderfolgende verschiedene Punkte auf dieselbe Zeile gerundet würden: mindestens 1 − floor(log10(d)) Nachkommastellen, d = kleinster von 0 verschiedener Koordinatenabstand aufeinanderfolgender Punkte; über 100 Nachkommastellen 17 signifikante Stellen. Jeder Wert rechtsbündig in mindestens 10 Zeichen, 1 Leerzeichen zwischen x und y |
 | Zeilenende | LF, auch nach der letzten Zeile |
 | Kodierung | UTF-8 |
 | Herkunft und Lizenz | nicht geschrieben; die Namenszeile enthält nur den Profilnamen. `source` bleibt im Projekt-JSON. |
