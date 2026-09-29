@@ -28,7 +28,9 @@ export function stepString(text) {
   const out = String(text ?? '').replace(/'|\\|[^\x20-\x7e]/gu, (ch) => {
     if (ch === "'") return "''";
     if (ch === '\\') return '\\\\';
-    const code = ch.codePointAt(0);
+    let code = ch.codePointAt(0);
+    // A lone surrogate is no Unicode character: written as U+FFFD (replacement character).
+    if (code >= 0xd800 && code <= 0xdfff) code = 0xfffd;
     if (code <= 0xffff) return `\\X2\\${code.toString(16).toUpperCase().padStart(4, '0')}\\X0\\`;
     return `\\X4\\${code.toString(16).toUpperCase().padStart(8, '0')}\\X0\\`;
   });

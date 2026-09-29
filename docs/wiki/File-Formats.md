@@ -60,7 +60,7 @@ Name inside STEP, STL and 3MF files, written `<name>` below: project name; empty
 | Comments | `#` to the end of the line. Exception: the name line (row Name). |
 | Numeric line | 2 or more numbers and nothing else |
 | Separators | space, tab, comma, semicolon |
-| Decimal comma | `0,125  1,250` is read as `0.125  1.250`. Conditions: at least 2 values. Separators: spaces, tabs or semicolons. Every value is a decimal-comma number or an integer. At least 1 value has a comma. A line with 1 field, e.g. `0,5`, is split at the comma: values `0` and `5`. |
+| Decimal comma | `0,125  1,250` is read as `0.125  1.250`. Conditions: at least 2 values. Separators: spaces, tabs or semicolons. Every value is a decimal-comma number or an integer, either with an optional exponent (`e`, `E`, `d` or `D`), e.g. `1,25e-1`. At least 1 value has a comma. A line with 1 field, e.g. `0,5`, is split at the comma: values `0` and `5`. |
 | Number syntax | optional sign, decimal point, exponent with `e`, `E`, `d` or `D` (`1.0D-3`) |
 | Name | First non-numeric line before the first numeric line. The name line keeps a `#` comment: `NACA 0012 # from UIUC` → name `NACA 0012 # from UIUC`. HTML: the `<title>` when not empty. XML: the first `<name>` element. None found: the file name without extension; pasted text: `pasted`. A name longer than 10,000 characters is cut to the first 10,000 (info `long-name`). |
 | Column header lines | 2 or 3 words that start with `x`, `y` or `z` (`x y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). After the name line: skipped without a message. As the first non-numeric line before the first numeric line: taken as the name (e.g. `X Yo Yu`), no info `no-name`. |
@@ -98,12 +98,12 @@ Steps in this order:
 2. No point found: the import stops (error `no-points`).
 3. More than 100,000 points: the import stops (error `too-many-points`: `<n> points; the limit is 100,000.`).
 4. Closed outline with a blunt TE: points on the drawn TE base are removed (warning `closing-point`, rules below). TE base: the steep segment that closes a blunt TE.
-5. Consecutive duplicate points (difference below 1e-12 in x and in y) are removed.
+5. Consecutive duplicate points (equal x and equal y) are removed.
 6. Largest x above 5 and at most 110: the coordinates are percent of chord and are divided by 100.
 7. Clockwise point order (lower surface first): the order is reversed to Selig order.
 8. The sanity checks run (section "Sanity checks").
 
-Rules for step 4. They apply when there are more than 4 points and the last point equals the first point (difference below 1e-12 in x and in y).
+Rules for step 4. They apply when there are more than 4 points and the last point equals the first point (equal x and equal y).
 
 | Term | Definition |
 | --- | --- |
@@ -222,7 +222,7 @@ The checks run:
 | --- | --- |
 | Layout | Selig: name line, then one `x y` line per point |
 | Points | the stored points of the airfoil, Selig order |
-| Numbers | 7 decimal places, each value right-aligned in 10 characters, 1 space between x and y |
+| Numbers | 7 decimal places for an outline extent of 1 or more (extent: the larger of the x range and the y range); below, 7 − floor(log10(extent)) decimal places, e.g. 13 for a 1e-6 chord at any x offset; above 100 decimal places, 17 significant digits. Each value right-aligned in at least 10 characters, 1 space between x and y |
 | Line end | LF, also after the last line |
 | Encoding | UTF-8 |
 | Source and license | not written; the name line holds the airfoil name only. `source` stays in the project JSON. |
@@ -510,7 +510,7 @@ Counts in this file: 161 points per airfoil, 165 profile knots, 121 × 3 surface
 | Surfaces | `B_SPLINE_SURFACE_WITH_KNOTS`, non-rational: upper surface, lower surface, open TE. `PLANE`: root and tip. |
 | Edge curves | `B_SPLINE_CURVE_WITH_KNOTS` |
 | Numbers | shortest decimal that reproduces the 64-bit float value, always with a decimal point, exponent `E` |
-| Strings | `'` and `\` doubled. Characters outside U+0020–U+007E as `\X2\hhhh\X0\` or `\X4\hhhhhhhh\X0\`. |
+| Strings | `'` and `\` doubled. Characters outside U+0020–U+007E as `\X2\hhhh\X0\` or `\X4\hhhhhhhh\X0\`. A lone UTF-16 surrogate (U+D800–U+DFFF) is written as U+FFFD (replacement character). |
 
 Faces, edges, orientation flags and the OpenCascade validation: [[Geometry|Geometry]], section 6 "STEP topology".
 

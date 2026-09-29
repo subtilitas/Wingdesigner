@@ -330,6 +330,9 @@ describe('parser variants', () => {
     expect(decodeText(new Uint8Array([0xef, 0xbb, 0xbf, 0x41]))).toBe('A');
     expect(decodeText(new Uint8Array([0x57, 0xf6, 0x6c, 0x62]).buffer)).toBe('Wölb');
     expect(parseNumbers('1,5 2,25')).toEqual({ values: [1.5, 2.25], decimalComma: true });
+    // Decimal commas with exponents.
+    expect(parseNumbers('1,0e-1 2,0D-2')).toEqual({ values: [0.1, 0.02], decimalComma: true });
+    expect(parseNumbers('1e0 2,5E-1')).toEqual({ values: [1, 0.25], decimalComma: true });
     expect(parseNumbers('1.0,2.0')).toEqual({ values: [1, 2], decimalComma: false });
     expect(parseNumbers('x 1')).toBeNull();
   });
@@ -455,6 +458,26 @@ describe('parser robustness', () => {
     const r = importAirfoilText(toSeligDat('tiny', pts, 7), 'tiny.dat');
     expect(r.ok).toBe(true);
     expect(r.points).toHaveLength(pts.length);
+  });
+
+  it('keeps the points of a 1e-12 outline and of a 1e-6 chord at x = 1 through a Selig file', () => {
+    const naca = nacaAirfoil('2412').points;
+    // Reference: the unit-chord outline through the same import (normalization included).
+    const ref = importAirfoilText(toSeligDat('unit', naca), 'unit.dat').points;
+    for (const pts of [naca.map(([x, y]) => [x * 1e-12, y * 1e-12]), naca.map(([x, y]) => [1 + x * 1e-6, y * 1e-6])]) {
+      const r = importAirfoilText(toSeligDat('small', pts), 'small.dat');
+      expect(r.ok).toBe(true);
+      expect(r.points).toHaveLength(naca.length);
+      const chord = Math.max(...pts.map((p) => p[0])) - Math.min(...pts.map((p) => p[0]));
+      // Normalized to unit chord, each point within 1e-5 of the unit-chord import.
+      for (let i = 0; i < naca.length; i++) {
+        expect(Math.abs(r.points[i][0] - ref[i][0])).toBeLessThan(1e-5);
+        expect(Math.abs(r.points[i][1] - ref[i][1])).toBeLessThan(1e-5);
+      }
+      expect(chord).toBeGreaterThan(0);
+    }
+    // Unit-chord outlines keep 6 decimals.
+    expect(toSeligDat('n', [[1, 0], [0, 0.05], [1, 0]]).split('\n')[1]).toBe(' 1.000000  0.000000');
   });
 
   it('writes a Selig file whose name stays on the first line', () => {

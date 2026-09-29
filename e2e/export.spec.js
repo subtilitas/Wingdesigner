@@ -372,6 +372,22 @@ test.describe('export dialog', () => {
 });
 
 test.describe('project file errors', () => {
+  test('Open reports a file the browser cannot read and keeps the design', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await expect(status(page)).toHaveText(SPORT_STATUS);
+    const table = await tableOf(page);
+    // A removed volume or revoked permission rejects File.text() with NotReadableError.
+    await page.evaluate(() => {
+      File.prototype.text = () => Promise.reject(new DOMException('The file could not be read.', 'NotReadableError'));
+    });
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open', exact: true }).click()]);
+    await chooser.setFiles({ name: 'gone.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
+    await expect(toastOf(page)).toHaveText('Cannot open gone.json: the browser could not read the file (NotReadableError).');
+    await expect(toastOf(page)).toHaveClass(/\berror\b/);
+    await expect(status(page)).toHaveText(SPORT_STATUS);
+    expect(await tableOf(page)).toEqual(table);
+  });
+
   test('Open rejects a file that is not a Wingdesigner project and keeps the design', async ({ page }) => {
     await createDesign(page, 'Sport');
     await expect(status(page)).toHaveText(SPORT_STATUS);

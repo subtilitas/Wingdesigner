@@ -15,7 +15,7 @@
 import { signedArea } from './geometry.js';
 
 const NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?$/;
-const DECIMAL_COMMA = /^[-+]?\d*,\d+$/;
+const DECIMAL_COMMA = /^[-+]?\d*,\d+(?:[eEdD][-+]?\d+)?$/;
 // Column header lines such as "x y", "X Yo Yu", "x/c y/c", "X Y_upper Y_lower".
 /** Largest accepted input in characters (a 2000-point file is about 60 000). */
 export const MAX_INPUT = 5_000_000;
@@ -40,7 +40,7 @@ export function parseNumbers(line) {
   const ws = line.trim().split(/[\s;]+/).filter(Boolean);
   let tokens;
   let decimalComma = false;
-  if (ws.length >= 2 && ws.every((t) => DECIMAL_COMMA.test(t) || /^[-+]?\d+$/.test(t)) && ws.some((t) => t.includes(','))) {
+  if (ws.length >= 2 && ws.every((t) => DECIMAL_COMMA.test(t) || /^[-+]?\d+(?:[eEdD][-+]?\d+)?$/.test(t)) && ws.some((t) => t.includes(','))) {
     tokens = ws.map((t) => t.replace(',', '.'));
     decimalComma = true;
   } else {
@@ -367,19 +367,30 @@ function finish(nameIn, format, pointsIn, issuesIn) {
   return { name, format, points, issues };
 }
 
+// Equal parsed values only: an absolute tolerance merged the distinct points of tiny outlines. The
+// airfoil check removes points closer than a fraction of the chord.
 function samePoint(a, b) {
-  return Math.abs(a[0] - b[0]) < 1e-12 && Math.abs(a[1] - b[1]) < 1e-12;
+  return a[0] === b[0] && a[1] === b[1];
 }
 
 /** Serialize points to Selig .dat text. */
 export function toSeligDat(name, points, digits = 6) {
   // The name is the first line only: line breaks in a name would start coordinate rows.
   const lines = [String(name).replace(/[\r\n]+/g, ' ')];
-  // Fixed decimals for the usual unit-chord and millimetre outlines; significant digits for outlines
-  // smaller than 1e-3, which fixed decimals would round to zero.
-  let scale = 0;
-  for (const [x, y] of points) scale = Math.max(scale, Math.abs(x), Math.abs(y));
-  const num = scale >= 1e-3 ? (v) => v.toFixed(digits) : (v) => v.toPrecision(digits);
+  // Decimals resolve `digits` significant digits of the outline extent (at least `digits` decimals):
+  // 6 for unit-chord and millimetre outlines, 12 for a 1e-6 chord at any offset. Beyond the 100
+  // decimals of toFixed, 17 significant digits keep every double.
+  const lo = [Infinity, Infinity];
+  const hi = [-Infinity, -Infinity];
+  for (const p of points) {
+    for (let c = 0; c < 2; c++) {
+      lo[c] = Math.min(lo[c], p[c]);
+      hi[c] = Math.max(hi[c], p[c]);
+    }
+  }
+  const extent = Math.max(hi[0] - lo[0], hi[1] - lo[1]);
+  const decimals = extent > 0 ? Math.max(digits, digits - Math.floor(Math.log10(extent))) : digits;
+  const num = decimals <= 100 ? (v) => v.toFixed(decimals) : (v) => v.toPrecision(17);
   for (const [x, y] of points) lines.push(`${num(x).padStart(digits + 3)} ${num(y).padStart(digits + 3)}`);
   return lines.join('\n') + '\n';
 }

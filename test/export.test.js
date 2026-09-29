@@ -207,6 +207,8 @@ describe('STEP', () => {
     expect(stepString('a\\b')).toBe("'a\\\\b'");
     expect(stepString('Flügel')).toBe("'Fl\\X2\\00FC\\X0\\gel'");
     expect(stepString('\u{1F600}')).toBe("'\\X4\\0001F600\\X0\\'");
+    // A lone surrogate is written as U+FFFD.
+    expect(stepString('a\ud800b\udc00')).toBe("'a\\X2\\FFFD\\X0\\b\\X2\\FFFD\\X0\\'");
   });
 
   it('keeps a knot 1e-10 mm from the root distinct: no end knot above multiplicity degree + 1', () => {

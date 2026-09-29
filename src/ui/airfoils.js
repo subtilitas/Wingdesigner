@@ -252,8 +252,14 @@ export class AirfoilsPanel {
         this.onMessage(`${file.name}: ${(file.size / 1e6).toFixed(1)} MB; airfoil files are limited to ${MAX_INPUT.toLocaleString('en')} characters.`, true);
         continue;
       }
-      const text = decodeText(await file.arrayBuffer());
-      const r = importAirfoilText(text, file.name);
+      let bytes;
+      try {
+        bytes = await file.arrayBuffer();
+      } catch (err) {
+        this.onMessage(`${file.name}: the browser could not read the file (${err?.name ?? 'Error'}).`, true);
+        continue;
+      }
+      const r = importAirfoilText(decodeText(bytes), file.name);
       await this.addCandidate(
         {
           name: r.name,

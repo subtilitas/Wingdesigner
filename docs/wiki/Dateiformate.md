@@ -60,7 +60,7 @@ Name in STEP-, STL- und 3MF-Dateien, unten `<name>` geschrieben: Projektname; le
 | Kommentare | `#` bis zum Zeilenende. Ausnahme: die Namenszeile (Zeile Name). |
 | Zahlenzeile | 2 oder mehr Zahlen, sonst nichts |
 | Trennzeichen | Leerzeichen, Tabulator, Komma, Semikolon |
-| Dezimalkomma | `0,125  1,250` wird als `0.125  1.250` gelesen. Bedingungen: Mindestens 2 Werte. Trennzeichen: Leerzeichen, Tabulatoren oder Semikolons. Jeder Wert ist eine Dezimalkommazahl oder eine ganze Zahl. Mindestens 1 Wert enthält ein Komma. Eine Zeile mit 1 Feld, z. B. `0,5`, wird am Komma getrennt: Werte `0` und `5`. |
+| Dezimalkomma | `0,125  1,250` wird als `0.125  1.250` gelesen. Bedingungen: Mindestens 2 Werte. Trennzeichen: Leerzeichen, Tabulatoren oder Semikolons. Jeder Wert ist eine Dezimalkommazahl oder eine ganze Zahl, jeweils mit optionalem Exponent (`e`, `E`, `d` oder `D`), z. B. `1,25e-1`. Mindestens 1 Wert enthält ein Komma. Eine Zeile mit 1 Feld, z. B. `0,5`, wird am Komma getrennt: Werte `0` und `5`. |
 | Zahlenschreibweise | Vorzeichen optional, Dezimalpunkt, Exponent mit `e`, `E`, `d` oder `D` (`1.0D-3`) |
 | Name | Erste Nicht-Zahlenzeile vor der ersten Zahlenzeile. Die Namenszeile behält einen `#`-Kommentar: `NACA 0012 # from UIUC` → Name `NACA 0012 # from UIUC`. HTML: der `<title>`, wenn er nicht leer ist. XML: das erste `<name>`-Element. Kein Name gefunden: Dateiname ohne Endung; eingefügter Text: `pasted`. Ein Name mit mehr als 10 000 Zeichen wird auf die ersten 10 000 gekürzt (Info `long-name`). |
 | Spaltenkopfzeilen | 2 oder 3 Wörter, die mit `x`, `y` oder `z` beginnen (`x y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). Nach der Namenszeile: ohne Meldung übersprungen. Als erste Nicht-Zahlenzeile vor der ersten Zahlenzeile: wird als Name übernommen (z. B. `X Yo Yu`), keine Info `no-name`. |
@@ -98,12 +98,12 @@ Schritte in dieser Reihenfolge:
 2. Kein Punkt gefunden: Der Import bricht ab (Fehler `no-points`).
 3. Mehr als 100 000 Punkte: Der Import bricht ab (Fehler `too-many-points`: `<n> points; the limit is 100,000.`).
 4. Geschlossene Kontur mit stumpfer Endleiste: Punkte auf der gezeichneten Endleistenstirn werden entfernt (Warnung `closing-point`, Regeln unten). Endleistenstirn: der steile Abschluss einer stumpfen Endleiste.
-5. Aufeinanderfolgende doppelte Punkte (Abweichung unter 1e-12 in x und in y) werden entfernt.
+5. Aufeinanderfolgende doppelte Punkte (gleiches x und gleiches y) werden entfernt.
 6. Größtes x über 5 und höchstens 110: Die Koordinaten gelten als Prozent der Profiltiefe und werden durch 100 geteilt.
 7. Punkte im Uhrzeigersinn (Unterseite zuerst): Die Reihenfolge wird in Selig-Reihenfolge umgedreht.
 8. Die Plausibilitätsprüfungen laufen (Abschnitt „Plausibilitätsprüfungen“).
 
-Regeln für Schritt 4. Sie gelten bei mehr als 4 Punkten, wenn der letzte Punkt gleich dem ersten Punkt ist (Abweichung unter 1e-12 in x und in y).
+Regeln für Schritt 4. Sie gelten bei mehr als 4 Punkten, wenn der letzte Punkt gleich dem ersten Punkt ist (gleiches x und gleiches y).
 
 | Begriff | Definition |
 | --- | --- |
@@ -222,7 +222,7 @@ Die Prüfungen laufen:
 | --- | --- |
 | Aufbau | Selig: Namenszeile, dann eine Zeile `x y` je Punkt |
 | Punkte | die gespeicherten Punkte des Profils, Selig-Reihenfolge |
-| Zahlen | 7 Nachkommastellen, jeder Wert rechtsbündig in 10 Zeichen, 1 Leerzeichen zwischen x und y |
+| Zahlen | 7 Nachkommastellen bei einer Ausdehnung der Kontur von 1 oder mehr (Ausdehnung: der größere Wert aus x-Bereich und y-Bereich); darunter 7 − floor(log10(Ausdehnung)) Nachkommastellen, z. B. 13 bei 1e-6 Profiltiefe mit beliebigem x-Versatz; über 100 Nachkommastellen 17 signifikante Stellen. Jeder Wert rechtsbündig in mindestens 10 Zeichen, 1 Leerzeichen zwischen x und y |
 | Zeilenende | LF, auch nach der letzten Zeile |
 | Kodierung | UTF-8 |
 | Herkunft und Lizenz | nicht geschrieben; die Namenszeile enthält nur den Profilnamen. `source` bleibt im Projekt-JSON. |
@@ -511,7 +511,7 @@ Fläche, 125 Werte in `knotsU`.
 | Flächen | `B_SPLINE_SURFACE_WITH_KNOTS`, nicht-rational: Oberseite, Unterseite, offene Endleiste. `PLANE`: Wurzel und Rand. |
 | Kantenkurven | `B_SPLINE_CURVE_WITH_KNOTS` |
 | Zahlen | kürzeste Dezimaldarstellung, die den 64-Bit-Gleitkommawert exakt wiedergibt, immer mit Dezimalpunkt, Exponent `E` |
-| Zeichenketten | `'` und `\` verdoppelt. Zeichen außerhalb U+0020–U+007E als `\X2\hhhh\X0\` oder `\X4\hhhhhhhh\X0\`. |
+| Zeichenketten | `'` und `\` verdoppelt. Zeichen außerhalb U+0020–U+007E als `\X2\hhhh\X0\` oder `\X4\hhhhhhhh\X0\`. Ein einzelnes UTF-16-Ersatzzeichen (Surrogat, U+D800–U+DFFF) wird als U+FFFD (Ersetzungszeichen) geschrieben. |
 
 Flächen, Kanten, Orientierungsflags und die Prüfung mit OpenCascade: [[Geometrie|Geometrie]],
 Abschnitt 6 „STEP-Topologie“.

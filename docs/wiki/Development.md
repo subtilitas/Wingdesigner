@@ -259,7 +259,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Timeouts | 60000 ms per test, 60000 ms for server start |
 | Retries | 0 |
 
-136 tests in 10 spec files, 272 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+137 tests in 10 spec files, 274 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 30 tests run in one project only (`test.skip` in the other project):
 

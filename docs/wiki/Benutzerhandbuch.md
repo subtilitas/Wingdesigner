@@ -28,7 +28,7 @@ English: [[User Guide|User-Guide]]
 | Schaltfläche der Kopfleiste | Wirkung |
 | --- | --- |
 | **New** | Öffnet den Assistenten (Abschnitt [Assistent](#assistent)). |
-| **Open** | Lädt eine Projektdatei im Format JSON (JavaScript Object Notation, Dateiendung `.json`). Dateien über 100 MB werden ungelesen abgewiesen: `Cannot open <file>: … MB; project files are limited to 100 MB.` Ungültige Dateien werden abgewiesen; die Meldung zeigt bis zu 3 Fehler. Abgeleitete NURBS-Daten (Non-Uniform Rational B-Spline) in der Datei werden ignoriert und neu berechnet. |
+| **Open** | Lädt eine Projektdatei im Format JSON (JavaScript Object Notation, Dateiendung `.json`). Dateien über 100 MB werden ungelesen abgewiesen: `Cannot open <file>: … MB; project files are limited to 100 MB.` Eine Datei, die der Browser nicht lesen kann (entferntes Laufwerk, entzogene Berechtigung), zeigt `Cannot open <file>: the browser could not read the file (NotReadableError).`; der aktuelle Entwurf bleibt. Ungültige Dateien werden abgewiesen; die Meldung zeigt bis zu 3 Fehler. Abgeleitete NURBS-Daten (Non-Uniform Rational B-Spline) in der Datei werden ignoriert und neu berechnet. |
 | **Save** | Lädt das Projekt-JSON herunter. Gleiche Datei wie **Export** > Project JSON. Brächten die abgeleiteten NURBS-Daten die Datei über 100 MB, lässt die Datei sie weg (Abschnitt [Export](#export)). Ein Fehler zeigt die rote Meldung `Save failed: <reason>.` |
 | **Export** | Öffnet den Exportdialog (Abschnitt [Export](#export)). |
 | **Undo** / **Redo** | Rückgängig / Wiederholen im Bearbeitungsverlauf, nur im Arbeitsspeicher: höchstens 100 Schritte und höchstens 64 000 000 Zeichen serialisiertes Projekt (Rückgängig und Wiederholen zusammen); ein Projekt über 640 000 Zeichen behält weniger Schritte, mindestens 1. **Undo** macht auch **New** und **Open** rückgängig. |
@@ -289,7 +289,7 @@ Bedienelemente je Leitkurve (Kästen **Nose line (leading edge)** und **End line
 | --- | --- |
 | Listeneintrag | Kontur, Name, Punktanzahl, Quellenangabe, `unused`, wenn kein Schnitt das Profil verwendet |
 | **View** | Öffnet die Vorschau; Name und Quellenangabe sind schreibgeschützt. Einzige Schaltfläche ist **Close** (Schließen). |
-| **.dat** | Lädt das Profil als Selig-Datei `.dat` mit 7 Nachkommastellen herunter |
+| **.dat** | Lädt das Profil als Selig-Datei `.dat` mit 7 Nachkommastellen herunter (mehr bei Konturen kleiner als 1, siehe [[Dateiformate|Dateiformate]]) |
 | **×** | Entfernt das Profil. Gesperrt, solange ein Schnitt es verwendet. |
 | **Remove unused** | Entfernt alle Profile, die kein Schnitt verwendet |
 
@@ -313,7 +313,7 @@ Grenzen der Projektprofile (Abschnitt [Projektgröße](#projektgröße)):
 
 | Eingabe | Regel |
 | --- | --- |
-| Dateien | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Auf die Ablagefläche ziehen oder **Choose files** verwenden. Mehrere Dateien öffnen nacheinander je eine Vorschau. Eine Datei über 20 MB wird nicht gelesen: rote Meldung `<file>: … MB; airfoil files are limited to 5,000,000 characters.` |
+| Dateien | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Auf die Ablagefläche ziehen oder **Choose files** verwenden. Mehrere Dateien öffnen nacheinander je eine Vorschau. Eine Datei über 20 MB wird nicht gelesen: rote Meldung `<file>: … MB; airfoil files are limited to 5,000,000 characters.` Eine Datei, die der Browser nicht lesen kann: rote Meldung `<file>: the browser could not read the file (NotReadableError).` |
 | Eingefügter Text | Koordinaten in den Textbereich einfügen, dann **Check pasted text**. |
 | Zeichenkodierung | UTF-8 (Unicode Transformation Format, 8 Bit); eine Datei, die kein gültiges UTF-8 ist, wird als Windows-1252 gelesen. |
 | Aufbau und Prüfungen | Selig, Lednicer, Tabelle x/oben/unten, XML (Extensible Markup Language), HTML (HyperText Markup Language): siehe [[Dateiformate|Dateiformate]] |

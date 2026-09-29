@@ -28,7 +28,7 @@ Deutsch: [[Benutzerhandbuch|Benutzerhandbuch]]
 | Top bar button | Effect |
 | --- | --- |
 | **New** | Opens the wizard (section [Wizard](#wizard)). |
-| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Rejects files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` Rejects invalid files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. |
+| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Rejects files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` A file the browser cannot read (removed drive, revoked permission) shows `Cannot open <file>: the browser could not read the file (NotReadableError).` and keeps the current design. Rejects invalid files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. |
 | **Save** | Downloads the project JSON. Same file as **Export** > Project JSON. When the derived NURBS data would take the file above 100 MB, the file leaves it out (section [Export](#export)). A failure shows the red notice `Save failed: <reason>.` |
 | **Export** | Opens the export dialog (section [Export](#export)). |
 | **Undo** / **Redo** | Steps through the edit history, kept in memory only: at most 100 steps and at most 64,000,000 characters of serialized project (undo and redo together); a project above 640,000 characters keeps fewer steps, at least 1. **New** and **Open** are undoable. |
@@ -289,7 +289,7 @@ Controls per guide curve (boxes **Nose line (leading edge)** and **End line (tra
 | --- | --- |
 | List entry | Outline, name, point count, attribution, `unused` when no section uses the airfoil |
 | **View** | Opens the preview; name and attribution are read-only. The only button is **Close**. |
-| **.dat** | Downloads the airfoil as Selig `.dat` file with 7 decimal places |
+| **.dat** | Downloads the airfoil as Selig `.dat` file with 7 decimal places (more for outlines smaller than 1, see [[File Formats|File-Formats]]) |
 | **×** | Removes the airfoil. Disabled while a section uses it. |
 | **Remove unused** | Removes every airfoil that no section uses |
 
@@ -313,7 +313,7 @@ Limits of the project airfoils (section [Project size](#project-size)):
 
 | Input | Rule |
 | --- | --- |
-| Files | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Drop them on the drop zone or use **Choose files**. Several files open one preview each, in order. A file above 20 MB is not read: red notice `<file>: … MB; airfoil files are limited to 5,000,000 characters.` |
+| Files | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Drop them on the drop zone or use **Choose files**. Several files open one preview each, in order. A file above 20 MB is not read: red notice `<file>: … MB; airfoil files are limited to 5,000,000 characters.` A file the browser cannot read: red notice `<file>: the browser could not read the file (NotReadableError).` |
 | Pasted text | Paste coordinates into the text area, then **Check pasted text**. |
 | Text encoding | UTF-8 (Unicode Transformation Format, 8-bit); a file that is not valid UTF-8 is read as Windows-1252. |
 | Layouts and checks | Selig, Lednicer, x/upper/lower table, XML (Extensible Markup Language), HTML (HyperText Markup Language): see [[File Formats|File-Formats]] |

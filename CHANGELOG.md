@@ -206,6 +206,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   knot of multiplicity degree + 2); only knots within 4 units in the last place merge.
 - The 3D view draws at most 100,000 control-net segments: above that it keeps every k-th control
   line in each direction, first and last included.
+- Airfoil parser: decimal-comma values with exponents (`1,0e-1`) are read; only equal consecutive
+  points count as duplicates (a 1e-12 outline kept 2 of 161 points). The Selig writer chooses its
+  decimals from the outline extent, so a 1e-6 chord at x = 1 keeps its points.
+- Open and airfoil upload report a file the browser cannot read instead of failing silently; STEP
+  strings write a lone UTF-16 surrogate as U+FFFD.
 - The Sections table accepts a y that differs from every other section y (a y within 1e-6 mm of
   another section was refused); the airfoil preview view widens to points outside y = ±0.2.
 - The build finds the largest chord per airfoil and the station of each section in one pass instead

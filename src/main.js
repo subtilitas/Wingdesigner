@@ -138,7 +138,13 @@ const openInput = h('input', {
       message(`Cannot open ${f.name}: ${(f.size / 1e6).toFixed(1)} MB; project files are limited to ${MAX_PROJECT_BYTES / 1e6} MB.`, true);
       return;
     }
-    const text = await f.text();
+    let text;
+    try {
+      text = await f.text();
+    } catch (err) {
+      if (request === openRequest) message(`Cannot open ${f.name}: the browser could not read the file (${err?.name ?? 'Error'}).`, true);
+      return;
+    }
     if (request !== openRequest) return;
     const r = projectFromJsonText(text);
     if (!r.ok) {
