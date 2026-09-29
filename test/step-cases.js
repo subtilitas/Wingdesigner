@@ -27,5 +27,8 @@ export function stepCases() {
   pointedGuided.guides.nose.points = [[0, 0], [10, 300], [60, 560], [115, 600]];
   pointedGuided.guides.end.points = [[200, 0], [195, 300], [160, 560], [115, 600]];
   cases.push({ name: 'pointed-elliptic-closed', project: pointedGuided, mirror: true });
+  const symmetric = sampleProject();
+  symmetric.airfoils = [naca('0009', 'root'), naca('0009', 'tip')];
+  cases.push({ name: 'symmetric-0009', project: symmetric, mirror: true });
   return cases;
 }

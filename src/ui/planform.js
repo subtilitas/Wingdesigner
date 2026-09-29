@@ -241,8 +241,10 @@ export class PlanformEditor {
         (p) => {
           const s = p.sections.find((q) => q.id === hnd.id);
           if (!s) return;
+          // Effective edges come from the build: with one guide on, the other edge follows the chord.
+          const st = this.getBuild()?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
           if (hnd.type === 'le') {
-            const te = s.x + s.chord;
+            const te = p.guides?.end?.enabled && st ? st.xLE + st.chord : s.x + s.chord;
             s.x = Math.min(x, te - 1);
             s.chord = te - s.x;
             const sorted = sortedSections(p);
@@ -251,7 +253,8 @@ export class PlanformEditor {
             const hi = i < sorted.length - 1 ? sorted[i + 1].y - 1 : Infinity;
             if (i > 0) s.y = Math.min(Math.max(y, lo), hi);
           } else {
-            s.chord = Math.max(1, x - s.x);
+            const le = p.guides?.nose?.enabled && st ? st.xLE : s.x;
+            s.chord = Math.max(1, x - le);
           }
           syncGuidesToSpan(p);
         },
@@ -287,6 +290,7 @@ export class PlanformEditor {
                     numberInput({
                       value: x,
                       step: 1,
+                      focusKey: `guide:${key}:${i}:x`,
                       onCommit: (v) => this.store.update((q) => moveGuidePoint(q, key, i, v, q.guides[key].points[i][1])),
                     }),
                   ),
@@ -298,6 +302,7 @@ export class PlanformEditor {
                       : numberInput({
                           value: y,
                           step: 1,
+                          focusKey: `guide:${key}:${i}:y`,
                           onCommit: (v) => this.store.update((q) => moveGuidePoint(q, key, i, q.guides[key].points[i][0], v)),
                         }),
                   ),

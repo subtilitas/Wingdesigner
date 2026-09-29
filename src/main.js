@@ -5,6 +5,7 @@ import { buildWing } from './geom/wing.js';
 import { wingStats } from './geom/stats.js';
 import { projectFromJsonText, projectToJsonText } from './model/io.js';
 import { defaultProject } from './model/defaults.js';
+import { validateProject } from './model/project.js';
 import { Store } from './ui/store.js';
 import { Viewer3D } from './ui/viewer3d.js';
 import { SectionsPanel } from './ui/sections.js';
@@ -19,28 +20,44 @@ const VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0';
 const STORAGE_KEY = 'wingdesigner.project.v1';
 const REPO = 'https://github.com/subtilitas/Wingdesigner';
 
+let loadProblem = null;
+
 function loadSaved() {
   try {
     const text = localStorage.getItem(STORAGE_KEY);
     if (!text) return null;
     const r = projectFromJsonText(text);
-    return r.ok ? r.project : null;
+    if (r.ok) return r.project;
+    // Keep the rejected data instead of overwriting it with the next autosave.
+    localStorage.setItem(`${STORAGE_KEY}.rejected`, text);
+    loadProblem = `The saved project could not be loaded (${r.errors[0]}); it is kept in local storage under "${STORAGE_KEY}.rejected".`;
+    return null;
   } catch {
     return null;
   }
 }
 
+/** Autosave only projects that load again; an invalid edit keeps the last valid save. */
 function save(project) {
   try {
+    if (!validateProject(project).ok) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
   } catch {
     // Storage unavailable (private mode, quota): the project stays in memory only.
   }
 }
 
+function safeBuild(project) {
+  try {
+    return buildWing(project);
+  } catch (e) {
+    return { errors: [`Internal error: ${e.message}`], warnings: [], stations: [], surface: null, sections: [], profiles: new Map(), guides: {}, settings: project.settings };
+  }
+}
+
 const saved = loadSaved();
 const store = new Store(saved ?? defaultProject());
-let build = buildWing(store.project);
+let build = safeBuild(store.project);
 const getBuild = () => build;
 
 // Layout.
@@ -63,6 +80,7 @@ const openInput = h('input', {
     }
     store.replace(r.project);
     viewer.hasFitted = false;
+    planform.pz.fitted = false;
     message(`Opened ${f.name}.`);
   },
 });
@@ -119,7 +137,7 @@ const statusBar = h('footer', { class: 'statusbar' }, statusText);
 document.getElementById('app').append(header, h('main', { class: 'layout' }, viewWrap, panel), statusBar);
 
 const viewer = new Viewer3D(viewport);
-const sectionsPanel = new SectionsPanel(panes.sections, store, getBuild);
+const sectionsPanel = new SectionsPanel(panes.sections, store, getBuild, { onMessage: (m, e) => message(m, e) });
 const planform = new PlanformEditor(panes.planform, store, getBuild);
 const airfoils = new AirfoilsPanel(panes.airfoils, store, { onMessage: (m) => message(m) });
 const settings = new SettingsPanel(panes.settings, store, viewer);
@@ -181,22 +199,33 @@ function renderChecks() {
 }
 
 let rebuildPending = false;
+let refreshPanels = false;
 function rebuild() {
   if (rebuildPending) return;
   rebuildPending = true;
   requestAnimationFrame(() => {
     rebuildPending = false;
-    try {
-      build = buildWing(store.project);
-    } catch (e) {
-      build = { errors: [`Internal error: ${e.message}`], warnings: [], stations: [], surface: null, sections: [], profiles: new Map(), guides: {}, settings: store.project.settings };
-    }
+    // Panels re-render below; remember the focused field so Tab and arrow-key editing continue.
+    const focusKey = document.activeElement?.dataset?.focusKey;
+    build = safeBuild(store.project);
     const sel = store.project.sections.find((s) => s.id === store.selection.section);
     const selV = sel && build.surface ? (sel.y - build.rootY) / (build.tipY - build.rootY || 1) : null;
     viewer.setBuild(build.surface ? build : null, { mirror: store.project.settings.mirror !== false, selectedV: selV });
     sectionsPanel.update();
     planform.update();
+    if (refreshPanels) {
+      airfoils.update();
+      settings.update();
+      refreshPanels = false;
+    }
     renderChecks();
+    if (focusKey) {
+      const el = document.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
+      if (el && el !== document.activeElement) {
+        el.focus();
+        el.select?.();
+      }
+    }
     undoBtn.disabled = !store.canUndo();
     redoBtn.disabled = !store.canRedo();
     save(store.project);
@@ -204,21 +233,9 @@ function rebuild() {
 }
 
 store.subscribe((project, reason) => {
-  if (reason === 'select') {
-    rebuild();
-    return;
-  }
+  // Airfoil and settings panels re-render in the next frame together with the build.
+  if (reason !== 'select') refreshPanels = true;
   rebuild();
-  if (['load', 'undo', 'redo'].includes(reason)) {
-    airfoils.update();
-    settings.update();
-  } else if (reason === 'edit') {
-    airfoils.update();
-    if (activeTab === 'settings') {
-      // Keep focus stable while typing in the settings form: re-render only after changes land.
-      settings.update();
-    }
-  }
 });
 
 function message(text, isError = false) {
@@ -234,6 +251,7 @@ async function newDesign(firstRun) {
   if (p) {
     store.replace(p);
     viewer.hasFitted = false;
+    planform.pz.fitted = false;
     selectTab('sections');
     message(`Created "${p.name}".`);
   }
@@ -284,6 +302,7 @@ function helpDialog() {
 }
 
 window.addEventListener('keydown', (e) => {
+  if (document.querySelector('dialog[open]')) return;
   const target = e.target;
   if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
   const mod = e.ctrlKey || e.metaKey;
@@ -299,4 +318,5 @@ window.addEventListener('keydown', (e) => {
 
 selectTab(activeTab);
 rebuild();
+if (loadProblem) message(loadProblem, true);
 if (!saved) newDesign(true);

@@ -363,6 +363,9 @@ export function insertKnotCurve(curve, u, r = 1) {
   return { degree: p, knots: UQ, points: Qw };
 }
 
+/** Distance below which a split parameter is treated as an existing knot. */
+export const KNOT_SNAP = 1e-10;
+
 /** Knot multiplicity of u in U. */
 export function knotMultiplicity(U, u, tol = 0) {
   let s = 0;
@@ -373,8 +376,12 @@ export function knotMultiplicity(U, u, tol = 0) {
 /**
  * Split a non-rational curve at u into two clamped curves (knots re-normalized to [0,1]).
  */
-export function splitCurve(curve, u) {
+export function splitCurve(curve, uIn) {
   const p = curve.degree;
+  // Snap to an existing knot within round-off, otherwise the split adds p copies next to it and
+  // the two merge into multiplicity p + 1 (or more) in exporters that compare knots with a tolerance.
+  const near = curve.knots.find((t) => Math.abs(t - uIn) <= KNOT_SNAP);
+  const u = near ?? uIn;
   const s = knotMultiplicity(curve.knots, u);
   const c = insertKnotCurve(curve, u, p - s);
   const U = c.knots;

@@ -45,11 +45,13 @@ export function download(filename, data, mime = 'application/octet-stream') {
   }, 1000);
 }
 
-/** Numeric input bound to a value getter/setter. Commits on change (enter/blur) and on arrow steps. */
-export function numberInput({ value, step = 1, min, max, title, onCommit, width }) {
+/**
+ * Numeric input. Commits on change (Enter, blur, arrow steps). focusKey identifies the field across
+ * re-renders so focus can be restored.
+ */
+export function numberInput({ value, step = 1, min, max, title, onCommit, width, focusKey }) {
   const input = h('input', {
     type: 'number',
-    inputMode: 'decimal',
     step: String(step),
     value: formatNum(value),
     title,
@@ -58,9 +60,12 @@ export function numberInput({ value, step = 1, min, max, title, onCommit, width 
   });
   if (min !== undefined) input.min = String(min);
   if (max !== undefined) input.max = String(max);
+  if (focusKey) input.dataset.focusKey = focusKey;
   input.addEventListener('change', () => {
-    const v = Number(input.value);
-    if (!Number.isFinite(v)) {
+    // An empty or unparsable field restores the previous value (Number('') would be 0).
+    const raw = input.value.trim();
+    const v = Number(raw);
+    if (raw === '' || !Number.isFinite(v)) {
       input.value = formatNum(value);
       return;
     }

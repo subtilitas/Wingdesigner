@@ -314,3 +314,26 @@ describe('utilities', () => {
     expect(solveMonotonic((t) => t, 2)).toBe(1);
   });
 });
+
+describe('split at a knot within round-off', () => {
+  it('snaps to the existing knot so the end multiplicity stays p + 1', () => {
+    const c = interpolateCurve(
+      [
+        [0, 0],
+        [1, 2],
+        [3, 3],
+        [4, 1],
+        [6, 0],
+        [7, 2],
+      ],
+      3,
+    );
+    const k = c.knots[4];
+    const [l, r] = splitCurve(c, k - 2e-16);
+    const lm = knotMultiplicities(l.knots, 1e-12);
+    const rm = knotMultiplicities(r.knots, 1e-12);
+    expect(lm.mults[lm.mults.length - 1]).toBe(4);
+    expect(rm.mults[0]).toBe(4);
+    expect(dist(curvePoint(l, 1), curvePoint(r, 0))).toBeLessThan(1e-12);
+  });
+});

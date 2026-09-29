@@ -14,10 +14,10 @@ Last updated: 2026-09-29
 | Airfoil import (`src/airfoil/`) | Selig, Lednicer, x/upper/lower tables, XML, HTML tables, decimal commas, Windows-1252; sanity checks; NACA 4/5-digit | `test/airfoil.test.js`; 247 real files (Selig, percent tables, XML, HTML pages) from aerodesign.de, mh-aerotools.de and UIUC parsed locally on 2026-09-29, 246 accepted, 1 (UIUC `mh150.dat`) rejected for a real upper/lower crossing. The files are not committed (license). |
 | Wing loft (`src/geom/wing.js`) | Sections, linear or smooth spanwise blending, nose and end guide curves, trailing-edge modes | `test/wing.test.js` |
 | Meshes (`src/geom/mesh.js`) | Closed outward meshes, mirror, merged full wing | Edge-manifold and volume tests |
-| STEP export (`src/export/step.js`) | AP214 B-rep solids with exact B-spline faces | `scripts/validate_step.py` with OpenCascade (cadquery-ocp 8.0.1): 7 cases including 2 pointed tips, all valid and closed, volume within 8e-5 of the mesh |
+| STEP export (`src/export/step.js`) | AP214 B-rep solids with exact B-spline faces | `scripts/validate_step.py` with OpenCascade (cadquery-ocp 8.0.1): 8 cases including 2 pointed tips and 1 symmetric airfoil, all valid and closed, volume within 8e-5 of the mesh |
 | STL, 3MF, project JSON | Implemented | `test/export.test.js` |
 | UI (`src/ui/`, `src/main.js`) | 3D viewer, planform editor, sections, airfoils, settings, checks, wizard, export | Playwright smoke test on desktop (1280 x 720) and Pixel 7 viewports, no console errors |
-| CI | `ci.yml` (lint, unit tests, coverage check, STEP validation, e2e, Pages deploy), `docs.yml` (wiki), `release.yml` (tags) | Not yet run on GitHub at the time of writing |
+| CI | `ci.yml` (lint, unit tests, coverage check, STEP validation, e2e, Pages deploy), `docs.yml` (wiki), `release.yml` (tags) | All jobs green on pull request #1; Pages deployment and wiki push run on `main` only and are not yet observed |
 | Bundled airfoil library | Empty index; NACA presets are generated | `npm run airfoils:check` |
 
 ## Decisions
@@ -30,6 +30,8 @@ Last updated: 2026-09-29
 | Section origin at the NURBS leading edge (minimum x of the curve), chord to the trailing-edge midpoint | Placement refers to the interpolated shape, not to the nearest file point. |
 | Inclined airfoils are not derotated | Some tables (e.g. Göttingen 795) use a baseline instead of the leading-edge-to-trailing-edge chord; twist refers to the file's x axis. A warning reports the inclination. |
 | Spanwise C0 knots at sections in linear mode | Straight panels with kinks at sections stay exact; smooth mode uses one C2 spline. |
+| Split parameters within 1e-10 of an existing knot snap to that knot | A symmetric airfoil puts the leading edge 1 ulp (unit in the last place) from a knot; inserting a separate knot there gives multiplicity 5 and an invalid STEP face. |
+| Smooth spanwise blending reports negative blended thickness as an error | The cubic cardinal functions overshoot between sections with large chord or thickness changes; the upper surface then passes below the lower one. |
 | Guide curves stretched to root-to-tip span | Guides follow span edits without manual correction. |
 | Pointed tip: tip profile scaled to 1/100 to 1/1000 (default 1/200) of the previous section chord | A zero chord has no profile and no valid B-rep face; a scaled profile keeps the tip closed, profile-shaped and exportable. Converging guide curves end in this profile. |
 | Trailing-edge thickness limited to 5 % of the local chord | Keeps small tip profiles free of self-intersection with a fixed thickness in mm. |
@@ -60,5 +62,5 @@ Mean of 10 runs after 2 warm-up runs (STEP: 3 runs). Cap triangulation pairs upp
   (research on public-domain NACA/NASA report data is in progress).
 - Written permission from Hartmut Siegmann (postal only, per his site) or Martin Hepperle
   (e-mail in his page footer) would allow bundling HS or MH airfoils.
-- First CI run on GitHub: confirm Pages deployment and the wiki push with `GITHUB_TOKEN`.
+- First run on `main`: confirm Pages deployment and the wiki push with `GITHUB_TOKEN`.
 - Not measured: build time and memory on phones.

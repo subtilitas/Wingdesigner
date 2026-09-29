@@ -48,8 +48,16 @@ function reversals(surface) {
  * Check a point list (Selig order, any scale). Returns normalized points and issues.
  * @returns {{ok: boolean, points: number[][], issues: object[], stats: object|null}}
  */
-export function checkAirfoil(rawPoints) {
+export function checkAirfoil(rawPointsIn) {
   const issues = [];
+  // Consecutive duplicates make the interpolation matrix singular; remove them for every source
+  // (the file parser already does, project JSON and pasted data may not).
+  let rawPoints = rawPointsIn;
+  if (Array.isArray(rawPointsIn) && rawPointsIn.length > 1) {
+    rawPoints = rawPointsIn.filter((p, i) => i === 0 || p[0] !== rawPointsIn[i - 1][0] || p[1] !== rawPointsIn[i - 1][1]);
+    const removed = rawPointsIn.length - rawPoints.length;
+    if (removed) issues.push(issue('info', 'duplicates', `${removed} duplicate consecutive point(s) removed.`));
+  }
   if (!rawPoints || rawPoints.length < LIMITS.minPoints) {
     issues.push(issue('error', 'too-few-points', `At least ${LIMITS.minPoints} points are required (found ${rawPoints ? rawPoints.length : 0}).`));
     return { ok: false, points: rawPoints ?? [], issues, stats: null };
@@ -85,7 +93,7 @@ export function checkAirfoil(rawPoints) {
     );
   }
   if (Math.max(rawPoints[0][0], rawPoints[n0 - 1][0]) < b.xmax - 0.05 * chord) {
-    issues.push(issue('warning', 'te-missing', 'The first and last points are not at the trailing edge; the point order is probably not Selig.'));
+    issues.push(issue('error', 'te-missing', 'The first and last points are not at the trailing edge; the point order is probably not Selig.'));
   }
   const points = normalize(rawPoints);
 

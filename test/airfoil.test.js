@@ -355,3 +355,58 @@ describe('column headers', () => {
     expect(codes(parseDat('Foil\nfree text\n1 0\n0 0\n1 -0.01\n').issues)).toContain('ignored-lines');
   });
 });
+
+describe('parser robustness', () => {
+  const selig = (pts) => pts.map(([x, y]) => `${x} ${y}`).join('\n');
+
+  it('reads semicolon-separated decimal-comma CSV', () => {
+    const r = parseDat('Foil\n1,000084;0,001257\n0,5;0,06\n0;0\n0,5;-0,04\n1;-0,001257\n');
+    expect(r.points[0]).toEqual([1.000084, 0.001257]);
+    expect(r.points.length).toBe(5);
+  });
+
+  it('rejects empty XML coordinate values', () => {
+    const r = parseDat('<coordinates><point><x>1</x><y></y></point><point><x>0</x><y>0</y></point></coordinates>');
+    expect(codes(r.issues)).toContain('non-finite');
+  });
+
+  it('limits input size and parses unclosed tags in linear time', () => {
+    expect(codes(parseDat('x'.repeat(2_000_001)).issues)).toContain('too-large');
+    const t0 = performance.now();
+    parseDat('<html>' + '<pre'.repeat(20000));
+    parseDat('<coordinates>'.repeat(20000));
+    expect(performance.now() - t0).toBeLessThan(500);
+  });
+
+  it('does not take a millimetre Selig file for Lednicer', () => {
+    const pts = nacaAirfoil('0012', { pointsPerSide: 21 }).points.map(([x, y]) => [Math.round(x * 150 * 1e4) / 1e4, Math.round((y * 150 + (x > 0.999 ? 2 * Math.sign(y || 1) : 0)) * 1e4) / 1e4]);
+    pts[0] = [150, 2];
+    const r = parseDat(selig(pts), { fileName: 'mm.dat' });
+    expect(r.format).toBe('selig');
+    expect(r.points.length).toBe(pts.length);
+  });
+
+  it('removes the closing point after a blunt trailing edge and keeps a sharp closed one', () => {
+    const blunt = nacaAirfoil('2412', { pointsPerSide: 31 }).points.map((p) => p.slice());
+    blunt.push(blunt[0].slice());
+    // Blunt base: make the last lower point share x with the first point.
+    blunt[blunt.length - 2][0] = blunt[0][0];
+    const r = parseDat(selig(blunt));
+    expect(codes(r.issues)).toContain('closing-point');
+    expect(r.points.length).toBe(blunt.length - 1);
+    const sharp = nacaAirfoil('0012', { pointsPerSide: 31, closedTE: true }).points;
+    const s = parseDat(selig(sharp));
+    expect(codes(s.issues)).not.toContain('closing-point');
+    expect(s.points.length).toBe(sharp.length);
+  });
+
+  it('removes consecutive duplicates for every source and rejects outlines that miss the trailing edge', () => {
+    const pts = nacaAirfoil('2412').points.map((p) => p.slice());
+    pts.splice(30, 0, pts[30].slice());
+    const r = checkAirfoil(pts);
+    expect(r.ok).toBe(true);
+    expect(codes(r.issues)).toContain('duplicates');
+    const rolled = pts.slice(40).concat(pts.slice(0, 40));
+    expect(checkAirfoil(rolled).ok).toBe(false);
+  });
+});

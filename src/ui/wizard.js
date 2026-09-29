@@ -60,7 +60,6 @@ export function openWizard({ firstRun = false } = {}) {
         const [lo, hi] = RANGES[f.key];
         const input = h('input', {
           type: 'number',
-          inputMode: 'decimal',
           step: String(f.step),
           min: String(lo),
           max: String(hi),
@@ -186,7 +185,7 @@ export function openWizard({ firstRun = false } = {}) {
         firstRun ? h('p', { class: 'small muted' }, 'Pick a type, adjust the numbers, create. Everything stays editable afterwards; the wizard only sets up the sections and guide curves.') : null,
         presetBox,
         h('div', { class: 'wizard-body' }, h('div', { class: 'wizard-left' }, h('label', { class: 'field' }, 'Project name', nameInput), fieldsBox), h('div', { class: 'wizard-right' }, h('div', { class: 'canvas-wrap' }, canvas), summary)),
-        h('div', { class: 'row end' }, h('button', { value: 'cancel' }, firstRun ? 'Skip (open sample wing)' : 'Cancel'), createBtn),
+        h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close('cancel') }, firstRun ? 'Skip (open sample wing)' : 'Cancel'), createBtn),
       ),
     );
     document.body.append(dialog);

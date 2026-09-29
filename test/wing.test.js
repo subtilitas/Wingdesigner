@@ -417,3 +417,26 @@ describe('pointed wing tip', () => {
     expect(tip.xLE + tip.chord).toBeCloseTo(170, 6);
   });
 });
+
+describe('builder robustness', () => {
+  it('builds with an airfoil that repeats a point (project JSON source)', () => {
+    const p = sampleProject();
+    p.airfoils[0].points.splice(30, 0, p.airfoils[0].points[30].slice());
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.surface).not.toBeNull();
+  });
+
+  it('reports negative thickness from smooth overshoot', () => {
+    const p = sampleProject({ settings: { spanwise: 'smooth' } });
+    p.airfoils = [naca('0024', 'thick'), naca('0006', 'thin')];
+    p.sections = [
+      { id: 'a', airfoil: 'thick', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+      { id: 'b', airfoil: 'thin', x: 0, y: 60, z: 0, chord: 200, twist: 0 },
+      { id: 'c', airfoil: 'thick', x: 0, y: 600, z: 0, chord: 200, twist: 0 },
+    ];
+    expect(buildWing(p).errors[0]).toMatch(/negative thickness/);
+    p.settings.spanwise = 'linear';
+    expect(buildWing(p).errors).toEqual([]);
+  });
+});

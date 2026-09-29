@@ -17,6 +17,8 @@ import { signedArea } from './geometry.js';
 const NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eEdD][-+]?\d+)?$/;
 const DECIMAL_COMMA = /^[-+]?\d*,\d+$/;
 // Column header lines such as "x y", "X Yo Yu", "x/c y/c", "X Y_upper Y_lower".
+/** Largest accepted input in characters (a 2000-point file is about 60 000). */
+export const MAX_INPUT = 2_000_000;
 const COLUMN_HEADER = /^(?:[xyz](?:\/c)?[a-z_]*\s*){2,3}$/i;
 
 function issue(severity, code, message) {
@@ -25,7 +27,8 @@ function issue(severity, code, message) {
 
 /** Parse the numbers of one line, or null when the line is not purely numeric. */
 export function parseNumbers(line) {
-  const ws = line.trim().split(/\s+/).filter(Boolean);
+  // Decimal commas: fields separated by whitespace or semicolons, each "12,5" or "12".
+  const ws = line.trim().split(/[\s;]+/).filter(Boolean);
   let tokens;
   let decimalComma = false;
   if (ws.length >= 2 && ws.every((t) => DECIMAL_COMMA.test(t) || /^[-+]?\d+$/.test(t)) && ws.some((t) => t.includes(','))) {
@@ -68,30 +71,87 @@ function decodeEntities(s) {
     .replace(/&amp;/g, '&');
 }
 
+/** Content between the first <tag> and its closing tag (case-insensitive), or null. */
+function between(text, open, close, from = 0) {
+  const lower = text.toLowerCase();
+  const a = lower.indexOf(open, from);
+  if (a < 0) return null;
+  const b = lower.indexOf(close, a + open.length);
+  if (b < 0) return { content: null, end: text.length };
+  return { content: text.slice(a + open.length, b), end: b + close.length };
+}
+
+function xmlNumber(block, tag) {
+  const m = between(block, `<${tag}>`, `</${tag}>`);
+  const t = m?.content?.trim();
+  return t ? Number(t) : NaN;
+}
+
 function parseXml(text) {
-  const name = decodeEntities((text.match(/<name>([\s\S]*?)<\/name>/i)?.[1] ?? '').trim());
-  const blocks = [...text.matchAll(/<coordinates>([\s\S]*?)<\/coordinates>/gi)];
-  if (!blocks.length) return null;
+  const name = decodeEntities((between(text, '<name>', '</name>')?.content ?? '').trim());
+  const first = between(text, '<coordinates>', '</coordinates>');
+  if (!first || first.content === null) return null;
+  let blocks = 1;
+  for (let at = first.end; ; blocks++) {
+    const next = between(text, '<coordinates>', '</coordinates>', at);
+    if (!next || next.content === null) break;
+    at = next.end;
+  }
   const points = [];
-  for (const m of blocks[0][1].matchAll(/<point>([\s\S]*?)<\/point>/gi)) {
-    const x = Number(m[1].match(/<x>([^<]*)<\/x>/i)?.[1]);
-    const y = Number(m[1].match(/<y>([^<]*)<\/y>/i)?.[1]);
-    points.push([x, y]);
+  for (let at = 0; ; ) {
+    const pt = between(first.content, '<point>', '</point>', at);
+    if (!pt || pt.content === null) break;
+    points.push([xmlNumber(pt.content, 'x'), xmlNumber(pt.content, 'y')]);
+    at = pt.end;
   }
   const issues = [issue('info', 'xml', 'Read as XML airfoil geometry.')];
-  if (blocks.length > 1) issues.push(issue('warning', 'multi-element', `${blocks.length} elements found; only the first one is used.`));
+  if (blocks > 1) issues.push(issue('warning', 'multi-element', `${blocks} elements found; only the first one is used.`));
   return { name, points, issues };
+}
+
+// Tags without nested "<" (linear time even for unclosed tags).
+const TAG = /<[^<>]*>/g;
+
+/** Remove <tag ...>...</tag> blocks (linear scan, unclosed blocks run to the end). */
+function stripBlocks(text, tags) {
+  let out = text;
+  for (const tag of tags) {
+    const lower = out.toLowerCase();
+    let res = '';
+    let at = 0;
+    for (;;) {
+      const a = lower.indexOf(`<${tag}`, at);
+      if (a < 0) break;
+      const b = lower.indexOf(`</${tag}`, a);
+      res += out.slice(at, a) + '\n';
+      if (b < 0) {
+        at = out.length;
+        break;
+      }
+      const e = lower.indexOf('>', b);
+      at = e < 0 ? out.length : e + 1;
+    }
+    out = res + out.slice(at);
+  }
+  return out;
 }
 
 function htmlToText(text) {
   const title = decodeEntities((text.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? '').trim());
-  const pres = [...text.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/gi)].map((m) => decodeEntities(m[1].replace(/<[^>]+>/g, '')));
+  const pres = [];
+  const lower = text.toLowerCase();
+  for (let at = lower.indexOf('<pre'); at >= 0; ) {
+    const open = lower.indexOf('>', at);
+    const close = open < 0 ? -1 : lower.indexOf('</pre>', open);
+    if (close < 0) break;
+    pres.push(decodeEntities(text.slice(open + 1, close).replace(TAG, '')));
+    at = lower.indexOf('<pre', close);
+  }
   // Without <pre> blocks: table cells become spaces, rows and line breaks become newlines.
-  const flat = text
-    .replace(/<(head|title|script|style)[\s>][\s\S]*?<\/\1\s*>/gi, '\n')
+  const flat = stripBlocks(text, ['head', 'title', 'script', 'style'])
     .replace(/<\/t[dh]\s*>/gi, ' ')
     .replace(/<br\s*\/?>|<\/(tr|p|div|li|h\d)\s*>/gi, '\n')
-    .replace(/<[^>]+>/g, '');
+    .replace(TAG, '');
   const body = pres.length ? pres.join('\n') : decodeEntities(flat);
   return { title, body };
 }
@@ -105,6 +165,9 @@ function htmlToText(text) {
 export function parseDat(text, options = {}) {
   let src = String(text ?? '').replace(/^\uFEFF/, '');
   const issues = [];
+  if (src.length > MAX_INPUT) {
+    return { name: options.fileName ?? 'airfoil', format: 'selig', points: [], issues: [issue('error', 'too-large', `Input is ${src.length} characters; the limit is ${MAX_INPUT}.`)] };
+  }
   const fallbackName = (options.fileName ?? 'airfoil').replace(/\.[^.]+$/, '');
 
   if (/<coordinates>/i.test(src)) {
@@ -176,7 +239,10 @@ export function parseDat(text, options = {}) {
 
   const first = rows[0].values;
   const isCount = (v) => v >= 2 && Math.abs(v - Math.round(v)) < 1e-9;
-  if (isCount(first[0]) && isCount(first[1]) && rows.length > 1) {
+  // Lednicer: a counts line followed by the upper surface starting at the leading edge (x near 0).
+  const xs1 = rows.slice(1).map((r) => r.values[0]);
+  const startsAtLE = xs1.length > 0 && xs1[0] <= 0.05 * Math.max(...xs1.map(Math.abs), 1e-12);
+  if (isCount(first[0]) && isCount(first[1]) && rows.length > 1 && startsAtLE) {
     const nu = Math.round(first[0]);
     const nl = Math.round(first[1]);
     const data = rows.slice(1).map((r) => [r.values[0], r.values[1]]);
@@ -219,6 +285,24 @@ function finish(name, format, pointsIn, issuesIn) {
   }
   if (points.length === 0) return { name, format, points, issues: [...issues, issue('error', 'no-points', 'No coordinate points found.')] };
 
+  // A blunt trailing edge drawn as a closed outline (CAD polylines) ends with the lower TE point at
+  // the same x as the first point and then repeats the first point. A sharp closed TE also repeats
+  // the first point but approaches it along the lower surface, so it is kept.
+  if (points.length > 3 && samePoint(points[0], points[points.length - 1])) {
+    const a = points[points.length - 2];
+    const b = points[0];
+    let xmin = Infinity;
+    let xmax = -Infinity;
+    for (const q of points) {
+      xmin = Math.min(xmin, q[0]);
+      xmax = Math.max(xmax, q[0]);
+    }
+    const scale = Math.max(xmax - xmin, 1e-12);
+    if (Math.abs(a[0] - b[0]) <= 1e-6 * scale && b[1] - a[1] > 1e-6 * scale) {
+      points = points.slice(0, -1);
+      issues.push(issue('info', 'closing-point', 'The outline repeats its first point after a blunt trailing edge; the repeated point was removed.'));
+    }
+  }
   const dedup = [];
   let dups = 0;
   for (const p of points) {

@@ -48,7 +48,7 @@ export class SettingsPanel {
           'label',
           { class: 'field' },
           'Twist pivot (fraction of chord)',
-          numberInput({ value: s.twistPivot, step: 0.05, min: 0, max: 1, onCommit: (v) => set((q) => (q.twistPivot = Math.min(Math.max(v, 0), 1))) }),
+          numberInput({ focusKey: 'set:pivot', value: s.twistPivot, step: 0.05, min: 0, max: 1, onCommit: (v) => set((q) => (q.twistPivot = Math.min(Math.max(v, 0), 1))) }),
         ),
         h(
           'label',
@@ -85,6 +85,7 @@ export class SettingsPanel {
               { class: 'field' },
               `Tip profile scale 1 : N of the previous section chord (N = ${Math.round(1 / LIMITS.tipRatio[1])} to ${Math.round(1 / LIMITS.tipRatio[0])})`,
               numberInput({
+                focusKey: 'set:tip',
                 value: Math.round(1 / s.tip.ratio),
                 step: 50,
                 min: Math.round(1 / LIMITS.tipRatio[1]),
@@ -102,7 +103,7 @@ export class SettingsPanel {
               'label',
               { class: 'field' },
               'Trailing-edge thickness (mm)',
-              numberInput({ value: s.trailingEdge.thickness, step: 0.1, min: 0, onCommit: (v) => set((q) => (q.trailingEdge = { ...q.trailingEdge, thickness: Math.max(0, v) })) }),
+              numberInput({ focusKey: 'set:te', value: s.trailingEdge.thickness, step: 0.1, min: 0, onCommit: (v) => set((q) => (q.trailingEdge = { ...q.trailingEdge, thickness: Math.max(0, v) })) }),
             )
           : null,
       ),
@@ -115,6 +116,7 @@ export class SettingsPanel {
           { class: 'field' },
           `Chordwise stations per surface (${LIMITS.chordSamples.join('-')})`,
           numberInput({
+            focusKey: 'set:chord',
             value: s.chordSamples,
             step: 4,
             min: LIMITS.chordSamples[0],
@@ -127,6 +129,7 @@ export class SettingsPanel {
           { class: 'field' },
           `Spanwise stations per panel with guides or smooth mode (${LIMITS.panelStations.join('-')})`,
           numberInput({
+            focusKey: 'set:panel',
             value: s.panelStations,
             step: 1,
             min: LIMITS.panelStations[0],

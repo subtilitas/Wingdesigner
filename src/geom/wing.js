@@ -144,8 +144,12 @@ export function buildWing(project) {
       errors.push(`Airfoil "${a.name ?? a.id}": ${check.issues.filter((i) => i.severity === 'error').map((i) => i.message).join(' ')}`);
       continue;
     }
-    const prof = profileCurve(check.points, { parametrization: settings.parametrization });
-    result.profiles.set(s.airfoil, { ...prof, id: a.id, name: a.name, points: check.points, compat: unitChord(resampleProfile(prof, chordStations), N) });
+    try {
+      const prof = profileCurve(check.points, { parametrization: settings.parametrization });
+      result.profiles.set(s.airfoil, { ...prof, id: a.id, name: a.name, points: check.points, compat: unitChord(resampleProfile(prof, chordStations), N) });
+    } catch (e) {
+      errors.push(`Airfoil "${a.name ?? a.id}": the NURBS interpolation failed (${e.message}).`);
+    }
   }
   if (errors.length) return result;
 
@@ -242,13 +246,31 @@ export function buildWing(project) {
   }
   let minChord = Infinity;
   let minChordY = y0;
+  let minThick = Infinity;
+  let minThickY = y0;
   for (const y of checkYs) {
     if (!(y >= y0 && y <= y1)) continue;
-    const { chord } = placement(y);
+    const { chord, w } = placement(y);
     if (chord < minChord) {
       minChord = chord;
       minChordY = y;
     }
+    // Blended profile thickness at every chord station (smooth mode can overshoot below zero).
+    const shape = blendPoints(w, compat);
+    for (let k = 1; k < N; k++) {
+      const t = shape[N - k][1] - shape[N + k][1];
+      if (t < minThick) {
+        minThick = t;
+        minThickY = y;
+      }
+    }
+  }
+  if (minThick < -1e-9) {
+    errors.push(
+      `The blended profile at y = ${minThickY.toFixed(1)} mm has negative thickness (${(minThick * 100).toFixed(2)} % chord); ` +
+        'smooth spanwise interpolation overshoots between unevenly spaced sections. Use linear interpolation or add sections.',
+    );
+    return result;
   }
   if (minChord < LIMITS.minChord) {
     const hint = !pointed && minChordY === y1 && minChord > -CROSS_TOLERANCE ? ' For a tip that ends in a point, set Settings > Wing tip to Pointed.' : '';

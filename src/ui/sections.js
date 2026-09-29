@@ -12,10 +12,11 @@ const FIELDS = [
 ];
 
 export class SectionsPanel {
-  constructor(root, store, getBuild) {
+  constructor(root, store, getBuild, { onMessage } = {}) {
     this.root = root;
     this.store = store;
     this.getBuild = getBuild;
+    this.onMessage = onMessage ?? (() => {});
     this.render();
   }
 
@@ -32,7 +33,12 @@ export class SectionsPanel {
     const overridden = (key) => (key === 'x' && (guides.nose?.enabled || guides.end?.enabled)) || (key === 'chord' && guides.nose?.enabled && guides.end?.enabled);
     const rows = sections.map((s, i) => {
       const st = build?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
-      const commit = (key) => (v) =>
+      const commit = (key) => (v) => {
+        if (key === 'y' && p.sections.some((o) => o.id !== s.id && Math.abs(o.y - Math.max(v, 0)) < 1e-6)) {
+          this.onMessage(`Another section already lies at y = ${Math.max(v, 0)} mm; sections need distinct span positions.`, true);
+          this.render();
+          return;
+        }
         this.store.update((q) => {
           const t = q.sections.find((z) => z.id === s.id);
           if (key === 'chord') v = Math.max(v, 0.01);
@@ -46,6 +52,7 @@ export class SectionsPanel {
             resetDisabledGuides(q);
           }
         });
+      };
       return h(
         'tr',
         { class: s.id === sel ? 'selected' : '', onclick: (e) => (e.target.tagName === 'TD' || e.target.tagName === 'TH' ? this.store.select(s.id) : null) },
@@ -71,7 +78,7 @@ export class SectionsPanel {
           return h(
             'td',
             { dataset: { label: `${f.label} (${f.unit})` } },
-            numberInput({ value: s[f.key], step: f.step, min: f.min, title: f.title, onCommit: commit(f.key) }),
+            numberInput({ value: s[f.key], step: f.step, min: f.min, title: f.title, onCommit: commit(f.key), focusKey: `sec:${s.id}:${f.key}` }),
             tipChord !== null
               ? h('div', { class: 'muted small', title: 'Pointed tip: chord scaled from the previous section' }, `tip: ${tipChord.toFixed(2)}`)
               : eff !== null && Math.abs(eff - s[f.key]) > 0.05

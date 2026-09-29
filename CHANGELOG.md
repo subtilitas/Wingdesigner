@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Fixed
+
+- STEP faces of symmetric airfoils: the leading-edge split parameter snaps to an existing knot
+  within 1e-10.
+- Airfoil import: Lednicer detection requires the upper surface to start at the leading edge;
+  a closing point after a blunt trailing edge is removed; input above 2,000,000 characters is
+  rejected; HTML tag stripping runs in linear time.
+- Airfoil check: `te-missing` is an error; duplicate points are removed before the checks.
+- Loft: negative blended thickness in smooth spanwise mode is reported as an error.
+- UI: rejected autosave data is kept under a separate key; keyboard shortcuts are inactive while a
+  dialog is open; input focus survives a rebuild; empty or invalid number fields restore their
+  value; export formats are disabled while the wing has errors; equal section span positions are
+  rejected.
+
 ## [0.1.0] - 2026-09-29
 
 ### Added

@@ -11,8 +11,8 @@ export function exportDialog(store, getBuild, version) {
   const build = getBuild();
   const name = store.project.name || 'wing';
   const blocked = !build?.surface;
-  const radio = (group, value, label, checked) =>
-    h('label', { class: 'check' }, h('input', { type: 'radio', name: group, value, checked }), label);
+  const radio = (group, value, label, checked, disabled = false) =>
+    h('label', { class: 'check' }, h('input', { type: 'radio', name: group, value, checked, disabled }), label);
   const dialog = h(
     'dialog',
     { class: 'modal' },
@@ -25,9 +25,9 @@ export function exportDialog(store, getBuild, version) {
         'fieldset',
         {},
         h('legend', {}, 'Format'),
-        radio('fmt', 'step', 'STEP (AP214, exact NURBS solids)', !blocked),
-        radio('fmt', 'stl', 'STL (binary triangle mesh)', false),
-        radio('fmt', '3mf', '3MF (triangle mesh for 3D printing)', false),
+        radio('fmt', 'step', 'STEP (AP214, exact NURBS solids)', !blocked, blocked),
+        radio('fmt', 'stl', 'STL (binary triangle mesh)', false, blocked),
+        radio('fmt', '3mf', '3MF (triangle mesh for 3D printing)', false, blocked),
         radio('fmt', 'json', 'Project JSON (airfoils, sections, curves, settings, NURBS data)', blocked),
       ),
       h(
@@ -46,7 +46,7 @@ export function exportDialog(store, getBuild, version) {
         radio('dens', '2', 'Fine (4x triangles)', false),
       ),
       h('p', { class: 'small muted' }, 'Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.'),
-      h('div', { class: 'row end' }, h('button', { value: 'cancel' }, 'Cancel'), h('button', { value: 'ok', class: 'primary' }, 'Download')),
+      h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close('cancel') }, 'Cancel'), h('button', { value: 'ok', class: 'primary' }, 'Download')),
     ),
   );
   document.body.append(dialog);

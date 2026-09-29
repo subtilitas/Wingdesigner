@@ -5,7 +5,7 @@
 | Format | Detection | Notes |
 | --- | --- | --- |
 | Selig | default | name line, then x y from the upper trailing edge over the leading edge to the lower trailing edge |
-| Lednicer | first numeric line holds two integers ≥ 2 (e.g. `61. 61.`) | upper surface LE → TE, then lower LE → TE; when the counts disagree with the data, the surfaces are split where x jumps back |
+| Lednicer | first numeric line holds two integers ≥ 2 (e.g. `61. 61.`) and the next point lies at the leading edge (x ≤ 5 % of the maximum x) | upper surface LE → TE, then lower LE → TE; when the counts disagree with the data, the surfaces are split where x jumps back |
 | Table | every data line has 3 values, x increases, upper ≥ lower on ≥ 90 % of lines | x, y_upper, y_lower (e.g. "X Yo Yu" tables) |
 | XML | text contains `<coordinates>` | `<name>` and the `<point><x>…</x><y>…</y></point>` list of the first element |
 | HTML | text contains `<html>`, `<pre>` or `<body>` | coordinates from `<pre>` blocks, name from `<title>` |
@@ -13,12 +13,14 @@
 Accepted details: UTF-8 with or without byte order mark (BOM), otherwise Windows-1252; CR, LF or CRLF;
 `#` comments; separators space, tab, comma, semicolon; decimal commas (`0,125  1,250`); Fortran
 exponents (`1.0D-3`); coordinates in percent (maximum x between 5 and 110 → divided by 100); lower
-surface first (reversed); consecutive duplicate points (removed).
+surface first (reversed); consecutive duplicate points (removed); a closing point that repeats the
+first point after a blunt trailing edge (removed). Input above 2,000,000 characters is rejected.
 
 ### Checks
 
 | Code | Severity | Condition |
 | --- | --- | --- |
+| too-large | error | input longer than 2,000,000 characters |
 | no-points | error | no coordinate lines |
 | non-finite | error | a value is not a finite number |
 | too-few-points | error | fewer than 5 points |
@@ -27,14 +29,16 @@ surface first (reversed); consecutive duplicate points (removed).
 | one-surface | error | upper or lower surface has fewer than 3 points |
 | crossed-surfaces | error | upper below lower by more than 0.01 % chord |
 | te-crossed | error | trailing-edge gap below −0.01 % chord |
+| te-missing | error | first and last point are not at the trailing edge (5 % chord tolerance) |
 | coarse | warning | fewer than 20 points |
 | not-normalized | warning | x range differs from 0..1 by more than 0.02; coordinates are scaled |
 | rotated | warning | line from leading edge to trailing-edge midpoint inclined more than 0.5 degrees |
-| te-missing | warning | first and last point are not at the trailing edge (5 % chord tolerance) |
 | non-monotonic | warning | x decreases along a surface from leading to trailing edge |
 | te-gap | warning | trailing-edge gap above 2 % chord |
 | thin / thick | warning | maximum thickness below 1 % or above 30 % chord |
 | spike | warning | outline turns by more than 90 degrees at a point (except within 2 points of the leading edge) |
+| duplicates | info | consecutive duplicate points removed |
+| closing-point | info | repeated first point after a blunt trailing edge removed |
 | uneven-spacing | info | adjacent segment lengths differ by more than a factor of 25 |
 | stats | info | point count, thickness, camber and their positions, trailing-edge gap |
 

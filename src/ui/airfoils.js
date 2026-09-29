@@ -97,7 +97,7 @@ export function previewAirfoil(candidate, { title = 'Airfoil preview', allowEdit
         h(
           'div',
           { class: 'row end' },
-          h('button', { value: 'cancel', type: 'submit' }, 'Cancel'),
+          h('button', { type: 'button', onclick: () => dialog.close('cancel') }, 'Cancel'),
           h('button', { value: 'add', type: 'submit', class: 'primary', disabled: !ok }, ok ? 'Add to project' : 'Cannot add (errors)'),
         ),
       ),
