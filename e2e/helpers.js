@@ -174,7 +174,7 @@ export async function commit(field, value) {
 }
 
 /**
- * Runs an action that re-renders the elements of `locator` (every store change re-renders the
+ * Runs an action that re-renders the elements of `locator` (every project change re-renders the
  * panels): marks the current elements, runs the action and waits until all of them are replaced.
  */
 export async function whenRerendered(locator, action) {

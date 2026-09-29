@@ -11,6 +11,7 @@ import {
   chordFromTrailingEdge,
   clampSectionY,
   dragLeadingEdge,
+  insertProblem,
   insertSection,
   moveGuidePoint,
   pruneAirfoils,
@@ -106,6 +107,33 @@ describe('wing statistics', () => {
     const hidden = buildWing({ ...p, settings: { ...p.settings, mirror: false } });
     expect(wingStats(hidden).span).toBeCloseTo(1000, 9);
     expect(wingStats(hidden).area).toBeCloseTo(1000 * 150, 3);
+  });
+
+  it('integrates guide curves that vary between the loft stations', () => {
+    const p = wizardProject({ ...PRESETS.sport.params, span: 1000, rootChord: 200, taper: 1, sweep: 0 });
+    // 100 control points, degree 5: 49 chord waves of +-15 mm over 500 mm span.
+    p.guides.end.enabled = true;
+    p.guides.end.mode = 'control';
+    p.guides.end.degree = 5;
+    p.guides.end.points = Array.from({ length: 100 }, (_, i) => [200 + (i > 0 && i < 99 ? (i % 2 ? 15 : -15) : 0), (500 * i) / 99]);
+    p.guides.nose.enabled = true;
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    // Reference: midpoint rule with 200,000 samples over one half.
+    const n = 200000;
+    let A = 0;
+    let C2 = 0;
+    let CX = 0;
+    for (let i = 0; i < n; i++) {
+      const { xLE, chord } = b.planformAt(((i + 0.5) / n) * 500);
+      A += (chord * 500) / n;
+      C2 += (chord * chord * 500) / n;
+      CX += (chord * xLE * 500) / n;
+    }
+    const s = wingStats(b);
+    expect(Math.abs(s.area / (2 * A) - 1)).toBeLessThan(1e-7);
+    expect(Math.abs(s.mac / (C2 / A) - 1)).toBeLessThan(1e-7);
+    expect(Math.abs(s.macXLE - CX / A)).toBeLessThan(1e-4);
   });
 });
 
@@ -259,7 +287,17 @@ describe('edit operations', () => {
     expect(q.sections.length).toBe(200);
     const far = sampleProject();
     far.sections[2].y = LIMITS.maxCoordinate - 5;
+    expect(insertProblem(far, 2)).toMatch(/beyond y = 1000000 mm/);
     expect(insertSection(far, 2)).toBeNull();
+    // Adjacent doubles: the midpoint rounds to one of them, so no section fits between.
+    const tight = sampleProject();
+    tight.sections[0].y = 1;
+    tight.sections[1].y = 1.0000000000000002;
+    expect(validateProject(tight).errors).toEqual([]);
+    expect(insertProblem(tight, 0)).toMatch(/No span position lies between y = 1 mm and y = 1.0000000000000002 mm/);
+    expect(insertSection(tight, 0)).toBeNull();
+    expect(tight.sections.length).toBe(3);
+    expect(insertProblem(tight, 1)).toBeNull();
   });
 
   it('manages airfoils', () => {

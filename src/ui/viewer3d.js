@@ -204,8 +204,9 @@ export class Viewer3D {
       for (const v of sectionVs) {
         const pts = us.map((u) => surfacePoint(S, u, v));
         if (!build.closedTE) pts.push(pts[0]);
-        const sel = selectedV !== null && Math.abs(v - selectedV) < 1e-9;
-        lines.add(new THREE.Line(polyline(pts, origin), sel ? this.selMaterial : this.lineMaterial));
+        const line = new THREE.Line(polyline(pts, origin), this.sectionMaterial(v, selectedV));
+        line.userData.sectionV = v;
+        lines.add(line);
       }
     }
     const vs = refine(build.paramsV, 4);
@@ -236,6 +237,19 @@ export class Viewer3D {
       this.fit();
       this.hasFitted = true;
     }
+    this.render();
+  }
+
+  sectionMaterial(v, selectedV) {
+    return selectedV !== null && Math.abs(v - selectedV) < 1e-9 ? this.selMaterial : this.lineMaterial;
+  }
+
+  /** Highlight the section at span fraction selectedV (null: none) without rebuilding the view. */
+  setSelection(selectedV) {
+    this.selectedV = selectedV;
+    this.wingGroup.traverse((o) => {
+      if (o.userData.sectionV !== undefined) o.material = this.sectionMaterial(o.userData.sectionV, selectedV);
+    });
     this.render();
   }
 

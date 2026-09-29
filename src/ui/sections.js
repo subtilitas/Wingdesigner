@@ -1,10 +1,22 @@
 // Section table: airfoil, span position y, leading-edge x and z, chord, twist per section.
 
-import { insertSection, removeSection, sortedSections, syncGuidesToSpan, resetDisabledGuides } from '../model/edit.js';
+import { insertProblem, insertSection, removeSection, sortedSections, syncGuidesToSpan, resetDisabledGuides } from '../model/edit.js';
 import { clear, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
 
 const C = LIMITS.maxCoordinate;
+
+/** The station at span position y (within 1e-9 mm) of stations sorted by y, or undefined. */
+function stationAt(stations, y) {
+  let lo = 0;
+  let hi = stations.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (stations[mid].y < y - 1e-9) lo = mid + 1;
+    else hi = mid;
+  }
+  return stations.length && Math.abs(stations[lo].y - y) < 1e-9 ? stations[lo] : undefined;
+}
 const FIELDS = [
   { key: 'y', label: 'y', unit: 'mm', title: 'Span position of the section plane', step: 5, min: 0, max: C },
   { key: 'x', label: 'x', unit: 'mm', title: 'Leading-edge position, chordwise (positive aft = sweep back)', step: 1, min: -C, max: C },
@@ -26,6 +38,12 @@ export class SectionsPanel {
     this.render();
   }
 
+  /** Mark the selected row without rendering the table again. */
+  markSelected() {
+    const sel = this.store.selection.section;
+    for (const tr of this.root.querySelectorAll('tr[data-section]')) tr.classList.toggle('selected', tr.dataset.section === sel);
+  }
+
   render() {
     const p = this.store.project;
     const build = this.getBuild();
@@ -33,8 +51,9 @@ export class SectionsPanel {
     const sel = this.store.selection.section;
     const sections = sortedSections(p);
     const overridden = (key) => (key === 'x' && (guides.nose?.enabled || guides.end?.enabled)) || (key === 'chord' && guides.nose?.enabled && guides.end?.enabled);
+    const stations = build?.stations ?? [];
     const rows = sections.map((s, i) => {
-      const st = build?.stations?.find((q) => Math.abs(q.y - s.y) < 1e-9);
+      const st = stationAt(stations, s.y);
       const commit = (key) => (value) => {
         // Values outside the project limits are clamped to them.
         const f = FIELDS.find((q) => q.key === key);
@@ -57,7 +76,7 @@ export class SectionsPanel {
       };
       return h(
         'tr',
-        { class: s.id === sel ? 'selected' : '', onclick: (e) => (e.target.tagName === 'TD' || e.target.tagName === 'TH' ? this.store.select(s.id) : null) },
+        { class: s.id === sel ? 'selected' : '', dataset: { section: s.id }, onclick: (e) => (e.target.closest('input, select, button') ? null : this.store.select(s.id)) },
         h('th', { scope: 'row', class: 'sec-num' }, h('span', { class: 'sec-word' }, 'Section '), String(i + 1)),
         h(
           'td',
@@ -103,11 +122,17 @@ export class SectionsPanel {
               title: sections.length >= LIMITS.maxSections ? `At most ${LIMITS.maxSections} sections` : 'Insert a section after this one',
               'aria-label': `Insert section after ${i + 1}`,
               disabled: sections.length >= LIMITS.maxSections,
-              onclick: () =>
+              onclick: () => {
+                const problem = insertProblem(this.store.project, i);
+                if (problem) {
+                  this.onMessage(problem, true);
+                  return;
+                }
                 this.store.update((q) => {
                   const sec = insertSection(q, i);
                   if (sec) this.store.select(sec.id);
-                }),
+                });
+              },
             },
             '+',
           ),

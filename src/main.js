@@ -269,6 +269,8 @@ function renderChecks() {
 
 let rebuildPending = false;
 let refreshPanels = false;
+// A selection alone keeps the build: the viewer, the table and the planform only mark the section.
+let geometryPending = true;
 function rebuild() {
   if (rebuildPending) return;
   rebuildPending = true;
@@ -276,18 +278,25 @@ function rebuild() {
     rebuildPending = false;
     // Panels re-render below; remember the focused field so Tab and arrow-key editing continue.
     const focusKey = document.activeElement?.dataset?.focusKey;
-    build = safeBuild(store.project);
+    const changed = geometryPending;
+    geometryPending = false;
+    if (changed) build = safeBuild(store.project);
     const sel = store.project.sections.find((s) => s.id === store.selection.section);
     const selV = sel && build.surface ? (sel.y - build.rootY) / (build.tipY - build.rootY || 1) : null;
-    viewer.setBuild(build.surface ? build : null, { mirror: store.project.settings.mirror !== false, selectedV: selV });
-    sectionsPanel.update();
+    if (changed) {
+      viewer.setBuild(build.surface ? build : null, { mirror: store.project.settings.mirror !== false, selectedV: selV });
+      sectionsPanel.update();
+    } else {
+      viewer.setSelection(selV);
+      sectionsPanel.markSelected();
+    }
     planform.update();
     if (refreshPanels) {
       airfoils.update();
       settings.update();
       refreshPanels = false;
     }
-    renderChecks();
+    if (changed) renderChecks();
     if (focusKey) {
       const el = document.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
       if (el && el !== document.activeElement) {
@@ -319,6 +328,7 @@ store.subscribe((project, reason) => {
   if (reason !== 'select') {
     refreshPanels = true;
     savePending = true;
+    geometryPending = true;
   }
   rebuild();
 });

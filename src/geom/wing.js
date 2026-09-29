@@ -382,9 +382,7 @@ export function buildWing(project) {
   const scalarBlender = () => spanwiseBlender(ys, settings.spanwise, sections.map((_, i) => [[X[i], C[i], Z[i], T[i]]]));
   let blendScalars = scalarBlender();
   const placed = new Map();
-  const placement = (y) => {
-    const hit = placed.get(y);
-    if (hit) return hit;
+  const place = (y) => {
     const raw = blendScalars(y)[0];
     let xLE = raw[0];
     let chord = raw[1];
@@ -395,8 +393,11 @@ export function buildWing(project) {
     // curves that meet at the tip end in a scaled-down profile instead of a zero chord.
     if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
     if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
-    const out = { raw, xLE, chord, z: raw[2], twist: raw[3] };
-    placed.set(y, out);
+    return { raw, xLE, chord, z: raw[2], twist: raw[3] };
+  };
+  const placement = (y) => {
+    let out = placed.get(y);
+    if (!out) placed.set(y, (out = place(y)));
     return out;
   };
   if (pointed) {
@@ -421,17 +422,18 @@ export function buildWing(project) {
 
   // Chord check on a dense span sampling plus every guide breakpoint (control points and knots),
   // so a crossing between two loft stations is reported too.
-  const checkYs = new Set(stationYs);
-  for (let k = 0; k <= CHORD_CHECK_SAMPLES; k++) checkYs.add(y0 + ((y1 - y0) * k) / CHORD_CHECK_SAMPLES);
+  const guideBreaks = new Set();
   for (const key of ['nose', 'end']) {
     const c = result.guides[key];
     if (!c) continue;
     const gy0 = c.points[0][1];
     const gy1 = c.points[c.points.length - 1][1];
     const toWing = (gy) => y0 + ((gy - gy0) / (gy1 - gy0)) * (y1 - y0);
-    for (const P of c.points) checkYs.add(toWing(P[1]));
-    for (const u of c.knots) checkYs.add(toWing(curvePoint(c, u)[1]));
+    for (const P of c.points) guideBreaks.add(toWing(P[1]));
+    for (const u of c.knots) guideBreaks.add(toWing(curvePoint(c, u)[1]));
   }
+  const checkYs = new Set([...stationYs, ...guideBreaks]);
+  for (let k = 0; k <= CHORD_CHECK_SAMPLES; k++) checkYs.add(y0 + ((y1 - y0) * k) / CHORD_CHECK_SAMPLES);
   let minChord = Infinity;
   let minChordY = y0;
   let minThick = Infinity;
@@ -850,10 +852,14 @@ export function buildWing(project) {
   result.closedTE = closedTE;
   result.rootY = y0;
   result.tipY = y1;
-  // Intended planform (leading edge and chord) at any span position, for exact statistics.
+  // Intended planform (leading edge and chord) at any span position, for the statistics, and the
+  // span positions where it can bend: sections and guide breakpoints. The placement cache is
+  // released; the planform is evaluated without it.
+  placed.clear();
   result.planformAt = (y) => {
-    const q = placement(Math.min(Math.max(y, y0), y1));
+    const q = place(Math.min(Math.max(y, y0), y1));
     return { xLE: q.xLE, chord: q.chord };
   };
+  result.planformBreaks = [...new Set([...ys, ...guideBreaks])].filter((y) => y > y0 && y < y1).sort((a, b) => a - b);
   return result;
 }

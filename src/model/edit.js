@@ -70,32 +70,47 @@ export function syncGuidesToSpan(project) {
   return project;
 }
 
-/**
- * Insert a section halfway between section index i and i+1 (sorted order), or beyond the tip.
- * Returns null at LIMITS.maxSections sections or when the new tip would leave LIMITS.maxCoordinate.
- */
-export function insertSection(project, afterIndex) {
-  if (project.sections.length >= LIMITS.maxSections) return null;
+/** Section inserted after sorted index afterIndex: halfway to the next one, or beyond the tip. */
+function nextSection(project, afterIndex) {
   const s = sortedSections(project);
   const a = s[Math.min(afterIndex, s.length - 1)];
   const b = s[afterIndex + 1];
-  let sec;
   if (b) {
-    sec = {
-      id: newId('s'),
-      airfoil: a.airfoil,
-      x: (a.x + b.x) / 2,
-      y: (a.y + b.y) / 2,
-      z: (a.z + b.z) / 2,
-      chord: (a.chord + b.chord) / 2,
-      twist: (a.twist + b.twist) / 2,
+    return {
+      a,
+      b,
+      sec: {
+        airfoil: a.airfoil,
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
+        z: (a.z + b.z) / 2,
+        chord: (a.chord + b.chord) / 2,
+        twist: (a.twist + b.twist) / 2,
+      },
     };
-  } else {
-    const prev = s[s.length - 2];
-    const dy = prev ? a.y - prev.y : 100;
-    sec = { id: newId('s'), airfoil: a.airfoil, x: a.x, y: a.y + Math.max(dy, 10), z: a.z, chord: a.chord, twist: a.twist };
-    if (sec.y > LIMITS.maxCoordinate) return null;
   }
+  const prev = s[s.length - 2];
+  const dy = prev ? a.y - prev.y : 100;
+  return { a, sec: { airfoil: a.airfoil, x: a.x, y: a.y + Math.max(dy, 10), z: a.z, chord: a.chord, twist: a.twist } };
+}
+
+/** Why no section can be inserted after sorted index afterIndex, or null when one can. */
+export function insertProblem(project, afterIndex) {
+  if (project.sections.length >= LIMITS.maxSections) return `At most ${LIMITS.maxSections} sections.`;
+  const { a, b, sec } = nextSection(project, afterIndex);
+  // Neighbouring span positions can be too close for a number between them.
+  if (b && !(sec.y > a.y && sec.y < b.y)) return `No span position lies between y = ${a.y} mm and y = ${b.y} mm. Move the two sections apart first.`;
+  if (!b && sec.y > LIMITS.maxCoordinate) return `A section beyond the tip would lie beyond y = ${LIMITS.maxCoordinate} mm.`;
+  return null;
+}
+
+/**
+ * Insert a section halfway between section index i and i+1 (sorted order), or beyond the tip.
+ * Returns null when insertProblem reports a reason.
+ */
+export function insertSection(project, afterIndex) {
+  if (insertProblem(project, afterIndex)) return null;
+  const sec = { id: newId('s'), ...nextSection(project, afterIndex).sec };
   project.sections.push(sec);
   project.sections.sort((p, q) => p.y - q.y);
   // New sections extend the guides through their points only when guides are disabled.

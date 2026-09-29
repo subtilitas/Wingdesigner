@@ -5,10 +5,12 @@
 // which is what a wizard design without guide curves is.
 import {
   airfoilSelect,
+  capture,
   changedFrom,
   checksValue,
   chordCell,
   chordNote,
+  commit,
   createDesign,
   expect,
   frames,
@@ -186,6 +188,43 @@ test.describe('Sections tab', () => {
     // Row numbers follow the new order.
     await expect(rows(page).locator('th')).toHaveText([/1$/, /2$/, /3$/, /4$/]);
     expect((await savedProject(page)).sections).toHaveLength(4);
+  });
+
+  test('selecting a row marks it in the table and the 3D view without rendering the table again', async ({ page }) => {
+    await createDesign(page, 'Swept flying wing');
+    await expect(rows(page)).toHaveCount(3);
+    const view = await capture(page);
+    const yField = await field(page, 1, 'y').elementHandle();
+    await rows(page).nth(2).locator('th').click();
+    await expect(rows(page).nth(2)).toHaveClass(/selected/);
+    await expect(page.locator('table.sections tbody tr.selected')).toHaveCount(1);
+    await changedFrom(page, view, 'selecting section 3');
+    expect(await yField.evaluate((e) => e.isConnected)).toBe(true);
+    await rows(page).nth(0).locator('th').click();
+    await expect(rows(page).nth(0)).toHaveClass(/selected/);
+    await expect(page.locator('table.sections tbody tr.selected')).toHaveCount(1);
+    expect(await yField.evaluate((e) => e.isConnected)).toBe(true);
+    // An edit renders the table again.
+    await commit(field(page, 1, 'chord'), 230);
+    await expect.poll(() => yField.evaluate((e) => e.isConnected)).toBe(false);
+    await expect(rows(page).nth(0)).toHaveClass(/selected/);
+  });
+
+  test('inserting between two sections without a span position between them is refused', async ({ page }) => {
+    await createDesign(page, 'Swept flying wing');
+    const saved = await savedProject(page);
+    const sorted = saved.sections.slice().sort((a, b) => a.y - b.y);
+    sorted[0].y = 1;
+    sorted[1].y = 1.0000000000000002;
+    await page.evaluate(([key, p]) => localStorage.setItem(key, JSON.stringify(p)), [STORAGE_KEY, saved]);
+    await page.reload();
+    await openTab(page, 'Sections');
+    await expect(rows(page)).toHaveCount(3);
+    await page.getByRole('button', { name: 'Insert section after 1', exact: true }).click();
+    await expect(toastOf(page)).toHaveText('No span position lies between y = 1 mm and y = 1.0000000000000002 mm. Move the two sections apart first.');
+    await expect(rows(page)).toHaveCount(3);
+    expect((await savedProject(page)).sections).toHaveLength(3);
+    await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled();
   });
 
   test('deleting down to two sections disables delete', async ({ page }) => {
