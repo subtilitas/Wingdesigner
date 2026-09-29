@@ -252,7 +252,8 @@ export function buildWing(project) {
   const warnings = [];
   const settings = resolveSettings(project.settings);
   const sections = project.sections.slice().sort((a, b) => a.y - b.y);
-  const result = { settings, sections, errors, warnings, surface: null, stations: [], profiles: new Map(), guides: {} };
+  // sizeWarning: the size warning among the warnings (null without one), for a refresh without a build.
+  const result = { settings, sections, errors, warnings, sizeWarning: null, surface: null, stations: [], profiles: new Map(), guides: {} };
   if (sections.length < 2) {
     errors.push('At least 2 sections are required.');
     return result;
@@ -266,6 +267,7 @@ export function buildWing(project) {
   // Sizes above their warning thresholds: expected time and memory of each change.
   const large = sizeWarning(project);
   if (large) warnings.push(large);
+  result.sizeWarning = large;
   if (!(sections[0].y >= 0)) {
     errors.push(`Section at y = ${sections[0].y} mm lies on the mirrored side; the half wing spans y >= 0.`);
     return result;

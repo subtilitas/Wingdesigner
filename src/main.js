@@ -343,11 +343,13 @@ function rebuild() {
     if (changed) build = safeBuild(store.project);
     if (sizes) {
       // The size warning follows the airfoil count without a rebuild.
+      // The build records its size warning: matching the text would depend on the language.
       const large = sizeWarning(store.project);
-      const at = build.warnings.findIndex((w) => w.startsWith('Large project'));
+      const at = build.sizeWarning ? build.warnings.indexOf(build.sizeWarning) : -1;
       if (at >= 0 && large) build.warnings[at] = large;
       else if (at >= 0) build.warnings.splice(at, 1);
       else if (large) build.warnings.unshift(large);
+      build.sizeWarning = large;
     }
     const sel = store.project.sections.find((s) => s.id === store.selection.section);
     const selV = sel && build.surface ? (sel.y - build.rootY) / (build.tipY - build.rootY || 1) : null;
