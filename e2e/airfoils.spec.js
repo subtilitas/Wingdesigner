@@ -777,8 +777,9 @@ test.describe('Airfoils tab', () => {
     await nacaPreview(page, '2415');
     await expect(toastOf(page)).toHaveText('The project holds 10,000 airfoils, the limit; "Remove unused" frees places.');
     await expect(dialogOf(page)).toHaveCount(0);
-    // "Remove unused" frees the places; adding works again.
-    await clickAndRefresh(page, sectionOf(page, 'Project airfoils').getByRole('button', { name: 'Remove unused' }));
+    // "Remove unused" frees the places; adding works again. A text locator: role queries compute
+    // accessible names over the 30,000 buttons of the list and take minutes.
+    await clickAndRefresh(page, page.locator('#pane-airfoils button:text-is("Remove unused")'));
     expect(await projectNames(page)).toEqual(['NACA 2412', 'NACA 2410']);
     await nacaPreview(page, '2415');
     await addFromPreview(page, 'NACA 2415');
