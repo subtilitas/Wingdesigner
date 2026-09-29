@@ -311,8 +311,8 @@ Abbildung auf die Spannweite: Der y-Bereich der Leitkurve [y_first, y_last] wird
 
 ```
 f   = clamp((y − y_root) / (y_tip − y_root), 0, 1)
-y_g = y_first + f (y_last − y_first)
-t   = Lösung von y(t) = y_g        (Löser aus Abschnitt 2, Toleranz 1e-12)
+t   = Lösung von (y(t) − y_first) / (y_last − y_first) = f
+      (Löser aus Abschnitt 2 auf dem normierten y, bis das t-Intervall höchstens 1e-15 breit ist)
 x   = x(t)
 ```
 

@@ -6,13 +6,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { surfaceDerivatives1, surfaceDerivatives1Grid, surfacePoint, surfacePointGrid } from '../geom/nurbs.js';
 import { stripTriangulate } from '../geom/triangulate.js';
-
-function refine(params, r) {
-  const out = [];
-  for (let i = 0; i < params.length - 1; i++) for (let k = 0; k < r; k++) out.push(params[i] + ((params[i + 1] - params[i]) * k) / r);
-  out.push(params[params.length - 1]);
-  return out;
-}
+import { MAX_EDGE_SAMPLES, edgeParams, refine, thinParams } from '../geom/sampling.js';
 
 function cross(a, b) {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -21,19 +15,7 @@ function cross(a, b) {
 /** Largest display mesh in vertices; cubic lofts are refined 3 times in v while they fit. */
 const MAX_DISPLAY_VERTICES = 100_000;
 
-/** Largest span samples per edge polyline (leading edge and the two trailing-edge lines). */
-export const MAX_EDGE_SAMPLES = 20_000;
-
-/** At most maxLen of the sorted parameters, evenly picked, first and last kept. */
-export function thinParams(params, maxLen) {
-  if (params.length <= maxLen) return params;
-  return Array.from({ length: maxLen }, (_, i) => params[Math.round((i * (params.length - 1)) / (maxLen - 1))]);
-}
-
-/** Span parameters of the edge polylines: 4 samples per station interval within MAX_EDGE_SAMPLES. */
-export function edgeParams(paramsV) {
-  return refine(thinParams(paramsV, Math.floor((MAX_EDGE_SAMPLES - 1) / 4) + 1), 4);
-}
+export { MAX_EDGE_SAMPLES, edgeParams };
 
 /** Largest displayed set of section outlines in line segments (the selected section is drawn apart). */
 export const MAX_OUTLINE_SEGMENTS = 100_000;

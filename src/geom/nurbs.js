@@ -568,9 +568,10 @@ export function dist(a, b) {
 }
 
 /**
- * Solve f(t) = target for t in [t0, t1] where f is monotonic (bisection + secant polish).
+ * Solve f(t) = target for t in [t0, t1] where f is monotonic (bisection + secant polish). Stops when
+ * |f(t) - target| <= tol or the bracket is at most tolT wide.
  */
-export function solveMonotonic(f, target, t0 = 0, t1 = 1, tol = 1e-12, maxIter = 200) {
+export function solveMonotonic(f, target, t0 = 0, t1 = 1, tol = 1e-12, maxIter = 200, tolT = tol) {
   let a = t0;
   let b = t1;
   let fa = f(a) - target;
@@ -583,7 +584,7 @@ export function solveMonotonic(f, target, t0 = 0, t1 = 1, tol = 1e-12, maxIter =
     let t = b - (fb * (b - a)) / (fb - fa);
     if (!(t > Math.min(a, b) && t < Math.max(a, b)) || i % 3 === 2) t = 0.5 * (a + b);
     const ft = f(t) - target;
-    if (Math.abs(ft) <= tol || Math.abs(b - a) <= tol) return t;
+    if (Math.abs(ft) <= tol || Math.abs(b - a) <= tolT) return t;
     if (ft * fa < 0) {
       b = t;
       fb = ft;

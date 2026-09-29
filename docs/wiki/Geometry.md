@@ -300,8 +300,8 @@ Span mapping: the y range of the guide [y_first, y_last] is stretched linearly o
 
 ```
 f   = clamp((y − y_root) / (y_tip − y_root), 0, 1)
-y_g = y_first + f (y_last − y_first)
-t   = solution of y(t) = y_g        (solver of section 2, tolerance 1e-12)
+t   = solution of (y(t) − y_first) / (y_last − y_first) = f
+      (solver of section 2 on the normalized y, until the t bracket is at most 1e-15 wide)
 x   = x(t)
 ```
 

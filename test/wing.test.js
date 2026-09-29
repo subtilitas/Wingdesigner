@@ -976,3 +976,21 @@ describe('stations and guides near the resolution of doubles', () => {
     expect(samples.length).toBeLessThanOrEqual(40_001);
   });
 });
+
+describe('guide inversion on a nearly flat y(t)', () => {
+  it('finds x within 1 mm of a bisection on a 1,000,000 mm control-point guide', () => {
+    const pts = [[0, 0], [0, 499999.9999], [0, 499999.99995], [425702, 500000.00005], [425702, 500000.0001], [425702, 1e6]];
+    const curve = { ...clampedUniformKnots(pts.length, 3), points: pts };
+    for (const y of [500000, 499999.99999, 500000.00002, 250000]) {
+      let a = 0;
+      let b = 1;
+      for (let i = 0; i < 300; i++) {
+        const m = 0.5 * (a + b);
+        if (curvePoint(curve, m)[1] < y) a = m;
+        else b = m;
+      }
+      // The reference itself is uncertain by about 0.1 mm: y resolves 6e-11 mm at 500,000 mm.
+      expect(Math.abs(guideXAt(curve, y, 0, 1e6) - curvePoint(curve, 0.5 * (a + b))[0])).toBeLessThan(1);
+    }
+  });
+});

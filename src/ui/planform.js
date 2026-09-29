@@ -7,6 +7,7 @@ import { addGuidePoint, chordFromTrailingEdge, dragLeadingEdge, moveGuidePoint, 
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, formatNum, h, numberInput } from './dom.js';
 import { stationAt } from './sections.js';
+import { edgeParams } from '../geom/sampling.js';
 import { LIMITS } from '../model/project.js';
 import { WARN, costPhrase, projectSize } from '../model/budget.js';
 
@@ -22,21 +23,29 @@ function addPointTitle(project, guide) {
 
 const GUIDE_LABEL = { nose: 'Nose line (leading edge)', end: 'End line (trailing edge)' };
 
-/** Built planform outline as [y, x] points: leading edge root to tip, trailing edge tip to root. */
+// Outline per build: repaints (pan, zoom, drag feedback) reuse it.
+const outlines = new WeakMap();
+
+/**
+ * Built planform outline as [y, x] points: leading edge root to tip, trailing edge tip to root, at
+ * the span samples of the 3D edge lines (4 per station interval, at most 20,000): a fixed uniform
+ * sample missed sections between its points.
+ */
 function outlinePoints(build) {
   if (!build?.surface) return [];
-  const n = 80;
+  if (outlines.has(build)) return outlines.get(build);
   const le = [];
   const te = [];
-  for (let k = 0; k <= n; k++) {
-    const v = k / n;
+  for (const v of edgeParams(build.paramsV)) {
     const a = surfacePoint(build.surface, build.uLE, v);
     const b = surfacePoint(build.surface, 0, v);
     const c = surfacePoint(build.surface, 1, v);
     le.push([a[1], a[0]]);
     te.push([b[1], Math.max(b[0], c[0])]);
   }
-  return [...le, ...te.reverse()];
+  const out = [...le, ...te.reverse()];
+  outlines.set(build, out);
+  return out;
 }
 
 /**

@@ -206,12 +206,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   knot of multiplicity degree + 2); only knots within 4 units in the last place merge.
 - The 3D view draws at most 100,000 control-net segments: above that it keeps every k-th control
   line in each direction, first and last included.
+- The planform outline uses the span samples of the 3D edge lines (4 per station interval, at most
+  20,000) instead of 80 fixed intervals, which missed sections between them; exact-count Lednicer
+  headers need the lower surface to start at the leading edge.
 - Intermediate stations whose span fractions lie within 4 units in the last place of a neighbour are
   dropped (a section 5e-13 mm from another stopped smooth builds with an internal error); through-
   points guides with such y values are an error; wizard elliptic pointed tips end the guides around
   the sweep line; the planform samples guides per knot span and looks stations up by binary search;
   the 3D edge lines use at most 20,000 span samples; a Selig name starting with `#` is prefixed.
-- Guide curves invert y with a tolerance of 1e-12 of their y extent; Lednicer detection needs the first
+- Guide curves invert the normalized y until the curve parameter is bracketed within 1e-15; Lednicer detection needs the first
   data row at the leading edge and matching counts or a plausible split, so percent Selig files
   with an integer trailing-edge row read as Selig; XML and HTML entities include `&apos;` and
   hexadecimal references, decoded as code points; **Full wing** merges the halves only for a root at
