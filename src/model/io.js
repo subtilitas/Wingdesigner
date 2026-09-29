@@ -7,11 +7,12 @@ import { defaultGuides } from '../geom/guide.js';
 import { syncGuidesToSpan } from './edit.js';
 import { FORMAT, SOURCE_KEYS, VERSION, resolveSettings, validateProject } from './project.js';
 
-const round = (x) => (Number.isFinite(x) ? Number(x.toPrecision(12)) : x);
-const roundPts = (pts) => pts.map((p) => p.map(round));
+// Derived numbers keep full double precision (JSON writes the shortest string that reads back to
+// the same double): rounding merged distinct span parameters and knots of close sections.
+const copyPts = (pts) => pts.map((p) => p.slice());
 
 function curveJson(c) {
-  return c ? { degree: c.degree, knots: c.knots.map(round), controlPoints: roundPts(c.points), ...(c.weights ? { weights: c.weights } : {}) } : null;
+  return c ? { degree: c.degree, knots: c.knots.slice(), controlPoints: copyPts(c.points), ...(c.weights ? { weights: c.weights } : {}) } : null;
 }
 
 /**
@@ -39,17 +40,17 @@ export function projectToJson(project, build, meta = {}) {
         airfoil: p.id,
         name: p.name,
         curve: curveJson(p.curve),
-        leadingEdgeParameter: round(p.tLE),
+        leadingEdgeParameter: p.tLE,
       })),
       guides: { nose: curveJson(build.guides.nose), end: curveJson(build.guides.end) },
-      stations: build.stations.map((s) => ({ y: round(s.y), v: round(s.v), xLE: round(s.xLE), z: round(s.z), chord: round(s.chord), twist: round(s.twist) })),
+      stations: build.stations.map((s) => ({ y: s.y, v: s.v, xLE: s.xLE, z: s.z, chord: s.chord, twist: s.twist })),
       surface: {
         degreeU: build.surface.degreeU,
         degreeV: build.surface.degreeV,
-        knotsU: build.surface.knotsU.map(round),
-        knotsV: build.surface.knotsV.map(round),
-        controlPoints: build.surface.points.map(roundPts),
-        leadingEdgeU: round(build.uLE),
+        knotsU: build.surface.knotsU.slice(),
+        knotsV: build.surface.knotsV.slice(),
+        controlPoints: build.surface.points.map(copyPts),
+        leadingEdgeU: build.uLE,
         closedTrailingEdge: build.closedTE,
       },
     };
@@ -87,8 +88,9 @@ export function projectToJsonText(project, build, meta) {
  */
 export const MAX_PROJECT_BYTES = 100_000_000;
 
-// Characters per number of derived data in the file (12 significant digits, sign, separator).
-const CHARS_PER_NUMBER = 22;
+// Characters per number of derived data in the file (up to 17 significant digits, sign, exponent,
+// separator).
+const CHARS_PER_NUMBER = 26;
 
 /** Bytes of a string in UTF-8, the encoding of the downloaded file (Open limits File.size). */
 export function utf8Length(s) {

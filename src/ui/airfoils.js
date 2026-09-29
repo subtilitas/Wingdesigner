@@ -235,9 +235,13 @@ export class AirfoilsPanel {
     if (!res) return null;
     const after = refusal(res.points.length);
     let id = null;
-    this.store.update((p) => {
-      id = addAirfoil(p, res);
-    });
+    // No section uses the new airfoil yet: the wing stays as it is.
+    this.store.update(
+      (p) => {
+        id = addAirfoil(p, res);
+      },
+      { reason: 'airfoils' },
+    );
     if (id === null) {
       this.onMessage(after, true);
       return null;
@@ -311,7 +315,7 @@ export class AirfoilsPanel {
               class: 'icon',
               title: used.has(a.id) ? 'In use by a section' : 'Remove from project',
               disabled: used.has(a.id),
-              onclick: () => this.store.update((q) => (q.airfoils = q.airfoils.filter((x) => x.id !== a.id))),
+              onclick: () => this.store.update((q) => (q.airfoils = q.airfoils.filter((x) => x.id !== a.id)), { reason: 'airfoils' }),
             },
             '×',
           ),
@@ -405,7 +409,7 @@ export class AirfoilsPanel {
     this.fillLibrary(nacaList, libList, addNaca);
 
     clear(this.root).append(
-      h('section', {}, h('h3', {}, 'Project airfoils'), projectList, h('button', { type: 'button', onclick: () => this.store.update((q2) => pruneAirfoils(q2)) }, 'Remove unused')),
+      h('section', {}, h('h3', {}, 'Project airfoils'), projectList, h('button', { type: 'button', onclick: () => this.store.update((q2) => pruneAirfoils(q2), { reason: 'airfoils' }) }, 'Remove unused')),
       h(
         'section',
         {},

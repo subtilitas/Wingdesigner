@@ -6,7 +6,7 @@
 
 import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
-import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, surfacePoint } from './nurbs.js';
+import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, paramsApart, surfacePoint } from './nurbs.js';
 import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile } from './profile.js';
 import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
@@ -271,13 +271,14 @@ export function buildWing(project) {
     }
   }
   // The surface parameter of a section is its span fraction v; two sections whose v values lie within
-  // 4 units in the last place would share one knot (and STEP merges such knots), so one of them is lost.
+  // 4 units in the last place or within MIN_PARAM_GAP would share one knot (and STEP merges such
+  // knots), so one of them is lost (paramsApart).
   const y0s = sections[0].y;
   const spanS = sections[sections.length - 1].y - y0s;
   for (let i = 1; i < sections.length; i++) {
     const a = (sections[i - 1].y - y0s) / spanS;
     const b = (sections[i].y - y0s) / spanS;
-    if (!(b - a > 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b)))) {
+    if (!paramsApart(a, b)) {
       errors.push(
         `Sections ${i} and ${i + 1} at y = ${sections[i - 1].y} mm and y = ${sections[i].y} mm lie too close together for the surface parameters ` +
           `(span fractions ${a} and ${b}); move them apart.`,
@@ -385,7 +386,6 @@ export function buildWing(project) {
   // in a panel only a few doubles wide the stations round together, and repeated parameters make
   // the interpolation singular. Every section stays (the span-fraction check above keeps them apart).
   const vOf = (y) => (y - y0) / (y1 - y0);
-  const apart = (a, b) => b - a > 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b));
   const stationYs = [];
   for (let i = 0; i < sections.length - 1; i++) {
     stationYs.push(ys[i]);
@@ -394,7 +394,7 @@ export function buildWing(project) {
     for (let k = 1; k < K; k++) {
       const y = ys[i] + (ys[i + 1] - ys[i]) * (dense ? (1 - Math.cos((Math.PI * k) / K)) / 2 : k / K);
       const v = vOf(y);
-      if (apart(last, v) && apart(v, vEnd)) {
+      if (paramsApart(last, v) && paramsApart(v, vEnd)) {
         stationYs.push(y);
         last = v;
       }

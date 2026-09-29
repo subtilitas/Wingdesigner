@@ -20,6 +20,7 @@ export const WARN = Object.freeze({
   guidePoints: 500,
   gridPoints: 60_000,
   exportTriangles: 2_000_000,
+  stepPoints: 1_000_000,
   name: 200,
 });
 
@@ -46,7 +47,17 @@ const COST = Object.freeze({
 const EXPORT = Object.freeze({
   stl: { s: 0.8e-6, mb: 210e-6, fileMB: 50e-6 },
   '3mf': { s: 5.8e-6, mb: 110e-6, fileMB: 11.5e-6 },
+  // Per STEP control point (Node 24: 98 bytes of file, 620 bytes of heap at the peak, 1.6 to 3.4 µs;
+  // Chromium 141: 3.3 million points in 8.4 s).
+  step: { s: 2.5e-6, mb: 620e-6, fileMB: 98e-6 },
 });
+
+/** Surface control points a STEP export writes: the half-wing surface, twice with the left half. */
+export function stepPoints(build, half) {
+  const S = build?.surface;
+  if (!S) return 0;
+  return (half === 'right' ? 1 : 2) * S.points.length * S.points[0].length;
+}
 
 /**
  * Loft grid of a build: chord samples N, stations per panel as set (Kset) and as used (K), and the
@@ -111,6 +122,7 @@ export function airfoilFirstUseSeconds(points) {
 }
 
 /** Expected time (s), peak memory (MB) and file size (MB) of a mesh export. */
+/** Time, memory and file size of an export of n triangles (STL, 3MF) or n control points (STEP). */
 export function exportCost(triangles, format) {
   const c = EXPORT[format] ?? EXPORT.stl;
   return { seconds: c.s * triangles, megabytes: COST.base.mb + c.mb * triangles, fileMB: c.fileMB * triangles };

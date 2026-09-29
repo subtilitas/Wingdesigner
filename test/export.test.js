@@ -603,3 +603,19 @@ describe('import hardening', () => {
     expect(projectFromJsonText(JSON.stringify(t)).project.settings.trailingEdge).toEqual({ mode: 'asis', thickness: 0.4 });
   });
 });
+
+describe('project file precision', () => {
+  it('keeps derived span parameters of close sections distinct', () => {
+    const project = createProject({
+      airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }],
+      sections: [0, 500000, 500000.000000001, 1000000].map((y, i) => ({ airfoil: 'a', x: i === 2 ? 50 : 0, y, z: 0, chord: 200, twist: 0 })),
+    });
+    const build = buildWing(project);
+    expect(build.errors).toEqual([]);
+    const j = JSON.parse(JSON.stringify(projectToJson(project, build)));
+    const vs = j.derived.stations.map((s) => s.v);
+    for (let i = 1; i < vs.length; i++) expect(vs[i]).toBeGreaterThan(vs[i - 1]);
+    expect(j.derived.surface.knotsV).toEqual(build.surface.knotsV);
+    expect(j.derived.surface.controlPoints).toEqual(build.surface.points);
+  });
+});

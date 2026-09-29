@@ -506,6 +506,13 @@ describe('parser robustness', () => {
     expect(toSeligDat('n', [[1, 0], [0, 0.05], [1, 0]]).split('\n')[1]).toBe(' 1.000000  0.000000');
   });
 
+  it('picks the same leading-edge point of an inclined outline at every scale', () => {
+    const a = (30 * Math.PI) / 180;
+    const unit = nacaAirfoil('2412').points.map(([x, y]) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)]);
+    const i = leadingEdgeIndex(unit);
+    for (const s of [1e-12, 1e-8, 1e3, 1e5]) expect(leadingEdgeIndex(unit.map(([x, y]) => [x * s, y * s]))).toBe(i);
+  });
+
   it('writes a numeric or markup-like name so that it reads back as the name', () => {
     const pts = nacaAirfoil('2412').points;
     const numeric = toSeligDat('123 456', pts);

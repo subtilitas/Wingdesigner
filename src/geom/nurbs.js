@@ -543,6 +543,21 @@ export function surfaceBoundaryV(surf, atEnd) {
 
 /** Compress a knot vector into distinct values and multiplicities (STEP form). */
 /**
+ * Smallest gap between two distinct curve or surface parameters: 2^-1021, twice the smallest
+ * normal double. Gaps in the subnormal range lose their precision and make basis functions
+ * evaluate to NaN (sections at y = 0, 5e-324 and 1 gave a NaN root).
+ */
+export const MIN_PARAM_GAP = 2 ** -1021;
+
+/**
+ * True when parameter b lies after a by more than 4 units in the last place and by more than
+ * MIN_PARAM_GAP: closer values count as one knot.
+ */
+export function paramsApart(a, b) {
+  return b - a > Math.max(4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b)), MIN_PARAM_GAP);
+}
+
+/**
  * Distinct knots and their multiplicities. Without `tol`, knots within 4 units in the last place
  * count as one (round-off of one computed value); distinct knots closer than an absolute tolerance
  * stay distinct, e.g. a section 1e-10 mm from the root of a 600 mm span (v = 1.7e-13).
@@ -550,7 +565,7 @@ export function surfaceBoundaryV(surf, atEnd) {
 export function knotMultiplicities(U, tol) {
   const knots = [];
   const mults = [];
-  const same = (a, b) => Math.abs(a - b) <= (tol ?? 4 * Number.EPSILON * Math.max(Math.abs(a), Math.abs(b)));
+  const same = (a, b) => (tol === undefined ? !paramsApart(Math.min(a, b), Math.max(a, b)) : Math.abs(a - b) <= tol);
   for (const t of U) {
     if (knots.length && same(t, knots[knots.length - 1])) mults[mults.length - 1]++;
     else {

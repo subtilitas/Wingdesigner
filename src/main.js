@@ -313,6 +313,8 @@ let refreshPanels = false;
 // A display setting (mirror) redraws from the current build; the start shows the build made above.
 let geometryPending = false;
 let viewPending = true;
+// Airfoils added or removed without a section using them: the table and Checks refresh, the wing stays.
+let tablePending = false;
 function rebuild() {
   if (rebuildPending) return;
   rebuildPending = true;
@@ -322,25 +324,40 @@ function rebuild() {
     const focusKey = document.activeElement?.dataset?.focusKey;
     const changed = geometryPending;
     const redraw = changed || viewPending;
+    const table = tablePending && !redraw;
     geometryPending = false;
     viewPending = false;
+    tablePending = false;
     if (changed) build = safeBuild(store.project);
+    if (table) {
+      // The size warning follows the airfoil count without a rebuild.
+      const large = sizeWarning(store.project);
+      const at = build.warnings.findIndex((w) => w.startsWith('Large project'));
+      if (at >= 0 && large) build.warnings[at] = large;
+      else if (at >= 0) build.warnings.splice(at, 1);
+      else if (large) build.warnings.unshift(large);
+    }
     const sel = store.project.sections.find((s) => s.id === store.selection.section);
     const selV = sel && build.surface ? (sel.y - build.rootY) / (build.tipY - build.rootY || 1) : null;
     if (redraw) {
       viewer.setBuild(build.surface ? build : null, { mirror: store.project.settings.mirror !== false, selectedV: selV });
       sectionsPanel.update();
+    } else if (table) {
+      sectionsPanel.update();
     } else {
       viewer.setSelection(selV);
       sectionsPanel.markSelected();
     }
-    planform.update();
+    // The guide point tables change only with the project geometry; a selection or a display change
+    // redraws the planform canvas.
+    if (changed) planform.update();
+    else planform.pz.redraw();
     if (refreshPanels) {
       airfoils.update();
       settings.update();
       refreshPanels = false;
     }
-    if (redraw) {
+    if (redraw || table) {
       renderChecks();
       noteLargeSizes();
     }
@@ -375,8 +392,10 @@ store.subscribe((project, reason) => {
   if (reason !== 'select') {
     refreshPanels = true;
     savePending = true;
-    // 'meta' (project name) changes neither the wing nor the view.
+    // 'meta' (project name) changes neither the wing nor the view; 'airfoils' (an airfoil added or
+    // removed that no section uses) changes the airfoil lists and the size warning only.
     if (reason === 'display') viewPending = true;
+    else if (reason === 'airfoils') tablePending = true;
     else if (reason !== 'meta') geometryPending = true;
   }
   rebuild();

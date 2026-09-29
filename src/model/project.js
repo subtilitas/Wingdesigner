@@ -45,6 +45,9 @@ export const LIMITS = Object.freeze({
   // Mesh export triangles, both halves counted: 8.5 million wrote a 423 MB STL at 2.7 GB browser
   // memory; 20 million failed.
   maxExportTriangles: 10_000_000,
+  // STEP control points in the file (both halves counted): 3.3 million wrote a 330 MB file in 8.4 s;
+  // about 5.4 million exceed the 512 MB string limit of the browser; in between not measured.
+  maxStepPoints: 3_000_000,
   // Guide x reaches the trailing edge of any valid section (x + chord), where disabled end lines lie.
   maxGuideCoordinate: 1_100_000,
   // Extent of the built geometry: every leading edge, trailing edge and z within this bound covers

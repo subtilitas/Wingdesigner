@@ -19,16 +19,16 @@ export function signedArea(points) {
 export function leadingEdgeIndex(points) {
   const n = points.length;
   const te = [(points[0][0] + points[n - 1][0]) / 2, (points[0][1] + points[n - 1][1]) / 2];
-  let best = 0;
-  let bestD = -1;
+  const d2 = (p) => (p[0] - te[0]) ** 2 + (p[1] - te[1]) ** 2;
+  let maxD = 0;
+  for (const p of points) maxD = Math.max(maxD, d2(p));
+  // Ties within 1e-15 of the largest squared distance (relative, so every scale picks the same
+  // point; an absolute 1e-15 made every point of a 1e-8 outline a tie) go to the smallest x.
+  let best = -1;
   for (let i = 0; i < n; i++) {
-    const d = (points[i][0] - te[0]) ** 2 + (points[i][1] - te[1]) ** 2;
-    if (d > bestD + 1e-15 || (Math.abs(d - bestD) <= 1e-15 && points[i][0] < points[best][0])) {
-      bestD = d;
-      best = i;
-    }
+    if (d2(points[i]) >= maxD * (1 - 1e-15) && (best < 0 || points[i][0] < points[best][0])) best = i;
   }
-  return best;
+  return Math.max(best, 0);
 }
 
 /** Upper surface LE->TE and lower surface LE->TE (both include the LE point). */

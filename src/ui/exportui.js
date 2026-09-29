@@ -5,7 +5,7 @@ import { MeshPrecisionError } from '../export/precision.js';
 import { meshToStl } from '../export/stl.js';
 import { meshesTo3mf } from '../export/threemf.js';
 import { concatMeshes, exportMeshes, exportTriangles } from '../geom/mesh.js';
-import { WARN, exportCost, formatMegabytes, formatSeconds } from '../model/budget.js';
+import { WARN, exportCost, formatMegabytes, formatSeconds, stepPoints } from '../model/budget.js';
 import { OMITTED_NOTE, projectFileText } from '../model/io.js';
 import { LIMITS, cloneProject } from '../model/project.js';
 import { download, h, slugFile } from './dom.js';
@@ -19,16 +19,31 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
   const vRefine = (dens) => (build?.surface?.degreeV === 1 ? 1 : 3) * dens;
   const radio = (group, value, label, checked, disabled = false) =>
     h('label', { class: 'check' }, h('input', { type: 'radio', name: group, value, checked, disabled }), label);
-  // Triangles, expected time, memory and file size of the chosen mesh export; above
-  // LIMITS.maxExportTriangles (a desktop browser tab runs out of memory) Download is off.
+  // Size, expected time, memory and file size of the chosen export (triangles for STL and 3MF,
+  // control points for STEP); above LIMITS.maxExportTriangles or LIMITS.maxStepPoints (a desktop
+  // browser tab runs out of memory) Download is off.
   const sizeNote = h('p', { class: 'small', 'aria-live': 'polite' });
   const downloadBtn = h('button', { value: 'ok', class: 'primary' }, 'Download');
   const choice = (form) => ({ fmt: form.fmt.value, half: form.half.value, dens: Number(form.dens.value) });
   const refresh = () => {
     const { fmt, half, dens } = choice(dialog.querySelector('form').elements);
     const mesh = !blocked && (fmt === 'stl' || fmt === '3mf');
+    const step = !blocked && fmt === 'step';
     let over = false;
-    sizeNote.hidden = !mesh;
+    sizeNote.hidden = !mesh && !step;
+    if (step) {
+      // STEP keeps every entity in memory and writes one string: above LIMITS.maxStepPoints Download is off.
+      const n = stepPoints(build, half);
+      const c = exportCost(n, 'step');
+      over = n > LIMITS.maxStepPoints;
+      const what = `${(n / 1e6).toFixed(n < 1e5 ? 2 : 1)} million control points, file ${formatMegabytes(c.fileMB)}`;
+      sizeNote.className = `small${over ? ' sev-error' : n > WARN.stepPoints ? ' sev-warning' : ' muted'}`;
+      sizeNote.textContent = over
+        ? `${what}: above the limit of ${LIMITS.maxStepPoints / 1e6} million control points, where the file takes more memory than a desktop browser tab holds. Use one half, or fewer chord samples or panel stations.`
+        : n > WARN.stepPoints
+          ? `${what}. The export takes ${formatSeconds(c.seconds)} and ${formatMegabytes(c.megabytes)} of browser memory.`
+          : `${what}.`;
+    }
     if (mesh) {
       const n = exportTriangles(build, half, { uRefine: dens, vRefine: vRefine(dens) });
       const c = exportCost(n, fmt);
@@ -68,7 +83,8 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         radio('half', 'merged', 'Full wing as one body (mesh formats, root at y = 0)', false),
         radio('half', 'right', 'Right half only', false),
       ),
-      h('fieldset', {}, h('legend', {}, 'Mesh density (STL, 3MF)'), radio('dens', '1', 'Normal', true), radio('dens', '2', 'Fine (4x triangles)', false), sizeNote),
+      h('fieldset', {}, h('legend', {}, 'Mesh density (STL, 3MF)'), radio('dens', '1', 'Normal', true), radio('dens', '2', 'Fine (4x triangles)', false)),
+      sizeNote,
       h('p', { class: 'small muted' }, 'Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.'),
       h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close('cancel') }, 'Cancel'), downloadBtn),
     ),

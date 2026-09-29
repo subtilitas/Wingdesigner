@@ -53,7 +53,7 @@ export function numberInput({ value, step = 1, min, max, title, onCommit, width,
   const input = h('input', {
     type: 'number',
     step: String(step),
-    value: formatNum(value),
+    value: inputText(value),
     title,
     class: 'num',
     style: width ? { width } : undefined,
@@ -66,12 +66,20 @@ export function numberInput({ value, step = 1, min, max, title, onCommit, width,
     const raw = input.value.trim();
     const v = Number(raw);
     if (raw === '' || !Number.isFinite(v)) {
-      input.value = formatNum(value);
+      input.value = inputText(value);
       return;
     }
     onCommit(v);
   });
   return input;
+}
+
+/**
+ * Text of a number field: the shortest decimal that reads back to the same double, so stored values
+ * such as 600.0000002 stay visible and an arrow step starts from them (labels use formatNum).
+ */
+export function inputText(v) {
+  return Number.isFinite(v) ? String(v) : '';
 }
 
 export function formatNum(v, digits = 3) {

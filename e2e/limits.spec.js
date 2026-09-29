@@ -58,12 +58,16 @@ test.describe('project size', () => {
     await expect(airfoilSelect(page, 4).locator('option')).toHaveCount(1);
   });
 
-  test('the export dialog names triangles, file size, time and memory, and stops at the hard limit', async ({ page }) => {
+  test('the export dialog names triangles or control points, file size, time and memory, and stops at the hard limit', async ({ page }) => {
     test.slow();
     // 4 sections, 40 stations per panel, 200 chord samples: Fine has about 2.3 million triangles.
     await loadProject(page, await wideProject(page, 4, { spanwise: 'smooth', panelStations: 40, chordSamples: 200 }));
     let dlg = await openExport(page);
-    const note = dlg.locator('fieldset').nth(2).locator('p');
+    const note = dlg.locator('p[aria-live="polite"]');
+    // STEP (preselected): 121 stations x 401 control points per half, both halves.
+    await expect(note).toHaveText(/^0\.10 million control points, file about [\d.]+ MB\.$/);
+    await expect(note).toHaveClass(/muted/);
+    await dlg.getByLabel(/^Project JSON/).check();
     await expect(note).toBeHidden();
     await dlg.getByLabel(/^STL/).check();
     await expect(note).toHaveText(/^0\.6 million triangles, file about 29 MB\.$/);
@@ -82,7 +86,7 @@ test.describe('project size', () => {
     dlg = await openExport(page);
     await dlg.getByLabel(/^3MF/).check();
     await dlg.getByLabel(/^Fine/).check();
-    const note2 = dlg.locator('fieldset').nth(2).locator('p');
+    const note2 = dlg.locator('p[aria-live="polite"]');
     await expect(note2).toHaveText(/^11\.\d million triangles, file about \d+ MB: above the limit of 10 million triangles, where a desktop browser tab runs out of memory\. Use Normal density, one half, or fewer chord samples or panel stations\.$/);
     await expect(note2).toHaveClass(/sev-error/);
     await expect(dlg.getByRole('button', { name: 'Download' })).toBeDisabled();

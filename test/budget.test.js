@@ -116,3 +116,20 @@ describe('project size warnings', () => {
     }
   });
 });
+
+describe('STEP export size', () => {
+  it('counts the surface control points of the written halves and estimates time, memory and file', async () => {
+    const { stepPoints, WARN: W, exportCost: cost } = await import('../src/model/budget.js');
+    const { LIMITS: L } = await import('../src/model/project.js');
+    const build = { surface: { points: Array.from({ length: 401 }, () => new Array(121)) } };
+    expect(stepPoints(build, 'right')).toBe(48_521);
+    expect(stepPoints(build, 'halves')).toBe(97_042);
+    expect(stepPoints(build, 'merged')).toBe(97_042);
+    expect(stepPoints({ surface: null }, 'halves')).toBe(0);
+    // 3.3 million points wrote a 330 MB file in 8.4 s in Chromium 141.
+    const c = cost(3_300_000, 'step');
+    expect(c.fileMB).toBeCloseTo(323, 0);
+    expect(c.seconds).toBeCloseTo(8.25, 1);
+    expect(W.stepPoints).toBeLessThan(L.maxStepPoints);
+  });
+});

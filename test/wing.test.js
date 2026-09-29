@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { OVERSHOOT_LIMIT, buildWing, interpolateAlongV, joinCurves, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { syncGuidesToSpan } from '../src/model/edit.js';
-import { curvePoint, dist, interpolateCurve, surfacePoint } from '../src/geom/nurbs.js';
+import { curvePoint, dist, interpolateCurve, knotMultiplicities, surfacePoint } from '../src/geom/nurbs.js';
 import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
 import { blendPoints, blendScalar, spanwiseBlender, spanwiseWeights } from '../src/geom/spanwise.js';
@@ -992,5 +992,25 @@ describe('guide inversion on a nearly flat y(t)', () => {
       // The reference itself is uncertain by about 0.1 mm: y resolves 6e-11 mm at 500,000 mm.
       expect(Math.abs(guideXAt(curve, y, 0, 1e6) - curvePoint(curve, 0.5 * (a + b))[0])).toBeLessThan(1);
     }
+  });
+});
+
+describe('span fractions near zero', () => {
+  const at = (ys) =>
+    buildWing(
+      createProject({
+        airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }],
+        sections: ys.map((y, i) => ({ airfoil: 'a', x: i === 1 ? 50 : 0, y, z: 0, chord: 200, twist: 0 })),
+      }),
+    );
+  it('rejects a section a subnormal distance from the root and keeps a normal one', () => {
+    for (const d of [Number.MIN_VALUE, 1e-310]) expect(at([0, d, 1]).errors[0]).toMatch(/^Sections 1 and 2 at y = 0 mm and y = [\d.e-]+ mm lie too close together for the surface parameters/);
+    const b = at([0, 1e-300, 1]);
+    expect(b.errors).toEqual([]);
+    for (const v of [0, 1e-300, 0.5, 1]) expect(surfacePoint(b.surface, 0.3, v).every(Number.isFinite)).toBe(true);
+  });
+  it('merges knots closer than MIN_PARAM_GAP', () => {
+    expect(knotMultiplicities([0, 0, Number.MIN_VALUE, 1, 1])).toEqual({ knots: [0, 1], mults: [3, 2] });
+    expect(knotMultiplicities([0, 0, 1e-300, 1, 1])).toEqual({ knots: [0, 1e-300, 1], mults: [2, 1, 2] });
   });
 });
