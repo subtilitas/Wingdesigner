@@ -69,7 +69,7 @@ The project autosaves in the browser (local storage). **Save** downloads the pro
 
 - Sections lie in planes y = const. With large dihedral the sections are not perpendicular to the
   wing surface.
-- The chord of every station must stay above 0.1 mm; a fully pointed tip is not possible.
+- The chord must stay at or above 0.01 mm at every span position. A pointed tip (Settings, Wing tip: Pointed) ends in the tip profile scaled to 1/100 to 1/1000 of the previous section chord (default 1/200).
 - When some airfoils have a closed trailing edge and others an open one, the closed ones are opened
   to 0.01 mm so the STEP solid keeps one face topology.
 - Guide curves act in the planform only (x over y); dihedral follows the section z values.

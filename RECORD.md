@@ -35,7 +35,7 @@ Last updated: 2026-09-29
 | Trailing-edge thickness limited to 5 % of the local chord | Keeps small tip profiles free of self-intersection with a fixed thickness in mm. |
 | Through-point guide curves parametrized by span position | y(t) is exactly linear, so a guide cannot double back in span; x(y) is a spline function. |
 | Adaptive spanwise stations (up to 32 extra) | Stations are added where the loft deviates more than 0.5 mm from the intended edges, e.g. at pointed elliptic tips (pointed glider preset: 6 extra, 0.14 mm). |
-| Chord and planform checks on 257 span samples plus every guide breakpoint | The loft passes through the stations only; a guide crossing or guide detail between stations is reported (error below 0.1 mm chord, warning above 0.5 mm edge deviation). |
+| Chord and planform checks on 257 span samples plus every guide breakpoint | The loft passes through the stations only; a guide crossing or guide detail between stations is reported (error below 0.01 mm chord, stations added above 0.5 mm edge deviation, warning if still above after 32 added stations). |
 | aerodesign.de and mh-aerotools.de coordinates not bundled | Their terms grant personal use and restrict redistribution (quotes in the wiki page Airfoil-Sources). The app links to them and fills in attribution on upload. |
 | MIT license for the code | Chosen by the owner. Airfoil data keeps its own terms. |
 | GitHub Actions: checkout v7, setup-node v7, setup-python v7, cache v6, upload-artifact v7, configure-pages v6, upload-pages-artifact v5, deploy-pages v5 | Latest majors on 2026-09-29; all `runs.using: node24` (upload-pages-artifact is composite on upload-artifact v7), checked in each `action.yml`. |

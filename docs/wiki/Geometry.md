@@ -30,16 +30,31 @@ Section values (x, z, chord, twist and the resampled shape) are blended between 
 - **smooth**: cardinal functions of a natural cubic spline through the section span positions.
 
 Stations are the sections only (linear mode without guides) or the sections plus `panelStations − 1`
-intermediate stations per panel (smooth mode or any guide curve on).
+intermediate stations per panel (smooth mode or any guide curve on), spaced by
+(1 − cos(πk/K)) / 2 so they cluster at the panel ends. After the fit, stations are added at the span
+positions where the loft leading or trailing edge deviates more than 0.5 mm from the intended edge,
+up to 32 added stations in at most 6 rounds.
 
 With guide curves, x_LE(y) and/or x_TE(y) come from the curves instead. A guide is stretched linearly
-so its first and last point y match the root and tip. x at span y is found by solving y(t) = y on the
-curve, which requires y(t) to increase monotonically (checked at 401 samples).
+so its first and last point y match the root and tip. Through-point guides use parameters
+proportional to y, so y(t) is linear and x(y) is a spline function. x at span y is found by solving
+y(t) = y on the curve (y(t) checked for monotony at 401 samples).
+
+The chord is checked at 257 evenly spaced span positions, every station and every guide control point
+and knot: below 0.01 mm the build stops with an error (nose line and end line touch or cross).
+
+Wing tip:
+
+| Mode | Tip station |
+| --- | --- |
+| Flat | the tip section as placed; the tip cap is a plane |
+| Pointed | chord = ratio × chord at the previous section (ratio 1/100 to 1/1000, default 1/200, at least 0.01 mm); in the last panel the chord does not fall below this value, so guides that meet at the tip end in the scaled profile |
 
 Trailing edge per station: as in the files, closed (gap 0, both end points merged), or a fixed
-thickness t in mm (gap t / chord). The gap change is added with weight rising linearly from 0 at the
-leading edge to 1 at the trailing edge (XFOIL TGAP style). When all stations are closed, the trailing
-edge is closed; otherwise every station gets a gap of at least 0.01 mm.
+thickness t in mm (gap t / chord, at most 5 % of the chord). The gap change is added with weight
+rising linearly from 0 at the leading edge to 1 at the trailing edge (XFOIL TGAP style). When all
+stations are closed, the trailing edge is closed; otherwise every station gets a gap of at least
+0.01 mm (at most 5 % of the chord).
 
 Placement of a normalized point (p_x, p_z) with twist θ about the pivot c_p:
 

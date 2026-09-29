@@ -39,6 +39,7 @@ elliptic planform) from these values:
 | Sections | 2 to 8 | evenly spaced along the half span |
 | Planform | straight or elliptic | elliptic: chord c(η) = c_root √(1 − (1 − taper²) η²), η = span fraction; set with both guide curves |
 | Root and tip airfoil | NACA 4- or 5-digit | the root airfoil is used on all sections except the tip |
+| Tip | flat or pointed | pointed: tip profile scaled to 1/200 of the previous section; an elliptic planform then converges to the 25 % line |
 
 Presets: trainer, sport, glider, swept flying wing, plank, tail surface. The trailing edge is set to a
 fixed thickness of 0.2 % of the root chord, at least 0.3 mm.
@@ -70,7 +71,7 @@ round handles set the chord.
 Each guide has a mode (**Through points**: the curve passes through the points; **Control points**:
 the points form the control polygon) and a degree from 1 to 5. The first and last points stay at the
 root and tip span positions; interior points stay at least 0.5 mm apart in y. A guide that doubles
-back in y or makes the chord smaller than 0.1 mm is reported as an error.
+back in y or makes the chord smaller than 0.01 mm is reported as an error. With the wing tip set to Pointed, guides may meet at the tip; the tip then ends in the profile scaled to 1/100 to 1/1000 (default 1/200) of the previous section chord.
 
 ## Airfoils
 
@@ -89,6 +90,7 @@ back in y or makes the chord smaller than 0.1 mm is reported as an error.
 | Spanwise interpolation | linear (straight panels), smooth (natural cubic spline) | linear |
 | Twist pivot | 0 to 1 chord | 0.25 |
 | Trailing edge | as in files, closed, fixed thickness | as in files (wizard: fixed) |
+| Wing tip | flat, pointed (scale 1 : N, N = 100 to 1000) | flat, N = 200 |
 | Chordwise stations per surface | 16 to 200 | 60 |
 | Spanwise stations per panel (with guides or smooth mode) | 3 to 40 | 8 |
 | Profile parametrization | centripetal, chord length, uniform | centripetal |
