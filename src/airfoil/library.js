@@ -35,6 +35,12 @@ export function nacaEntry(code, options) {
   return { name: a.name, points: a.points, source: { ...NACA_SOURCE, code: parseNacaCode(code).code, closedTE: options?.closedTE === true } };
 }
 
+/** The project source record of a bundled library entry ({ id, source: { author, license, url, terms } }). */
+export function librarySource(entry) {
+  const s = entry.source ?? {};
+  return { kind: 'library', id: entry.id, attribution: s.author, license: s.license, url: s.url, terms: s.terms };
+}
+
 /**
  * External sources (not bundled). Their terms allow personal use; the user downloads a file and
  * loads it with the upload function.

@@ -298,3 +298,21 @@ export function profileProblem({ curve, tLE }, samples = sampleCurve(curve)) {
   }
   return null;
 }
+
+/**
+ * Fit the profile curve through checked airfoil points and check its shape, as every airfoil must pass
+ * before use (the Airfoils tab, the XFLR5 import). `issue` is the error when the fit fails or the curve
+ * crosses itself or runs back; `prof` is the fitted curve (also one with a shape error, for drawing).
+ * @returns {{prof: object|null, issue: {severity: string, code: string, message: string}|null}}
+ */
+export function fitProfile(points, parametrization) {
+  let prof;
+  try {
+    prof = profileCurve(points, { parametrization });
+  } catch (e) {
+    return { prof: null, issue: { severity: 'error', code: 'curve-shape', message: tr('The NURBS interpolation through the points failed ({message}).', { message: e.message }) } };
+  }
+  const problem = profileProblem(prof);
+  if (problem) return { prof, issue: { severity: 'error', code: 'curve-shape', message: problem.charAt(0).toUpperCase() + problem.slice(1) } };
+  return { prof, issue: null };
+}

@@ -18,11 +18,14 @@ const FIVE_REFLEX = {
   5: { m: 0.441, k1: 3.191, k21: 0.1355 },
 };
 
-/** Parse "NACA 2412", "naca23012", "0012" into a descriptor, or null when not a supported code. */
+/**
+ * Parse "NACA 2412", "naca23012", "0012" into a descriptor, or null when not a supported code. The
+ * pattern takes linear time: names from imported files can hold long runs of white space.
+ */
 export function parseNacaCode(text) {
   const m = String(text)
     .trim()
-    .match(/^(?:naca\s*-?\s*)?(\d{4,5})$/i);
+    .match(/^(?:naca\s*(?:-\s*)?)?(\d{4,5})$/i);
   if (!m) return null;
   const d = m[1];
   if (d.length === 4) {
@@ -41,6 +44,15 @@ export function parseNacaCode(text) {
   const table = S === 0 ? FIVE_STANDARD : FIVE_REFLEX;
   if (!table[P]) return null;
   return { series: 5, code: d, L, P, reflex: S === 1, t, ...table[P] };
+}
+
+/**
+ * The supported NACA code that starts `text` ("NACA0014_Flap", XFLR5's flapped copy, gives "0014"),
+ * or null. A longer digit run is no code; the pattern takes linear time, as parseNacaCode's does.
+ */
+export function leadingNacaCode(text) {
+  const m = /^\s*naca\s*(?:-\s*)?(\d{4,5})(?!\d)/i.exec(String(text));
+  return m ? (parseNacaCode(m[1])?.code ?? null) : null;
 }
 
 function thickness(x, t, closedTE) {

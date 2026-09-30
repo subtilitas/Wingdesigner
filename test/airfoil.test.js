@@ -4,7 +4,7 @@ import { airfoilFirstUseSeconds, formatSeconds } from '../src/model/budget.js';
 import { MAX_INPUT, MAX_NAME, MAX_POINTS, decodeText, parseDat, parseNumbers, toSeligDat } from '../src/airfoil/parse.js';
 import { DUPLICATE_DISTANCE, LIMITS, checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
 import { profileCurve } from '../src/geom/profile.js';
-import { nacaAirfoil, parseNacaCode } from '../src/airfoil/naca.js';
+import { leadingNacaCode, nacaAirfoil, parseNacaCode } from '../src/airfoil/naca.js';
 import {
   airfoilStats,
   leadingEdgeIndex,
@@ -33,6 +33,18 @@ describe('NACA generator', () => {
     expect(parseNacaCode('21112')).toBeNull();
     expect(parseNacaCode('MH 45')).toBeNull();
     expect(() => nacaAirfoil('abc')).toThrow();
+  });
+
+  it('finds the NACA code that starts a name, as XFLR5 names flapped copies', () => {
+    expect(leadingNacaCode('NACA0014_Flap')).toBe('0014');
+    expect(leadingNacaCode('  naca - 2412 (flap)')).toBe('2412');
+    expect(leadingNacaCode('NACA 23012 mod')).toBe('23012');
+    // A longer digit run, an unsupported code or no NACA prefix: none.
+    for (const name of ['NACA 001234', 'NACA 2400 flap', 'Clark Y', '0012 flap', '']) expect(leadingNacaCode(name)).toBeNull();
+    // Linear in long runs of white space.
+    const t0 = performance.now();
+    expect(leadingNacaCode(`naca${' '.repeat(200_000)}x`)).toBeNull();
+    expect(performance.now() - t0).toBeLessThan(1000);
   });
 
   it('produces a symmetric 12 % section for NACA 0012', () => {

@@ -19,6 +19,31 @@ const FIELDS = [
   { key: 'sections', label: () => tr('Number of sections'), unit: () => '', step: 1 },
 ];
 
+/**
+ * Draw the grid and the planform of both halves (leading and trailing edge of `stations`: { y, xLE,
+ * chord }) on a PanZoomCanvas; the wizard and the XFLR5 import preview use it.
+ */
+export function drawPlanform(ctx, view, w, hgt, stations) {
+  view.drawGrid(ctx, w, hgt, cssVar('--grid', '#dde3ea'), cssVar('--axis', '#9aa6b2'));
+  if (!stations?.length) return;
+  const le = stations.map((s) => [s.y, s.xLE]);
+  const te = stations.map((s) => [s.y, s.xLE + s.chord]);
+  for (const sign of [1, -1]) {
+    ctx.beginPath();
+    [...le, ...[...te].reverse()].forEach(([y, x], i) => {
+      const [sx, sy] = view.toScreen(sign * y, -x);
+      if (i) ctx.lineTo(sx, sy);
+      else ctx.moveTo(sx, sy);
+    });
+    ctx.closePath();
+    ctx.fillStyle = cssVar('--wing-fill', 'rgba(47,111,223,0.12)');
+    ctx.fill();
+    ctx.strokeStyle = cssVar('--ink', '#1d2430');
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+}
+
 /** Opens the wizard. Resolves with a new project, or null when cancelled. */
 export function openWizard({ firstRun = false } = {}) {
   return new Promise((resolve) => {
@@ -29,7 +54,7 @@ export function openWizard({ firstRun = false } = {}) {
     const presetBox = h('div', { class: 'preset-grid', role: 'radiogroup', 'aria-label': tr('Design type') });
     const fieldsBox = h('div', { class: 'wizard-fields' });
     const summary = h('p', { class: 'small', 'aria-live': 'polite' });
-    const canvas = h('canvas', { class: 'wizard-canvas', 'aria-label': tr('Planform preview') });
+    const canvas = h('canvas', { class: 'wizard-canvas', role: 'img', 'aria-label': tr('Planform preview') });
     const createBtn = h('button', { value: 'create', class: 'primary' }, tr('Create design'));
 
     const renderPresets = () => {
@@ -166,27 +191,7 @@ export function openWizard({ firstRun = false } = {}) {
         const sw = Math.tan((params.sweep * Math.PI) / 180) * b;
         return [-b, -(Math.max(c, sw + c)), b, -Math.min(0, sw)];
       },
-      draw: (ctx, view, w, hgt) => {
-        view.drawGrid(ctx, w, hgt, cssVar('--grid', '#dde3ea'), cssVar('--axis', '#9aa6b2'));
-        if (!build?.stations?.length) return;
-        const le = build.stations.map((s) => [s.y, s.xLE]);
-        const te = build.stations.map((s) => [s.y, s.xLE + s.chord]);
-        for (const sign of [1, -1]) {
-          ctx.beginPath();
-          [...le, ...te.reverse()].forEach(([y, x], i) => {
-            const [sx, sy] = view.toScreen(sign * y, -x);
-            if (i) ctx.lineTo(sx, sy);
-            else ctx.moveTo(sx, sy);
-          });
-          te.reverse();
-          ctx.closePath();
-          ctx.fillStyle = cssVar('--wing-fill', 'rgba(47,111,223,0.12)');
-          ctx.fill();
-          ctx.strokeStyle = cssVar('--ink', '#1d2430');
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-        }
-      },
+      draw: (ctx, view, w, hgt) => drawPlanform(ctx, view, w, hgt, build?.stations),
     });
 
     const dialog = h(
