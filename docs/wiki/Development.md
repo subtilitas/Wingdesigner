@@ -628,7 +628,7 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 
 ## Release
 
-`<version>`: the version to release, e.g. `0.2.0`. `package.json` holds `0.1.0`.
+`<version>`: the version to release, e.g. `0.3.0`. `package.json` holds `0.2.0`.
 
 1. Set the version: `npm version <version> --no-git-tag-version` (updates `package.json` and `package-lock.json`).
 2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`.
