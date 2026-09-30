@@ -12,6 +12,7 @@ import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
 import { WARN, displayName, loftGrid, sizeWarning } from '../model/budget.js';
+import { count, fixed, language, plain, tr, whole } from '../i18n/index.js';
 
 /**
  * Deviation (mm) between loft and intended surface above which stations are added and, if it remains,
@@ -149,9 +150,11 @@ export function interpolateAlongV(values, scheme) {
   return { degree: cols[0].degree, knots: cols[0].knots, columns: cols.map((c) => c.points) };
 }
 
-// Profile stage per airfoil (checks, NURBS curve, crossing test), keyed by the parametrization and
-// a hash of the points; resampled shapes are kept per chord-sample count N. Airfoils rarely change
+// Profile stage per airfoil (checks, NURBS curve, crossing test), keyed by the parametrization and a
+// hash of the points; resampled shapes are kept per chord-sample count N. Airfoils rarely change
 // between edits. A hit is confirmed by comparing the points, so a hash collision only costs a miss.
+// Only an entry with an error holds text; it records its language (lang) and is made again after a
+// language change, while the entries of good airfoils stay valid and a switch does not refit them.
 const PROFILE_CACHE = new Map();
 const PROFILE_CACHE_SIZE = 32;
 
@@ -180,11 +183,9 @@ const samePoints = (a, b) => a.length === b.length && a.every((p, i) => p[0] ===
 function profileStage(a, parametrization, chordStations, N) {
   const key = `${parametrization}|${pointsHash(a.points)}`;
   let entry = PROFILE_CACHE.get(key);
-  if (entry && samePoints(entry.source, a.points)) {
-    // Most recently used entries sit at the end of the map (insertion order).
-    PROFILE_CACHE.delete(key);
-  } else {
-    entry = { source: a.points.map((p) => [p[0], p[1]]), compat: new Map() };
+  PROFILE_CACHE.delete(key);
+  if (!(entry && samePoints(entry.source, a.points) && !(entry.error && entry.lang !== language()))) {
+    entry = { source: a.points.map((p) => [p[0], p[1]]), compat: new Map(), lang: language() };
     const check = checkAirfoil(a.points);
     if (!check.ok) {
       entry.error = check.issues.filter((i) => i.severity === 'error').map((i) => i.message).join(' ');
@@ -198,7 +199,7 @@ function profileStage(a, parametrization, chordStations, N) {
         if (problem) entry.error = problem;
         else Object.assign(entry, { prof, points: check.points, samples });
       } catch (e) {
-        entry.error = `the NURBS interpolation failed (${e.message}).`;
+        entry.error = tr('the NURBS interpolation failed ({message}).', { message: e.message });
       }
     }
   }
@@ -252,9 +253,10 @@ export function buildWing(project) {
   const warnings = [];
   const settings = resolveSettings(project.settings);
   const sections = project.sections.slice().sort((a, b) => a.y - b.y);
-  const result = { settings, sections, errors, warnings, surface: null, stations: [], profiles: new Map(), guides: {} };
+  // sizeWarning: the size warning among the warnings (null without one), for a refresh without a build.
+  const result = { settings, sections, errors, warnings, sizeWarning: null, surface: null, stations: [], profiles: new Map(), guides: {} };
   if (sections.length < 2) {
-    errors.push('At least 2 sections are required.');
+    errors.push(tr('At least 2 sections are required.'));
     return result;
   }
   // The limits of project validation: a project that cannot be saved is not exported either.
@@ -266,13 +268,14 @@ export function buildWing(project) {
   // Sizes above their warning thresholds: expected time and memory of each change.
   const large = sizeWarning(project);
   if (large) warnings.push(large);
+  result.sizeWarning = large;
   if (!(sections[0].y >= 0)) {
-    errors.push(`Section at y = ${sections[0].y} mm lies on the mirrored side; the half wing spans y >= 0.`);
+    errors.push(tr('Section at y = {y} mm lies on the mirrored side; the half wing spans y >= 0.', { y: plain(sections[0].y) }));
     return result;
   }
   for (let i = 1; i < sections.length; i++) {
     if (!(sections[i].y > sections[i - 1].y)) {
-      errors.push(`Sections ${i} and ${i + 1} share span position y = ${sections[i].y} mm.`);
+      errors.push(tr('Sections {a} and {b} share span position y = {y} mm.', { a: plain(i), b: plain(i + 1), y: plain(sections[i].y) }));
       return result;
     }
   }
@@ -286,8 +289,14 @@ export function buildWing(project) {
     const b = (sections[i].y - y0s) / spanS;
     if (!paramsApart(a, b)) {
       errors.push(
-        `Sections ${i} and ${i + 1} at y = ${sections[i - 1].y} mm and y = ${sections[i].y} mm lie too close together for the surface parameters ` +
-          `(span fractions ${a} and ${b}); move them apart.`,
+        tr('Sections {a} and {b} at y = {y1} mm and y = {y2} mm lie too close together for the surface parameters (span fractions {f1} and {f2}); move them apart.', {
+          a: plain(i),
+          b: plain(i + 1),
+          y1: plain(sections[i - 1].y),
+          y2: plain(sections[i].y),
+          f1: plain(a),
+          f2: plain(b),
+        }),
       );
       return result;
     }
@@ -306,14 +315,14 @@ export function buildWing(project) {
     checkedAirfoils.add(s.airfoil);
     const a = airfoils.get(s.airfoil);
     if (!a) {
-      errors.push(`Section at y = ${s.y} mm uses unknown airfoil "${s.airfoil}".`);
+      errors.push(tr('Section at y = {y} mm uses unknown airfoil "{id}".', { y: plain(s.y), id: s.airfoil }));
       continue;
     }
     const stage = profileStage(a, settings.parametrization, chordStations, N);
     // Uniform and chord-length parametrization follow unevenly spaced points less closely.
-    const hint = settings.parametrization === 'centripetal' ? '' : ' Settings > Profile parametrization "centripetal" follows the points more closely.';
+    const hint = settings.parametrization === 'centripetal' ? '' : ` ${tr('Settings > Profile parametrization "centripetal" follows the points more closely.')}`;
     if (stage.error) {
-      errors.push(`Airfoil "${displayName(a.name ?? a.id)}": ${stage.error}${hint}`);
+      errors.push(tr('Airfoil "{name}": {problem}', { name: displayName(a.name ?? a.id), problem: stage.error + hint }));
       continue;
     }
     // The crossing tolerance of the profile stage is a fraction of the chord; above 200 mm chord
@@ -322,11 +331,11 @@ export function buildWing(project) {
     const cross = CROSSING_TOLERANCE * chordMax > CROSSING_LIMIT ? stageCrossing(stage, CROSSING_LIMIT / chordMax) : null;
     delete stage.samples;
     if (cross) {
-      errors.push(
-        `Airfoil "${displayName(a.name ?? a.id)}": the NURBS curve through the points crosses itself near x = ${(cross.x * 100).toFixed(1)} % chord; ` +
-          `the loop is ${(cross.size * chordMax).toFixed(2)} mm wide at ${chordMax} mm chord, above ${CROSSING_LIMIT} mm. ` +
-          `Use a file with more points or finer spacing near that position.${hint}`,
+      const problem = tr(
+        'the NURBS curve through the points crosses itself near x = {x} % chord; the loop is {size} mm wide at {chord} mm chord, above {limit} mm. Use a file with more points or finer spacing near that position.',
+        { x: fixed(cross.x * 100, 1), size: fixed(cross.size * chordMax, 2), chord: plain(chordMax), limit: plain(CROSSING_LIMIT) },
       );
+      errors.push(tr('Airfoil "{name}": {problem}', { name: displayName(a.name ?? a.id), problem: problem + hint }));
       continue;
     }
     result.profiles.set(s.airfoil, { ...stage.prof, id: a.id, name: a.name, points: stage.points, compat: stage.compat.get(N) });
@@ -339,12 +348,13 @@ export function buildWing(project) {
 
   // Guides.
   const guideOn = {};
+  const guideError = (key, problem) => (key === 'nose' ? tr('Nose line: {problem}', { problem }) : tr('End line: {problem}', { problem }));
   for (const key of ['nose', 'end']) {
     const g = project.guides?.[key];
     if (!g || !g.enabled) continue;
     const problems = guideProblems(g);
     if (problems.length) {
-      errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: ${problems.join(' ')}`);
+      errors.push(guideError(key, problems.join(' ')));
       continue;
     }
     let curve;
@@ -354,11 +364,11 @@ export function buildWing(project) {
       // Points closer than the solver resolves (normalized y gaps near 1e-300) make the
       // interpolation singular.
       if (!/zero pivot/.test(e.message)) throw e;
-      errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: the curve fit is singular; move the points further apart in y or use control-point mode.`);
+      errors.push(guideError(key, tr('the curve fit is singular; move the points further apart in y or use control-point mode.')));
       continue;
     }
     if (!isMonotonicInY(curve)) {
-      errors.push(`${key === 'nose' ? 'Nose line' : 'End line'}: the curve doubles back in span direction; move the points apart or use control-point mode.`);
+      errors.push(guideError(key, tr('the curve doubles back in span direction; move the points apart or use control-point mode.')));
       continue;
     }
     // A B-spline lies within the hull of its control points: control points within the geometry
@@ -366,8 +376,13 @@ export function buildWing(project) {
     const far = Math.max(...curve.points.map((q) => Math.abs(q[0])));
     if (!(far <= LIMITS.maxExtent)) {
       errors.push(
-        `${key === 'nose' ? 'Nose line' : 'End line'}: the curve through the points reaches x = ${far.toExponential(2)} mm, beyond ±${LIMITS.maxExtent} mm; ` +
-          'space the points more evenly in y or use control-point mode.',
+        guideError(
+          key,
+          tr('the curve through the points reaches x = {x} mm, beyond ±{limit} mm; space the points more evenly in y or use control-point mode.', {
+            x: plain(far.toExponential(2)),
+            limit: whole(LIMITS.maxExtent),
+          }),
+        ),
       );
       continue;
     }
@@ -384,15 +399,25 @@ export function buildWing(project) {
   // browser tab runs out of memory, fewer stations per panel; one station per panel at least.
   const grid = loftGrid(sections.length, settings, guideOn.nose || guideOn.end);
   const K = grid.K;
-  const maxGrid = LIMITS.maxGridPoints.toLocaleString('en');
   if (grid.points > LIMITS.maxGridPoints) {
     errors.push(
-      `The loft grid needs ${grid.points.toLocaleString('en')} points with one station per panel (${sections.length.toLocaleString('en')} sections, ${N} chord samples); the limit is ${maxGrid}. Reduce the chord samples or the sections.`,
+      tr(
+        'The loft grid needs {points} points with one station per panel ({sections} sections, {samples} chord samples); the limit is {limit}. Reduce the chord samples or the sections.',
+        { points: count(grid.points), sections: count(sections.length), samples: plain(N), limit: count(LIMITS.maxGridPoints) },
+      ),
     );
     return result;
   }
   if (K < grid.Kset) {
-    warnings.push(`Spanwise stations per panel reduced from ${grid.Kset} to ${K}: ${sections.length.toLocaleString('en')} sections with ${N} chord samples keep the loft within ${maxGrid} grid points.`);
+    warnings.push(
+      tr('Spanwise stations per panel reduced from {from} to {to}: {sections} sections with {samples} chord samples keep the loft within {limit} grid points.', {
+        from: plain(grid.Kset),
+        to: plain(K),
+        sections: count(sections.length),
+        samples: plain(N),
+        limit: count(LIMITS.maxGridPoints),
+      }),
+    );
   }
 
   // Intermediate stations cluster towards the panel ends (cosine spacing), where guide curves
@@ -471,8 +496,11 @@ export function buildWing(project) {
   result.tipChord = pointed ? placement(y1).chord : null;
   if (pointed && result.tipChord > tipChord + PLANFORM_TOLERANCE) {
     warnings.push(
-      `Pointed tip: nose line and end line end ${result.tipChord.toFixed(1)} mm apart, so the tip chord is ${result.tipChord.toFixed(1)} mm ` +
-        `instead of ${tipChord.toFixed(2)} mm; move their last points together to close the tip.`,
+      tr('Pointed tip: nose line and end line end {gap} mm apart, so the tip chord is {chord} mm instead of {scaled} mm; move their last points together to close the tip.', {
+        gap: fixed(result.tipChord, 1),
+        chord: fixed(result.tipChord, 1),
+        scaled: fixed(tipChord, 2),
+      }),
     );
     result.tipChordLimited = false;
   }
@@ -531,11 +559,18 @@ export function buildWing(project) {
   const range = (values) => [Math.min(...values), Math.max(...values)];
   const overshootChecks = [];
   // k: index of the value in the blended placement scalars [leading-edge x, chord, z, twist].
-  if (!guideOn.nose && !guideOn.end) overshootChecks.push({ name: 'leading-edge x', unit: 'mm', k: 0, range: range(X) });
-  if (!(guideOn.nose && guideOn.end)) overshootChecks.push({ name: 'chord', unit: 'mm', k: 1, range: range(C) });
-  overshootChecks.push({ name: 'z', unit: 'mm', k: 2, range: range(Z) }, { name: 'twist', unit: '°', k: 3, range: range(T) });
+  // name: the name of the value as a function (text made only for the error message); unit: 'mm', '°'
+  // or 'chord' (a percentage of the chord).
+  if (!guideOn.nose && !guideOn.end) overshootChecks.push({ name: () => tr('leading-edge x'), unit: 'mm', k: 0, range: range(X) });
+  if (!(guideOn.nose && guideOn.end)) overshootChecks.push({ name: () => tr('chord'), unit: 'mm', k: 1, range: range(C) });
+  overshootChecks.push({ name: () => 'z', unit: 'mm', k: 2, range: range(Z) }, { name: () => tr('twist'), unit: '°', k: 3, range: range(T) });
   const profileRanges = smooth ? compat[0].map((_, k) => range(compat.map((c) => c[k][1]))) : [];
-  const profileNames = compat[0].map((_, k) => `${k < N ? 'upper' : 'lower'} surface height at x = ${(chordStations[Math.abs(k - N)] * 100).toFixed(1)} % chord`);
+  const profileNames = smooth
+    ? compat[0].map((_, k) => () => {
+        const x = fixed(chordStations[Math.abs(k - N)] * 100, 1);
+        return k < N ? tr('upper surface height at x = {x} % chord', { x }) : tr('lower surface height at x = {x} % chord', { x });
+      })
+    : [];
   let overshoot = null;
   const record = (name, unit, value, [lo, hi], y) => {
     const out = Math.max(lo - value, value - hi);
@@ -569,7 +604,7 @@ export function buildWing(project) {
     const shape = blendCompat(y);
     if (smooth) {
       for (const q of overshootChecks) record(q.name, q.unit, raw[q.k], q.range, y);
-      for (let k = 1; k < 2 * N; k++) record(profileNames[k], '% chord', shape[k][1], profileRanges[k], y);
+      for (let k = 1; k < 2 * N; k++) record(profileNames[k], 'chord', shape[k][1], profileRanges[k], y);
     }
     // Round-off level differences do not move the reported position.
     const { t, tX } = thinnest(shape, teSliver(chord));
@@ -592,60 +627,82 @@ export function buildWing(project) {
     }
   }
   if (nonFiniteY !== null) {
-    errors.push(`Section values give non-finite coordinates at y = ${nonFiniteY.toFixed(1)} mm; check the positions, chords and twists of the sections.`);
+    errors.push(tr('Section values give non-finite coordinates at y = {y} mm; check the positions, chords and twists of the sections.', { y: fixed(nonFiniteY, 1) }));
     return result;
   }
   if (farPlacement) {
     const { y, xLE, z, chord } = farPlacement;
     errors.push(
-      `At y = ${y.toFixed(1)} mm the wing leaves the project limits (leading-edge x ${xLE.toFixed(0)} mm, z ${z.toFixed(0)} mm, chord ${chord.toFixed(0)} mm; ` +
-        `limits ±${LIMITS.maxExtent} mm and ${LIMITS.maxChord} mm chord). Check the guide curves, or use linear interpolation.`,
+      `${tr('At y = {y} mm the wing leaves the project limits (leading-edge x {x} mm, z {z} mm, chord {chord} mm; limits ±{extent} mm and {maxChord} mm chord).', {
+        y: fixed(y, 1),
+        x: fixed(xLE, 0),
+        z: fixed(z, 0),
+        chord: fixed(chord, 0),
+        extent: whole(LIMITS.maxExtent),
+        maxChord: whole(LIMITS.maxChord),
+      })} ${tr('Check the guide curves, or use linear interpolation.')}`,
     );
     return result;
   }
   if (overshoot) {
-    const f = (v) => (overshoot.unit === '% chord' ? (v * 100).toFixed(2) : v.toFixed(2));
+    const inChord = overshoot.unit === 'chord';
+    const f = (v) => (inChord ? fixed(v * 100, 2) : fixed(v, 2));
+    const unit = inChord ? tr('% chord') : overshoot.unit;
     let gap = Infinity;
     for (let i = 0; i + 1 < ys.length; i++) gap = Math.min(gap, ys[i + 1] - ys[i]);
     errors.push(
-      `Smooth spanwise interpolation overshoots at y = ${overshoot.y.toFixed(1)} mm: ${overshoot.name} is ${f(overshoot.value)} ${overshoot.unit}, ` +
-        `while the sections range from ${f(overshoot.lo)} to ${f(overshoot.hi)} ${overshoot.unit}. The sections are unevenly spaced (smallest gap ${gap.toFixed(2)} mm). ` +
-        'Use linear interpolation, space the sections more evenly or remove sections that lie close together.',
+      [
+        tr('Smooth spanwise interpolation overshoots at y = {y} mm: {name} is {value} {unit}, while the sections range from {lo} to {hi} {unit}.', {
+          y: fixed(overshoot.y, 1),
+          name: overshoot.name(),
+          value: f(overshoot.value),
+          unit,
+          lo: f(overshoot.lo),
+          hi: f(overshoot.hi),
+        }),
+        tr('The sections are unevenly spaced (smallest gap {gap} mm).', { gap: fixed(gap, 2) }),
+        tr('Use linear interpolation, space the sections more evenly or remove sections that lie close together.'),
+      ].join(' '),
     );
     return result;
   }
   if (minThick < -1e-9) {
-    const where = `at y = ${minThickY.toFixed(1)} mm, x = ${(minThickX * 100).toFixed(1)} % chord (${(minThick * 100).toFixed(3)} % chord)`;
+    const where = { y: fixed(minThickY, 1), x: fixed(minThickX * 100, 1), thickness: fixed(minThick * 100, 3) };
     errors.push(
       smooth
-        ? `The blended profile has negative thickness ${where}; smooth spanwise interpolation overshoots between unevenly spaced sections. Use linear interpolation or add sections.`
-        : `The resampled profile has negative thickness ${where}: upper and lower surface of a section airfoil cross there. Check the airfoils near that position or raise Settings > Chord samples.`,
+        ? `${tr('The blended profile has negative thickness at y = {y} mm, x = {x} % chord ({thickness} % chord); smooth spanwise interpolation overshoots between unevenly spaced sections.', where)} ${tr('Use linear interpolation or add sections.')}`
+        : `${tr('The resampled profile has negative thickness at y = {y} mm, x = {x} % chord ({thickness} % chord): upper and lower surface of a section airfoil cross there.', where)} ${tr('Check the airfoils near that position or raise Settings > Chord samples.')}`,
     );
     return result;
   }
   if (minTeThick < -1e-9) {
     errors.push(
-      `The trailing-edge setting pulls the upper surface below the lower surface at y = ${minTeThickY.toFixed(1)} mm ` +
-        `(${(minTeThick * 100).toFixed(2)} % chord); the airfoil is thinner inside than its trailing-edge gap. ` +
-        'Use "as in file" or a larger trailing-edge thickness.',
+      `${tr('The trailing-edge setting pulls the upper surface below the lower surface at y = {y} mm ({thickness} % chord); the airfoil is thinner inside than its trailing-edge gap.', {
+        y: fixed(minTeThickY, 1),
+        thickness: fixed(minTeThick * 100, 2),
+      })} ${tr('Use "as in file" or a larger trailing-edge thickness.')}`,
     );
     return result;
   }
   if (minTeCore <= AIRFOIL_LIMITS.touchThickness) {
-    const where = `at y = ${minTeCoreY.toFixed(1)} mm, x = ${(minTeCoreX * 100).toFixed(1)} % chord (thickness ${(minTeCore * 100).toFixed(4)} % chord)`;
+    const where = { y: fixed(minTeCoreY, 1), x: fixed(minTeCoreX * 100, 1), thickness: fixed(minTeCore * 100, 4) };
     errors.push(
       te.mode === 'asis'
-        ? `Upper and lower surface of the blended profile touch ${where}; the wing would have zero thickness there. Use linear interpolation or add sections.`
-        : `The trailing-edge setting makes upper and lower surface touch ${where}; the wing would have zero thickness there. Use "as in file" or a larger trailing-edge thickness.`,
+        ? `${tr('Upper and lower surface of the blended profile touch at y = {y} mm, x = {x} % chord (thickness {thickness} % chord); the wing would have zero thickness there.', where)} ${tr('Use linear interpolation or add sections.')}`
+        : `${tr('The trailing-edge setting makes upper and lower surface touch at y = {y} mm, x = {x} % chord (thickness {thickness} % chord); the wing would have zero thickness there.', where)} ${tr('Use "as in file" or a larger trailing-edge thickness.')}`,
     );
     return result;
   }
   if (minChord < MIN_CHORD) {
-    const hint = !pointed && minChordY === y1 && minChord > -CROSS_TOLERANCE ? ' For a tip that ends in a point, set Settings > Wing tip to Pointed.' : '';
+    const hint = !pointed && minChordY === y1 && minChord > -CROSS_TOLERANCE ? ` ${tr('For a tip that ends in a point, set Settings > Wing tip to Pointed.')}` : '';
     // With both guide curves the chord is their distance; otherwise it is the blend of the section
     // chords, which only the smooth blend takes below the section values.
-    const cause = guideOn.nose && guideOn.end ? 'nose line and end line must not touch or cross' : `the smooth blend of the section chords falls below the minimum of ${LIMITS.minChord} mm; use linear interpolation or add sections`;
-    errors.push(`Chord drops to ${minChord.toFixed(2)} mm at y = ${minChordY.toFixed(1)} mm; ${cause}.${hint}`);
+    const at = { chord: fixed(minChord, 2), y: fixed(minChordY, 1), min: plain(LIMITS.minChord) };
+    const cause =
+      guideOn.nose && guideOn.end
+        ? tr('Chord drops to {chord} mm at y = {y} mm; nose line and end line must not touch or cross.', at)
+        : tr('Chord drops to {chord} mm at y = {y} mm; the smooth blend of the section chords falls below the minimum of {min} mm; use linear interpolation or add sections.', at);
+    errors.push(cause + hint);
     return result;
   }
 
@@ -817,7 +874,14 @@ export function buildWing(project) {
   const singular = () => {
     let k = 1;
     for (let i = 2; i < ys.length; i++) if (ys[i] - ys[i - 1] < ys[k] - ys[k - 1]) k = i;
-    errors.push(`The surface fit is singular: sections ${k} and ${k + 1} at y = ${ys[k - 1]} mm and y = ${ys[k]} mm lie too close together; move them apart.`);
+    errors.push(
+      tr('The surface fit is singular: sections {a} and {b} at y = {y1} mm and y = {y2} mm lie too close together; move them apart.', {
+        a: plain(k),
+        b: plain(k + 1),
+        y1: plain(ys[k - 1]),
+        y2: plain(ys[k]),
+      }),
+    );
     return result;
   };
   let fits = 0;
@@ -877,22 +941,26 @@ export function buildWing(project) {
   const { fitThick, fitThickY } = lower('fitThick');
   const { fitCore, fitCoreY } = lower('fitCore');
   if (!surface.points.every((col) => col.every((P) => P.every(Number.isFinite)))) {
-    errors.push('The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections.');
+    errors.push(tr('The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections.'));
     return result;
   }
   if (fitThick < -1e-9 || fitCore <= AIRFOIL_LIMITS.touchThickness) {
     const neg = fitThick < -1e-9;
-    errors.push(
-      `The fitted surface ${neg ? 'turns inside out' : 'has zero thickness'} between stations at y = ${(neg ? fitThickY : fitCoreY).toFixed(1)} mm ` +
-        `(local thickness ${((neg ? fitThick : fitCore) * 100).toFixed(3)} % chord): the surface through the stations swings between them ` +
-        '(guide curves that change fast, or unevenly spaced sections in smooth mode). Smooth the guide curves, space the sections more evenly or add sections.',
-    );
+    const at = { y: fixed(neg ? fitThickY : fitCoreY, 1), thickness: fixed((neg ? fitThick : fitCore) * 100, 3) };
+    const problem = neg
+      ? tr('The fitted surface turns inside out between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in smooth mode).', at)
+      : tr('The fitted surface has zero thickness between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in smooth mode).', at);
+    errors.push(`${problem} ${tr('Smooth the guide curves, space the sections more evenly or add sections.')}`);
     return result;
   }
   if (minFit < FOLD_LIMIT) {
     errors.push(
-      `The fitted surface folds or narrows between stations at y = ${minFitY.toFixed(1)} mm (chord ${minFit.toFixed(2)} mm along the intended chord direction, ` +
-        `minimum ${LIMITS.minChord} mm): twist or guide curves change faster than ${MAX_EXTRA_STATIONS} added stations resolve. Add sections, reduce the twist difference or smooth the guide curves.`,
+      `${tr('The fitted surface folds or narrows between stations at y = {y} mm (chord {chord} mm along the intended chord direction, minimum {min} mm): twist or guide curves change faster than {stations} added stations resolve.', {
+        y: fixed(minFitY, 1),
+        chord: fixed(minFit, 2),
+        min: plain(LIMITS.minChord),
+        stations: plain(MAX_EXTRA_STATIONS),
+      })} ${tr('Add sections, reduce the twist difference or smooth the guide curves.')}`,
     );
     return result;
   }
@@ -916,8 +984,10 @@ export function buildWing(project) {
     const cross = surfaceRowCrossing(surface, v, Math.min(CROSSING_TOLERANCE * chordAtV(v), CROSSING_LIMIT));
     if (cross) {
       errors.push(
-        `The loft surface crosses itself at y = ${(y0 + v * (y1 - y0)).toFixed(1)} mm near x = ${cross.x.toFixed(1)} mm: ` +
-          'the surface rows overshoot between the resampled points. Increase Settings > Chord samples.',
+        `${tr('The loft surface crosses itself at y = {y} mm near x = {x} mm: the surface rows overshoot between the resampled points.', {
+          y: fixed(y0 + v * (y1 - y0), 1),
+          x: fixed(cross.x, 1),
+        })} ${tr('Increase Settings > Chord samples.')}`,
       );
       return result;
     }
@@ -926,10 +996,16 @@ export function buildWing(project) {
   result.extraStations = extra;
   result.fits = fits;
   if (limited) {
-    warnings.push(`Trailing-edge thickness ${te.thickness} mm exceeds ${MAX_GAP_FRACTION * 100} % of the chord at ${limited} station(s); it is limited to ${MAX_GAP_FRACTION * 100} % there.`);
+    warnings.push(
+      tr('Trailing-edge thickness {thickness} mm exceeds {percent} % of the chord at {stations} station(s); it is limited to {percent} % there.', {
+        thickness: plain(te.thickness),
+        percent: plain(MAX_GAP_FRACTION * 100),
+        stations: plain(limited),
+      }),
+    );
   }
   if (widened) {
-    warnings.push(`The trailing edge is closed on some stations and open on others; ${widened} station(s) were opened to ${MIN_OPEN_GAP} mm.`);
+    warnings.push(tr('The trailing edge is closed on some stations and open on others; {stations} station(s) were opened to {gap} mm.', { stations: plain(widened), gap: plain(MIN_OPEN_GAP) }));
   }
   let dev = 0;
   let devY = y0;
@@ -944,8 +1020,11 @@ export function buildWing(project) {
   result.planformDeviation = dev;
   if (over) {
     warnings.push(
-      `The loft deviates up to ${dev.toFixed(2)} mm from the intended surface at y = ${devY.toFixed(1)} mm ` +
-        `after ${extra} added station(s); raise the spanwise stations per panel.`,
+      tr('The loft deviates up to {dev} mm from the intended surface at y = {y} mm after {stations} added station(s); raise the spanwise stations per panel.', {
+        dev: fixed(dev, 2),
+        y: fixed(devY, 1),
+        stations: plain(extra),
+      }),
     );
   }
   result.paramsU = paramsU;

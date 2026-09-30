@@ -4,6 +4,8 @@
 // is visible at the stored resolution (longest edge at least 4 spacings); smaller triangles stay
 // below the resolution of the file.
 
+import { plain, tr, whole } from '../i18n/index.js';
+
 /** Thrown when rounding to the stored precision collapses or turns over a visible triangle. */
 export class MeshPrecisionError extends Error {
   constructor(message) {
@@ -63,13 +65,13 @@ export function damagedTriangles(P, I, round) {
 }
 
 /**
- * Throw MeshPrecisionError when rounding damages a triangle. `stores` names the format in the
- * message ("STL stores", "3MF readers store"). The remedy depends on the cause: when the damaged
- * triangle still flips with its x and z moved next to 0 and the root moved to y = 0, its distance
- * from the root alone is too coarse, so sections or stations lie closer together than the spacing
- * and moving the wing does not help.
+ * Throw MeshPrecisionError when rounding damages a triangle. `format` is '3MF' for the 3MF wording
+ * of the message ("3MF readers store"), anything else gives the STL wording ("STL stores"). The
+ * remedy depends on the cause: when the damaged triangle still flips with its x and z moved next
+ * to 0 and the root moved to y = 0, its distance from the root alone is too coarse, so sections or
+ * stations lie closer together than the spacing and moving the wing does not help.
  */
-export function checkPrecision(P, I, round, stores) {
+export function checkPrecision(P, I, round, format) {
   const { bad, far, first } = damagedTriangles(P, I, round);
   if (!bad) return;
   // The root can move to y = 0 (on a mirrored wing both halves move): the smallest |y| of the mesh.
@@ -81,9 +83,16 @@ export function checkPrecision(P, I, round, stores) {
   const moved = [a, b, c].flatMap((k) => [P[k] - x0, Math.sign(P[k + 1]) * (Math.abs(P[k + 1]) - root), P[k + 2] - z0]);
   const ys = [a, b, c].map((k) => P[k + 1]);
   const remedy = flips(moved, moved.map(round), 0, 3, 6)
-    ? `Sections or stations near y = ${Number(Math.abs(ys[0]).toPrecision(10))} mm lie closer together than the spacing there (${float32Spacing(Math.max(...ys.map(Math.abs))).toPrecision(2)} mm); move them apart, or export STEP.`
-    : 'Move the wing towards the origin, or export STEP.';
+    ? tr('Sections or stations near y = {y} mm lie closer together than the spacing there ({spacing} mm); move them apart, or export STEP.', {
+        y: plain(Number(Math.abs(ys[0]).toPrecision(10))),
+        spacing: plain(float32Spacing(Math.max(...ys.map(Math.abs))).toPrecision(2)),
+      })
+    : tr('Move the wing towards the origin, or export STEP.');
+  // The spacing is printed with 2 significant digits (plain() takes the text and only swaps the decimal point).
+  const params = { far: whole(Math.round(far)), spacing: plain(float32Spacing(far).toPrecision(2)), bad: whole(bad), total: whole(I.length / 3), remedy };
   throw new MeshPrecisionError(
-    `${stores} 32-bit coordinates: at ${Math.round(far)} mm their spacing is ${float32Spacing(far).toPrecision(2)} mm, and ${bad} of ${I.length / 3} triangles collapse or turn over. ${remedy}`,
+    format === '3MF'
+      ? tr('3MF readers store 32-bit coordinates: at {far} mm their spacing is {spacing} mm, and {bad} of {total} triangles collapse or turn over. {remedy}', params)
+      : tr('STL stores 32-bit coordinates: at {far} mm their spacing is {spacing} mm, and {bad} of {total} triangles collapse or turn over. {remedy}', params),
   );
 }

@@ -23,7 +23,8 @@
     "step:cases": "node scripts/export-step-cases.mjs step-check",
     "screenshots": "node scripts/screenshots.mjs",
     "docs:check": "node scripts/check-docs.mjs",
-    "counts:check": "node scripts/check-test-counts.mjs"
+    "counts:check": "node scripts/check-test-counts.mjs",
+    "i18n:check": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "fflate": "^0.8.3",

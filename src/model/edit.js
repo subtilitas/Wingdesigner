@@ -4,6 +4,7 @@ import { defaultGuides, guideXAt } from '../geom/guide.js';
 import { paramsApart } from '../geom/nurbs.js';
 import { LIMITS, airfoilPoints, newId } from './project.js';
 import { nacaAirfoil } from '../airfoil/naca.js';
+import { count, plain, tr, whole } from '../i18n/index.js';
 
 export function sortedSections(project) {
   return project.sections.slice().sort((a, b) => a.y - b.y);
@@ -124,16 +125,22 @@ function nextSection(project, afterIndex) {
 
 /** Why no section can be inserted after sorted index afterIndex, or null when one can. */
 export function insertProblem(project, afterIndex) {
-  if (project.sections.length >= LIMITS.maxSections) return `At most ${LIMITS.maxSections.toLocaleString('en')} sections.`;
+  if (project.sections.length >= LIMITS.maxSections) return tr('At most {max} sections.', { max: count(LIMITS.maxSections) });
   const { a, b, sec } = nextSection(project, afterIndex);
   // Neighbouring span positions can be too close for a number between them, or for one whose span
   // fraction the build keeps apart from both.
   const sorted = sortedSections(project);
   const [y0, y1] = [sorted[0].y, sorted[sorted.length - 1].y];
-  if (b && !(sec.y > a.y && sec.y < b.y && spanApart(a.y, sec.y, y0, y1) && spanApart(sec.y, b.y, y0, y1))) return `No span position lies between y = ${a.y} mm and y = ${b.y} mm. Move the two sections apart first.`;
-  if (!b && sec.y > LIMITS.maxCoordinate) return `A section beyond the tip would lie beyond y = ${LIMITS.maxCoordinate} mm.`;
+  if (b && !(sec.y > a.y && sec.y < b.y && spanApart(a.y, sec.y, y0, y1) && spanApart(sec.y, b.y, y0, y1))) return tr('No span position lies between y = {a} mm and y = {b} mm. Move the two sections apart first.', { a: plain(a.y), b: plain(b.y) });
+  if (!b && sec.y > LIMITS.maxCoordinate) return tr('A section beyond the tip would lie beyond y = {max} mm.', { max: whole(LIMITS.maxCoordinate) });
   const k = b ? -1 : closePair(sorted, y0, sec.y);
-  if (k > 0) return `A section at y = ${sec.y} mm beyond the tip makes the span too long for the sections at y = ${sorted[k - 1].y} mm and y = ${sorted[k].y} mm. Move the two sections apart first.`;
+  if (k > 0) {
+    return tr('A section at y = {y} mm beyond the tip makes the span too long for the sections at y = {a} mm and y = {b} mm. Move the two sections apart first.', {
+      y: plain(sec.y),
+      a: plain(sorted[k - 1].y),
+      b: plain(sorted[k].y),
+    });
+  }
   return null;
 }
 

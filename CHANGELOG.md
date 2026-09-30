@@ -8,14 +8,38 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ### Added
 
+- Language: the interface speaks English or German. The list **Language / Sprache** in the first
+  group of the Settings tab switches every text without a reload; the project, the selection and the
+  undo history stay. The app starts in the stored choice, else in German when the first language of
+  the browser is German, else in English; the choice is stored in the browser under
+  `wingdesigner.language`. German texts: top bar, tabs, tooltips and accessible labels, status bar,
+  all tabs, the wizard, export, Help and airfoil preview dialogs, notices, Checks with build errors
+  and warnings, airfoil check messages, size warnings, export notices and the descriptions of the
+  library entries. German numbers use the decimal comma and a dot between thousand groups
+  (`1.234,5`). A notice that is showing disappears at a switch; an error notice stays until its
+  display time ends. The wiki link of Help opens the German user guide (Benutzerhandbuch) in the
+  German interface. The longer German labels take the top bar to a second row at a window width of
+  563 px or less (Chromium 141: 2 rows at 563 px, 1 row from 564 px). At 420 px or less the German
+  row wraps instead of scrolling sideways. File contents, airfoil names, attributions, license
+  identifiers and texts typed by the user are not translated. The English text is unchanged,
+  with one exception: the `<noscript>` line of `index.html` names both languages, because JavaScript
+  cannot translate it. The browser tests run with the locale `en-US`; `e2e/language.spec.js` (16
+  tests) sets `de-DE` in its block `German browser`.
+- `npm run i18n:check` (in continuous integration, CI): exit code 1 when a text in `src/` has no
+  German entry, a German entry is unused, key and entry differ in their `{placeholders}`, two areas
+  translate one text differently, an entry is neither text nor function, or a `tr()` call does not
+  start with a string literal.
 - Bundled airfoil library: Clark Y, USA 35B, NACA M-6 and NACA 8-H-12 from NACA report tables, RAF 34
   from a Royal Aircraft Establishment table reprinted by NACA, and S9104 (CC BY 4.0, Michael Selig).
   `public/airfoils/NOTICE.md` gives source, legal basis, conditions and attribution per file; the
   status outside the United States of the public-domain tables is not established.
-- Documentation in English and German: `README.md` and `README.de.md`, and 10 wiki pages (User Guide,
-  Geometry, File Formats, Airfoil Sources, Development, each in both languages) with 12 screenshots
-  from `npm run screenshots`. `npm run docs:check` (in CI) checks that every page has its
-  counterpart, that wiki links and images resolve, and that both README coverage tables are present.
+- Documentation in English and German: `README.md`, `README.de.md` and 10 wiki pages (User Guide,
+  Geometry, File Formats, Airfoil Sources, Development, each in both languages). The English pages
+  name the interface elements by their English labels and show English screenshots. The German wiki
+  pages name them by the German labels of the German interface, quote messages in German and show
+  German screenshots. `npm run screenshots` writes 24 images: 12 in `docs/wiki/images/` and 12 in
+  `docs/wiki/images/de/`. `npm run docs:check` (in CI) checks that every page has its counterpart,
+  that wiki links and images resolve, and that both README coverage tables are present.
 - Size warnings: above 200 sections, 200 airfoils, 5,000 points in one airfoil, 100,000 airfoil
   points, 500 points in an enabled guide curve, 60,000 loft grid points or 200-character names, one
   warning lists the sizes and the expected time and browser memory of each change; a toast shows it
@@ -41,6 +65,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ### Changed
 
+- File names of **Save**, **Export** and `.dat` downloads write German umlauts out, in both languages
+  (`Sportflügel` becomes `Sportfluegel`; `ü` became `u` before); other accents are dropped as before.
 - Minimum chord (profile depth) 1 mm instead of 0.01 mm, for every section, span position and pointed
   tip; the Sections table marks a tip chord held at the minimum with (min.) and shows the actual tip
   chord when both guide curves set it; guide ends more than 0.5 mm wider than the scaled tip chord
@@ -76,6 +102,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ### Fixed
 
+- Number fields read a typed decimal comma: `0,7` is 0.7 in both languages, not 7 (the native number
+  field of Chromium drops the comma). They are text fields with the role `spinbutton`, read a decimal
+  comma or point in both languages and the digit groups of the current language (`1.500` is 1500 in
+  German, `1,500` in English), and show a decimal comma in German. The wizard reads its fields the
+  same way; a field that holds no number disables **Create design**.
 - Wiki: links in table rows ([[Label|Page]]) split the table cell at the |; tables link with the page
   title alone. `npm run docs:check` reports a | inside a wiki link in a table row.
 - STEP faces of symmetric airfoils: the leading-edge split parameter snaps to an existing knot

@@ -12,6 +12,7 @@ Deutsch: [[Geometrie|Geometrie]]
 | Computed geometry | right half wing (y ≥ 0); the left half is its mirror image at the plane y = 0 |
 | Curves and surfaces | NURBS (Non-Uniform Rational B-Spline) with all weights 1, i.e. non-rational B-splines |
 | Algorithm numbers (A2.1 …) and equation numbers | Piegl and Tiller, *The NURBS Book*, 2nd edition, Springer 1997 |
+| Messages | The messages quoted on this page are the English texts of the app. The German interface writes them in German ([[Geometrie]]). The checks, limits and results are the same in both languages. |
 
 ## Symbols
 

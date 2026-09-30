@@ -1,24 +1,37 @@
-// Settings form: spanwise interpolation, twist pivot, trailing edge, resolution, display.
+// Settings form: language, spanwise interpolation, twist pivot, trailing edge, resolution, display.
 
 import { LIMITS } from '../model/project.js';
 import { WARN, costPhrase, loftGrid, projectSize } from '../model/budget.js';
+import { LANGUAGES, count, language, plain, tr } from '../i18n/index.js';
 import { clear, h, numberInput } from './dom.js';
+
+/** Label of the language list: the same in both languages, so it can be found in either. */
+const LANGUAGE_LABEL = 'Language / Sprache';
 
 /** Loft grid points of the current settings; above the warning threshold with time and memory. */
 function gridNote(project) {
   const g = project.guides ?? {};
   const grid = loftGrid(project.sections.length, project.settings, g.nose?.enabled || g.end?.enabled);
   const over = grid.points > WARN.gridPoints;
-  const reduced = grid.K < grid.Kset ? `, ${grid.K} spanwise stations per panel instead of ${grid.Kset}` : '';
-  const cost = over ? `; above ${WARN.gridPoints.toLocaleString('en')}, ${costPhrase(projectSize(project))}` : '';
-  return h('p', { class: `small ${over ? 'sev-warning' : 'muted'}` }, `Loft grid: ${grid.points.toLocaleString('en')} points${reduced}${cost}.`);
+  const reduced = grid.K < grid.Kset;
+  const points = count(grid.points);
+  const [K, Kset] = [plain(grid.K), plain(grid.Kset)];
+  const [limit, cost] = over ? [count(WARN.gridPoints), costPhrase(projectSize(project))] : [];
+  let text;
+  if (reduced && over) text = tr('Loft grid: {points} points, {K} spanwise stations per panel instead of {Kset}; above {limit}, {cost}.', { points, K, Kset, limit, cost });
+  else if (reduced) text = tr('Loft grid: {points} points, {K} spanwise stations per panel instead of {Kset}.', { points, K, Kset });
+  else if (over) text = tr('Loft grid: {points} points; above {limit}, {cost}.', { points, limit, cost });
+  else text = tr('Loft grid: {points} points.', { points });
+  return h('p', { class: `small ${over ? 'sev-warning' : 'muted'}` }, text);
 }
 
 export class SettingsPanel {
-  constructor(root, store, viewer) {
+  constructor(root, store, viewer, { onLanguage } = {}) {
     this.root = root;
     this.store = store;
     this.viewer = viewer;
+    // onLanguage(code): the choice of the language list.
+    this.onLanguage = onLanguage;
     this.render();
   }
 
@@ -29,80 +42,94 @@ export class SettingsPanel {
   render() {
     const s = this.store.project.settings;
     const set = (fn) => this.store.update((p) => fn(p.settings));
-    const select = (value, options, onChange, label) =>
+    // The key (not the label, which follows the language) names the list across re-renders, so
+    // keyboard focus stays on it.
+    const select = (value, options, onChange, label, key) =>
       h(
         'select',
-        // The label names the list across re-renders, so keyboard focus stays on it.
-        { 'aria-label': label, onchange: (e) => onChange(e.target.value), dataset: { focusKey: `set:${label}` } },
+        { 'aria-label': label, onchange: (e) => onChange(e.target.value), dataset: { focusKey: `set:${key}` } },
         options.map(([v, t]) => h('option', { value: v, selected: v === value }, t)),
       );
     clear(this.root).append(
       h(
         'fieldset',
+        { class: 'language' },
+        h('legend', {}, LANGUAGE_LABEL),
+        select(language(), Object.entries(LANGUAGES), (code) => this.onLanguage?.(code), LANGUAGE_LABEL, 'language'),
+      ),
+      h(
+        'fieldset',
         {},
-        h('legend', {}, 'Geometry'),
-        h('label', { class: 'field' }, 'Project name', h('input', { type: 'text', value: this.store.project.name, maxLength: LIMITS.maxName, dataset: { focusKey: 'set:name' }, onchange: (e) => this.store.update((p) => (p.name = e.target.value), { reason: 'meta' }) })),
+        h('legend', {}, tr('Geometry')),
+        h('label', { class: 'field' }, tr('Project name'), h('input', { type: 'text', value: this.store.project.name, maxLength: LIMITS.maxName, dataset: { focusKey: 'set:name' }, onchange: (e) => this.store.update((p) => (p.name = e.target.value), { reason: 'meta' }) })),
         h(
           'label',
           { class: 'field' },
-          'Spanwise interpolation',
+          tr('Spanwise interpolation'),
           select(
             s.spanwise,
             [
-              ['linear', 'Linear between sections (straight panels)'],
-              ['smooth', 'Smooth (natural cubic spline through sections)'],
+              ['linear', tr('Linear between sections (straight panels)')],
+              ['smooth', tr('Smooth (natural cubic spline through sections)')],
             ],
             (v) => set((q) => (q.spanwise = v)),
-            'Spanwise interpolation',
+            tr('Spanwise interpolation'),
+            'spanwise',
           ),
         ),
         h(
           'label',
           { class: 'field' },
-          'Twist pivot (fraction of chord)',
+          tr('Twist pivot (fraction of chord)'),
           numberInput({ focusKey: 'set:pivot', value: s.twistPivot, step: 0.05, min: 0, max: 1, onCommit: (v) => set((q) => (q.twistPivot = Math.min(Math.max(v, 0), 1))) }),
         ),
         h(
           'label',
           { class: 'field' },
-          'Trailing edge',
+          tr('Trailing edge'),
           select(
             s.trailingEdge.mode,
             [
-              ['asis', 'As in the airfoil files'],
-              ['closed', 'Closed (sharp)'],
-              ['thickness', 'Fixed thickness in mm'],
+              ['asis', tr('As in the airfoil files')],
+              ['closed', tr('Closed (sharp)')],
+              ['thickness', tr('Fixed thickness in mm')],
             ],
             (v) => set((q) => (q.trailingEdge = { ...q.trailingEdge, mode: v })),
-            'Trailing edge mode',
+            tr('Trailing edge mode'),
+            'trailingEdge',
           ),
         ),
         h(
           'label',
           { class: 'field' },
-          'Wing tip',
+          tr('Wing tip'),
           select(
             s.tip.mode,
             [
-              ['flat', 'Flat (cut at the tip section)'],
-              ['pointed', 'Pointed (tip profile scaled down)'],
+              ['flat', tr('Flat (cut at the tip section)')],
+              ['pointed', tr('Pointed (tip profile scaled down)')],
             ],
             (v) => set((q) => (q.tip = { ...q.tip, mode: v })),
-            'Wing tip',
+            tr('Wing tip'),
+            'tipMode',
           ),
         ),
         s.tip.mode === 'pointed'
           ? h(
               'label',
               { class: 'field' },
-              `Tip profile scale 1 : N of the previous section chord (N = ${Math.round(1 / LIMITS.tipRatio[1])} to ${Math.round(1 / LIMITS.tipRatio[0])}; tip chord at least ${LIMITS.minChord} mm)`,
+              tr('Tip profile scale 1 : N of the previous section chord (N = {min} to {max}; tip chord at least {chord} mm)', {
+                min: plain(Math.round(1 / LIMITS.tipRatio[1])),
+                max: plain(Math.round(1 / LIMITS.tipRatio[0])),
+                chord: plain(LIMITS.minChord),
+              }),
               numberInput({
                 focusKey: 'set:tip',
                 value: Math.round(1 / s.tip.ratio),
                 step: 50,
                 min: Math.round(1 / LIMITS.tipRatio[1]),
                 max: Math.round(1 / LIMITS.tipRatio[0]),
-                title: 'Tip profile scale denominator',
+                title: tr('Tip profile scale denominator'),
                 onCommit: (v) => {
                   const nDen = Math.min(Math.max(Math.round(v), 1 / LIMITS.tipRatio[1]), 1 / LIMITS.tipRatio[0]);
                   set((q) => (q.tip = { ...q.tip, ratio: 1 / nDen }));
@@ -114,7 +141,7 @@ export class SettingsPanel {
           ? h(
               'label',
               { class: 'field' },
-              'Trailing-edge thickness (mm)',
+              tr('Trailing-edge thickness (mm)'),
               numberInput({ focusKey: 'set:te', value: s.trailingEdge.thickness, step: 0.1, min: 0, onCommit: (v) => set((q) => (q.trailingEdge = { ...q.trailingEdge, thickness: Math.max(0, v) })) }),
             )
           : null,
@@ -122,11 +149,11 @@ export class SettingsPanel {
       h(
         'fieldset',
         {},
-        h('legend', {}, 'Resolution'),
+        h('legend', {}, tr('Resolution')),
         h(
           'label',
           { class: 'field' },
-          `Chordwise stations per surface (${LIMITS.chordSamples.join('-')})`,
+          tr('Chordwise stations per surface ({min}-{max})', { min: plain(LIMITS.chordSamples[0]), max: plain(LIMITS.chordSamples[1]) }),
           numberInput({
             focusKey: 'set:chord',
             value: s.chordSamples,
@@ -139,7 +166,7 @@ export class SettingsPanel {
         h(
           'label',
           { class: 'field' },
-          `Spanwise stations per panel with guides or smooth mode (${LIMITS.panelStations.join('-')})`,
+          tr('Spanwise stations per panel with guides or smooth mode ({min}-{max})', { min: plain(LIMITS.panelStations[0]), max: plain(LIMITS.panelStations[1]) }),
           numberInput({
             focusKey: 'set:panel',
             value: s.panelStations,
@@ -153,23 +180,24 @@ export class SettingsPanel {
         h(
           'label',
           { class: 'field' },
-          'Profile parametrization',
+          tr('Profile parametrization'),
           select(
             s.parametrization,
             [
-              ['centripetal', 'Centripetal (recommended)'],
-              ['chord', 'Chord length'],
-              ['uniform', 'Uniform'],
+              ['centripetal', tr('Centripetal (recommended)')],
+              ['chord', tr('Chord length')],
+              ['uniform', tr('Uniform')],
             ],
             (v) => set((q) => (q.parametrization = v)),
-            'Profile parametrization',
+            tr('Profile parametrization'),
+            'parametrization',
           ),
         ),
       ),
       h(
         'fieldset',
         {},
-        h('legend', {}, 'Display'),
+        h('legend', {}, tr('Display')),
         h(
           'label',
           { class: 'check' },
@@ -180,19 +208,19 @@ export class SettingsPanel {
             // Display only: the wing is drawn again from the current build.
             onchange: (e) => this.store.update((p) => (p.settings.mirror = e.target.checked), { reason: 'display' }),
           }),
-          'Show mirrored half (y < 0)',
+          tr('Show mirrored half (y < 0)'),
         ),
         h(
           'label',
           { class: 'check' },
           h('input', { type: 'checkbox', checked: this.viewer.options.controlNet, dataset: { focusKey: 'set:controlNet' }, onchange: (e) => this.viewer.setOption('controlNet', e.target.checked) }),
-          'Show NURBS control net',
+          tr('Show NURBS control net'),
         ),
         h(
           'label',
           { class: 'check' },
           h('input', { type: 'checkbox', checked: this.viewer.options.sections, dataset: { focusKey: 'set:sections' }, onchange: (e) => this.viewer.setOption('sections', e.target.checked) }),
-          'Show section outlines',
+          tr('Show section outlines'),
         ),
       ),
     );

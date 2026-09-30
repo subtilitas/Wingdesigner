@@ -470,14 +470,14 @@ test.describe('Settings tab', () => {
     expect(json.name).toBe('My_Wing_7.json');
     expect(JSON.parse(json.text).name).toBe('My Wing 7');
 
-    // Non-ASCII letters lose their accents, other characters become "_".
+    // German umlauts and ß are written out (ü → ue), other accents are dropped, other characters become "_".
     await openTab(page, 'Settings');
     await commit(projectName(page), 'Flügel / Nr. 2');
     await expect.poll(async () => (await savedProject(page)).name).toBe('Flügel / Nr. 2');
     const saved = await saveProject(page);
-    expect(saved.name).toBe('Flugel_Nr._2.json');
+    expect(saved.name).toBe('Fluegel_Nr._2.json');
     expect(JSON.parse(saved.bytes.toString('utf8')).name).toBe('Flügel / Nr. 2');
-    expect((await exportAs('3mf')).name).toBe('Flugel_Nr._2.3mf');
+    expect((await exportAs('3mf')).name).toBe('Fluegel_Nr._2.3mf');
 
     // An empty name falls back to "wing".
     await openTab(page, 'Settings');

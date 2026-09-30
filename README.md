@@ -46,6 +46,7 @@ Browser application for designing wings of radio-controlled (RC) model aircraft.
 | Project size | Above a warning threshold the wing builds as usual. **Checks** adds one warning: `Large project: …`, listing each size above its threshold with `(warning above …)`, followed by the estimated time and browser memory of each change (`Each change takes … and … of browser memory.`). When the first build (**Open**, restored autosave, a change of **Profile parametrization**) takes at least 1 s longer than a change, the warning adds `Opening it or changing the profile parametrization takes ….`; estimate: time of a change plus 4.4 ms per airfoil that a section uses plus 30 µs per point of these airfoils (Node.js 24; 20,000 linear sections at 16 stations per surface and 10,000 airfoils of 99 points: `about 83 s`). A message shows the same text when an edit, **Open** or the restored autosave takes a size above its threshold. Estimates: linear fits to measurements in Chromium 141 (see Current limitations). | Warning above: 200 sections, 200 airfoils, 5000 points in one airfoil, 100,000 airfoil points in all, 500 points in an enabled guide curve, 60,000 loft grid points, 2,000,000 export triangles or 1,000,000 STEP control points (export dialog), 200 characters in a name. Hard limits, where a desktop browser tab runs out of memory or a change takes about a minute: 20,000 sections, 10,000 airfoils, 100,000 points in one airfoil, 1,000,000 airfoil points in all, 20,000 points per guide curve, 5,000,000 loft grid points, 10,000,000 export triangles, 3,000,000 STEP control points, 10,000 characters in a name, 200 characters in an id, 2000 characters in an airfoil source text, 100 MB per project file. Lists and messages show the first 200 characters of a name followed by `…`. |
 | Input | Mouse, touchscreen, keyboard. 3D view: drag rotates, wheel or pinch zooms, right button or 2 fingers pan. 2D views (planform, previews): drag a point to move it, drag the background to pan, wheel or pinch zooms, 2 fingers pan, double-click fits. | Undo: Ctrl+Z or Cmd+Z; redo: Ctrl+Shift+Z, Cmd+Shift+Z, Ctrl+Y or Cmd+Y. Shortcuts are ignored while an input field has focus or a dialog is open. Undo history: at most 100 steps and at most 64,000,000 characters of serialized project (undo and redo together); a project above 640,000 characters keeps fewer steps, at least 1. One drag forms 1 undo step, however long it pauses; an action that changes nothing adds no undo step. |
 | Storage | Autosave to browser local storage after every change that passes project validation, with the rebuild in the next animation frame; a pending save is written at once when the page is hidden or left (reload, closing the tab). A stored project that fails to load is kept under `wingdesigner.project.v1.rejected`, and the wizard opens. Nothing is saved while the first-run wizard is open. **Save** downloads the project JSON. **Open** opens a project file. When browser storage refuses the project, a message says so and the status bar shows `Autosave off: use Save` until an autosave succeeds. | Local storage unavailable: the project stays in memory only. Browser storage: about 5,000,000 characters per site. **Open**: files above 100 MB are rejected before reading. |
+| Language | English and German, chosen with **Language / Sprache** in the first group of **Settings**. The texts switch without a reload: top bar, tabs, tooltips, **Checks** with the build errors and warnings, airfoil check messages, size warnings. Later notices and dialogs opened later use the new language. A notice that is showing at the switch is removed; an error notice stays in its language until it fades. Numbers follow the language (German `1.234,5`). Number fields read a decimal comma or a decimal point in both languages (`0,7` and `0.7` are 0.7) and digit groups of the language (1500 comes from `1,500` in English, from `1.500` in German). Not translated: file contents, airfoil names, attributions, license identifiers. | Starts with the stored choice; without one in German when the first language of the browser is German, otherwise in English. Stored in the browser under `wingdesigner.language`. Project, selection and undo history stay. File names of downloads write umlauts out in both languages (`ü` becomes `ue`). Details: [User Guide](https://github.com/subtilitas/Wingdesigner/wiki/User-Guide), section Language. |
 
 ### Wizard inputs
 
@@ -75,13 +76,16 @@ Browser application for designing wings of radio-controlled (RC) model aircraft.
 
 File name, derived from the project name:
 
-1. Accents removed (ü → u).
-2. Each run of characters other than `A-Z a-z 0-9 . _ -` becomes one `_`.
-3. Leading and trailing `_` removed.
-4. Cut to the first 120 characters.
-5. Empty result: `wing`.
+1. German umlauts written out: ä → ae, ö → oe, ü → ue, Ä → Ae, Ö → Oe, Ü → Ue, ß → ss.
+2. Other accents removed (é → e, ñ → n).
+3. Each run of characters other than `A-Z a-z 0-9 . _ -` becomes one `_`.
+4. Leading and trailing `_` removed.
+5. Cut to the first 120 characters.
+6. Empty result: `wing`.
 
-Example: `Flügel V2 (neu)` → `Flugel_V2_neu.step`.
+The rule is the same in the English and the German interface.
+
+Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 
 | Format | File | Content | Verification |
 | --- | --- | --- | --- |
@@ -198,11 +202,11 @@ Version history: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # browser for end-to-end (e2e) tests and screenshots (or set PW_CHROMIUM=/path/to/chrome)
 npm run dev              # development server on http://localhost:5173
-npm test                 # 282 unit tests (Vitest)
+npm test                 # 371 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
-npm run e2e              # production build, then 149 Playwright tests on desktop 1280 x 720 and Pixel 7 (298 runs)
+npm run e2e              # production build, then 165 Playwright tests on desktop 1280 x 720 and Pixel 7 (330 runs)
 npm run coverage         # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage tables into README.md and README.de.md
 npm run coverage:check   # exit code 1 when a README coverage table differs from coverage/
@@ -211,6 +215,7 @@ npm run step:cases       # write 8 STEP files, 8 3MF files and cases.json to ste
 npm run screenshots      # rebuild and regenerate docs/wiki/images/
 npm run docs:check       # check page pairs, wiki links, images and coverage markers
 npm run counts:check     # compare the test counts in README, RECORD and wiki with the suites
+npm run i18n:check       # check the German translation of every text
 pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0         # Python 3.12
 python scripts/validate_step.py step-check/cases.json   # validate the STEP files with OpenCascade
 python scripts/validate_3mf.py step-check/cases.json    # validate the 3MF files with lib3mf (strict mode)
@@ -224,7 +229,7 @@ The Playwright tests run the DOM (Document Object Model) code; its coverage is n
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 97.8 % | 92.2 % | 99.2 % | 98.8 % |
+| 97.8 % | 93.0 % | 98.1 % | 98.8 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

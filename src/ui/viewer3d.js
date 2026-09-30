@@ -7,6 +7,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { surfaceDerivatives1, surfaceDerivatives1Grid, surfacePoint, surfacePointGrid } from '../geom/nurbs.js';
 import { stripTriangulate } from '../geom/triangulate.js';
 import { MAX_EDGE_SAMPLES, edgeParams, refine, thinParams } from '../geom/sampling.js';
+import { tr } from '../i18n/index.js';
 
 function cross(a, b) {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -169,7 +170,7 @@ export class Viewer3D {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.domElement.style.touchAction = 'none';
-    this.renderer.domElement.setAttribute('aria-label', '3D wing view. Drag to rotate, pinch or scroll to zoom, two fingers or right mouse button to pan.');
+    this.updateLabels();
     container.append(this.renderer.domElement);
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(35, 1, 1, 1e6);
@@ -203,6 +204,11 @@ export class Viewer3D {
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
+  }
+
+  /** Set the texts of the view in the current language; call again after the language changes. */
+  updateLabels() {
+    this.renderer.domElement.setAttribute('aria-label', tr('3D wing view. Drag to rotate, pinch or scroll to zoom, two fingers or right mouse button to pan.'));
   }
 
   resize() {

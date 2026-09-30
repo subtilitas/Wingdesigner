@@ -7,6 +7,7 @@
 
 import { defaultGuides } from '../geom/guide.js';
 import { MAX_NAME, MAX_POINTS } from '../airfoil/parse.js';
+import { count, plain, tr, whole } from '../i18n/index.js';
 
 export const FORMAT = 'wingdesigner-project';
 export const VERSION = 1;
@@ -88,9 +89,6 @@ export function resolveSettings(settings) {
   };
 }
 
-/** A count with thousands separators. */
-const count = (v) => v.toLocaleString('en');
-
 /** A text value for messages: at most 40 characters. */
 const shown = (v) => {
   const t = String(v);
@@ -104,7 +102,7 @@ function isObject(v) {
 /**
  * Create a project from airfoils and sections; guides default to the section edges (disabled).
  */
-export function createProject({ name = 'Untitled wing', airfoils, sections, guides, settings } = {}) {
+export function createProject({ name = tr('Untitled wing'), airfoils, sections, guides, settings } = {}) {
   const secs = sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, twist: 0, z: 0, ...s }));
   return {
     format: FORMAT,
@@ -139,21 +137,21 @@ export function limitErrors(p) {
   const errors = [];
   const sections = Array.isArray(p?.sections) ? p.sections : [];
   // Counts first: an oversized array is rejected without visiting every entry.
-  if (sections.length > LIMITS.maxSections) return [`At most ${count(LIMITS.maxSections)} sections are supported (found ${count(sections.length)}).`];
+  if (sections.length > LIMITS.maxSections) return [tr('At most {max} sections are supported (found {found}).', { max: count(LIMITS.maxSections), found: count(sections.length) })];
   sections.forEach((s, i) => {
     if (!isObject(s)) return;
-    if (isNum(s.chord) && s.chord > LIMITS.maxChord) errors.push(`Section ${i + 1}: chord must be at most ${LIMITS.maxChord} mm.`);
+    if (isNum(s.chord) && s.chord > LIMITS.maxChord) errors.push(tr('Section {n}: chord must be at most {max} mm.', { n: plain(i + 1), max: whole(LIMITS.maxChord) }));
     for (const k of ['x', 'y', 'z']) {
-      if (isNum(s[k]) && Math.abs(s[k]) > LIMITS.maxCoordinate) errors.push(`Section ${i + 1}: ${k} must be within ±${LIMITS.maxCoordinate} mm.`);
+      if (isNum(s[k]) && Math.abs(s[k]) > LIMITS.maxCoordinate) errors.push(tr('Section {n}: {axis} must be within ±{max} mm.', { n: plain(i + 1), axis: k, max: whole(LIMITS.maxCoordinate) }));
     }
-    if (isNum(s.twist) && Math.abs(s.twist) > LIMITS.maxTwist) errors.push(`Section ${i + 1}: twist must be within ±${LIMITS.maxTwist} degrees.`);
+    if (isNum(s.twist) && Math.abs(s.twist) > LIMITS.maxTwist) errors.push(tr('Section {n}: twist must be within ±{max} degrees.', { n: plain(i + 1), max: plain(LIMITS.maxTwist) }));
   });
   for (const key of ['nose', 'end']) {
     const g = isObject(p?.guides) ? p.guides[key] : null;
     if (!isObject(g) || !Array.isArray(g.points)) continue;
-    if (g.points.length > LIMITS.maxGuidePoints) errors.push(`guides.${key}.points: at most ${count(LIMITS.maxGuidePoints)} points (found ${count(g.points.length)}).`);
+    if (g.points.length > LIMITS.maxGuidePoints) errors.push(tr('guides.{key}.points: at most {max} points (found {found}).', { key, max: count(LIMITS.maxGuidePoints), found: count(g.points.length) }));
     else if (g.points.some((q) => Array.isArray(q) && (Math.abs(q[0]) > LIMITS.maxGuideCoordinate || Math.abs(q[1]) > LIMITS.maxCoordinate))) {
-      errors.push(`guides.${key}.points: x must be within ±${LIMITS.maxGuideCoordinate} mm and y within ±${LIMITS.maxCoordinate} mm.`);
+      errors.push(tr('guides.{key}.points: x must be within ±{maxX} mm and y within ±{maxY} mm.', { key, maxX: whole(LIMITS.maxGuideCoordinate), maxY: whole(LIMITS.maxCoordinate) }));
     }
   }
   return errors;
@@ -165,69 +163,71 @@ export function limitErrors(p) {
  */
 export function validateProject(p) {
   const errors = [];
-  if (!p || typeof p !== 'object') return { ok: false, errors: ['Project is not an object.'] };
-  if (p.format !== FORMAT) errors.push(`format must be "${FORMAT}".`);
-  if (p.units !== undefined && p.units !== 'mm') errors.push(`units must be "mm" (found "${p.units}").`);
-  if (p.settings !== undefined && !isObject(p.settings)) errors.push('settings must be an object.');
-  if (p.guides !== undefined && p.guides !== null && !isObject(p.guides)) errors.push('guides must be an object.');
-  if (!Number.isInteger(p.version) || p.version < 1 || p.version > VERSION) errors.push(`Unsupported project version ${p.version}.`);
-  if (!Array.isArray(p.airfoils) || p.airfoils.length === 0) errors.push('airfoils must be a non-empty array.');
-  else if (p.airfoils.length > LIMITS.maxAirfoils) errors.push(`At most ${count(LIMITS.maxAirfoils)} airfoils are supported (found ${count(p.airfoils.length)}).`);
-  if (!Array.isArray(p.sections) || p.sections.length < 2) errors.push('At least 2 sections are required.');
-  else if (p.sections.length > LIMITS.maxSections) errors.push(`At most ${count(LIMITS.maxSections)} sections are supported (found ${count(p.sections.length)}).`);
-  if (!errors.length && !p.airfoils.every(isObject)) errors.push('Every airfoil must be an object.');
+  if (!p || typeof p !== 'object') return { ok: false, errors: [tr('Project is not an object.')] };
+  if (p.format !== FORMAT) errors.push(tr('format must be "{format}".', { format: FORMAT }));
+  if (p.units !== undefined && p.units !== 'mm') errors.push(tr('units must be "mm" (found "{found}").', { found: p.units }));
+  if (p.settings !== undefined && !isObject(p.settings)) errors.push(tr('settings must be an object.'));
+  if (p.guides !== undefined && p.guides !== null && !isObject(p.guides)) errors.push(tr('guides must be an object.'));
+  if (!Number.isInteger(p.version) || p.version < 1 || p.version > VERSION) errors.push(tr('Unsupported project version {version}.', { version: p.version }));
+  if (!Array.isArray(p.airfoils) || p.airfoils.length === 0) errors.push(tr('airfoils must be a non-empty array.'));
+  else if (p.airfoils.length > LIMITS.maxAirfoils) errors.push(tr('At most {max} airfoils are supported (found {found}).', { max: count(LIMITS.maxAirfoils), found: count(p.airfoils.length) }));
+  if (!Array.isArray(p.sections) || p.sections.length < 2) errors.push(tr('At least 2 sections are required.'));
+  else if (p.sections.length > LIMITS.maxSections) errors.push(tr('At most {max} sections are supported (found {found}).', { max: count(LIMITS.maxSections), found: count(p.sections.length) }));
+  if (!errors.length && !p.airfoils.every(isObject)) errors.push(tr('Every airfoil must be an object.'));
   if (!errors.length && airfoilPoints(p) > LIMITS.maxAirfoilPoints) {
-    errors.push(`The airfoils hold ${count(airfoilPoints(p))} points together; the limit is ${count(LIMITS.maxAirfoilPoints)}.`);
+    errors.push(tr('The airfoils hold {n} points together; the limit is {max}.', { n: count(airfoilPoints(p)), max: count(LIMITS.maxAirfoilPoints) }));
   }
-  if (!errors.length && !p.sections.every(isObject)) errors.push('Every section must be an object.');
+  if (!errors.length && !p.sections.every(isObject)) errors.push(tr('Every section must be an object.'));
   if (errors.length) return { ok: false, errors };
-  if (typeof p.name === 'string' && p.name.length > LIMITS.maxName) errors.push(`name has ${count(p.name.length)} characters; the limit is ${count(LIMITS.maxName)}.`);
+  if (typeof p.name === 'string' && p.name.length > LIMITS.maxName) errors.push(tr('name has {n} characters; the limit is {max}.', { n: count(p.name.length), max: count(LIMITS.maxName) }));
   const ids = new Set();
   p.airfoils.forEach((a, i) => {
     // Ids and names are checked for length first: messages quote them.
-    if (typeof a.id !== 'string' || !a.id) errors.push(`Airfoil ${i + 1}: id must be a non-empty string.`);
-    else if (a.id.length > LIMITS.maxId) errors.push(`Airfoil ${i + 1}: id has ${a.id.length} characters; the limit is ${LIMITS.maxId}.`);
-    else if (ids.has(a.id)) errors.push(`Duplicate airfoil id "${a.id}".`);
+    const n = plain(i + 1);
+    if (typeof a.id !== 'string' || !a.id) errors.push(tr('Airfoil {n}: id must be a non-empty string.', { n }));
+    else if (a.id.length > LIMITS.maxId) errors.push(tr('Airfoil {n}: id has {length} characters; the limit is {max}.', { n, length: whole(a.id.length), max: whole(LIMITS.maxId) }));
+    else if (ids.has(a.id)) errors.push(tr('Duplicate airfoil id "{id}".', { id: a.id }));
     else ids.add(a.id);
-    const at = `Airfoil ${i + 1}`;
-    if (a.name !== undefined && typeof a.name !== 'string') errors.push(`${at}: name must be a string.`);
-    else if (a.name?.length > LIMITS.maxName) errors.push(`${at}: name has ${count(a.name.length)} characters; the limit is ${count(LIMITS.maxName)}.`);
+    if (a.name !== undefined && typeof a.name !== 'string') errors.push(tr('Airfoil {n}: name must be a string.', { n }));
+    else if (a.name?.length > LIMITS.maxName) errors.push(tr('Airfoil {n}: name has {length} characters; the limit is {max}.', { n, length: count(a.name.length), max: count(LIMITS.maxName) }));
     if (a.source !== undefined && a.source !== null) {
-      if (!isObject(a.source)) errors.push(`${at}: source must be an object.`);
+      if (!isObject(a.source)) errors.push(tr('Airfoil {n}: source must be an object.', { n }));
       else {
         for (const k of SOURCE_KEYS) {
           const v = a.source[k];
           if (v === undefined || v === null || typeof v === 'boolean') continue;
-          if (typeof v !== 'string') errors.push(`${at}: source.${k} must be a string.`);
-          else if (v.length > LIMITS.maxText) errors.push(`${at}: source.${k} has ${v.length} characters; the limit is ${LIMITS.maxText}.`);
+          if (typeof v !== 'string') errors.push(tr('Airfoil {n}: source.{key} must be a string.', { n, key: k }));
+          else if (v.length > LIMITS.maxText) errors.push(tr('Airfoil {n}: source.{key} has {length} characters; the limit is {max}.', { n, key: k, length: whole(v.length), max: whole(LIMITS.maxText) }));
         }
       }
     }
-    if (!Array.isArray(a.points) || a.points.length < 5) errors.push(`${at} needs at least 5 numeric [x, y] points.`);
+    if (!Array.isArray(a.points) || a.points.length < 5) errors.push(tr('Airfoil {n} needs at least 5 numeric [x, y] points.', { n }));
     // The airfoil file limit applies to project files too.
-    else if (a.points.length > LIMITS.maxPointsPerAirfoil) errors.push(`${at} has ${count(a.points.length)} points; the limit is ${count(LIMITS.maxPointsPerAirfoil)}.`);
-    else if (!a.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(`${at} needs at least 5 numeric [x, y] points.`);
+    else if (a.points.length > LIMITS.maxPointsPerAirfoil) errors.push(tr('Airfoil {n} has {length} points; the limit is {max}.', { n, length: count(a.points.length), max: count(LIMITS.maxPointsPerAirfoil) }));
+    else if (!a.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(tr('Airfoil {n} needs at least 5 numeric [x, y] points.', { n }));
   });
   const secIds = new Set();
   p.sections.forEach((s, i) => {
+    const n = plain(i + 1);
     for (const k of ['x', 'y', 'z', 'chord', 'twist']) {
-      if (!isNum(s[k])) errors.push(`Section ${i + 1}: ${k} must be a finite number.`);
+      // The message names x, y and z as they are, chord and twist as words.
+      if (!isNum(s[k])) errors.push(tr('Section {n}: {field} must be a finite number.', { n, field: k === 'chord' ? tr('chord') : k === 'twist' ? tr('twist') : k }));
     }
-    if (isNum(s.chord) && s.chord < LIMITS.minChord) errors.push(`Section ${i + 1}: chord must be at least ${LIMITS.minChord} mm.`);
-    if (isNum(s.y) && s.y < 0) errors.push(`Section ${i + 1}: y must be >= 0 (the half wing lies on the +y side).`);
-    if (!ids.has(s.airfoil)) errors.push(`Section ${i + 1}: unknown airfoil "${shown(s.airfoil)}".`);
+    if (isNum(s.chord) && s.chord < LIMITS.minChord) errors.push(tr('Section {n}: chord must be at least {min} mm.', { n, min: plain(LIMITS.minChord) }));
+    if (isNum(s.y) && s.y < 0) errors.push(tr('Section {n}: y must be >= 0 (the half wing lies on the +y side).', { n }));
+    if (!ids.has(s.airfoil)) errors.push(tr('Section {n}: unknown airfoil "{id}".', { n, id: shown(s.airfoil) }));
     // Sections without an id get "s<n>" on import; check the effective id.
     const id = s.id ?? `s${i + 1}`;
-    if (typeof id !== 'string' || !id) errors.push(`Section ${i + 1}: id must be a non-empty string.`);
-    else if (id.length > LIMITS.maxId) errors.push(`Section ${i + 1}: id has ${id.length} characters; the limit is ${LIMITS.maxId}.`);
-    else if (secIds.has(id)) errors.push(`Duplicate section id "${id}".`);
+    if (typeof id !== 'string' || !id) errors.push(tr('Section {n}: id must be a non-empty string.', { n }));
+    else if (id.length > LIMITS.maxId) errors.push(tr('Section {n}: id has {length} characters; the limit is {max}.', { n, length: whole(id.length), max: whole(LIMITS.maxId) }));
+    else if (secIds.has(id)) errors.push(tr('Duplicate section id "{id}".', { id }));
     secIds.add(id);
   });
   errors.push(...limitErrors(p));
   const ys = p.sections.map((s) => s.y).sort((a, b) => a - b);
   for (let i = 1; i < ys.length; i++) {
     if (!(ys[i] > ys[i - 1])) {
-      errors.push('Section span positions y must be distinct.');
+      errors.push(tr('Section span positions y must be distinct.'));
       break;
     }
   }
@@ -236,41 +236,41 @@ export function validateProject(p) {
   if (isObject(p.settings)) {
     for (const k of ['trailingEdge', 'tip']) {
       const v = p.settings[k];
-      if (v !== undefined && v !== null && !isObject(v)) errors.push(`settings.${k} must be an object.`);
+      if (v !== undefined && v !== null && !isObject(v)) errors.push(tr('settings.{key} must be an object.', { key: k }));
     }
   }
   const st = resolveSettings(p.settings);
-  if (!['linear', 'smooth'].includes(st.spanwise)) errors.push('settings.spanwise must be "linear" or "smooth".');
-  if (!['asis', 'closed', 'thickness'].includes(st.trailingEdge.mode)) errors.push('settings.trailingEdge.mode must be "asis", "closed" or "thickness".');
-  if (!isNum(st.trailingEdge.thickness) || st.trailingEdge.thickness < 0) errors.push('settings.trailingEdge.thickness must be >= 0.');
-  if (!['flat', 'pointed'].includes(st.tip.mode)) errors.push('settings.tip.mode must be "flat" or "pointed".');
+  if (!['linear', 'smooth'].includes(st.spanwise)) errors.push(tr('settings.spanwise must be "linear" or "smooth".'));
+  if (!['asis', 'closed', 'thickness'].includes(st.trailingEdge.mode)) errors.push(tr('settings.trailingEdge.mode must be "asis", "closed" or "thickness".'));
+  if (!isNum(st.trailingEdge.thickness) || st.trailingEdge.thickness < 0) errors.push(tr('settings.trailingEdge.thickness must be >= 0.'));
+  if (!['flat', 'pointed'].includes(st.tip.mode)) errors.push(tr('settings.tip.mode must be "flat" or "pointed".'));
   if (!isNum(st.tip.ratio) || st.tip.ratio < LIMITS.tipRatio[0] || st.tip.ratio > LIMITS.tipRatio[1]) {
-    errors.push(`settings.tip.ratio must be within ${LIMITS.tipRatio.join('..')} (1/1000 to 1/100).`);
+    errors.push(tr('settings.tip.ratio must be within {range} (1/1000 to 1/100).', { range: LIMITS.tipRatio.map(plain).join('..') }));
   }
-  if (!isNum(st.twistPivot) || st.twistPivot < 0 || st.twistPivot > 1) errors.push('settings.twistPivot must be within 0..1.');
+  if (!isNum(st.twistPivot) || st.twistPivot < 0 || st.twistPivot > 1) errors.push(tr('settings.twistPivot must be within 0..1.'));
   if (!Number.isInteger(st.chordSamples) || st.chordSamples < LIMITS.chordSamples[0] || st.chordSamples > LIMITS.chordSamples[1]) {
-    errors.push(`settings.chordSamples must be an integer within ${LIMITS.chordSamples.join('..')}.`);
+    errors.push(tr('settings.chordSamples must be an integer within {range}.', { range: LIMITS.chordSamples.map(plain).join('..') }));
   }
   if (!Number.isInteger(st.panelStations) || st.panelStations < LIMITS.panelStations[0] || st.panelStations > LIMITS.panelStations[1]) {
-    errors.push(`settings.panelStations must be an integer within ${LIMITS.panelStations.join('..')}.`);
+    errors.push(tr('settings.panelStations must be an integer within {range}.', { range: LIMITS.panelStations.map(plain).join('..') }));
   }
-  if (!['uniform', 'chord', 'centripetal'].includes(st.parametrization)) errors.push('settings.parametrization must be uniform, chord or centripetal.');
-  if (typeof st.mirror !== 'boolean') errors.push('settings.mirror must be true or false.');
+  if (!['uniform', 'chord', 'centripetal'].includes(st.parametrization)) errors.push(tr('settings.parametrization must be uniform, chord or centripetal.'));
+  if (typeof st.mirror !== 'boolean') errors.push(tr('settings.mirror must be true or false.'));
   if (p.guides) {
     for (const key of ['nose', 'end']) {
       const g = p.guides[key];
       if (g === undefined || g === null) continue;
       if (!isObject(g)) {
-        errors.push(`guides.${key} must be an object.`);
+        errors.push(tr('guides.{key} must be an object.', { key }));
         continue;
       }
-      if (g.enabled !== undefined && typeof g.enabled !== 'boolean') errors.push(`guides.${key}.enabled must be true or false.`);
-      if (g.edited !== undefined && typeof g.edited !== 'boolean') errors.push(`guides.${key}.edited must be true or false.`);
-      if (!['fit', 'control'].includes(g.mode)) errors.push(`guides.${key}.mode must be "fit" or "control".`);
-      if (!Array.isArray(g.points) || g.points.length < 2) errors.push(`guides.${key}.points needs at least 2 points.`);
+      if (g.enabled !== undefined && typeof g.enabled !== 'boolean') errors.push(tr('guides.{key}.enabled must be true or false.', { key }));
+      if (g.edited !== undefined && typeof g.edited !== 'boolean') errors.push(tr('guides.{key}.edited must be true or false.', { key }));
+      if (!['fit', 'control'].includes(g.mode)) errors.push(tr('guides.{key}.mode must be "fit" or "control".', { key }));
+      if (!Array.isArray(g.points) || g.points.length < 2) errors.push(tr('guides.{key}.points needs at least 2 points.', { key }));
       else if (g.points.length > LIMITS.maxGuidePoints) continue; // reported by limitErrors without visiting the points
-      else if (!g.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(`guides.${key}.points must be numeric [x, y] pairs.`);
-      if (g.degree !== undefined && (!Number.isInteger(g.degree) || g.degree < 1 || g.degree > 5)) errors.push(`guides.${key}.degree must be 1..5.`);
+      else if (!g.points.every((q) => Array.isArray(q) && isNum(q[0]) && isNum(q[1]))) errors.push(tr('guides.{key}.points must be numeric [x, y] pairs.', { key }));
+      if (g.degree !== undefined && (!Number.isInteger(g.degree) || g.degree < 1 || g.degree > 5)) errors.push(tr('guides.{key}.degree must be 1..5.', { key }));
     }
   }
   return { ok: errors.length === 0, errors };

@@ -1,0 +1,65 @@
+// German text for src/ui/sections.js, src/ui/planform.js, src/ui/panzoom.js, src/ui/store.js: English key -> German text with the same {placeholders},
+// or a function of the params. See src/i18n/index.js. (panzoom.js and store.js show no text.)
+export default {
+  // Sections table: columns and their tooltips
+  Section: 'Schnitt',
+  Airfoil: 'Profil',
+  Chord: 'Tiefe',
+  Twist: 'Schränkung',
+  deg: '°',
+  'Span position of the section plane': 'Spannweitenposition der Schnittebene',
+  'Leading-edge position, chordwise (positive aft = sweep back)': 'Lage der Profilnase in Profiltiefenrichtung (positiv nach hinten = Pfeilung nach hinten)',
+  'Leading-edge height (dihedral)': 'Höhe der Profilnase (V-Form)',
+  'Chord length (profile scale)': 'Profiltiefe (Maßstab des Profils)',
+  'Twist about the pivot; positive = leading edge up': 'Schränkung um den Drehpunkt; positiv = Nase hoch',
+
+  // Sections table: rows, notes and buttons
+  'Airfoil of section {n}': 'Profil des Schnitts {n}',
+  'Pointed tip: chord scaled from the previous section, at least {min} mm': 'Spitzes Flügelende: Profiltiefe aus dem vorherigen Schnitt skaliert, mindestens {min} mm',
+  'tip: {chord}': 'Randtiefe: {chord}',
+  'tip: {chord} (min.)': 'Randtiefe: {chord} (min.)',
+  'Value set by the guide curve': 'Wert von der Leitkurve vorgegeben',
+  'guide: {value}': 'Leitkurve: {value}',
+  'Insert a section after this one': 'Einen Schnitt nach diesem einfügen',
+  'Insert a section after this one. With {n} sections, {cost}.': 'Einen Schnitt nach diesem einfügen. Mit {n} Schnitten: {cost}.',
+  'At most {n} sections: more run a desktop browser tab out of memory.': 'Höchstens {n} Schnitte: Bei mehr geht einem Browser-Tab auf dem Desktop der Speicher aus.',
+  'Insert section after {n}': 'Schnitt nach Schnitt {n} einfügen',
+  'Delete section': 'Schnitt löschen',
+  'Delete section {n}': 'Schnitt {n} löschen',
+  'Another section already lies at y = {y} mm; sections need distinct span positions.': 'Ein anderer Schnitt liegt bereits bei y = {y} mm; Schnitte brauchen verschiedene Spannweitenpositionen.',
+  'Each section places its airfoil with the leading edge at (x, y, z), scaled to the chord and twisted about the pivot set in Settings.':
+    'Jeder Schnitt setzt sein Profil mit der Profilnase bei (x, y, z), skaliert auf die Profiltiefe und gedreht um den Drehpunkt aus den Einstellungen.',
+  'The half wing lies on the +y side and is mirrored at y = 0.': 'Der Halbflügel liegt auf der +y-Seite und wird an der Ebene y = 0 gespiegelt.',
+
+  // Planform tab: canvas, zoom controls and readouts
+  'Planform editor': 'Grundriss-Editor',
+  Fit: 'Einpassen',
+  'Fit view': 'Ansicht einpassen',
+  'Zoom in': 'Hineinzoomen',
+  'Zoom out': 'Herauszoomen',
+  Mirror: 'Spiegelbild',
+  'grid {step} mm': 'Raster {step} mm',
+  'Drag points to edit. Pinch or scroll to zoom, drag the background to pan, double-click to fit.':
+    'Punkte zum Bearbeiten ziehen. Zum Zoomen zwei Finger zusammenziehen bzw. spreizen oder scrollen, zum Verschieben den Hintergrund ziehen, per Doppelklick einpassen.',
+  'Nose line (leading edge) point {n}: x {x} mm, y {y} mm': 'Nasenlinie (Nasenleiste), Punkt {n}: x {x} mm, y {y} mm',
+  'End line (trailing edge) point {n}: x {x} mm, y {y} mm': 'Endlinie (Endleiste), Punkt {n}: x {x} mm, y {y} mm',
+  'Section at y {y} mm: x {x} mm, chord {chord} mm': 'Schnitt bei y {y} mm: x {x} mm, Profiltiefe {chord} mm',
+
+  // Planform tab: guide-curve forms
+  'Nose line (leading edge)': 'Nasenlinie (Nasenleiste)',
+  'End line (trailing edge)': 'Endlinie (Endleiste)',
+  'Use guide curve': 'Leitkurve verwenden',
+  Mode: 'Modus',
+  'Through points': 'Durch Punkte',
+  'Control points': 'Kontrollpunkte',
+  Degree: 'Grad',
+  'Add point': 'Punkt hinzufügen',
+  'Add a point in the widest gap': 'Punkt in der größten Lücke hinzufügen',
+  'Add a point in the widest gap. With {n} points, {cost}.': 'Punkt in der größten Lücke hinzufügen. Mit {n} Punkten: {cost}.',
+  'At most {n} points per guide curve.': 'Höchstens {n} Punkte je Leitkurve.',
+  'Remove selected point': 'Gewählten Punkt entfernen',
+  'Reset to sections': 'Auf Schnitte zurücksetzen',
+  'End points follow the root and tip span positions': 'Die Endpunkte folgen den Spannweitenpositionen von Wurzel und Rand',
+  'Off: the leading edge follows the section x positions.': 'Aus: Die Nasenleiste folgt den x-Positionen der Schnitte.',
+  'Off: the trailing edge follows the section chords.': 'Aus: Die Endleiste folgt den Profiltiefen der Schnitte.',
+};

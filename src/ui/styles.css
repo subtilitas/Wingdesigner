@@ -126,7 +126,6 @@ button.icon {
 }
 
 input[type='text'],
-input[type='number'],
 input[type='search'],
 select,
 textarea {
@@ -146,15 +145,6 @@ textarea {
 
 input.num {
   width: 4.6em;
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-/* Spin buttons take a third of the field width; arrow keys and the mouse wheel still step values. */
-input.num::-webkit-inner-spin-button,
-input.num::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
 }
 
 :focus-visible {
@@ -319,6 +309,11 @@ fieldset {
 
 select {
   max-width: 100%;
+}
+
+/* The language list (Settings tab) fills the row like the fields below it. */
+fieldset.language select {
+  width: 100%;
 }
 
 legend {
@@ -665,6 +660,24 @@ dialog::backdrop {
     font-size: 13px;
   }
 
+  /* German labels are longer: the view buttons take less padding (six of them fit a 412 px phone in one row) and
+     the status bar may take a second line, so the MAC and the warning count stay readable. A build error is
+     long: the bar stops at two lines (the Checks tab shows the whole text), and a border takes the place of the
+     bottom padding so that no part of a third line shows below the second. */
+  html[lang='de'] .view-tools button {
+    padding: 2px 6px;
+  }
+
+  html[lang='de'] .statusbar {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    padding-bottom: 0;
+    border-bottom: 4px solid var(--panel);
+  }
+
   .planform-canvas {
     height: 260px;
   }
@@ -738,8 +751,7 @@ dialog::backdrop {
   button,
   .button,
   select,
-  input[type='text'],
-  input[type='number'] {
+  input[type='text'] {
     min-height: var(--touch);
   }
 }
@@ -755,5 +767,32 @@ dialog::backdrop {
   .actions button {
     flex: none;
     padding: 2px 6px;
+  }
+
+  /* The German top bar (Rückgängig, Wiederholen, Exportieren) is wider than the phone: it wraps to a second row
+     instead of hiding Redo and Help behind a sideways scroll. */
+  html[lang='de'] .actions {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+
+  /* German tab names (Einstellungen, Prüfungen) are wider: smaller tabs keep all five, Prüfungen with the build
+     errors among them, inside a phone from 360 px; the view buttons take less padding to stay in one row. */
+  html[lang='de'] .tabs button {
+    padding: 0 4px;
+    font-size: 13px;
+  }
+
+  html[lang='de'] .view-tools button {
+    padding: 2px 4px;
+  }
+
+  /* German buttons (Anzeigen) are wider: the buttons of a project airfoil move below the name and the details. */
+  html[lang='de'] .airfoil-list li {
+    flex-wrap: wrap;
+  }
+
+  html[lang='de'] .airfoil-list li .grow {
+    flex-basis: calc(100% - 118px);
   }
 }
