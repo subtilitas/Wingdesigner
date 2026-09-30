@@ -628,7 +628,7 @@ Das Klonen in `docs.yml` setzt ein vorhandenes Repository-Wiki voraus; GitHub le
 
 ## Release
 
-`<version>`: die zu veröffentlichende Version, z. B. `0.3.0`. `package.json` enthält `0.2.0`.
+`<version>`: die zu veröffentlichende Version, z. B. `0.4.0`. `package.json` enthält `0.3.0`.
 
 1. Version setzen: `npm version <version> --no-git-tag-version` (ändert `package.json` und `package-lock.json`).
 2. In `CHANGELOG.md` die Einträge unter `## [Unreleased]` unter eine Überschrift `## [<version>] - YYYY-MM-DD` verschieben.

@@ -433,7 +433,7 @@ Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 15
 {
  "format": "wingdesigner-project",
  "version": 2,
- "generator": { "name": "Wingdesigner", "version": "0.2.0" },
+ "generator": { "name": "Wingdesigner", "version": "0.3.0" },
  "exportedAt": "2026-09-30T12:00:00.000Z",
  "name": "Sportflügel 1500",
  "units": "mm",
