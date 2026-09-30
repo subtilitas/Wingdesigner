@@ -4,9 +4,13 @@
 //
 // Geometry: XFLR5 measures y_position along the panels, and the dihedral of a section is the
 // absolute angle of the panel outboard of it (the last section's value is unused). XFLR5 twists a
-// section about its quarter-chord point, as Wingdesigner does with twistPivot 0.25. The tilt and the
-// position of the wing in the plane are folded into the sections exactly: a rotation about y keeps
-// the vertical Wingdesigner sections vertical.
+// section about its quarter-chord point, as Wingdesigner does with twistPivot 0.25. XFLR5 places its
+// sections in mitred planes (src/geom/planes.js), and so does the import: Straight panels with mitred
+// section planes are XFLR5's surface. Two cases import with vertical section planes. A tilted part:
+// the tilt and the position of the wing in the plane are folded into the sections, which is exact
+// for vertical planes only (a rotation about y keeps them vertical); the project stores the tilt
+// (foldedTilt). And a part whose mitred planes would fold the surface or stretch an airfoil beyond
+// the limit (mitredPlaneProblem in src/geom/wing.js).
 //
 // Airfoils: an .xfl project holds its airfoils; a name is looked up exactly, as XFLR5 does. XML files
 // name them only. A name without an airfoil from the file goes through a chain of sources: uploaded
@@ -35,6 +39,8 @@ import { leadingNacaCode, parseNacaCode } from '../airfoil/naca.js';
 import { slug } from '../model/edit.js';
 import { DEFAULT_SETTINGS, LIMITS, createProject, validateProject } from '../model/project.js';
 import { fitProfile } from '../geom/profile.js';
+import { sectionPlanes } from '../geom/planes.js';
+import { mitredPlaneProblem } from '../geom/wing.js';
 import { curvePoint } from '../geom/nurbs.js';
 import { displayName } from '../model/budget.js';
 import { count, fixed, language, plain, tr, whole } from '../i18n/index.js';
@@ -51,7 +57,7 @@ export const MIN_PANEL = 0.1;
 /** Largest move (mm) of a section that shares its y with the next one. */
 export const NUDGE = 0.5;
 
-/** Dihedral (degrees) above which the thinner vertical sections are reported. */
+/** Dihedral (degrees) above which the thinner sections of an import with vertical section planes are reported. */
 export const DIHEDRAL_WARN = 10;
 
 /**
@@ -251,13 +257,21 @@ function identical(a, b) {
  * position x and z; the position y is not used, as in XFLR5).
  * @param {object} wing Wing of an XflrFile (lengths in file units)
  * @param {number} lengthUnit millimetres per file length unit
- * @returns {{sections: {index: number, x: number, y: number, z: number, chord: number, twist: number, foil: string}[], report: {severity: string, text: string}[]}}
+ * @returns {{sections: {index: number, x: number, y: number, z: number, chord: number, twist: number, foil: string}[], report: {severity: string, text: string}[], steep: {severity: string, text: string}[], tilt: {angle: number, x: number, z: number}|null, rolls: number[]}}
  *   `index` is the 0-based XFLR5 section number; `sections` is empty when the report has an error.
+ *   `steep`: the warnings on panels above DIHEDRAL_WARN, for an import with vertical section planes.
+ *   `tilt`: the folded tilt (degrees, reduced by whole turns to −180..180) about the wing origin x, z
+ *   (mm), or null for a part without tilt. `rolls`: XFLR5's roll of each section's mitred plane
+ *   (degrees), from the panels in the frame of the part, before the tilt.
  */
 export function mapSections(wing, lengthUnit) {
   const report = [];
   const add = (severity, text) => report.push({ severity, text });
   const failed = () => report.some((r) => r.severity === 'error');
+  const steepLines = [];
+  let folded = null;
+  let rolls = [];
+  const out = (sections) => ({ sections, report, steep: sections.length ? steepLines : [], tilt: sections.length ? folded : null, rolls: sections.length ? rolls : [] });
   const src = wing.sections;
   const n = src.length;
   const k = lengthUnit;
@@ -275,7 +289,7 @@ export function mapSections(wing, lengthUnit) {
   const { position, tilt } = wing;
   if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) add('error', tr('The position of the wing in the plane is not a finite number in the file.'));
   if (!Number.isFinite(tilt)) add('error', tr('The tilt angle of the wing is not a finite number in the file.'));
-  if (failed()) return { sections: [], report };
+  if (failed()) return out([]);
 
   // Developed span positions (mm) and the panels between them. A root within MIN_PANEL of the centre
   // is the centre: XFLR5 separates the two halves only beyond it, and Wingdesigner joins them at y = 0.
@@ -298,7 +312,7 @@ export function mapSections(wing, lengthUnit) {
   if (equal.slice(1).every(Boolean)) add('error', tr('All sections of the wing lie at y = {y} mm: the wing has no span.', { y: num(D[0]) }));
   let bent = false;
   const upright = lineCap(add, 'error', (more) => tr('Further panels whose outer end does not lie further out in y: {count}.', { count: more }));
-  const steep = lineCap(add, 'warning', (more) => tr('Further panels with more than {angle}° dihedral: {count}.', { angle: plain(DIHEDRAL_WARN), count: more }));
+  const steep = lineCap((severity, text) => steepLines.push({ severity, text }), 'warning', (more) => tr('Further panels with more than {angle}° dihedral: {count}.', { angle: plain(DIHEDRAL_WARN), count: more }));
   for (let i = 0; i < n - 1; i++) {
     // Panels of no length, and panels that run back (reported above), have no width to check.
     if (equal[i + 1] || D[i + 1] < D[i]) continue;
@@ -313,7 +327,7 @@ export function mapSections(wing, lengthUnit) {
   }
   upright.done();
   steep.done();
-  if (failed()) return { sections: [], report };
+  if (failed()) return out([]);
   if (bent) add('info', tr('XFLR5 measures y_position along the panels; y and z were computed from it and the dihedral.'));
 
   // Wing frame: y and z of each section; a panel shorter than MIN_PANEL has no length, as in XFLR5.
@@ -367,6 +381,7 @@ export function mapSections(wing, lengthUnit) {
   if (thin.length) add('warning', tr('Chords below {min} mm were raised to {min} mm, the smallest chord Wingdesigner builds, at {sections}.', { min: plain(LIMITS.minChord), sections: sectionsText(thin) }));
   if (D[0] > 0) add('info', tr('The root lies at y = {y} mm: the two halves are built as separate bodies, as in XFLR5.', { y: num(kept[0].y) }));
 
+  rolls = sectionPlanes(kept, 'mitred').rolls;
   // Tilt about the wing origin (positive = nose up), turning each quarter-chord point, then the position.
   const X = k * position.x;
   const ZL = k * position.z;
@@ -381,6 +396,9 @@ export function mapSections(wing, lengthUnit) {
       q.twist += tilt;
     }
     add('info', tr('Tilt angle {angle}° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.', { angle: num(tilt) }));
+    // Stored within ±180°: a tilt of whole turns turns nothing.
+    const angle = zero(tilt - 360 * Math.round(tilt / 360));
+    if (angle !== 0) folded = { angle, x: X, z: ZL };
   }
   // Whole turns of twist (a tilt of 400°, say) give the same sections: one turn common to all keeps
   // the differences between the sections, which the spanwise interpolation uses.
@@ -403,8 +421,8 @@ export function mapSections(wing, lengthUnit) {
 
   const sections = kept.map((q) => ({ index: q.index, x: zero(q.x), y: zero(q.y), z: zero(q.z), chord: q.chord, twist: zero(q.twist), foil: q.s.rightFoil }));
   // Values a project cannot hold are reported here, in XFLR5's section numbers.
-  if (!withinLimits(sections, add)) return { sections: [], report };
-  return { sections, report };
+  if (!withinLimits(sections, add)) return out([]);
+  return out(sections);
 }
 
 /**
@@ -1080,7 +1098,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
   if (wing) {
     result.name = typeof name === 'string' && name.trim() !== '' ? name.slice(0, LIMITS.maxName) : projectName(plane, wing);
     if (!report.some((r) => r.severity === 'error')) {
-      const candidate = assemble(result.name, geometry.sections, result.rows, add);
+      const candidate = withPlanes(result.name, geometry, result.rows, add);
       if (candidate) {
         const v = validateProject(candidate);
         for (const e of v.errors) add('error', e);
@@ -1126,21 +1144,23 @@ function frameText(fr, one, at) {
  * coordinates. XFLR5 takes the coordinates as they are, in chords from the section's leading edge;
  * Wingdesigner puts the airfoil's leading edge at the section point and its trailing edge at one
  * chord. With the airfoil's leading edge at (lx, ly) and a chord cT up to its trailing edge, a twist
- * t about the quarter chord gives, for every airfoil point, exactly XFLR5's rigid rotation:
- *   chord' = cT·chord,  (x, z)' = (x, z) + chord·[(0.25·(1 − cT), 0) + R(t)·(lx − 0.25·(1 − cT), ly)]
+ * t about the quarter chord and a thickness stretch m gives, for every airfoil point, exactly XFLR5's
+ * placement (in the plane of the section: x, and the up direction (0, −sin φ, cos φ) of its roll φ):
+ *   chord' = cT·chord,  (x, up)' = (x, 0) + chord·[(0.25·(1 − cT), 0) + R(t)·(lx − 0.25·(1 − cT), m·ly)]
  * with R(t)·(u, w) = (u cos t + w sin t, −u sin t + w cos t), the rotation of placeSection.
  */
-function placeAirfoil(s, frame) {
+function placeAirfoil(s, frame, roll = 0, stretch = 1) {
   const { x, y, z, chord, twist } = s;
   if (!moves(frame)) return { x, y, z, chord, twist };
   const a = twist * DEG;
   const shift = 0.25 * (1 - frame.chord);
   const u = frame.x - shift;
-  const w = frame.y;
+  const w = stretch * frame.y;
+  const up = chord * (-u * Math.sin(a) + w * Math.cos(a));
   return {
     x: zero(x + chord * (shift + u * Math.cos(a) + w * Math.sin(a))),
-    y,
-    z: zero(z + chord * (-u * Math.sin(a) + w * Math.cos(a))),
+    y: roll ? zero(y - up * Math.sin(roll * DEG)) : y,
+    z: zero(z + up * Math.cos(roll * DEG)),
     chord: Math.max(chord * frame.chord, LIMITS.minChord),
     twist,
   };
@@ -1153,9 +1173,10 @@ function limitsText() {
 
 /**
  * The project of mapped sections and resolved rows, or null (reported) when the airfoils or the moved
- * sections exceed the limits.
+ * sections exceed the limits. `planes`: the section-plane setting, and for mitred planes the roll
+ * and stretch of every mapped section (sectionPlanes); `tilt`: the folded tilt of mapSections.
  */
-function assemble(name, mapped, rows, add) {
+function assemble(name, mapped, rows, add, planes, tilt) {
   const airfoils = [];
   const ids = new Map();
   // Rows that use the same source share its airfoil; sources with the same name and points share one
@@ -1189,7 +1210,11 @@ function assemble(name, mapped, rows, add) {
     ids.set(row.name, id);
   }
   const frames = new Map(rows.map((row) => [row.name, row.frame]));
-  const placed = mapped.map((s) => ({ index: s.index, foil: s.foil, ...placeAirfoil(s, frames.get(s.foil)) }));
+  // An airfoil frame moves a section in its own plane: in a mitred plane along the rolled up
+  // direction, with the thickness stretch. The rolls are XFLR5's (from the file's dihedrals); the build
+  // takes them from the moved sections.
+  const mitred = planes.mode === 'mitred';
+  const placed = mapped.map((s, i) => ({ index: s.index, foil: s.foil, ...placeAirfoil(s, frames.get(s.foil), mitred ? planes.rolls[i] : 0, mitred ? planes.stretches[i] : 1) }));
   if (!withinLimits(placed, add)) return null;
   // The project holds 4 decimals (1e-4 mm and degrees, far below the differences from XFLR5's
   // construction): the unit conversion leaves noise such as a chord of 400.04999999999995 mm.
@@ -1198,8 +1223,51 @@ function assemble(name, mapped, rows, add) {
     name,
     airfoils,
     sections: placed.map((s, i) => ({ id: `s${i + 1}`, airfoil: ids.get(s.foil), x: r4(s.x), y: r4(s.y), z: r4(s.z), chord: Math.max(r4(s.chord), LIMITS.minChord), twist: r4(s.twist) })),
-    settings: { twistPivot: 0.25, spanwise: 'straight', mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } },
+    settings: { twistPivot: 0.25, spanwise: 'straight', sectionPlanes: planes.mode, mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } },
+    ...(tilt ? { foldedTilt: { angle: tilt.angle, x: r4(tilt.x), z: r4(tilt.z) } } : {}),
   });
+}
+
+/**
+ * The project of an import and the report lines on its section planes (see the header): mitred
+ * unless the part is tilted or its mitred planes do not build. Null when assemble reports an error.
+ */
+function withPlanes(name, geometry, rows, add) {
+  const mapped = geometry.sections;
+  const rolled = geometry.rolls.some((r) => r !== 0);
+  const vertical = (why) => {
+    if (why) add('info', why);
+    for (const line of geometry.steep) add(line.severity, line.text);
+    return assemble(name, mapped, rows, add, { mode: 'vertical' }, geometry.tilt);
+  };
+  if (geometry.tilt) {
+    return vertical(
+      rolled
+        ? tr("Section planes: vertical. The tilt angle of {angle}° is folded into the section values, which is exact for vertical section planes only: with mitred planes, as in XFLR5, the part would lie up to about {distance} mm off XFLR5's.", {
+            angle: num(geometry.tilt.angle),
+            distance: fixed(Math.max(...mapped.map((q, i) => 0.75 * q.chord * Math.abs(Math.sin(geometry.tilt.angle * DEG) * Math.sin(geometry.rolls[i] * DEG)))), 2),
+          })
+        : null,
+    );
+  }
+  // Without a tilt the mapped sections lie in the frame of the part (the position only moves them).
+  const candidate = assemble(name, mapped, rows, add, { mode: 'mitred', ...sectionPlanes(mapped, 'mitred') }, null);
+  if (!candidate) return candidate;
+  // Sections that the airfoil frames move past each other in y cross, as a fold does. The build takes
+  // the rolls from the moved sections, so a flat part can roll a little and is checked as well.
+  const ys = candidate.sections.map((q) => q.y);
+  const swapped = ys.findIndex((y, i) => i > 0 && !(y > ys[i - 1]));
+  const problem = swapped > 0 ? { kind: 'fold', i: swapped - 1 } : mitredPlaneProblem(candidate);
+  if (!problem) {
+    if (rolled) add('info', tr('Section planes: mitred, as in XFLR5. The root section is vertical, a section between two panels lies in the bisector plane of the panels, and the tip section is square to the last panel; the airfoils keep their thickness across the panels.'));
+    return candidate;
+  }
+  const at = (i) => plain(mapped[i].index + 1);
+  return vertical(
+    problem.kind === 'fold'
+      ? tr('Section planes: vertical. Mitred planes, as in XFLR5, would fold the surface between sections {a} and {b}.', { a: at(problem.i), b: at(problem.i + 1) })
+      : tr('Section planes: vertical. The mitred plane of section {n}, as in XFLR5, would lie {angle}° from its panel, beyond the limit of 60°.', { n: at(problem.i), angle: fixed(problem.angle, 1) }),
+  );
 }
 
 /** The toast line after the import. */

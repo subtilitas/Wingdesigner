@@ -347,6 +347,7 @@ function renderChecks() {
   const items = [];
   for (const e of build.errors) items.push(h('li', { class: 'sev-error' }, h('strong', {}, `${tr('Error')}: `), e));
   for (const w of build.warnings) items.push(h('li', { class: 'sev-warning' }, h('strong', {}, `${tr('Warning')}: `), w));
+  for (const i of build.infos ?? []) items.push(h('li', { class: 'sev-info' }, h('strong', {}, `${tr('Info')}: `), i));
   const stats = build.surface ? wingStats(build) : null;
   clear(panes.checks).append(
     h('h3', {}, tr('Geometry checks')),
@@ -689,7 +690,7 @@ function changeLanguage(code) {
   }
   // Only the size warning is a text of the build that a refresh can reword: with no other warning and no
   // error, the Sections table, the size warning, the planform and the Checks are relabelled without a new loft fit.
-  if (build.errors.length || build.warnings.some((w) => w !== build.sizeWarning)) geometryPending = true;
+  if (build.errors.length || build.infos?.length || build.warnings.some((w) => w !== build.sizeWarning)) geometryPending = true;
   else {
     tablePending = true;
     formsPending = true;

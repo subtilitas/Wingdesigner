@@ -1,6 +1,10 @@
 // Wing configurations covering the STEP topology variants (open/closed trailing edge,
-// linear/smooth spanwise interpolation, guide curves, root off the symmetry plane, mirroring).
+// linear/smooth spanwise interpolation, guide curves, root off the symmetry plane, mirroring,
+// mitred section planes).
+import { createProject } from '../src/model/project.js';
 import { naca, sampleProject } from './helpers.js';
+
+const DEG = Math.PI / 180;
 
 export function stepCases() {
   const cases = [];
@@ -30,5 +34,21 @@ export function stepCases() {
   const symmetric = sampleProject();
   symmetric.airfoils = [naca('0009', 'root'), naca('0009', 'tip')];
   cases.push({ name: 'symmetric-0009', project: symmetric, mirror: true });
+  // Mitred section planes: a 35° V-tail with straight panels (the tip cap rolled 35°, the root
+  // stretched 1.22 times) and a 15°/−5° gull with linear panels (stations in every panel, a cubic loft).
+  const vtail = createProject({
+    name: 'V-tail',
+    airfoils: [naca('0009')],
+    sections: [
+      { airfoil: '0009', x: 0, y: 0, z: 0, chord: 120, twist: 0 },
+      { airfoil: '0009', x: 40, y: 320 * Math.cos(35 * DEG), z: 320 * Math.sin(35 * DEG), chord: 70, twist: 0 },
+    ],
+    settings: { spanwise: 'straight', sectionPlanes: 'mitred' },
+  });
+  cases.push({ name: 'mitred-vtail-35', project: vtail, mirror: true });
+  const gull = sampleProject({ settings: { sectionPlanes: 'mitred' } });
+  gull.sections[1].z = 300 * Math.tan(15 * DEG);
+  gull.sections[2].z = gull.sections[1].z - 300 * Math.tan(5 * DEG);
+  cases.push({ name: 'mitred-gull-15-5', project: gull, mirror: true });
   return cases;
 }

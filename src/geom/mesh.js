@@ -58,8 +58,12 @@ export function tessellateHalf(build, { uRefine = 1, vRefine } = {}) {
   const leIndex = build.leIndex * uRefine;
   const rootLoop = loop(0);
   const tipLoop = loop(V - 1);
-  const cap = (ring, flip) => {
-    const poly = ring.map((i) => [positions[i * 3], positions[i * 3 + 2]]);
+  // Each cap lies in the plane of its end section: x and the in-plane up direction (0, −sin φ, cos φ)
+  // of its roll φ (0: the plane y = const, (x, z)).
+  const cap = (ring, flip, roll = 0) => {
+    const sr = Math.sin((roll * Math.PI) / 180);
+    const cr = Math.cos((roll * Math.PI) / 180);
+    const poly = ring.map((i) => [positions[i * 3], roll ? cr * positions[i * 3 + 2] - sr * positions[i * 3 + 1] : positions[i * 3 + 2]]);
     const out = [];
     for (const [a, b, c] of stripTriangulate(poly, leIndex)) {
       if (flip) out.push(ring[a], ring[c], ring[b]);
@@ -68,8 +72,8 @@ export function tessellateHalf(build, { uRefine = 1, vRefine } = {}) {
     return out;
   };
   // Selig order is counterclockwise in (x, z); a CCW triangle in (x, z) has normal -y.
-  const rootCap = cap(rootLoop, false);
-  const tipCap = cap(tipLoop, true);
+  const rootCap = cap(rootLoop, false, build.rootRoll ?? 0);
+  const tipCap = cap(tipLoop, true, build.tipRoll ?? 0);
   return { positions, surface, trailingEdge, rootCap, tipCap, rows: V, cols, rootLoop, tipLoop };
 }
 

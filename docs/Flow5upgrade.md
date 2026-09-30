@@ -2,7 +2,8 @@
 
 This page records the plan and the owner's decisions for three planned changes to Wingdesigner:
 mitred section planes, a rigid tilt of the whole part, and an import of flow5 planes. Status on
-2026-09-30: planned; nothing is implemented. Every effort, size, review and time figure is an estimate
+2026-09-30: step 1 is implemented (section "Step 1 as built"); steps 2 and 3 are planned. The text of
+the sections below describes the plan as decided. Every effort, size, review and time figure is an estimate
 scaled from the history of this repository, not measured on these changes. The section-plane figures
 are scaled from the XFLR5 import, counted as 9,444 added lines in 12.1 h wall-clock, research
 included. The flow5 figures are scaled from a smaller count of the same import, about 8,100 lines in
@@ -34,6 +35,37 @@ Sources:
 The order follows the two analyses. The owner decided only that the flow5 import starts after the
 XFLR5 import is merged (F1; done: pull request #5, 2026-09-30). The flow5 estimate is made on the code
 before steps 1 and 2.
+
+## Step 1 as built
+
+Code: `src/geom/planes.js` (plane rules, stretch, fold test), `src/geom/wing.js` (placement, stations,
+checks, `mitredPlaneProblem`), `src/import/xflr5.js` (step 6 of the mapping). User-facing description:
+wiki pages Geometry (section 3.8), File Formats (project format version 2, XFLR5 import step 6) and
+User Guide (Settings, Checks).
+
+| Plan item | As built |
+| --- | --- |
+| R1, R2 | **Settings** > **Section planes**, `settings.sectionPlanes` `"mitred"` (default) or `"vertical"`; project format version 2; a version 1 file opens vertical |
+| R3 | Twist about the normal of the section plane; the stretch scales the thickness before the twist |
+| R4 | **Linear** panels between planes of different roll get K stations and a cubic loft; panels of 2 stations are straight segments raised to that degree |
+| R5 | Untilted imports mitred; tilted imports vertical with `foldedTilt`; fold or stretch fallback to vertical with an info line |
+| R6 | Stretch limit 2 (60°) as a build error; fold test between neighbouring sections before the loft and between neighbouring stations after the fit |
+| Smooth | Vertical planes and an info line (owner decision (b)) |
+| Folded tilt with **Mitred** | Warning in Checks with the estimate 0.75 · c · sin(tilt) · sin(roll) (owner decision) |
+| Imports of pull request #5 | Documented on the File Formats page, not converted (owner decision) |
+
+Measured on 2026-09-30:
+
+- XFLR5 6.62 STL of 93 surfaces of 15 real projects: 80 within 0.6 mm (75 with vertical planes).
+  Untilted 35° V-tails 2.87 → 0.013 mm, the 40° V-tail of `mini_talon.xfl` 2.31 → 0.025 mm; the 4
+  tilted V-tails stay at 2.87 mm (step 2). The flat wings of `Wing Design and Analysis.xfl` gain
+  0.005 mm, because the build takes the rolls from the frame-moved sections.
+- OpenCascade on the 10 STEP cases (2 mitred): all valid and closed, volume within 7.6e-5 of the
+  mesh, cap edges within 2e-13 mm of their planes. A tip cap written vertical on the gull fails the
+  new cap check (0.67 mm) and passes the volume check (0.0475 %).
+- Wizard presets with dihedral build 9 or 17 stations; the Sport wing loses 1.4 % volume against the
+  vertical build (the **Linear** blend instead of a ruled surface 0.343 mm off it), 0.02 % from the
+  planes alone.
 
 ## 1. Mitred section planes
 

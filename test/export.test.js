@@ -282,6 +282,20 @@ describe('STEP', () => {
     expect(half.match(/MANIFOLD_SOLID_BREP/g).length).toBe(1);
   });
 
+  it('writes the end caps in the planes of the end sections', () => {
+    const b = buildWing(stepCases().find((c) => c.name === 'mitred-vtail-35').project);
+    const directions = (txt) => [...txt.matchAll(/DIRECTION\('',\(([^)]*)\)\)/g)].map((m) => m[1].split(',').map(Number));
+    const near = (list, d) => list.some((q) => q.every((c, k) => Math.abs(c - d[k]) < 1e-12));
+    const [c, s] = [Math.cos((b.tipRoll * Math.PI) / 180), Math.sin((b.tipRoll * Math.PI) / 180)];
+    expect(b.tipRoll).toBeCloseTo(35, 9);
+    // The vertical root faces −y; the tip faces along the normal of its plane rolled 35°; the
+    // mirrored half mirrors both.
+    const half = directions(wingToStep(b, { mirror: false }));
+    expect([near(half, [0, -1, 0]), near(half, [0, c, s]), near(half, [0, -c, s])]).toEqual([true, true, false]);
+    const both = directions(wingToStep(b, { mirror: true }));
+    expect([near(both, [0, 1, 0]), near(both, [0, -c, s])]).toEqual([true, true]);
+  });
+
   it('handles every validation case and closed trailing edges', () => {
     for (const c of stepCases()) {
       const b = buildWing(c.project);
@@ -491,6 +505,13 @@ describe('project JSON', () => {
         const s = p.sections[0];
         p.sections = Array.from({ length: LIMITS.maxSections + 1 }, (_, i) => ({ ...s, id: `s${i}`, y: i * 3 }));
       },
+      (p) => (p.settings.sectionPlanes = 'tilted'),
+      (p) => (p.foldedTilt = 5),
+      (p) => (p.foldedTilt = { angle: '2', x: 0, z: 0 }),
+      (p) => (p.foldedTilt = { angle: 2, x: 0 }),
+      (p) => (p.foldedTilt = { angle: 180.5, x: 0, z: 0 }),
+      (p) => (p.foldedTilt = { angle: 2, x: 1_000_001, z: 0 }),
+      (p) => (p.foldedTilt = { angle: 2, x: 0, z: -1_000_001 }),
     ];
     for (const mutate of cases) {
       const p = base();
@@ -505,7 +526,35 @@ describe('project JSON', () => {
     p.sections[1].chord = 100_000;
     p.guides.nose.edited = true;
     p.guides.nose.points = Array.from({ length: LIMITS.maxGuidePoints }, (_, i) => [0, (600 * i) / (LIMITS.maxGuidePoints - 1)]);
+    p.foldedTilt = { angle: -180, x: -1_000_000, z: 1_000_000 };
     expect(validateProject(p).ok).toBe(true);
+    p.foldedTilt = null;
+    expect(validateProject(p).ok).toBe(true);
+  });
+
+  it('opens version 1 files with vertical section planes, and version 2 files as saved', () => {
+    const mitred = sampleProject({ settings: { sectionPlanes: 'mitred' } });
+    const v2 = projectToJson(mitred, null);
+    expect([v2.version, v2.settings.sectionPlanes]).toEqual([2, 'mitred']);
+    // A version 1 file holds no section-plane setting; its wing keeps the vertical sections it was
+    // designed with, not the default of new projects.
+    const v1 = structuredClone(v2);
+    v1.version = 1;
+    delete v1.settings.sectionPlanes;
+    const old = projectFromJsonText(JSON.stringify(v1));
+    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 2, 'vertical']);
+    expect(buildWing(old.project).surface).toEqual(buildWing(sampleProject()).surface);
+    // A version 2 file without the setting takes the default, and one with it keeps it.
+    const bare = structuredClone(v2);
+    delete bare.settings.sectionPlanes;
+    expect(projectFromJsonText(JSON.stringify(bare)).project.settings.sectionPlanes).toBe('mitred');
+    expect(projectFromJsonText(JSON.stringify({ ...v2, settings: { ...v2.settings, sectionPlanes: 'vertical' } })).project.settings.sectionPlanes).toBe('vertical');
+    // A later format is refused rather than opened without its values.
+    expect(projectFromJsonText(JSON.stringify({ ...v2, version: 3 })).errors).toEqual(['Unsupported project version 3.']);
+    // A stored folded tilt comes back with its three numbers only.
+    const tilted = projectFromJsonText(JSON.stringify({ ...v2, foldedTilt: { angle: 2, x: 10, z: -5, note: 'x' } }));
+    expect(tilted.project.foldedTilt).toEqual({ angle: 2, x: 10, z: -5 });
+    expect(projectFromJsonText(JSON.stringify(v2)).project.foldedTilt).toBeUndefined();
   });
 
   it('creates projects with defaults', () => {

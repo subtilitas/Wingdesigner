@@ -4,6 +4,7 @@ import { insertProblem, insertSection, removeSection, sortedSections, syncGuides
 import { clear, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
 import { LAZY_OPTIONS, WARN, costPhrase, displayName, loftGrid, projectSize } from '../model/budget.js';
+import { rolledPanelCount } from '../geom/planes.js';
 import { count, fixed, plain, tr } from '../i18n/index.js';
 
 const C = LIMITS.maxCoordinate;
@@ -35,7 +36,9 @@ export function sectionFields() {
 export function insertTitle(project) {
   const guides = project.guides ?? {};
   const more = { ...projectSize(project), sections: project.sections.length + 1 };
-  more.gridPoints = loftGrid(more.sections, project.settings, guides.nose?.enabled || guides.end?.enabled).points;
+  // One more section adds one more panel between mitred planes when the wing has such panels.
+  const rolled = rolledPanelCount(project.sections, project.settings);
+  more.gridPoints = loftGrid(more.sections, project.settings, guides.nose?.enabled || guides.end?.enabled, rolled ? rolled + 1 : 0).points;
   if (project.sections.length >= LIMITS.maxSections) return tr('At most {n} sections: more run a desktop browser tab out of memory.', { n: count(LIMITS.maxSections) });
   if (more.sections > WARN.sections) return tr('Insert a section after this one. With {n} sections, {cost}.', { n: count(more.sections), cost: costPhrase(more) });
   return tr('Insert a section after this one');

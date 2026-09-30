@@ -2,6 +2,7 @@
 
 import { LIMITS } from '../model/project.js';
 import { WARN, costPhrase, loftGrid, projectSize } from '../model/budget.js';
+import { rolledPanelCount } from '../geom/planes.js';
 import { LANGUAGES, count, language, plain, tr } from '../i18n/index.js';
 import { clear, h, numberInput } from './dom.js';
 
@@ -11,7 +12,7 @@ const LANGUAGE_LABEL = 'Language / Sprache';
 /** Loft grid points of the current settings; above the warning threshold with time and memory. */
 function gridNote(project) {
   const g = project.guides ?? {};
-  const grid = loftGrid(project.sections.length, project.settings, g.nose?.enabled || g.end?.enabled);
+  const grid = loftGrid(project.sections.length, project.settings, g.nose?.enabled || g.end?.enabled, rolledPanelCount(project.sections, project.settings));
   const over = grid.points > WARN.gridPoints;
   const reduced = grid.K < grid.Kset;
   const points = count(grid.points);
@@ -76,6 +77,21 @@ export class SettingsPanel {
             (v) => set((q) => (q.spanwise = v)),
             tr('Spanwise interpolation'),
             'spanwise',
+          ),
+        ),
+        h(
+          'label',
+          { class: 'field' },
+          tr('Section planes'),
+          select(
+            s.sectionPlanes,
+            [
+              ['mitred', tr('Mitred (square to the panels, as XFLR5)')],
+              ['vertical', tr('Vertical (y = const)')],
+            ],
+            (v) => set((q) => (q.sectionPlanes = v)),
+            tr('Section planes'),
+            'section-planes',
           ),
         ),
         h(

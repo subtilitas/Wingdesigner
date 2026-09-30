@@ -662,7 +662,7 @@ Orientierungsflags:
 | Normale der Ebene | Wurzel −y, Rand +y | als Vektoren gespiegelt: Wurzel +y, Rand −y (nach außen) |
 
 Prüfung: `scripts/validate_step.py` liest die von `scripts/export-step-cases.mjs` geschriebenen Dateien
-mit OpenCascade. Fälle: die 8 Fälle aus `test/step-cases.js`.
+mit OpenCascade. Fälle: die 10 Fälle aus `test/step-cases.js`.
 
 Bestehenskriterien je Datei:
 

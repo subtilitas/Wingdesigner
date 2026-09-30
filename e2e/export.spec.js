@@ -36,6 +36,12 @@ import {
 
 const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const SPORT_STATUS = 'Span 1200 mm · area 23.04 dm² · AR 6.25 · MAC 196.0 mm';
+/**
+ * Largest y (mm) of the Sport wing: its tip plane is mitred, square to the 1.5° panel, so the lower
+ * surface of the tip (NACA 2410, 144 mm chord) reaches 0.13 mm past the tip position y = 600 mm.
+ */
+const SPORT_TIP = [600, 600.2];
+const within = (v, [lo, hi]) => v > lo && v < hi;
 /** Section values compared across pages: shown airfoil name and the numeric fields. */
 const tableOf = (page) => sectionValues(page, ['airfoilName', 'y', 'x', 'z', 'chord', 'twist']);
 
@@ -119,11 +125,11 @@ test.describe('export dialog', () => {
     expect(r.faces).toBe(5);
     expect(b.faces).toBe(2 * r.faces);
     expect(b.surfaces).toBe(2 * r.surfaces);
-    // The right half spans y = 0 .. 600; the mirrored left half reaches y = -600.
+    // The right half spans y = 0 to the mitred tip; the mirrored left half is its mirror image.
     expect(r.minY).toBeGreaterThanOrEqual(-1e-9);
-    expect(Math.abs(r.maxY - 600)).toBeLessThan(1e-6);
-    expect(Math.abs(b.minY + 600)).toBeLessThan(1e-6);
-    expect(Math.abs(b.maxY - 600)).toBeLessThan(1e-6);
+    expect(within(r.maxY, SPORT_TIP), `right half ends at y = ${r.maxY}`).toBe(true);
+    expect(Math.abs(b.maxY - r.maxY)).toBeLessThan(1e-6);
+    expect(Math.abs(b.minY + r.maxY)).toBeLessThan(1e-6);
   });
 
   test('STL: closed shells for both halves, the merged wing and the right half', async ({ page }) => {
@@ -138,13 +144,14 @@ test.describe('export dialog', () => {
     }
     const { halves, merged, right } = files;
 
-    // Right half: one closed, outward-oriented shell from y = 0 to 600.
+    // Right half: one closed, outward-oriented shell from y = 0 to the mitred tip.
     expect(right.count).toBeGreaterThan(100);
     expectClosed(stlShell(right.tris), 'right');
     const vRight = signedVolume(right.tris);
     expect(vRight).toBeGreaterThan(0);
+    const tipY = yRange(right.tris).max;
     expect(yRange(right.tris).min).toBeGreaterThanOrEqual(0);
-    expect(yRange(right.tris).max).toBeCloseTo(600, 3);
+    expect(within(tipY, SPORT_TIP), `right half ends at y = ${tipY}`).toBe(true);
 
     // Both halves: twice the right half, right shell first, then its mirror image.
     expect(halves.count).toBe(2 * right.count);
@@ -154,7 +161,7 @@ test.describe('export dialog', () => {
     expectClosed(stlShell(lShell), 'halves, left shell');
     expect(stlShell(rShell)).toEqual(stlShell(right.tris));
     expect(yRange(lShell).max).toBeLessThanOrEqual(0);
-    expect(yRange(lShell).min).toBeCloseTo(-600, 3);
+    expect(yRange(lShell).min).toBeCloseTo(-tipY, 3);
     expect(signedVolume(rShell)).toBeCloseTo(vRight, 3);
     expect(signedVolume(lShell) / vRight).toBeCloseTo(1, 5);
 
@@ -162,7 +169,7 @@ test.describe('export dialog', () => {
     expectClosed(stlShell(merged.tris), 'merged');
     expect(merged.count).toBeLessThan(halves.count);
     expect(merged.count).toBeGreaterThan(right.count);
-    expect(yRange(merged.tris)).toEqual({ min: expect.closeTo(-600, 3), max: expect.closeTo(600, 3) });
+    expect(yRange(merged.tris)).toEqual({ min: expect.closeTo(-tipY, 3), max: expect.closeTo(tipY, 3) });
     expect(signedVolume(merged.tris) / (2 * vRight)).toBeCloseTo(1, 5);
 
     // Fine density refines the mesh (4x on the skin) and stays closed.
@@ -197,7 +204,8 @@ test.describe('export dialog', () => {
       const items = [...model.matchAll(/<item objectid="(\d+)"\/>/g)].map((m) => Number(m[1]));
       expect(items).toEqual(objects.map((o) => o.id));
       for (const o of objects) {
-        for (const t of o.triangles) for (const i of t) expect(i).toBeLessThan(o.vertices.length);
+        // One check per object: an expect per index takes seconds on a mesh of thousands of triangles.
+        expect(o.triangles.flat().filter((i) => !(i < o.vertices.length)), `3MF ${half} ${o.name}: indices beyond the vertices`).toEqual([]);
         expectClosed(o.triangles, `3MF ${half} ${o.name}`);
       }
       objectsOf[half] = objects;
@@ -213,20 +221,21 @@ test.describe('export dialog', () => {
     expect(objectsOf.halves[1].vertices).toEqual(mirrored);
     expect(objectsOf.merged[0].triangles.length).toBeLessThan(2 * nRight);
     const ys = objectsOf.merged[0].vertices.map((v) => v[1]);
-    expect(Math.min(...ys)).toBeCloseTo(-600, 3);
-    expect(Math.max(...ys)).toBeCloseTo(600, 3);
+    expect(within(Math.max(...ys), SPORT_TIP)).toBe(true);
+    expect(Math.min(...ys)).toBeCloseTo(-Math.max(...ys), 3);
   });
 
   test('pointed tip exports closed solids that end in the scaled tip profile', async ({ page }) => {
     await createDesign(page, 'Sport', { tip: 'pointed' });
     await expect(status(page)).toHaveText(VALID_RE);
 
-    // STL, right half: one closed shell that ends at y = 600 in the 1.2 mm tip profile (240 / 200).
+    // STL, right half: one closed shell that ends at y = 600 in the 1.2 mm tip profile (240 / 200),
+    // square to the 1.5° panel: its 0.14 mm height reaches 0.004 mm to either side of y = 600.
     const stl = parseStl((await exportFile(page, 'stl', { half: 'right' })).bytes);
     expectClosed(stlShell(stl.tris), 'pointed right half');
     expect(signedVolume(stl.tris)).toBeGreaterThan(0);
-    expect(yRange(stl.tris)).toEqual({ min: expect.closeTo(0, 6), max: expect.closeTo(600, 4) });
-    const tip = stlVertices(stl.tris).filter((p) => p[1] > 600 - 1e-3);
+    expect(yRange(stl.tris)).toEqual({ min: expect.closeTo(0, 6), max: expect.closeTo(600, 2) });
+    const tip = stlVertices(stl.tris).filter((p) => p[1] > 600 - 0.01);
     const extent = (k) => Math.max(...tip.map((p) => p[k])) - Math.min(...tip.map((p) => p[k]));
     expect(tip.length).toBeGreaterThan(50);
     expect(Math.abs(extent(0) - 1.2), `tip profile length ${extent(0)} mm`).toBeLessThanOrEqual(0.01);
@@ -239,8 +248,8 @@ test.describe('export dialog', () => {
     expect(step.shells).toBe(2);
     expect(step.faces).toBe(10);
     expect(step.names).toEqual(['Sport right', 'Sport left']);
-    expect(Math.abs(step.maxY - 600)).toBeLessThan(1e-6);
-    expect(Math.abs(step.minY + 600)).toBeLessThan(1e-6);
+    expect(Math.abs(step.maxY - 600)).toBeLessThan(0.01);
+    expect(Math.abs(step.minY + step.maxY)).toBeLessThan(1e-6);
   });
 
   test('Export writes a value typed into a field and committed by the Export click', async ({ page }) => {
@@ -249,11 +258,13 @@ test.describe('export dialog', () => {
     await sectionField(page, 1, 'y').fill('700');
     const json = JSON.parse((await exportFile(page, 'json')).bytes.toString('utf8'));
     expect(json.sections.map((s) => s.y)).toEqual([0, 700]);
+    expect(json.derived.stations.at(-1).y).toBe(700);
+    // The mitred tip reaches up to 0.2 mm past the tip position.
     const ys = json.derived.surface.controlPoints.flat().map((p) => p[1]);
-    expect(Math.max(...ys)).toBeCloseTo(700, 6);
+    expect(within(Math.max(...ys), [700, 700.2])).toBe(true);
     await sectionField(page, 1, 'y').fill('650');
     const stl = parseStl((await exportFile(page, 'stl', { half: 'right' })).bytes);
-    expect(yRange(stl.tris).max).toBeCloseTo(650, 4);
+    expect(within(yRange(stl.tris).max, [650, 650.2])).toBe(true);
   });
 
   test('project JSON holds the derived surface and opens in a fresh browser context', async ({ page, browser }) => {
@@ -269,9 +280,13 @@ test.describe('export dialog', () => {
     expect(file.name).toBe('Glider.json');
     const json = JSON.parse(file.bytes.toString('utf8'));
     expect(json.format).toBe('wingdesigner-project');
-    expect(json.version).toBe(1);
+    expect(json.version).toBe(2);
     expect(json.units).toBe('mm');
     expect(json.name).toBe('Glider');
+    expect(json.settings.sectionPlanes).toBe('mitred');
+    // Every station carries the roll of its plane and its thickness stretch; the root plane is vertical.
+    expect(json.derived.stations[0]).toMatchObject({ y: 0, roll: 0 });
+    for (const st of json.derived.stations) expect(Number.isFinite(st.roll) && st.stretch >= 1).toBe(true);
     expect(json.generator).toEqual({ name: 'Wingdesigner', version: PKG_VERSION });
     expect(json.sections.map((s) => s.y)).toEqual(sections.map((s) => s.y));
     expect(json.sections.map((s) => s.chord)).toEqual(sections.map((s) => s.chord));

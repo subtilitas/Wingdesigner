@@ -2,6 +2,8 @@
 // (sections, spanwise interpolation, optional guide curves) -> tensor-product NURBS surface.
 // Straight panels (spanwise 'straight') have stations at the sections only: the degree-1 loft joins
 // the points of equal chord fraction of two sections with straight lines, as XFLR5 does.
+// Section planes (src/geom/planes.js): vertical (y = const), or mitred, rolled about x with the
+// airfoil thickness stretched; stations between two mitred sections blend the roll linearly.
 //
 // Surface parametrization: u runs around the profile from the upper trailing edge (u = 0) over the
 // leading edge (u = uLE) to the lower trailing edge (u = 1); v is the span fraction (0 root, 1 tip).
@@ -12,6 +14,7 @@ import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePo
 import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile, sampleCurve } from './profile.js';
 import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
+import { MAX_STRETCH, firstFold, mitredPlanes, overStretched, sectionPlanes, stretchOf, upExtent } from './planes.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
 import { WARN, displayName, loftGrid, sizeWarning } from '../model/budget.js';
 import { count, fixed, language, plain, tr, whole } from '../i18n/index.js';
@@ -67,16 +70,23 @@ const CROSS_TOLERANCE = 0.01;
 /** Smallest trailing-edge gap in mm for an open trailing edge (at most MAX_GAP_FRACTION of the chord). */
 export const MIN_OPEN_GAP = 0.01;
 
-/** Place normalized profile points into 3D. */
-export function placeSection(shape, { xLE, y, z, chord, twist }, pivot) {
+/**
+ * Place normalized profile points into 3D. The section plane is rolled by `roll` degrees about the x
+ * axis through (y, z) (in-plane up direction (0, −sin roll, cos roll)); `stretch` scales the airfoil
+ * thickness before the twist, which turns the airfoil within its plane.
+ */
+export function placeSection(shape, { xLE, y, z, chord, twist, roll = 0, stretch = 1 }, pivot) {
   const a = (twist * Math.PI) / 180;
   const c = Math.cos(a);
   const s = Math.sin(a);
-  return shape.map(([px, pz]) => {
+  const sr = Math.sin((roll * Math.PI) / 180);
+  const cr = Math.cos((roll * Math.PI) / 180);
+  return shape.map(([px, pz0]) => {
+    const pz = pz0 * stretch;
     const dx = px - pivot;
     const rx = dx * c + pz * s;
     const rz = -dx * s + pz * c;
-    return [xLE + chord * (pivot + rx), y, z + chord * rz];
+    return [xLE + chord * (pivot + rx), y - chord * rz * sr, z + chord * rz * cr];
   });
 }
 
@@ -134,16 +144,24 @@ export function interpolateAlongV(values, scheme) {
     if (scheme.kind === 'global') {
       cols.push(interpolateCurve(series, scheme.degree, { params: scheme.params }));
     } else {
-      // One degree for every panel (joinCurves needs it): the fewest stations of a panel bound it.
-      const q = scheme.panels.reduce((m, [a, b]) => Math.min(m, b - a), scheme.degree);
+      // One degree for every panel (joinCurves needs it): the fewest stations of a panel with more
+      // than two bound it. A panel of two stations is a straight segment at any degree.
+      const q = scheme.panels.reduce((m, [a, b]) => (b - a > 1 ? Math.min(m, b - a) : m), scheme.degree);
+      const d = scheme.panels.some(([a, b]) => b - a > 1) ? q : 1;
       const parts = scheme.panels.map(([a, b]) => {
         const f0 = scheme.params[a];
         const f1 = scheme.params[b];
         // Two stations: the interpolating curve is the straight segment through them (degree 1,
-        // knots 0, 0, 1, 1), as interpolateCurve returns it, without the solve.
-        if (b - a === 1) return { degree: 1, knots: [0, 0, 1, 1].map((t) => f0 + t * (f1 - f0)), points: [series[a].slice(), series[b].slice()] };
+        // knots 0, 0, 1, 1), as interpolateCurve returns it, without the solve; raised to degree d
+        // with its control points evenly along the segment.
+        if (b - a === 1) {
+          if (d === 1) return { degree: 1, knots: [0, 0, 1, 1].map((t) => f0 + t * (f1 - f0)), points: [series[a].slice(), series[b].slice()] };
+          const P = Array.from({ length: d + 1 }, (_, k) => series[a].map((c, m) => c + (k / d) * (series[b][m] - c)));
+          P[d] = series[b].slice();
+          return { degree: d, knots: [...Array(d + 1).fill(f0), ...Array(d + 1).fill(f1)], points: P };
+        }
         const local = scheme.params.slice(a, b + 1).map((f) => (f - f0) / (f1 - f0));
-        const c = interpolateCurve(series.slice(a, b + 1), q, { params: local });
+        const c = interpolateCurve(series.slice(a, b + 1), d, { params: local });
         return { degree: c.degree, knots: c.knots.map((t) => f0 + t * (f1 - f0)), points: c.points };
       });
       cols.push(joinCurves(parts));
@@ -215,6 +233,15 @@ function profileStage(a, parametrization, chordStations, N) {
 }
 
 /**
+ * Drop the oldest profile stages: every entry a build used is at the recent end, and entries go
+ * beyond the larger of PROFILE_CACHE_SIZE and the number of airfoils in use.
+ */
+function trimProfileCache(inUse) {
+  const keep = Math.max(PROFILE_CACHE_SIZE, inUse);
+  while (PROFILE_CACHE.size > keep) PROFILE_CACHE.delete(PROFILE_CACHE.keys().next().value);
+}
+
+/**
  * Crossing of a profile stage's fitted curve at a tolerance below CROSSING_TOLERANCE (a fraction of
  * the chord), cached on the stage per tolerance.
  */
@@ -225,10 +252,13 @@ function stageCrossing(stage, tolerance) {
 }
 
 /**
- * Crossing of the surface row at parameter v. Rows lie in planes y = const (every station lies in
- * one), so the row is tested in the x-z plane. Returns { x, size } in mm or null.
+ * Crossing of the surface row at parameter v. Rows lie in the planes of their stations, rolled by
+ * `roll` degrees about x (0: planes y = const), so the row is tested in the plane of x and the
+ * in-plane up direction. Returns { x, size } in mm or null.
  */
-export function surfaceRowCrossing(surface, v, tolerance) {
+export function surfaceRowCrossing(surface, v, tolerance, roll = 0) {
+  const sr = Math.sin((roll * Math.PI) / 180);
+  const cr = Math.cos((roll * Math.PI) / 180);
   // Non-rational surface: the v basis at this row is the same for every control column.
   const p = surface.degreeV;
   const span = findSpan(surface.points[0].length - 1, p, v, surface.knotsV);
@@ -238,11 +268,47 @@ export function surfaceRowCrossing(surface, v, tolerance) {
     let z = 0;
     for (let j = 0; j <= p; j++) {
       x += Nb[j] * col[span - p + j][0];
-      z += Nb[j] * col[span - p + j][2];
+      z += Nb[j] * (roll ? cr * col[span - p + j][2] - sr * col[span - p + j][1] : col[span - p + j][2]);
     }
     return [x, z];
   });
   return curveCrossing({ degree: surface.degreeU, knots: surface.knotsU, points: ctrl }, { tolerance, samplesPerSpan: 4 });
+}
+
+/**
+ * Why mitred section planes do not build for a project with a flat tip and no guide curves, from its
+ * section values and airfoils alone, without a loft (the checks of buildWing): { kind: 'stretch', i,
+ * angle } for a section whose plane lies beyond MAX_STRETCH from its panel, { kind: 'fold', i, distance }
+ * for neighbours i and i + 1 whose planes fold the surface between them; indices in the order of y.
+ * null when the planes build, and when an airfoil fails its check (the build reports that). The XFLR5
+ * import chooses its section planes by it, also where the dialog does not build.
+ */
+export function mitredPlaneProblem(project) {
+  const settings = resolveSettings(project.settings);
+  const sections = project.sections.slice().sort((a, b) => a.y - b.y);
+  const planes = sectionPlanes(sections, 'mitred');
+  const over = overStretched(planes.stretches);
+  if (over >= 0) return { kind: 'stretch', i: over, angle: planes.angles[over] };
+  const N = Math.round(Math.min(Math.max(settings.chordSamples, LIMITS.chordSamples[0]), LIMITS.chordSamples[1]));
+  const chordStations = cosineStations(N);
+  const airfoils = new Map(project.airfoils.map((a) => [a.id, a]));
+  const shapes = new Map();
+  for (const s of sections) {
+    if (shapes.has(s.airfoil)) continue;
+    const a = airfoils.get(s.airfoil);
+    const stage = a ? profileStage(a, settings.parametrization, chordStations, N) : null;
+    if (!stage || stage.error) return null;
+    // The crossing test of the build samples the curve again where it needs to.
+    delete stage.samples;
+    shapes.set(s.airfoil, stage.compat.get(N));
+  }
+  trimProfileCache(shapes.size);
+  const fold = firstFold(planes.rolls, (i) => {
+    const s = sections[i];
+    const [low, high] = upExtent(shapes.get(s.airfoil), { chord: s.chord, twist: s.twist, stretch: planes.stretches[i] }, settings.twistPivot);
+    return { y: s.y, z: s.z, roll: planes.rolls[i], low, high };
+  });
+  return fold && { kind: 'fold', ...fold };
 }
 
 /**
@@ -253,10 +319,12 @@ export function surfaceRowCrossing(surface, v, tolerance) {
 export function buildWing(project) {
   const errors = [];
   const warnings = [];
+  // Facts about the build that need no action (Checks tab).
+  const infos = [];
   const settings = resolveSettings(project.settings);
   const sections = project.sections.slice().sort((a, b) => a.y - b.y);
   // sizeWarning: the size warning among the warnings (null without one), for a refresh without a build.
-  const result = { settings, sections, errors, warnings, sizeWarning: null, surface: null, stations: [], profiles: new Map(), guides: {} };
+  const result = { settings, sections, errors, warnings, infos, sizeWarning: null, surface: null, stations: [], profiles: new Map(), guides: {} };
   if (sections.length < 2) {
     errors.push(tr('At least 2 sections are required.'));
     return result;
@@ -342,10 +410,7 @@ export function buildWing(project) {
     }
     result.profiles.set(s.airfoil, { ...stage.prof, id: a.id, name: a.name, points: stage.points, compat: stage.compat.get(N) });
   }
-  // Every entry this build used is at the recent end; older ones go beyond the larger of
-  // PROFILE_CACHE_SIZE and the number of airfoils the sections use.
-  const keep = Math.max(PROFILE_CACHE_SIZE, new Set(sections.map((s) => s.airfoil)).size);
-  while (PROFILE_CACHE.size > keep) PROFILE_CACHE.delete(PROFILE_CACHE.keys().next().value);
+  trimProfileCache(new Set(sections.map((s) => s.airfoil)).size);
   if (errors.length) return result;
 
   // Guides.
@@ -403,9 +468,39 @@ export function buildWing(project) {
   const y0 = ys[0];
   const y1 = ys[ys.length - 1];
   const dense = guideOn.nose || guideOn.end || settings.spanwise === 'smooth';
+  // Section planes. Smooth builds vertical planes: the mitred construction for a spline along the
+  // span is not built (owner decision of 2026-09-30, docs/Flow5upgrade.md).
+  const planesOn = mitredPlanes(settings);
+  const planes = sectionPlanes(sections, planesOn ? 'mitred' : 'vertical');
+  const R = planes.rolls;
+  result.sectionPlanes = planesOn ? 'mitred' : 'vertical';
+  result.rolls = R.slice();
+  result.stretches = planes.stretches.slice();
+  if (settings.sectionPlanes === 'mitred' && !planesOn && sectionPlanes(sections, 'mitred').rolls.some((r) => r !== 0)) {
+    infos.push(tr('Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels.'));
+  }
+  // The stretch 1/cos(angle between a section plane and its panel) grows without bound; the build
+  // stops at MAX_STRETCH instead of clamping it.
+  const stretched = overStretched(planes.stretches);
+  if (stretched >= 0) {
+    errors.push(
+      tr('Section {n}: its mitred plane lies {angle}° from the panel next to it, which stretches the airfoil {stretch} times (limit {limit}, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical.', {
+        n: plain(stretched + 1),
+        angle: fixed(planes.angles[stretched], 1),
+        stretch: fixed(planes.stretches[stretched], 2),
+        limit: plain(MAX_STRETCH),
+      }),
+    );
+    return result;
+  }
+  // Linear panels between two section planes that differ get stations as with a guide curve (R4 of
+  // docs/Flow5upgrade.md): the airfoil in every plane between. Straight panels stay ruled.
+  const rolledPanel = (i) => planesOn && settings.spanwise === 'linear' && R[i] !== R[i + 1];
+  let rolledPanels = 0;
+  for (let i = 0; i + 1 < sections.length; i++) if (rolledPanel(i)) rolledPanels++;
   // Grid: stations times profile points (2N + 1). Above LIMITS.maxGridPoints, where a desktop
   // browser tab runs out of memory, fewer stations per panel; one station per panel at least.
-  const grid = loftGrid(sections.length, settings, guideOn.nose || guideOn.end);
+  const grid = loftGrid(sections.length, settings, guideOn.nose || guideOn.end, rolledPanels);
   const K = grid.K;
   if (grid.points > LIMITS.maxGridPoints) {
     errors.push(
@@ -440,8 +535,9 @@ export function buildWing(project) {
     stationYs.push(ys[i]);
     let last = vOf(ys[i]);
     const vEnd = vOf(ys[i + 1]);
-    for (let k = 1; k < K; k++) {
-      const y = ys[i] + (ys[i + 1] - ys[i]) * (dense ? (1 - Math.cos((Math.PI * k) / K)) / 2 : k / K);
+    const Kp = dense || rolledPanel(i) ? K : 1;
+    for (let k = 1; k < Kp; k++) {
+      const y = ys[i] + (ys[i + 1] - ys[i]) * (1 - Math.cos((Math.PI * k) / Kp)) / 2;
       const v = vOf(y);
       if (paramsApart(last, v) && paramsApart(v, vEnd)) {
         stationYs.push(y);
@@ -469,7 +565,19 @@ export function buildWing(project) {
   // Leading-edge x, chord, z and twist of every section, blended from the two neighbouring sections
   // (O(1) per span position; a full weight vector per position made time and memory grow with the
   // square of the section count).
-  const scalarBlender = () => spanwiseBlender(ys, settings.spanwise, sections.map((_, i) => [[X[i], C[i], Z[i], T[i]]]));
+  const scalarBlender = () => spanwiseBlender(ys, settings.spanwise, sections.map((_, i) => [[X[i], C[i], Z[i], T[i], R[i]]]));
+  // Panel of a span position (binary search): the stretch follows from the blended roll and the
+  // dihedral of that panel, so every station keeps the airfoil thickness across its panel.
+  const panelOf = (y) => {
+    let lo = 0;
+    let hi = ys.length - 2;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (ys[mid] <= y) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo;
+  };
   let blendScalars = scalarBlender();
   const placed = new Map();
   const place = (y) => {
@@ -483,7 +591,9 @@ export function buildWing(project) {
     // curves that meet at the tip end in a scaled-down profile instead of a zero chord.
     if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
     if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
-    return { raw, xLE, chord, z: raw[2], twist: raw[3] };
+    const roll = raw[4];
+    const stretch = planesOn ? stretchOf(roll, planes.dihedrals[panelOf(y)]) : 1;
+    return { raw, xLE, chord, z: raw[2], twist: raw[3], roll, stretch };
   };
   const placement = (y) => {
     let out = placed.get(y);
@@ -511,6 +621,26 @@ export function buildWing(project) {
       }),
     );
     result.tipChordLimited = false;
+  }
+
+  // Mitred planes of neighbouring sections meet in a line parallel to x; within the airfoils the loft
+  // between them folds in span (a short panel at a large dihedral change).
+  if (planesOn) {
+    const fold = firstFold(R, (i) => {
+      const pl = placement(ys[i]);
+      const [low, high] = upExtent(compat[i], pl, pivot);
+      return { y: ys[i], z: pl.z, roll: pl.roll, low, high };
+    });
+    if (fold) {
+      errors.push(
+        tr('Sections {a} and {b}: their mitred planes meet {distance} mm from the position (y, z) of section {a}, within the airfoils, so the surface between them folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical.', {
+          a: plain(fold.i + 1),
+          b: plain(fold.i + 2),
+          distance: fixed(Math.abs(fold.distance), 1),
+        }),
+      );
+      return result;
+    }
   }
 
   // Chord check on a dense span sampling plus every guide breakpoint (control points and knots),
@@ -714,7 +844,7 @@ export function buildWing(project) {
     return result;
   }
 
-  const degreeV = dense ? 3 : 1;
+  const degreeV = dense || rolledPanels ? 3 : 1;
   const gapMm = (shape, chord) => (shape[0][1] - shape[shape.length - 1][1]) * chord;
   // Final station shape: blended profile with the trailing-edge setting, closed when every station
   // is closed, otherwise opened to at least MIN_OPEN_GAP. Both steps move each point on its own, so
@@ -767,22 +897,26 @@ export function buildWing(project) {
         devs.push([y, d, deviationTolerance(pl.chord)]);
       }
       const le = intended[0];
-      const dir = [axis[0] - le[0], axis[2] - le[2]];
-      const len = Math.hypot(dir[0], dir[1]) || 1;
+      const dir = [axis[0] - le[0], axis[1] - le[1], axis[2] - le[2]];
+      const len = Math.hypot(dir[0], dir[1], dir[2]) || 1;
       const sTEl = surfacePoint(surface, 1, v);
-      const fitChord = (((fitted[1][0] + sTEl[0]) / 2 - fitted[0][0]) * dir[0] + ((fitted[1][2] + sTEl[2]) / 2 - fitted[0][2]) * dir[1]) / len;
+      let fitChord = 0;
+      for (let k = 0; k < 3; k++) fitChord += ((fitted[1][k] + sTEl[k]) / 2 - fitted[0][k]) * dir[k];
+      fitChord /= len;
       if (fitChord < minFit) {
         minFit = fitChord;
         minFitY = y;
       }
-      // Local frame: undo translation, chord scale and twist (inverse of placeSection).
+      // Local frame: undo translation, roll, chord scale, twist and stretch (inverse of placeSection).
       const a = (pl.twist * Math.PI) / 180;
       const c = Math.cos(a);
       const sn = Math.sin(a);
+      const sr = Math.sin((pl.roll * Math.PI) / 180);
+      const cr = Math.cos((pl.roll * Math.PI) / 180);
       const localZ = (P) => {
         const rx = (P[0] - pl.xLE) / pl.chord - pivot;
-        const rz = (P[2] - pl.z) / pl.chord;
-        return sn * rx + c * rz;
+        const rz = (pl.roll ? cr * (P[2] - pl.z) - sr * (P[1] - y) : P[2] - pl.z) / pl.chord;
+        return (sn * rx + c * rz) / pl.stretch;
       };
       const sliver = teSliver(pl.chord);
       for (let q = 0; q < probeK.length; q++) {
@@ -809,10 +943,10 @@ export function buildWing(project) {
     // Trailing-edge thickness in mm, limited to MAX_GAP_FRACTION of the local chord.
     let limited = 0;
     for (const y of yList) {
-      const { xLE, chord, z, twist } = placement(y);
+      const { xLE, chord, z, twist, roll, stretch } = placement(y);
       if (te.mode === 'thickness' && te.thickness / chord > MAX_GAP_FRACTION && !(pointed && y > yPrev)) limited++;
       const shape = applyTrailingEdge(blendCompat(y), te.mode, teGap(chord), N);
-      stations.push({ xLE, y, z, chord, twist, v: y1 > y0 ? (y - y0) / (y1 - y0) : 0, shape });
+      stations.push({ xLE, y, z, chord, twist, roll, stretch, v: y1 > y0 ? (y - y0) / (y1 - y0) : 0, shape });
     }
     // Trailing-edge topology: closed when every station is closed, otherwise open with a minimum gap.
     const closedTE = stations.every((st) => Math.abs(gapMm(st.shape, st.chord)) < 1e-6);
@@ -862,12 +996,22 @@ export function buildWing(project) {
         ? { kind: 'global', params: paramsV, degree: degreeV }
         : { kind: 'panels', params: paramsV, panels: panelIdx, degree: degreeV };
     const along = interpolateAlongV(rowCtrl, scheme);
-    // Root and tip boundaries lie exactly in their planes y = const (removes solver round-off).
+    // Root and tip boundaries lie exactly in their planes (removes solver round-off): y = const for a
+    // vertical plane, the projection onto the rolled plane otherwise. The root is always vertical.
     const ctrl = along.columns;
     const last = ctrl[0].length - 1;
+    const tipRoll = stations[stations.length - 1].roll;
+    const tipZ = stations[stations.length - 1].z;
+    const tn = [Math.cos((tipRoll * Math.PI) / 180), Math.sin((tipRoll * Math.PI) / 180)];
     for (const col of ctrl) {
       col[0][1] = y0;
-      col[last][1] = y1;
+      if (tipRoll === 0) col[last][1] = y1;
+      else {
+        const P = col[last];
+        const d = (P[1] - y1) * tn[0] + (P[2] - tipZ) * tn[1];
+        P[1] -= d * tn[0];
+        P[2] -= d * tn[1];
+      }
     }
     const surface = { degreeU: degU, degreeV: along.degree, knotsU, knotsV: along.knots, points: ctrl };
 
@@ -939,6 +1083,34 @@ export function buildWing(project) {
   ({ fitted, yList, extra } = best);
   const { stations, surface, paramsU, paramsV, closedTE, limited, widened, devs } = fitted;
   result.stations = stations;
+  // Every point must lie outboard of the plane of the station before it and inboard of the plane of
+  // the station after it: rolled station planes that cross within the airfoils fold the loft.
+  if (planesOn && R.some((r) => r !== 0)) {
+    for (let k = 0; k + 1 < stations.length; k++) {
+      const A = stations[k];
+      const B = stations[k + 1];
+      if (A.roll === B.roll) continue;
+      const na = [Math.cos((A.roll * Math.PI) / 180), Math.sin((A.roll * Math.PI) / 180)];
+      const nb = [Math.cos((B.roll * Math.PI) / 180), Math.sin((B.roll * Math.PI) / 180)];
+      const folds = A.points.some((P, j) => {
+        const dy = B.points[j][1] - P[1];
+        const dz = B.points[j][2] - P[2];
+        return !(dy * na[0] + dz * na[1] > 0 && dy * nb[0] + dz * nb[1] > 0);
+      });
+      if (folds) {
+        const i = panelOf(A.y);
+        errors.push(
+          tr('The surface folds between the stations at y = {y1} mm and y = {y2} mm (panel from section {a} to {b}): their section planes cross within the airfoils. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical.', {
+            y1: fixed(A.y, 1),
+            y2: fixed(B.y, 1),
+            a: plain(i + 1),
+            b: plain(i + 2),
+          }),
+        );
+        return result;
+      }
+    }
+  }
   // Quarter points of every fitted station interval: between closely spaced stations the global
   // cubic interpolation can swing far away while every check position lies close to a station.
   // They enter the chord, thickness and contact errors; the deviation warning and the added
@@ -992,7 +1164,7 @@ export function buildWing(project) {
   const rowV = rowY.map((y) => (y1 > y0 ? (y - y0) / (y1 - y0) : 0));
   const chordAtV = (v) => placement(y0 + v * (y1 - y0)).chord;
   for (const v of rowV) {
-    const cross = surfaceRowCrossing(surface, v, Math.min(CROSSING_TOLERANCE * chordAtV(v), CROSSING_LIMIT));
+    const cross = surfaceRowCrossing(surface, v, Math.min(CROSSING_TOLERANCE * chordAtV(v), CROSSING_LIMIT), placement(y0 + v * (y1 - y0)).roll);
     if (cross) {
       errors.push(
         `${tr('The loft surface crosses itself at y = {y} mm near x = {x} mm: the surface rows overshoot between the resampled points.', {
@@ -1017,6 +1189,19 @@ export function buildWing(project) {
   }
   if (widened) {
     warnings.push(tr('The trailing edge is closed on some stations and open on others; {stations} station(s) were opened to {gap} mm.', { stations: plain(widened), gap: plain(MIN_OPEN_GAP) }));
+  }
+  // An XFLR5 import that folded a tilt angle into the sections (twist and quarter-chord points turned
+  // about y) is exact for vertical planes only; rolled planes would need the tilt as a rigid rotation.
+  const tilt = project.foldedTilt;
+  if (planesOn && tilt && R.some((r) => r !== 0)) {
+    let off = 0;
+    sections.forEach((q, i) => (off = Math.max(off, 0.75 * C[i] * Math.abs(Math.sin((tilt.angle * Math.PI) / 180) * Math.sin((R[i] * Math.PI) / 180)))));
+    warnings.push(
+      tr("The tilt angle of {angle}° of the XFLR5 import is folded into the section values, which is exact for vertical section planes only: with mitred planes the part lies up to about {distance} mm off XFLR5's (0.75 · chord · sin(tilt angle) · sin(roll)). Settings > Section planes Vertical keeps the import exact.", {
+        angle: fixed(tilt.angle, 2),
+        distance: fixed(off, 2),
+      }),
+    );
   }
   let dev = 0;
   let devY = y0;
@@ -1045,6 +1230,9 @@ export function buildWing(project) {
   result.closedTE = closedTE;
   result.rootY = y0;
   result.tipY = y1;
+  // Rolls of the end planes (degrees), for the caps of meshes and STEP.
+  result.rootRoll = stations[0].roll;
+  result.tipRoll = stations[stations.length - 1].roll;
   // Intended planform (leading edge and chord) at any span position, for the statistics, and the
   // span positions where it can bend: sections and guide breakpoints. The placement cache is
   // released; the planform is evaluated without it.

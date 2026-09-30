@@ -98,8 +98,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   sections only, and no stations are added. A guide curve on stops the build with a message. On the
   tip panel of `UltraStick120.xfl` (NACA 0014 at 406.4 mm to a 12.7 mm chord) the STL that the code of
   XFLR5 6.62 writes lies within 0.04 mm of the surface; with **Linear** it lies up to 4.17 mm off.
+- Setting **Section planes** (`settings.sectionPlanes`): **Mitred (square to the panels, as XFLR5)**
+  or **Vertical (y = const)**. Mitred planes keep the root vertical, put a section between two panels
+  in their bisector plane and the tip square to the last panel, and stretch each airfoil in
+  thickness by 1/cos of the angle between its plane and the panel, as XFLR5 and flow5 do. The wing
+  is as thick across every panel as its airfoil; vertical planes give cos δ (81.9 % on a 35° V-tail).
+  Build errors: a stretch above 2 (60° between plane and panel), and planes of neighbouring sections
+  or stations that meet within the airfoils. Smooth interpolation builds vertical planes, with an
+  info line in Checks. **Linear** panels between planes of different roll get the spanwise stations
+  per panel and a cubic loft. Meshes, STEP caps and the project JSON follow the rolled end planes;
+  `derived.stations[]` carries `roll` and `stretch`.
+- XFLR5 import: an untilted part gets **Mitred** section planes. Against the STL that the code of
+  XFLR5 6.62 writes, the 4 untilted 35° V-tails of `initialAerodynamicSym.xfl` lie within 0.013 mm
+  (2.87 mm with vertical planes) and the 40° V-tail of `mini_talon.xfl` within 0.025 mm (2.31 mm);
+  80 of 93 real surfaces lie within 0.6 mm (75 before). A tilted part imports with **Vertical**
+  section planes and stores its folded tilt (`foldedTilt`: angle, pivot x and z); a part whose
+  mitred planes would fold or stretch an airfoil more than 2 times imports vertical too. The report
+  names the section planes and the reason. A tilted part set to **Mitred** later gets a warning with
+  the estimated distance from XFLR5's part.
+- Info lines in the Checks tab, after errors and warnings.
+- `scripts/validate_step.py` checks that the edges of every planar face (the end caps) lie in the
+  plane within 1e-6 mm; `test/step-cases.js` adds a mitred 35° V-tail and a mitred 15°/−5° gull
+  (10 cases).
 
 ### Changed
+
+- Project format version 2. A version 1 file opens with **Vertical** section planes, as designed; an
+  app that reads version 1 only refuses a version 2 file. New projects, the wizard and the sample wing
+  get **Mitred**: a preset with dihedral builds more stations (Sport, Trainer, Plank: 9 instead of 2;
+  sample wing: 17 instead of 3). The Sport wing has 1.4 % less volume, because the loft follows the
+  **Linear** blend exactly instead of a ruled surface 0.343 mm off it.
 
 - XFLR5 import: the project gets **Straight panels** instead of **Linear**. A panel whose chord changes
   together with the airfoil or the twist gets XFLR5's shape.

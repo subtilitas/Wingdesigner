@@ -57,6 +57,14 @@ export default {
   'The root lies at y = {y} mm: the two halves are built as separate bodies, as in XFLR5.': 'Die Wurzel liegt bei y = {y} mm: Die beiden Hälften werden wie in XFLR5 als getrennte Körper gebaut.',
   'Tilt angle {angle}° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.':
     'Einstellwinkel {angle}° wie im XFLR5-Flugzeug angewendet: Die Schnitte sind um den Ursprung des Flügels gedreht, und jede Schränkung enthält ihn.',
+  "Section planes: vertical. The tilt angle of {angle}° is folded into the section values, which is exact for vertical section planes only: with mitred planes, as in XFLR5, the part would lie up to about {distance} mm off XFLR5's.":
+    'Schnittebenen: senkrecht. Der Einstellwinkel von {angle}° ist in die Schnittwerte eingerechnet, was nur für senkrechte Schnittebenen genau ist: Mit Schnittebenen auf Gehrung wie in XFLR5 läge das Teil bis zu etwa {distance} mm neben dem von XFLR5.',
+  'Section planes: mitred, as in XFLR5. The root section is vertical, a section between two panels lies in the bisector plane of the panels, and the tip section is square to the last panel; the airfoils keep their thickness across the panels.':
+    'Schnittebenen: auf Gehrung wie in XFLR5. Der Wurzelschnitt steht senkrecht, ein Schnitt zwischen zwei Feldern liegt in der Winkelhalbierenden der Felder, und der Randschnitt steht rechtwinklig zum letzten Feld; die Profile behalten quer zu den Feldern ihre Dicke.',
+  'Section planes: vertical. Mitred planes, as in XFLR5, would fold the surface between sections {a} and {b}.':
+    'Schnittebenen: senkrecht. Schnittebenen auf Gehrung wie in XFLR5 würden die Fläche zwischen den Schnitten {a} und {b} falten.',
+  'Section planes: vertical. The mitred plane of section {n}, as in XFLR5, would lie {angle}° from its panel, beyond the limit of 60°.':
+    'Schnittebenen: senkrecht. Die Gehrungsebene von Schnitt {n} läge wie in XFLR5 {angle}° schräg zu ihrem Feld, über der Grenze von 60°.',
   'All twists were changed by {angle}°, a whole number of turns; the sections stay the same.': 'Alle Schränkungen wurden um {angle}° geändert, ganze Umdrehungen; die Schnitte bleiben gleich.',
   'Position in the XFLR5 plane applied: the wing origin moved to x {x} mm, z {z} mm.': 'Position im XFLR5-Flugzeug angewendet: Der Ursprung des Flügels wurde nach x {x} mm, z {z} mm verschoben.',
   'Position y {y} mm is not used, as in XFLR5.': 'Die Position y {y} mm wird wie in XFLR5 nicht verwendet.',

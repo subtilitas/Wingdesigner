@@ -33,6 +33,8 @@ const teThickness = (page) => page.getByRole('spinbutton', { name: /^Trailing-ed
 const tipMode = (page) => page.getByRole('combobox', { name: 'Wing tip', exact: true });
 const tipScale = (page) => page.getByRole('spinbutton', { name: /^Tip profile scale 1 : N/ });
 const spanwise = (page) => page.getByRole('combobox', { name: 'Spanwise interpolation', exact: true });
+const sectionPlanes = (page) => page.getByRole('combobox', { name: 'Section planes', exact: true });
+const loftNote = (page) => page.locator('#pane-settings p.small').filter({ hasText: /^Loft grid/ });
 const chordStations = (page) => page.getByRole('spinbutton', { name: /^Chordwise stations per surface/ });
 const panelStations = (page) => page.getByRole('spinbutton', { name: /^Spanwise stations per panel/ });
 const twistPivot = (page) => page.getByRole('spinbutton', { name: /^Twist pivot/ });
@@ -321,6 +323,9 @@ test.describe('Settings tab', () => {
   test('smooth spanwise interpolation makes the surface cubic in span direction', async ({ page }) => {
     await createDesign(page, 'Sport');
     const linear = await figures(page);
+    // Vertical section planes: the linear panel has no stations between its sections.
+    await openTab(page, 'Settings');
+    await choose(sectionPlanes(page), 'vertical');
     await openTab(page, 'Checks');
     // Linear: one straight panel, 2 stations.
     await expect(checksValue(page, 'Surface')).toHaveText(surfaceRe(1, 121, 2));
@@ -356,11 +361,52 @@ test.describe('Settings tab', () => {
     expect(await figures(page)).toEqual(linear);
   });
 
+  test('section planes: mitred by default with stations in the panel, vertical on choice; Smooth builds vertical with an info line', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await openTab(page, 'Settings');
+    await expect(sectionPlanes(page)).toHaveValue('mitred');
+    // 1.5° dihedral: the root plane is vertical, the tip plane rolled 1.5°, so the panel gets 8 stations.
+    await expect(loftNote(page)).toHaveText('Loft grid: 1,089 points.');
+    await openTab(page, 'Checks');
+    await expect(checksValue(page, 'Surface')).toHaveText(surfaceRe(3, 121, 9));
+    await expect(page.locator('#pane-checks li.sev-info')).toHaveCount(0);
+    const tipOf = async () => {
+      const vs = stlVertices(parseStl((await exportFile(page, 'stl', { half: 'right' })).bytes).tris);
+      const ys = vs.map((p) => p[1]);
+      return [Math.min(...ys), Math.max(...ys)];
+    };
+    // The mitred tip leans past y = 600 at its lower surface; the vertical tip ends there.
+    const [rootMitred, tipMitred] = await tipOf();
+    expect(rootMitred).toBe(0);
+    expect(tipMitred > 600.1 && tipMitred < 600.2, `mitred tip reaches y = ${tipMitred}`).toBe(true);
+
+    await openTab(page, 'Settings');
+    await choose(sectionPlanes(page), 'vertical');
+    await expect.poll(async () => (await savedProject(page)).settings.sectionPlanes).toBe('vertical');
+    await expect(loftNote(page)).toHaveText('Loft grid: 242 points.');
+    await openTab(page, 'Checks');
+    await expect(checksValue(page, 'Surface')).toHaveText(surfaceRe(1, 121, 2));
+    const [, tipVertical] = await tipOf();
+    expect(Math.abs(tipVertical - 600)).toBeLessThan(1e-3);
+
+    // Smooth with mitred planes builds vertical planes and says so; the error and warning count stays 0.
+    await openTab(page, 'Settings');
+    await choose(sectionPlanes(page), 'mitred');
+    await choose(spanwise(page), 'smooth');
+    await openTab(page, 'Checks');
+    await expect(page.locator('#pane-checks li.sev-info')).toHaveText(['Info: Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels.']);
+    await expect(checksValue(page, 'Surface')).toHaveText(surfaceRe(3, 121, 9));
+    const [, tipSmooth] = await tipOf();
+    expect(Math.abs(tipSmooth - 600)).toBeLessThan(1e-3);
+    await expect(status(page)).toHaveText(STATUS_RE);
+  });
+
   test('chordwise stations 16 and 200 change the control point count', async ({ page }) => {
     await createDesign(page, 'Sport');
     const before = await figures(page);
     await openTab(page, 'Checks');
-    await expect(checksValue(page, 'Surface')).toHaveText(surfaceRe(1, 121, 2));
+    // Mitred section planes of different roll: 8 stations in the panel plus the tip, cubic in span.
+    await expect(checksValue(page, 'Surface')).toHaveText(surfaceRe(3, 121, 9));
 
     for (const [typed, shown, count] of [
       ['16', '16', 33],
@@ -373,7 +419,7 @@ test.describe('Settings tab', () => {
       await commit(chordStations(page), typed);
       await expect(chordStations(page), `typed ${typed}`).toHaveValue(shown);
       await openTab(page, 'Checks');
-      await expect(checksValue(page, 'Surface'), `typed ${typed}`).toHaveText(surfaceRe(1, count, 2));
+      await expect(checksValue(page, 'Surface'), `typed ${typed}`).toHaveText(surfaceRe(3, count, 9));
       await expect.poll(async () => (await savedProject(page)).settings.chordSamples).toBe(Number(shown));
       // The resolution does not change the planform.
       expect(await figures(page)).toEqual(before);
@@ -383,6 +429,8 @@ test.describe('Settings tab', () => {
   test('twist pivot 0 and 1 turn the twisted tip about its leading or trailing edge', async ({ page }) => {
     await createDesign(page, 'Sport');
     await openTab(page, 'Settings');
+    // Vertical section planes: the tip lies in the plane y = 600.
+    await choose(sectionPlanes(page), 'vertical');
     await expect(twistPivot(page)).toHaveValue('0.25');
     /** Vertices of the exported right half at the root (y = 0) and at the tip (y = 600). */
     const exportedEnds = async () => {
@@ -492,6 +540,7 @@ test.describe('Settings tab', () => {
     await openTab(page, 'Settings');
 
     await commit(projectName(page), 'Persist test');
+    await choose(sectionPlanes(page), 'vertical');
     await choose(spanwise(page), 'smooth');
     await commit(twistPivot(page), 0.3);
     await choose(teMode(page), 'closed');
@@ -504,6 +553,7 @@ test.describe('Settings tab', () => {
 
     const expected = {
       spanwise: 'smooth',
+      sectionPlanes: 'vertical',
       twistPivot: 0.3,
       trailingEdge: { mode: 'closed', thickness: 0.48 },
       tip: { mode: 'pointed', ratio: 1 / 150 },
@@ -527,6 +577,7 @@ test.describe('Settings tab', () => {
     await expect(page.getByRole('tab', { name: 'Settings', exact: true })).toHaveAttribute('aria-selected', 'true');
     await expect(projectName(page)).toHaveValue('Persist test');
     await expect(spanwise(page)).toHaveValue('smooth');
+    await expect(sectionPlanes(page)).toHaveValue('vertical');
     await expect(twistPivot(page)).toHaveValue('0.3');
     await expect(teMode(page)).toHaveValue('closed');
     await expect(teThickness(page)).toHaveCount(0);

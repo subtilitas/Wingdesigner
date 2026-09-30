@@ -23,6 +23,9 @@ Deutsch: [[Geometrie|Geometrie]]
 | K | spanwise stations per panel: **Settings** > **Spanwise stations per panel with guides or smooth mode**, default 8, range 3 to 40; the grid limit of section 3.2 can reduce it |
 | c | chord in mm |
 | f_pivot | twist pivot as a fraction of the chord: **Settings** > **Twist pivot (fraction of chord)**, default 0.25, range 0 to 1 |
+| δ | dihedral of a panel: atan2(z_(i+1) − z_i, y_(i+1) − y_i) of its two section positions, in degrees |
+| φ | roll of a section plane about the x axis (section 3.8); φ = 0 is the plane y = const |
+| m | thickness stretch of a placed airfoil (section 3.8); 1 in a vertical plane |
 | n | index of the last point of a point list (points 0 … n) |
 | p | degree of a curve |
 | u | surface parameter around the profile: 0 upper TE, u_LE leading edge, 1 lower TE |
@@ -105,7 +108,7 @@ coarse file. The same test runs on each airfoil curve and on the surface rows (s
 
 | Property | Airfoil curve | Surface row |
 | --- | --- | --- |
-| Curve | NURBS curve of section 1.2, normalized coordinates | row v = const of the surface S, projected to the x-z plane |
+| Curve | NURBS curve of section 1.2, normalized coordinates | row v = const of the surface S, projected to the plane of its station: x and the up direction (0, −sin φ, cos φ) of its roll φ (the x-z plane for φ = 0, section 3.8) |
 | Rows tested | – | at the y of each section, halfway between 2 neighbouring sections and halfway between the 2 stations of each of the 64 widest station intervals (`MAX_STATION_ROWS`; every interval when there are at most 64; added stations included); other rows: the thickness checks of section 3.6 |
 | Samples per knot span | per = max(1, min(256, round(4000 · L_span / L_total))); L_span = length of the control polygon of the span (p segments), L_total = sum over the non-empty knot spans | 4 |
 | Samples in total | Σ per + 1, about 4001 | 4 · spans + 1 |
@@ -218,7 +221,9 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
   S(u_j, v) = (1 − t) P_j(y_i) + t P_j(y_(i+1))          t = (y − y_i) / (y_(i+1) − y_i)
   ```
 
-  P_j(y_i) is point j of section i placed in 3D (section 3.8). Example: NACA 0014 at 400 mm chord and
+  P_j(y_i) is point j of section i placed in 3D, in the plane of the section (section 3.8). With
+  **Mitred** section planes this is XFLR5's surface; with **Vertical** section planes the sections
+  are thinner across a panel with dihedral (section 3.8). Example: NACA 0014 at 400 mm chord and
   NACA 0008 at 100 mm chord, 100 mm apart. Halfway, **Straight panels** give a thickness of 32.0 mm
   (the mean of 56 mm and 8 mm), **Linear** 27.5 mm (11 % of 250 mm), and the **Linear** loft lies up to
   2.3 mm off the straight lines (3.1 mm with a tip twist of −3°). Measured against the STL that the code of XFLR5 6.62
@@ -247,11 +252,21 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | **Linear**, no guide curve enabled | 1 (the section) | – | 1 |
 | **Straight panels** (no guide curve) | 1 (the section) | – | 1 |
 | **Linear**, a guide curve enabled | K (the section and K − 1 intermediate stations) | cosine | min(3, K): 3 for K ≥ 3; 2 or 1 when the loft grid limit lowers K to 2 or 1 |
+| **Linear**, no guide curve, **Section planes** = **Mitred**, the two sections of the panel in planes of different roll φ | K (the section and K − 1 intermediate stations) | cosine | as above; panels without intermediate stations are straight segments raised to that degree (section 4) |
 | **Smooth** | K (the section and K − 1 intermediate stations) | cosine | 3 (stations − 1 below 4 stations) |
 
-The tip section is the last station. Station count with K per panel: (sections − 1) · K + 1, plus the
-added stations below (**Linear** and **Smooth**; **Straight panels** add none).
-Example: **Glider** preset, 3 sections, K = 8: 17 stations.
+The tip section is the last station. Station count: D · K + (sections − 1 − D) + 1, plus the added
+stations below (**Linear** and **Smooth**; **Straight panels** add none). D is the number of panels
+with K stations: all sections − 1 with a guide curve on or **Smooth**; otherwise the **Linear** panels
+between mitred planes of different roll. Examples: **Glider** preset, 3 sections, K = 8: 17 stations;
+**Sport** preset (2 sections, 1.5° dihedral, **Mitred**): 9 stations.
+
+In a **Linear** panel between mitred planes, every intermediate station holds the blended airfoil in
+its own plane (roll and stretch of section 3.8), as with a guide curve. With one station per panel
+the loft would be the ruled surface of **Straight panels**. The two differ where the chord changes
+together with the airfoil or the twist: on the **Sport** preset (NACA 2412 at 240 mm, NACA 2410 at
+144 mm, −1° twist at the tip) the ruled surface lies up to 0.343 mm off the **Linear** surface, and the
+volume differs by 1.4 %.
 
 ```
 y_(i,k) = y_i + (y_(i+1) − y_i) (1 − cos(π k / K)) / 2          k = 0 … K − 1
@@ -263,15 +278,15 @@ intermediate station that is not distinct from the previous kept station or from
 through-point guide curves apply the same rule to the normalized y of their points.
 
 Loft grid (`loftGrid` in `src/model/budget.js`): stations times profile points before stations are
-added, ((sections − 1) · K + 1) · (2N + 1) points. **Linear** without a guide curve and **Straight
-panels** use K_set = 1.
+added, (D · K + (sections − 1 − D) + 1) · (2N + 1) points. With D = 0 (**Linear** without a guide curve
+and without panels between mitred planes of different roll, and **Straight panels**) K_set = 1.
 The limits apply in every mode.
 
 | Item | Value |
 | --- | --- |
 | Warning threshold | above 60,000 grid points (`WARN.gridPoints`): the build adds the warning "Large project: …" with "… loft grid points (warning above 60,000)" and the expected time and browser memory of each change. **Settings** shows "Loft grid: … points." under the resolution fields, with the time and memory above 60,000. |
 | Limit | 5,000,000 grid points (`LIMITS.maxGridPoints` in `src/model/project.js`); beyond it a desktop browser tab runs out of memory |
-| K used | max(1, min(K_set, floor((5,000,000 / (2N + 1) − 1) / (sections − 1)))), the largest K whose grid ((sections − 1) · K + 1) · (2N + 1) stays within 5,000,000; K_set = **Settings** value. K < K_set only above 5,000,000 grid points. |
+| K used | max(1, min(K_set, floor((5,000,000 / (2N + 1) − 1 − (sections − 1 − D)) / D))), the largest K whose grid (D · K + (sections − 1 − D) + 1) · (2N + 1) stays within 5,000,000; K_set = **Settings** value. K < K_set only above 5,000,000 grid points. |
 | Warning (K < K_set) | "Spanwise stations per panel reduced from K_set to K: S sections with N chord samples keep the loft within 5,000,000 grid points." |
 | Error (more than 5,000,000 grid points with the K used) | "The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections." No surface is built. |
 | Example | 200 sections, K_set = 8, N = 60 (defaults): K = 8, 1,593 stations, 192,753 grid points: warning with time and memory |
@@ -423,7 +438,7 @@ interval after the final fit (section 3.2).
 
 Local thickness of the fitted surface at y, for the compared chord stations k of section 3.2: the
 surface points S(u_(N−k), v) and S(u_(N+k), v) transformed back into the unit-chord frame of the
-station at y (translation, chord scale and twist undone), upper z minus lower z.
+station at y (translation, roll, chord scale, twist and stretch undone), upper z minus lower z.
 
 Checks in code order. Every row is an error; no surface is built.
 
@@ -437,7 +452,9 @@ Checks in code order. Every row is an error; no surface is built.
 | Airfoil | sanity-check error, failed NURBS interpolation, self-crossing NURBS curve (section 1.4) or x reversal (section 1.5). With **Chord length** or **Uniform** parametrization the message ends with 'Settings > Profile parametrization "centripetal" follows the points more closely.' |
 | Guide curves | a condition of section 3.3 violated |
 | Straight panels | **Straight panels** with a guide curve on (section 3.1) |
+| Section planes, stretch | **Mitred** section planes (not with **Smooth**, section 3.8): a section whose plane lies more than 60° from a panel next to it, a stretch m above 2 (`MAX_STRETCH` in `src/geom/planes.js`): a first panel steeper than 60°, or a dihedral change of more than 120° at a section. The stretch is never clamped. Message: "Section n: its mitred plane lies …° from the panel next to it, which stretches the airfoil … times (limit 2, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical." |
 | Loft grid | more than 5,000,000 grid points with the stations per panel used (section 3.2) |
+| Section planes, fold | **Mitred** section planes: the planes of two neighbouring sections of different roll meet in a line parallel to x. The surface between them folds when that line passes through either placed airfoil (its extent along the up direction of its plane, with chord, twist and stretch), when the two airfoils lie on opposite sides of the line, or when the inner airfoil lies outboard of the plane of the outer one (`planeFold` in `src/geom/planes.js`). Message: "Sections a and b: their mitred planes meet … mm from the position (y, z) of section a, within the airfoils, so the surface between them folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." Example: panels of 0°, 40° (10 mm long) and 80°, NACA 0012 at 300 mm chord: the planes rolled 20° and 60° meet 14.6 mm from section 2, inside its ±19.2 mm; at 150 mm chord (±9.6 mm) the surface builds. |
 | Section values | x_LE, c, z or cos(twist) of a check position is not a finite number. Message: "Section values give non-finite coordinates at y = … mm; check the positions, chords and twists of the sections." |
 | Geometry extent | at a check position: x_LE, x_LE + c (trailing edge) or z beyond ±1,200,000 mm (`LIMITS.maxExtent`), or c above 100,000 mm. Causes: **Smooth** overshoot; a guide curve close to ±1,200,000 mm, where the chord added to it or taken from it leaves the extent; nose line and end line more than 100,000 mm apart. Message: "At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves, or use linear interpolation." |
 | **Smooth** overshoot | **Smooth** only. At a check position an interpolated value lies more than 2 × (max − min) of its section values outside [min, max] (`OVERSHOOT_LIMIT` = 2). Values: x_LE (no guide curve on), chord (not both guide curves on), z, twist, and the height z_unit of every profile point k = 1 … 2N − 1. The message names the value with the largest overshoot (`leading-edge x`, `chord`, `z`, `twist`, `upper surface height at x = … % chord` or `lower surface height at x = … % chord`), its y, the section range and the smallest gap between 2 sections. Remedy in the message: **Linear**, more evenly spaced sections, or fewer closely spaced sections. |
@@ -448,8 +465,9 @@ Checks in code order. Every row is an error; no surface is built.
 | Chord, hint | as above, minimum at the tip, chord > −0.01 mm, **Wing tip** = **Flat**: the message adds "set **Settings** > **Wing tip** to **Pointed**" |
 | Fitted surface, finite | after the surface fit and the added stations (section 4): a control point coordinate is not a finite number. Message: "The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections." |
 | Fitted thickness | at every fitted position: local thickness of the fitted surface < −1e-9 (beyond 99 % chord: < −min(1e-4, 0.1 mm / c)) at a compared chord station ("The fitted surface turns inside out between stations"), or ≤ 1e-5 (0.001 % of the chord) at a compared chord station from 1 % to 99 % chord ("The fitted surface has zero thickness between stations"). The message gives y and the thickness. Cause in the message: the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in **Smooth** mode). Remedy in the message: smooth the guide curves, space the sections more evenly or add sections. |
-| Fitted chord | at every fitted position: c_fit < 0.9 mm (1 mm minimum chord less 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)) projected in the x-z plane onto the intended chord direction of the station at y. Message: "The fitted surface folds or narrows between stations" |
-| Surface self-crossing | the surface row at a section, halfway between 2 neighbouring sections or halfway between the 2 stations of one of the 64 widest station intervals (added stations included) crosses itself in the x-z plane with a loop size (mean width) above 5e-4 · c; 4 samples per knot span (section 1.4) |
+| Fitted chord | at every fitted position: c_fit < 0.9 mm (1 mm minimum chord less 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)) projected onto the intended chord direction of the station at y, in 3D. Message: "The fitted surface folds or narrows between stations" |
+| Station planes | **Mitred** section planes, after the fit: for two neighbouring stations of different roll, a point of the outer station does not lie beyond the planes of both stations, seen from the same point of the inner station. Message: "The surface folds between the stations at y = … mm and y = … mm (panel from section a to b): their section planes cross within the airfoils. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." |
+| Surface self-crossing | the surface row at a section, halfway between 2 neighbouring sections or halfway between the 2 stations of one of the 64 widest station intervals (added stations included) crosses itself in the plane of its station (section 1.4) with a loop size (mean width) above 5e-4 · c; 4 samples per knot span (section 1.4) |
 
 ### 3.7 Trailing edge
 
@@ -493,19 +511,48 @@ TE topology over all stations:
 
 ### 3.8 Placement in 3D
 
-Unit-chord point (x_unit, z_unit) from section 2, twist θ, pivot f_pivot. The rotation axis is parallel
-to y through the point (x_unit, z_unit) = (f_pivot, 0). The section lies in the plane Y = y.
+Unit-chord point (x_unit, z_unit) from section 2, twist θ, pivot f_pivot, roll φ and stretch m of the
+section plane. The twist turns the airfoil in its plane about the pivot (f_pivot, 0); the stretch scales
+its thickness before the twist.
 
 ```
 dx  = x_unit − f_pivot
-r_x =  dx cos θ + z_unit sin θ
-r_z = −dx sin θ + z_unit cos θ
+r_x =  dx cos θ + m z_unit sin θ
+r_z = −dx sin θ + m z_unit cos θ
 X = x_LE + c (f_pivot + r_x)
-Y = y
-Z = z + c r_z
+Y = y − c r_z sin φ
+Z = z + c r_z cos φ
 ```
 
-**Sections written by an XFLR5 import.** XFLR5 is a program for the analysis of airfoils and wings. The import sets **Twist pivot (fraction of chord)** (f_pivot) to 0.25, the point about which XFLR5 twists a section, and **Spanwise interpolation** to **Straight panels**, the construction of XFLR5's panels (section 3.1). It also applies a frame rule. XFLR5 draws the coordinates of an airfoil as they are; the build puts the leading edge of the airfoil curve (section 1.3) at the section origin and scales the airfoil to chord 1 (section 2). Where the coordinates that XFLR5 used are known (an airfoil of the `.xfl` file, an uploaded `.dat` file, a NACA section), the import moves and scales the section by the difference, so that the airfoil lies where XFLR5 draws it; a difference up to 0.1 % of the chord counts as none. Sections with a library airfoil or another airfoil of the current project keep the values of the file. How the import sets the sections, the pivot and the interpolation, with the rules and formulas: [[File Formats|File-Formats]], section XFLR5 import, subsection Mapping to sections.
+The section plane passes through the section position (y, z), which the untwisted leading edge, the
+pivot and the trailing edge share. Its up direction is (0, −sin φ, cos φ), its normal (0, cos φ, sin φ).
+With φ = 0 and m = 1 the section lies in the plane Y = y.
+
+**Settings** > **Section planes** (`settings.sectionPlanes`, `src/geom/planes.js`):
+
+| Value | Roll φ | Stretch m |
+| --- | --- | --- |
+| **Mitred (square to the panels, as XFLR5)** (`mitred`, default of new projects) | root 0; a section between panels i − 1 and i: (δ_(i−1) + δ_i) / 2, the bisector plane; tip: δ of the last panel, square to it | 1 / cos(φ − δ) with δ of the panel outboard of the section (the tip: the last panel; at a bisector both panels give the same value): root 1 / cos δ_0, a break 1 / cos((δ_i − δ_(i−1)) / 2), tip 1 |
+| **Vertical (y = const)** (`vertical`) | 0 | 1 |
+
+- Stations between sections: φ is blended like the twist (section 3.1); m = 1 / cos(φ − δ) with δ of
+  the panel of the station.
+- Thickness across a panel: m cos(φ − δ) = 1 of the airfoil thickness with **Mitred**, cos δ with
+  **Vertical**. 35° V-tail: the vertical sections are 81.9 % as thick across the panel; the mitred root
+  holds the airfoil stretched 1.221 times.
+- The twist turns the airfoil about the normal of its plane, as in XFLR5 and flow5. Seen along x, a
+  section rolled φ with twist θ meets the flow at atan(tan θ cos φ): 1.64° for 2° twist at 35°.
+- The root plane is vertical in both modes, so the two halves meet in the plane y = 0.
+- **Smooth** builds vertical section planes: the mitred construction along a spline is not built. With
+  **Mitred** and a wing with dihedral, the Checks tab shows the info line "Smooth spanwise interpolation
+  builds vertical section planes; mitred section planes need Linear or Straight panels."
+- The planes follow the section positions. A section moved in z changes the rolls of its planes and
+  of its neighbours' planes.
+- Limits: stretch at most 2 and no fold between neighbouring planes (section 3.6).
+- Project files of format version 1 hold no section-plane setting and open with **Vertical**
+  ([[File Formats|File-Formats]]).
+
+**Sections written by an XFLR5 import.** XFLR5 is a program for the analysis of airfoils and wings. The import sets **Twist pivot (fraction of chord)** (f_pivot) to 0.25, the point about which XFLR5 twists a section, **Spanwise interpolation** to **Straight panels**, the construction of XFLR5's panels (section 3.1), and **Section planes** to **Mitred**, XFLR5's planes. A tilted part and a part whose mitred planes would fold import with **Vertical** section planes. It also applies a frame rule. XFLR5 draws the coordinates of an airfoil as they are; the build puts the leading edge of the airfoil curve (section 1.3) at the section origin and scales the airfoil to chord 1 (section 2). Where the coordinates that XFLR5 used are known (an airfoil of the `.xfl` file, an uploaded `.dat` file, a NACA section), the import moves and scales the section by the difference, so that the airfoil lies where XFLR5 draws it; a difference up to 0.1 % of the chord counts as none. Sections with a library airfoil or another airfoil of the current project keep the values of the file. How the import sets the sections, the pivot and the interpolation, with the rules and formulas: [[File Formats|File-Formats]], section XFLR5 import, subsection Mapping to sections.
 
 ## 4. Surface
 
@@ -514,14 +561,16 @@ Tensor-product B-spline surface S(u, v) through the station grid Q (2N + 1 point
 | Direction | Parameters | Degree | Knot vector |
 | --- | --- | --- | --- |
 | u (around the profile) | mean of the per-station parametrizations; u_0 = 0, u_2N = 1 | 3 | clamped, by averaging |
-| v (span), **Linear**, **Straight panels** | v = (y − y_root) / (y_tip − y_root) | 1 without guides; with a guide min(3, K) (2 or 1 when the loft grid limit lowers K, section 3.2) | one interpolation per panel; panels joined at the sections with interior knot multiplicity p (C0: position-continuous, kinks at sections) |
+| v (span), **Linear**, **Straight panels** | v = (y − y_root) / (y_tip − y_root) | 1 when no panel has intermediate stations; otherwise the fewest station intervals of a panel with intermediate stations, at most 3 (min(3, K); 2 or 1 when the loft grid limit lowers K, section 3.2) | one interpolation per panel; a panel of 2 stations is the straight segment between them, raised to that degree; panels joined at the sections with interior knot multiplicity p (C0: position-continuous, kinks at sections) |
 | v (span), **Smooth** | same | 3 (stations − 1 below 4 stations) | one interpolation over all stations, averaging (C2: continuous up to the second derivative) |
 
 Procedure:
 
 1. Interpolate each station row along u (one band LU factorization serves all rows).
 2. Interpolate each column of the resulting control points along v (band LU, section 1.2).
-3. Set y of the control points at v = 0 to y_root and at v = 1 to y_tip (removes solver round-off).
+3. Set y of the control points at v = 0 to y_root, and project the control points at v = 1 onto the
+   tip plane (y = y_tip for φ = 0). This removes solver round-off: the root and tip rows lie in their
+   planes (10 STEP cases: within 2e-13 mm, section 6).
 
 Properties:
 
@@ -539,8 +588,8 @@ as shading.
 
 | Wizard preset (N = 60, K = 8) | Stations | Control points per half | Degree u × v |
 | --- | --- | --- | --- |
-| **Sport** | 2 | 121 × 2 | 3 × 1 |
-| **Swept flying wing** | 5 (2 added, section 3.2) | 121 × 5 | 3 × 1 |
+| **Sport** (1.5° dihedral, **Mitred**) | 9 | 121 × 9 | 3 × 3 |
+| **Swept flying wing** (no dihedral) | 5 (2 added, section 3.2) | 121 × 5 | 3 × 1 |
 | **Glider** (elliptic guide curves, **Tip** = **Flat**) | 17 | 121 × 17 | 3 × 3 |
 | **Glider** (elliptic guide curves, **Tip** = **Pointed (1/200 scale)**) | 22 (5 added, section 3.2; largest deviation 0.263 mm, no warning) | 121 × 22 | 3 × 3 |
 
@@ -568,8 +617,9 @@ Counts per half (n_u = 2N · d, V = number of v samples):
 Example: **Sport** preset, N = 60, d = 1, open TE: 242 vertices, 480 triangles per half.
 
 - Orientation: every triangle faces outward (normal S_v × S_u).
-- Caps: the root and tip outlines are triangulated in the x-z plane. Upper point k pairs with lower
-  point k (same chord station): 2 triangles per station interval, linear time.
+- Caps: the root and tip outlines are triangulated in the plane of their section (x and the up
+  direction of its roll φ; the x-z plane for φ = 0). Upper point k pairs with lower point k (same chord
+  station): 2 triangles per station interval, linear time.
 - Other diagonal: when a triangle of a quad is not counterclockwise, the quad uses its other diagonal
   (refined chord stations do not pair exactly). With one diagonal only, a **Fine** cap with a closed
   trailing edge (NACA 4415, 200 chord stations per surface) falls back to ear clipping: 2.2 s.
@@ -612,8 +662,8 @@ Faces of the right half; (+) = edge used in its own direction, (−) = reversed:
 | Upper | `B_SPLINE_SURFACE_WITH_KNOTS`, degree 3 × degree along v | upper TE (+), tip upper (+), leading edge (−), root upper (−) |
 | Lower | `B_SPLINE_SURFACE_WITH_KNOTS`, degree 3 × degree along v | leading edge (+), tip lower (+), lower TE (−), root lower (−) |
 | TE (open TE only) | ruled B-spline surface, degree 1 in u (knot vector (0, 0, 1, 1)) between the lower and the upper TE control rows | lower TE (+), tip line (+), upper TE (−), root line (−) |
-| Root cap | `PLANE`, normal −y, origin at the root leading edge | root upper (+), root lower (+), root line (+, open TE only) |
-| Tip cap | `PLANE`, normal +y, origin at the tip leading edge | tip lower (−), tip upper (−), tip line (−, open TE only) |
+| Root cap | `PLANE`, normal −y (the root plane is always vertical), origin at the root leading edge | root upper (+), root lower (+), root line (+, open TE only) |
+| Tip cap | `PLANE`, normal (0, cos φ_tip, sin φ_tip) (+y for a vertical tip), origin at the tip leading edge | tip lower (−), tip upper (−), tip line (−, open TE only) |
 
 | TE | Faces | Edges | Vertices |
 | --- | --- | --- | --- |
@@ -632,10 +682,11 @@ Orientation flags:
 | `same_sense` of the B-spline faces | `.F.` (S_u × S_v points inward) | `.T.` |
 | `same_sense` of the plane faces | `.T.` | `.T.` |
 | `FACE_OUTER_BOUND` orientation | `.T.` | `.F.` (every loop reversed) |
-| Plane normal | root −y, tip +y | mirrored as vectors: root +y, tip −y (outward) |
+| Plane normal | root −y, tip (0, cos φ_tip, sin φ_tip) | mirrored as vectors: root +y, tip (0, −cos φ_tip, sin φ_tip) (outward) |
 
 Validation: `scripts/validate_step.py` reads the files written by `scripts/export-step-cases.mjs`
-with OpenCascade. Cases: the 8 cases of `test/step-cases.js`.
+with OpenCascade. Cases: the 10 cases of `test/step-cases.js`, 2 of them with **Mitred** section
+planes (a 35° V-tail with **Straight panels** and a 15°/−5° gull with **Linear**).
 
 Pass criteria per file:
 
@@ -645,6 +696,9 @@ Pass criteria per file:
 - per solid: the shell is closed (no free edges, no bad orientation)
 - per solid: volume > 0
 - per solid: volume within 5e-4 (relative) of the mesh volume at u × 4 and v × 8 refinement
+- per solid: every edge of a planar face (the caps) lies in its plane within 1e-6 mm, sampled at 51
+  points per edge. A tip cap written vertical on the 15°/−5° gull lies 0.67 mm off its edges and
+  changes the volume by only 0.0475 %, below the volume tolerance.
 
 ## 7. Planform statistics
 

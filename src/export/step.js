@@ -4,7 +4,7 @@
 //   upper face  - B-spline surface, trailing edge -> leading edge (u), root -> tip (v)
 //   lower face  - B-spline surface, leading edge -> trailing edge (u), root -> tip (v)
 //   TE face     - ruled B-spline surface between the trailing-edge curves (open trailing edge only)
-//   root, tip   - planar caps (sections lie in planes y = const)
+//   root, tip   - planar caps (end sections lie in planes, rolled about x when mitred)
 // Every edge is the exact boundary iso-curve of the adjacent B-spline surface.
 
 import { knotMultiplicities, splitSurfaceU, surfaceBoundaryU, surfaceBoundaryV, surfacePoint } from '../geom/nurbs.js';
@@ -208,9 +208,11 @@ function writeHalfWing(w, build, name, mirrored) {
     rootLoop.push([E.rootTE, true]);
     tipLoop.push([E.tipTE, false]);
   }
-  // Caps: plane normals are geometric vectors, so mirroring the axis keeps them outward.
-  faces.push(w.face(rootLoop, w.plane(xf(P.le0), xf([0, -1, 0]), [1, 0, 0]), true, bound));
-  faces.push(w.face(tipLoop, w.plane(xf(P.le1), xf([0, 1, 0]), [1, 0, 0]), true, bound));
+  // Caps: plane normals are geometric vectors, so mirroring the axis keeps them outward. A rolled end
+  // section has the normal (0, cos φ, sin φ); the reference direction x lies in every such plane.
+  const normal = (roll, sign) => (roll ? [0, sign * Math.cos((roll * Math.PI) / 180), sign * Math.sin((roll * Math.PI) / 180)] : [0, sign, 0]);
+  faces.push(w.face(rootLoop, w.plane(xf(P.le0), xf(normal(build.rootRoll ?? 0, -1)), [1, 0, 0]), true, bound));
+  faces.push(w.face(tipLoop, w.plane(xf(P.le1), xf(normal(build.tipRoll ?? 0, 1)), [1, 0, 0]), true, bound));
   const shell = w.add(`CLOSED_SHELL('',(${faces.join(',')}))`);
   return w.add(`MANIFOLD_SOLID_BREP(${stepString(name)},${shell})`);
 }
