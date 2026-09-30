@@ -27,7 +27,7 @@ The bundled airfoil library needs no network request: plugin `airfoilLibrary` in
 | `scripts/` | See [Scripts](#scripts) |
 | `test/` | Vitest unit tests (`*.test.js`), `helpers.js` (NACA sample project), `step-cases.js` (validation cases for Standard for the Exchange of Product model data (STEP) files and 3MF files) |
 | `e2e/` | Playwright end-to-end (E2E) browser tests (`*.spec.js`), `helpers.js` |
-| `docs/wiki/` | Wiki pages in English and German, `_Sidebar.md`, `images/` |
+| `docs/wiki/` | Wiki pages in English and German, `_Sidebar.md`, `images/` (English screenshots), `images/de/` (German screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
 
 Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`, `test-results/`, `playwright-report/`.
@@ -82,7 +82,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `scripts/export-step-cases.mjs` | STEP and 3MF case export |
 | `scripts/validate_step.py` | STEP validation (OpenCascade) |
 | `scripts/validate_3mf.py` | 3MF validation (lib3mf) |
-| `scripts/screenshots.mjs` | Wiki screenshots |
+| `scripts/screenshots.mjs` | Wiki screenshots, English and German |
 | `scripts/check-docs.mjs` | Documentation check |
 | `scripts/check-test-counts.mjs` | Test count check |
 | `scripts/check-i18n.mjs` | Translation check |
@@ -107,7 +107,9 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | --- | --- |
 | `wingdesigner.project.v1` | Last valid project (JSON) |
 | `wingdesigner.project.v1.rejected` | Copy of a saved project that failed to load. The app then starts as on a first visit, with the wizard. |
+| `wingdesigner.project.v1.stale` | Time of the first failed autosave; removed at the next start and when an autosave succeeds |
 | `wingdesigner.tab` | Active tab |
+| `wingdesigner.language` | Chosen language, `en` or `de` (section [Translations](#translations)) |
 
 ### Build and export times
 
@@ -137,6 +139,8 @@ Large projects in the browser:
 | Machine | Chromium 141, headless, software rendering; 4 shared cores of a 2.1 GHz Intel Xeon CPU; load average 2 to 8 (other processes running) |
 | Change | 1 chord edit in the **Sections** table |
 | Values | JavaScript time of the change; JavaScript heap after the rebuild |
+
+**Linear** and **Smooth** stand for the options **Linear between sections (straight panels)** and **Smooth (natural cubic spline through sections)** of the list **Spanwise interpolation**.
 
 | Case | JavaScript time per change | Heap |
 | --- | ---: | ---: |
@@ -204,17 +208,61 @@ The export memory adds the base of 15 MB. Tests: `test/budget.test.js` (threshol
 
 ## Translations
 
-The app speaks English or German (`src/i18n/index.js`). The language is English in Node.js and in the tests; the browser starts in German when its first language is German or when the user chose German (setting **Language / Sprache**, key `wingdesigner.language`).
+The app speaks English (`en`) or German (`de`). The code is in `src/i18n/index.js`. English is the default, also in Node.js and in the unit tests.
 
-- `tr(text, params)` returns `text` in the current language. The key is the English text that the code produces, with `{name}` placeholders: `tr('Created "{name}".', { name })`. The first argument is a string literal, and a text is a whole sentence: no English fragments glued together.
-- The German text is the entry with the same key in the file of its area: `src/i18n/de/shell.js` (`src/main.js`, wizard, **Settings**), `panels.js` (**Airfoils** tab, **Export** dialog, library), `editors.js` (**Sections** table, **Planform**), `model.js` (project, size warnings, wizard), `geom.js` (build, export), `airfoil.js` (parser and checks). A key without a German entry shows the English text.
+At the start of the browser app, `initialLanguage()` picks the language:
+
+1. A stored choice, when it names a language.
+2. Otherwise German, when the first language of the browser is `de` or begins with `de-`.
+3. Otherwise English.
+
+The list **Language / Sprache** changes the language. It is the first group of the **Settings** tab and holds `English` and `Deutsch`. The choice is stored in `localStorage` under `wingdesigner.language`. Without browser storage, the choice lasts until the page closes. The label **Language / Sprache** and the two option names read the same in both languages and are no catalog entries.
+
+To add a text:
+
+1. Write the English text where it is shown: `tr('Created "{name}".', { name })`. The first argument is a string literal. A text is a whole sentence: no English fragments glued together.
+2. Add the entry with the same key and the same placeholders to the file of its area: `'Created "{name}".': 'Entwurf „{name}“ angelegt.'`. A key without a German entry shows the English text.
+3. Run `npm run i18n:check`. It names the file and line of a key without a German entry.
+4. A text of the shell that is made once (top bar, tabs, view buttons, status bar, meta description) is registered in `shellLabels`, usually through `localized()` in `src/main.js`. `labelShell()` sets it again after a change of language. The panels take their texts from `tr()` when they are drawn or labelled again.
+
+| File in `src/i18n/de/` | Texts of |
+| --- | --- |
+| `shell.js` | `src/main.js`, `src/ui/wizard.js`, `src/ui/settings.js` |
+| `panels.js` | `src/ui/airfoils.js`, `src/ui/exportui.js`, `src/ui/viewer3d.js`, library data (see below) |
+| `editors.js` | `src/ui/sections.js`, `src/ui/planform.js` |
+| `model.js` | `src/model/` |
+| `geom.js` | `src/geom/`, `src/export/` |
+| `airfoil.js` | `src/airfoil/` |
+
+`src/i18n/de/index.js` merges the six files into `DE` and exports them by name as `AREAS`.
+
+To add a language:
+
+1. Make a folder `src/i18n/<code>/` with the area files and an `index.js` that merges them, as `src/i18n/de/index.js` does.
+2. Add `<code>: 'Name'` to `LANGUAGES` and `<code>: <catalog>` to `CATALOGS` in `src/i18n/index.js`. The list **Language / Sprache** shows `LANGUAGES`. `setLanguage()` accepts the codes of `CATALOGS`.
+3. These places name German in the code and do not follow `LANGUAGES`. Each needs a rule for the new language:
+   - `initialLanguage()` reads only `de` from the browser languages.
+   - `fixed()`, `count()`, `whole()` and `plain()` compare the language with `'de'`.
+   - `src/ui/styles.css` has rules `html[lang='de']` for the longer German labels.
+   - The documentation link of the **Help** dialog in `src/main.js` chooses the page by `language() === 'de'`.
+   - The `<noscript>` text in `index.html` names both languages.
+   - `scripts/check-i18n.mjs` imports only `src/i18n/de/index.js`.
+   - The label `Language / Sprache` (`LANGUAGE_LABEL` in `src/ui/settings.js`) names the list in English and German.
+   - `scripts/screenshots.mjs` runs only `en` and `de` and looks labels up in `DE`. The wiki pages of a new language need their own image folder.
+   - `PAGE_PAIRS` in `scripts/check-docs.mjs` and the rules in `scripts/check-test-counts.mjs` name only the English and the German pages.
+
+Rules for texts:
+
 - A plural is two keys, or a German entry that is a function of the params (`({ n }) => …`) and compares the printed number with `'1'`.
-- Numbers inside a text go through `fixed(value, digits)`, `count(value)`, `whole(value)` or `plain(value)`: German writes a decimal comma and dot groups (`1.234,5`). `whole()` is for counts and limits that can have 4 or more digits: English prints `String(value)`, German groups an integer and never rounds. Data numbers (values of input fields, attributes, file contents) stay unformatted.
-- Data is not translated: file contents (STEP, STL, 3MF, JSON, `.dat`), project JSON, airfoil names, attributions, licenses, file names, CSS classes, `data-*` values, option values and developer console output.
-- Code never compares message text. It compares a code or a recorded field (`issue.code`, `build.sizeWarning`), because the same message reads differently in German.
-- The texts of the bundled library (`category`, `use` in `public/airfoils/index.json` and the notes of the external sources) are data of the index, shown through `libraryText()` in `src/ui/airfoils.js`. A new text needs a `case` there with its own `tr()` literal and a German entry in `src/i18n/de/panels.js`; an unknown text is shown as it is.
-- `npm run i18n:check` (`scripts/check-i18n.mjs`, job `test` of `ci.yml`) fails when a key has no German entry, a German entry is unused, key and entry differ in their placeholders, two areas translate one key differently, or a `tr()` call does not start with a string literal.
-- `changeLanguage()` in `src/main.js` switches without a reload: it stores the choice, sets the `lang` attribute, relabels the shell and marks the build, so that the next frame builds the wing again and draws the view and every panel from that build. With no other message than the size warning, only that warning is written again.
+- Numbers inside a text go through four helpers. `fixed(value, digits)` writes `digits` decimals: `1200.5` in English, `1.200,5` in German. `count(value)` rounds to a whole number and groups the digits: `20,000` in English, `20.000` in German. `whole(value)` is for counts and limits that can have 4 or more digits: English prints `String(value)`, German groups an integer and never rounds. `plain(value)` prints the shortest text that reads back as the number (`String(value)`), with a decimal comma in German.
+- Number fields are text fields with the role `spinbutton` (`numberField` and `numberInput` in `src/ui/dom.js`, also used by the wizard), because a native `<input type="number">` in Chromium drops a typed decimal comma. They show `inputText(value)`, which is `plain(value)`, and read the typed text with `readNumber(text)` from `src/i18n/index.js`: a decimal comma or point in both languages, the digit groups of the current language, rule in section Numbers of the [[User Guide|User-Guide]]. `aria-valuenow`, `aria-valuemin` and `aria-valuemax` hold plain JavaScript numbers.
+- Data numbers (attributes, file contents) stay unformatted.
+- Not translated: file contents (STEP, STL, 3MF, JSON, `.dat`), the project JSON, airfoil names, attributions and licenses, names of external sources, file names, cascading style sheets (CSS) classes, `data-*` values, option values and issue codes such as `many-points`. The text of an exception inside `Internal error: {message}` (thrown in `src/geom/nurbs.js` and `src/geom/linalg.js`) stays English; the frame around it is translated. The 3MF file declares `xml:lang="en-US"` in both languages.
+- Code never compares a translated text. It compares a code or a recorded field (`issue.code`, `build.sizeWarning`), because the same message reads differently in German. The one text test, `/zero pivot/` in `src/geom/wing.js`, reads an exception from `src/geom/linalg.js` that is never translated.
+- The descriptive texts of the library are data: `category` and `use` of `NACA_PRESETS` in `src/airfoil/library.js` and of the entries in `public/airfoils/index.json`, and the `note` of `EXTERNAL_SOURCES`. `libraryText()` in `src/ui/airfoils.js` shows them. A new text needs a `case` there with its own `tr()` literal and a German entry in `src/i18n/de/panels.js`. An unknown text is shown as it is.
+- The **Documentation (wiki)** link in the **Help** dialog opens the wiki home in English and the page `Benutzerhandbuch` in German.
+- `npm run i18n:check` (`scripts/check-i18n.mjs`, job `test` of `ci.yml`, also run by `test/i18n.test.js`) reads every `tr()` call in `src/` outside `src/i18n/`. It exits with code 1 when a key has no German entry, a German entry is unused, key and text entry differ in their placeholders, two areas translate one key differently, an entry is neither text nor function, or a `tr()` call does not start with a string literal. It does not compare the placeholders of function entries.
+- `changeLanguage()` in `src/main.js` switches without a reload. It stores the choice, sets the `lang` attribute of the `html` element, relabels the shell and removes the notice, unless the notice reports an error. When the build holds an error or a warning other than the size warning, the wing is built again, because those messages come from the build. Otherwise the wing stays and the size warning is written again. In both cases the panels are drawn again, the **Checks** tab among them. The project, the selection and the undo history stay.
 
 ## Test data policy
 
@@ -224,7 +272,7 @@ The app speaks English or German (`src/i18n/index.js`). The language is English 
 | Parser test inputs | Short synthetic strings in `test/airfoil.test.js` in the file formats of third-party sources, with invented coordinates |
 | Browser test uploads | Generated in the spec files, no third-party data: 13-point `.dat` in `e2e/smoke.spec.js` and `e2e/mobile-layout.spec.js`; Selig, Lednicer, X/Yo/Yu percent table with decimal commas and invalid files (crossing surfaces, text) from the NACA 4-digit equations in `e2e/airfoils.spec.js` |
 | Bundled library in browser tests | `e2e/airfoils.spec.js` lists the 6 files of `public/airfoils/` and adds S9104 to the project |
-| Screenshot upload | NACA 4412 computed in `scripts/screenshots.mjs`, 14 x positions from 0 to 100 %, written as X/Yo/Yu percent table with decimal commas |
+| Screenshot upload | NACA 4412 computed in `scripts/screenshots.mjs`, 14 x positions from 0 to 100 %, written as X/Yo/Yu percent table with decimal commas; the same file in both languages |
 
 Third-party airfoil files are committed only under a license from the License row in [Airfoil library check](#airfoil-library-check).
 Sources: [[Airfoil Sources|Airfoil-Sources]].
@@ -241,7 +289,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 360 tests in 15 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 371 tests in 15 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -249,7 +297,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 8 STEP files, 8 3MF files and `cases.json` in `step-check/` |
-| `npm run screenshots` | `node scripts/screenshots.mjs` | 12 Portable Network Graphics (PNG) files in `docs/wiki/images/` |
+| `npm run screenshots` | `node scripts/screenshots.mjs` | 24 Portable Network Graphics (PNG) files: 12 in `docs/wiki/images/` (English) and 12 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
 | `npm run i18n:check` | `node scripts/check-i18n.mjs` | Checks in [Translations](#translations); exit code 1 on a problem |
@@ -283,10 +331,10 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Server | `npm run preview -- --port 4173 --strictPort`; every run starts its own server (`reuseExistingServer: false`) |
 | Timeouts | 60000 ms per test, 60000 ms for server start |
 | Retries | 0 |
-| Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` sets its own locale where a test needs one |
+| Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` sets `de-DE` in its block `German browser` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-160 tests in 11 spec files, 320 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+165 tests in 11 spec files, 330 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 30 tests run in one project only (`test.skip` in the other project):
 
@@ -377,24 +425,33 @@ On the next run, pages edited in the wiki web interface are overwritten, and pag
 
 ### Screenshots
 
-`npm run screenshots` regenerates all images in `docs/wiki/images/`.
-It builds the site, serves it on port 4175 and drives Chromium with Playwright.
-Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. Light color scheme. English interface (locale `en-US`), because a German browser starts the app in German.
+`npm run screenshots` regenerates all images. It builds the site, serves it on port 4175 and drives Chromium with Playwright. It produces every image twice:
 
-| File | State | Size (px) |
+| Folder | Interface language | Browser locale |
 | --- | --- | --- |
-| `wizard.png` | Wizard, **Glider** preset | 960 x 784 |
-| `main-desktop.png` | Full window after creating the **Glider** | 1280 x 800 |
-| `sections.png` | **Sections** tab, **Glider**, 3 sections | 600 x 730 |
-| `planform.png` | **Planform** tab, **Glider**, nose line and end line on | 600 x 730 |
-| `airfoils.png` | **Airfoils** tab, **Glider** | 600 x 730 |
-| `upload-preview.png` | Upload preview of a synthetic X/Yo/Yu percent table with decimal commas, opened over the **Glider** | 640 x 646 |
-| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 476 |
-| `settings.png` | **Settings** tab, **Glider** | 600 x 730 |
-| `checks.png` | **Checks** tab, **Glider** | 600 x 730 |
-| `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 |
-| `mobile-main.png` | Phone, **Sport** preset | 1082 x 2202 |
-| `mobile-planform.png` | Phone, **Planform**, **Sport**, end line on | 1082 x 2202 |
+| `docs/wiki/images/` | English | `en-US` |
+| `docs/wiki/images/de/` | German | `de-DE` |
+
+Both folders hold 12 files with the same names and the same states. The English wiki pages embed `images/<name>.png`, the German pages `images/de/<name>.png`.
+
+The two languages run the same steps. The steps name every control by its English label. The German run maps that label to its German entry in `DE` (`src/i18n/de/index.js`) and stops when there is no text entry. Both runs stop when the app starts in another language than the locale asks for (`lang` attribute of the `html` element). The text `Sample 4412 table` in `upload-preview.png` is the first line of the generated file and reads the same in both languages.
+
+Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. Light color scheme. The German texts are longer, so the size of some German images differs.
+
+| File | State | Size (px), English | Size (px), German |
+| --- | --- | --- | --- |
+| `wizard.png` | Wizard, **Glider** preset | 960 x 784 | 960 x 784 |
+| `main-desktop.png` | Full window after creating the **Glider** | 1280 x 800 | 1280 x 800 |
+| `sections.png` | **Sections** tab, **Glider**, 3 sections | 600 x 730 | 600 x 730 |
+| `planform.png` | **Planform** tab, **Glider**, nose line and end line on | 600 x 730 | 600 x 730 |
+| `airfoils.png` | **Airfoils** tab, **Glider** | 600 x 730 | 600 x 730 |
+| `upload-preview.png` | Upload preview of a synthetic X/Yo/Yu percent table with decimal commas, opened over the **Glider** | 640 x 646 | 640 x 710 |
+| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 506 | 640 x 552 |
+| `settings.png` | **Settings** tab, **Glider** | 600 x 730 | 600 x 730 |
+| `checks.png` | **Checks** tab, **Glider** | 600 x 730 | 600 x 730 |
+| `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 | 680 x 730 |
+| `mobile-main.png` | Phone, **Sport** preset | 1082 x 2202 | 1082 x 2202 |
+| `mobile-planform.png` | Phone, **Planform**, **Sport**, end line on | 1082 x 2202 | 1082 x 2202 |
 
 ### Documentation check
 
@@ -430,7 +487,7 @@ npm run counts:check                                                            
 npm run e2e && npm run counts:check -- --e2e-report playwright-report/results.json  # all counts
 ```
 
-CI runs it in the job `test` without a report and in the job `e2e` with the report of that job's run.
+Continuous integration (CI) runs it in the job `test` without a report and in the job `e2e` with the report of that job's run.
 Not checked: `CHANGELOG.md` (it records changes, with the counts of their time).
 
 ## Continuous integration (CI)

@@ -5,8 +5,8 @@ import { buildWing } from '../geom/wing.js';
 import { LIMITS } from '../model/project.js';
 import { wingStats } from '../geom/stats.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
-import { clear, h } from './dom.js';
-import { fixed, tr } from '../i18n/index.js';
+import { clear, h, numberField, showNumber } from './dom.js';
+import { fixed, readNumber, tr } from '../i18n/index.js';
 
 // label and unit: functions, because the language can change between two openings of the wizard.
 const FIELDS = [
@@ -86,16 +86,17 @@ export function openWizard({ firstRun = false } = {}) {
     const renderFields = () => {
       const rows = FIELDS.map((f) => {
         const [lo, hi] = RANGES[f.key];
-        const input = h('input', {
-          type: 'number',
-          step: String(f.step),
-          min: String(lo),
-          max: String(hi),
-          value: String(params[f.key]),
-          oninput: () => {
-            params[f.key] = Number(input.value);
-            refresh();
-          },
+        // Checked while typing: a text that is no number (NaN) is out of range and disables Create.
+        // The arrow keys step such a text from the preset's value.
+        const fallback = () => (Number.isFinite(params[f.key]) ? params[f.key] : PRESETS[preset].params[f.key]);
+        const input = numberField({ value: params[f.key], step: f.step, min: lo, max: hi, fallback });
+        input.addEventListener('input', () => {
+          params[f.key] = readNumber(input.value);
+          refresh();
+        });
+        // Leaving the field shows the number as read, e.g. 1500 for a German 1.500.
+        input.addEventListener('change', () => {
+          if (Number.isFinite(params[f.key])) showNumber(input, params[f.key]);
         });
         inputs[f.key] = input;
         const unit = f.unit();
@@ -180,15 +181,16 @@ export function openWizard({ firstRun = false } = {}) {
 
     const pz = new PanZoomCanvas(canvas, {
       bounds: () => {
-        const b = Math.max(params.span / 2, 1);
+        // A field that holds no number (NaN) counts as 0 here, so that the grid is still drawn.
+        const b = Math.max((Number.isFinite(params.span) ? params.span : 0) / 2, 1);
         // The drawn outline: leading and trailing edges of the built stations (a taper above 1 widens
         // the tip beyond the root chord).
         if (build?.stations?.length) {
           const xs = build.stations.flatMap((q) => [q.xLE, q.xLE + q.chord]);
           return [-b, -Math.max(...xs), b, -Math.min(0, ...xs)];
         }
-        const c = Math.max(params.rootChord, 1);
-        const sw = Math.tan((params.sweep * Math.PI) / 180) * b;
+        const c = Math.max(Number.isFinite(params.rootChord) ? params.rootChord : 0, 1);
+        const sw = Math.tan(((Number.isFinite(params.sweep) ? params.sweep : 0) * Math.PI) / 180) * b;
         return [-b, -(Math.max(c, sw + c)), b, -Math.min(0, sw)];
       },
       draw: (ctx, view, w, hgt) => drawPlanform(ctx, view, w, hgt, build?.stations),

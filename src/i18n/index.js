@@ -8,7 +8,8 @@
 // The first argument of tr() is always a string literal, so the check finds every key.
 //
 // Numbers inside text go through fixed(), count(), whole() and plain(): German writes a decimal comma and
-// groups thousands with a dot (1.234,5), English a decimal point and a comma (1,234.5).
+// groups thousands with a dot (1.234,5), English a decimal point and a comma (1,234.5). readNumber()
+// reads a number typed into a number field.
 //
 // Pure modules (geometry, parser, model) call tr() as well: a build or a check made after
 // setLanguage() speaks the new language. English is the default, also in Node.js and the tests.
@@ -75,4 +76,50 @@ export function whole(value) {
 export function plain(value) {
   const s = String(value);
   return current === 'de' ? s.replace('.', ',') : s;
+}
+
+/**
+ * The number in a text typed into a number field, read in the current language; NaN when the text
+ * is no number. German writes a decimal comma and groups thousands with a dot, English a decimal
+ * point and a comma.
+ * - Spaces are dropped, also no-break and narrow no-break spaces: "1 234,5".
+ * - A leading + or - and an exponent are accepted: "-6,5", "1e-7", "1,5E3".
+ * - A text in the grouped form of the current language drops its groups: "1.234.567,5" and
+ *   "1.500" in German, "1,234,567.5" and "1,500" in English (groups of 3 digits, the first group
+ *   1 to 3 digits without a leading 0, then an optional decimal part).
+ * - Otherwise, a text with both separators takes the last one as the decimal separator, which may
+ *   occur only once, and the other kind as groups between digits: "1.234,5" is 1234.5 also in
+ *   English, "1,234.5" also in German.
+ * - Otherwise, a separator that occurs once is the decimal separator in both languages: "0,7" is
+ *   0.7 also in English, "12.5" is 12.5 also in German, "1,500" is 1.5 in German.
+ * - One kind of separator several times outside the grouped form is no number ("1.2.3"), and so is
+ *   any other text ("0x10", "Infinity", "12 mm") and a value beyond the double range ("1e999").
+ */
+export function readNumber(text) {
+  const m = String(text ?? '')
+    .replace(/\s+/g, '')
+    .match(/^([+-]?)([\d.,]+)([eE][+-]?\d+)?$/);
+  if (!m || !/\d/.test(m[2])) return NaN;
+  const [, sign, digits, exponent = ''] = m;
+  const german = current === 'de';
+  const grouped = german ? /^[1-9]\d{0,2}(?:\.\d{3})+(?:,\d*)?$/ : /^[1-9]\d{0,2}(?:,\d{3})+(?:\.\d*)?$/;
+  let mantissa;
+  if (grouped.test(digits)) {
+    mantissa = digits.replaceAll(german ? '.' : ',', '').replace(',', '.');
+  } else {
+    const at = Math.max(digits.lastIndexOf('.'), digits.lastIndexOf(','));
+    const decimal = digits[at];
+    const group = decimal === '.' ? ',' : '.';
+    if (at < 0) mantissa = digits;
+    else if (digits.indexOf(decimal) !== at) return NaN;
+    else if (!digits.includes(group)) mantissa = `${digits.slice(0, at)}.${digits.slice(at + 1)}`;
+    else {
+      const int = digits.slice(0, at);
+      if (!(group === '.' ? /^\d+(?:\.\d+)*$/ : /^\d+(?:,\d+)*$/).test(int)) return NaN;
+      mantissa = `${int.replaceAll(group, '')}.${digits.slice(at + 1)}`;
+    }
+  }
+  // mantissa: digits with at most one decimal point ("5." and ".5" read as 5 and 0.5).
+  const value = Number(sign + mantissa + exponent);
+  return Number.isFinite(value) ? value : NaN;
 }
