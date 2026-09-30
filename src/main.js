@@ -184,7 +184,8 @@ const redoBtn = localized(h('button', { type: 'button', onclick: () => store.red
 let openRequest = 0;
 const openInput = h('input', {
   type: 'file',
-  accept: '.json,.xfl,.xml,application/json',
+  // .wpa and .fl5 are listed so that Open can say why they cannot be imported.
+  accept: '.json,.xfl,.xml,.wpa,.fl5,application/json',
   style: { display: 'none' },
   onchange: async (e) => {
     const f = e.target.files[0];
@@ -213,6 +214,8 @@ const openInput = h('input', {
       }
       if (request !== openRequest) return;
       if (sniffXflr5(head)) kind = 'xfl';
+      // Text saved as UTF-16 (bytes FF FE or FE FF) is no project JSON; the XML import decodes it.
+      else if ((head[0] === 0xff && head[1] === 0xfe) || (head[0] === 0xfe && head[1] === 0xff)) kind = 'xml';
     }
     if (kind !== 'xfl' && f.size > MAX_PROJECT_BYTES) {
       message(tr('Cannot open {name}: {size} MB; project files are limited to {limit} MB.', { name: f.name, size: fixed(f.size / 1e6, 1), limit: plain(MAX_PROJECT_BYTES / 1e6) }), true);

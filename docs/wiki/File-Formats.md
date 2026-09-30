@@ -526,7 +526,7 @@ A refused file shows the red notice `Cannot open <file>: <message>`. The design 
 | `no-plane` | XML file with neither `<Plane>` nor `<wing>` | `The XML file holds no plane and no wing.` |
 | `fin` | XML wing file whose wing is a fin (`<Type>FIN</Type>` or `<isFin>true</isFin>`) | `The XML wing "<name>" is a fin; only a main wing or a horizontal stabilizer can be imported.` |
 | `damaged` | XML file with `length_unit_to_meter` below 1e-6 or above 1000, or not a number | `The length unit of the XML file is not valid: length_unit_to_meter is "<value>".` |
-| `damaged` | XML file with a malformed tag, a comment, CDATA (character data) section or declaration that is not closed, an end tag without or with the wrong start tag, or an element left open at the end | `The XML file is damaged at line 12: a tag is malformed.` `The XML file is damaged at line 12: </Chord> does not close <y_position>.` `The XML file is cut off: the element <Sections> is not closed.` The other 2 texts name the same kinds of damage. |
+| `damaged` | XML file with a malformed tag, a comment, CDATA (character data) section or declaration that is not closed, an end tag without or with the wrong start tag, an element left open at the end, or anything but white space, comments and declarations after the root element | `The XML file is damaged at line 12: a tag is malformed.` `The XML file is damaged at line 12: </Chord> does not close <y_position>.` `The XML file is cut off: the element <Sections> is not closed.` The other 3 texts name the same kinds of damage. |
 | `too-large` | a limit of the readers is exceeded | section "Limits" |
 | – | other XFLR5 files, e.g. `.xwimp` wing text files | not recognized. **Open** reads the file as project JSON and rejects it: `Invalid JSON: …` |
 
@@ -536,12 +536,12 @@ A refused file shows the red notice `Cannot open <file>: <message>`. The design 
 
 | Property | Rule |
 | --- | --- |
-| File picker filter | `.json` `.xfl` `.xml` `application/json`. Whether the file pickers of Android and iOS list `.xfl` files with this filter is unknown; untested. |
+| File picker filter | `.json` `.xfl` `.xml` `.wpa` `.fl5` `application/json`; `.wpa` and `.fl5` files are listed so that Open can name the reason it refuses them. Whether the file pickers of Android and iOS list `.xfl` files with this filter is unknown; untested. |
 | File extension | compared in lower case: `.XFL` counts as `.xfl` |
 | Extension `.xfl`, `.wpa`, `.fl5` | the `.xfl` project reader. It recognizes `.wpa` and `.fl5` files and refuses them with their own message (section "Refused files"). |
 | Extension `.xml` | XML reader |
 | Extension `.json` | project JSON (section "Project JSON") |
-| Another extension, or none | The first 4 bytes decide: an integer 200001 or 200002, read big-endian (`.xfl`), 500000 to 509999 (flow5) or, read little-endian, 100000 to 100100 (`.wpa`): the `.xfl` project reader. Otherwise the file is read as text: text that starts, after white space, with `<?xml`, `<!` or `<explane` goes to the XML reader; any other text is read as project JSON. |
+| Another extension, or none | The first 4 bytes decide: an integer 200001 or 200002, read big-endian (`.xfl`), 500000 to 509999 (flow5) or, read little-endian, 100000 to 100100 (`.wpa`): the `.xfl` project reader. A file that starts with a UTF-16 byte order mark (`FF FE` or `FE FF`) goes to the XML reader. Otherwise the file is read as text: text that starts, after white space, with `<?xml`, `<!` or `<explane` goes to the XML reader; any other text is read as project JSON. |
 | Size | `.xfl`: at most 2,000 MB (2,000,000,000 bytes). Every other file: at most 100 MB (100,000,000 bytes), as for project JSON; larger: `Cannot open <file>: <size> MB; project files are limited to 100 MB.` |
 | Reading an `.xfl` | Through windows of 4,194,304 bytes of the file (`Blob.slice`); a file larger than one window is never in memory as a whole. Real projects with analysis results reach 96.7 MB (measured). The analyses and their results are skipped without decoding; only the planes and the airfoils are read. |
 | Text encoding of XML | UTF-16 (16-bit Unicode Transformation Format) after a byte order mark; otherwise UTF-8 with or without BOM; a file that is not valid UTF-8 is read as Windows-1252. |

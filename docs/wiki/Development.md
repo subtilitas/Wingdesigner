@@ -120,7 +120,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 
 The import reads an XFLR5 file and builds a project from one wing of one plane in it. XFLR5 is a program for the analysis of airfoils and wings; 6.62 is its last release. The readers and the mapping in `src/import/` use no DOM API and run in Node.js. The dialog (`src/ui/xflr5.js`) and **Open** (`src/main.js`) use the DOM. The rules for the files and the formulas of the mapping are in [[File Formats|File-Formats]], section XFLR5 import; the dialog is described in the [[User Guide|User-Guide]], section Import from XFLR5.
 
-1. The change handler of the **Open** file input in `src/main.js` chooses the reader. Extension `.xfl`, `.wpa` or `.fl5`: the `.xfl` reader. `.xml`: the XML reader. Any other extension except `.json`, or none: first the first 4 bytes (`sniffXflr5`), then text that starts with `<?xml`, `<!` or `<explane` (XML reader); otherwise project JSON. `importXflr5` runs the reader and opens the dialog.
+1. The change handler of the **Open** file input in `src/main.js` chooses the reader. Extension `.xfl`, `.wpa` or `.fl5`: the `.xfl` reader. `.xml`: the XML reader. Any other extension except `.json`, or none: first the first 4 bytes (`sniffXflr5`, and a UTF-16 byte order mark for the XML reader), then text that starts with `<?xml`, `<!` or `<explane` (XML reader); otherwise project JSON. `importXflr5` runs the reader and opens the dialog.
 2. A reader throws `XflrError` for a file that it cannot import. `code` is `not-xflr5`, `flow5`, `wpa`, `damaged`, `not-plane-xml`, `no-plane`, `fin` or `too-large`; `offset` is the byte of the damage in an `.xfl` project, else `null`. **Open** shows `Cannot open <file>: <message>` and leaves the design and the undo history as they are. Any other exception of the import shows as `Cannot open <file>: Internal error: <message>`.
 3. `readXfl(file)` and `readXflr5Xml(text)` return the same object, `XflrFile`: `kind` (`xfl` or `xml`), `format`, `lengthUnit` (millimetres per length unit of the file; 1000 for `.xfl`), `unitName`, `wingOnly`, `planes`, `foils`, `foilError` and `warnings`. A plane has a `name` and `wings`, the 4 XFLR5 wing slots main wing, second wing, elevator (horizontal stabilizer) and fin; a slot that the plane lacks is `null`. `foils` (`.xfl` only) maps an airfoil name to its base coordinates and flap settings. Wing sections keep the values of the file: the length unit of the file and degrees.
 4. `readXfl` reads a project through windows of 4,194,304 bytes (`WINDOW_SIZE`, `Blob.slice`). The record readers are generator functions. One yields when its next read lies outside the window; `readXfl` loads the window that starts there and resumes it. A skip only moves the offset. The analyses and the analysis results, which make up most of a project of 96.7 MB, are skipped by their counts. Reading ends after the airfoils. `readXflBytes` reads a file held in memory as one window. A file damaged after the planes gives its planes without airfoils (`foilError` and a warning).
@@ -372,7 +372,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 516 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 517 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -417,7 +417,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-174 tests in 12 spec files, 348 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+175 tests in 12 spec files, 350 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 

@@ -73,6 +73,8 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
       // Option key picked per XFLR5 airfoil name; no prototype, as a name can be any text.
       const choices = Object.create(null);
       const uploads = [];
+      // Uploads still being read: Import waits for them, so that the chosen file is the one imported.
+      let uploading = 0;
       // The name field follows the plane and the surface until the user types a name.
       let nameEdited = false;
       let result = null;
@@ -119,7 +121,14 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
           const row = uploadRow;
           e.target.value = '';
           if (!f) return;
-          const u = await readUpload(f);
+          uploading++;
+          importBtn.disabled = true;
+          let u;
+          try {
+            u = await readUpload(f);
+          } finally {
+            uploading--;
+          }
           if (!dialog.open) return;
           uploads.push(u);
           // The upload is the choice of the row that asked for it; other rows find it by its name.
@@ -341,7 +350,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
         const lines = report.slice(0, MAX_REPORT_LINES).map((r) => h('li', { class: `sev-${r.severity}` }, h('strong', {}, `${severityLabel(r.severity)}: `), r.text));
         if (report.length > MAX_REPORT_LINES) lines.push(h('li', {}, tr('Further report lines not shown: {count}.', { count: count(report.length - MAX_REPORT_LINES) })));
         clear(reportBox).append(...lines);
-        importBtn.disabled = !result.project;
+        importBtn.disabled = !result.project || uploading > 0;
         importBtn.textContent =
           result.missing === 0 ? tr('Import') : result.missing === 1 ? tr('Import (1 airfoil missing)') : tr('Import ({n} airfoils missing)', { n: count(result.missing) });
         stats.textContent = s

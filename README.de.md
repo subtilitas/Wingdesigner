@@ -211,11 +211,11 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 516 Unit-Tests (Vitest)
+npm test                 # 517 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern
-npm run e2e              # Produktions-Build, dann 174 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (348 Läufe)
+npm run e2e              # Produktions-Build, dann 175 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (350 Läufe)
 npm run coverage         # Unit-Tests mit Abdeckungsbericht in coverage/
 npm run coverage:readme  # Abdeckungstabellen in README.md und README.de.md schreiben
 npm run coverage:check   # Exit-Code 1, wenn eine README-Abdeckungstabelle von coverage/ abweicht

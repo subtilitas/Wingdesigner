@@ -517,6 +517,12 @@ export function readXflr5Xml(text) {
       topCount++;
     }
   });
+  // After the root element only white space, comments and declarations may follow.
+  for (let kind = sc.next(); kind !== EOF; kind = sc.next()) {
+    if (kind === START || (kind === TEXT && (sc.cdata || /\S/.test(sc.text)))) {
+      throw sc.damaged(sc.i, (line) => tr('The XML file is damaged at line {line}: content follows the end of the root element.', { line }));
+    }
+  }
 
   let wingOnly = false;
   if (planes.length) {

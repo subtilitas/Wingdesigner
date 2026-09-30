@@ -436,6 +436,18 @@ describe('XFLR5 XML refusals', () => {
     }
   });
 
+  it('refuses content after the root element; white space, comments and declarations may follow it', () => {
+    const good = file(units() + plane('P', wing('Main Wing', { type: 'MAINWING' })));
+    expect(readXflr5Xml(`${good}<!-- saved by XFLR5 -->\n<?pi x?>\n  `).planes).toHaveLength(1);
+    for (const tail of ['garbage', '<another/>', '<unclosed>', '<![CDATA[x]]>']) {
+      const e = failure(good + tail);
+      expect(e.code).toBe('damaged');
+      expect(e.message).toBe('The XML file is damaged at line 6: content follows the end of the root element.');
+    }
+    setLanguage('de');
+    expect(failure(`${good}garbage`).message).toBe('Die XML-Datei ist in Zeile 6 beschädigt: Nach dem Ende des Wurzelelements folgt weiterer Inhalt.');
+  });
+
   it('names flow5 XML files', () => {
     const e = failure('<?xml version="1.0"?><!DOCTYPE flow5><xflplane version="1.0"><Plane/></xflplane>');
     expect(e.code).toBe('flow5');

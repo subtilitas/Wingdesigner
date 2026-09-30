@@ -337,13 +337,37 @@ test.describe('XFLR5 import', () => {
     expect(await savedProject(page)).toEqual(before);
   });
 
+  test('Import waits for an uploaded .dat that is still being read', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const dlg = await openImport(page, fixturePath('xml_mm/0.plane.xml'));
+    await dlg.getByRole('radio', { name: /^Horizontal stabilizer/ }).check();
+    const importBtn = dlg.getByRole('button', { name: /^Import/ });
+    await expect(importBtn).toBeEnabled();
+    // The browser hands over the bytes of slow.dat only when the test says so.
+    await page.evaluate(() => {
+      const read = Blob.prototype.arrayBuffer;
+      const gate = new Promise((resolve) => {
+        window.releaseUpload = resolve;
+      });
+      Blob.prototype.arrayBuffer = function () {
+        return this.name === 'slow.dat' ? gate.then(() => read.call(this)) : read.call(this);
+      };
+    });
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), airfoilRows(dlg).first().getByRole('button', { name: /^Upload \.dat for/ }).click()]);
+    await chooser.setFiles({ name: 'slow.dat', mimeType: 'text/plain', buffer: Buffer.from(DAT) });
+    await expect(importBtn).toBeDisabled();
+    await page.evaluate(() => window.releaseUpload());
+    await expect(dlg.getByRole('combobox', { name: /^Airfoil for/ }).first().locator('option:checked')).toHaveText('Uploaded: slow.dat');
+    await expect(importBtn).toBeEnabled();
+  });
+
   test('the Open button accepts XFLR5 files', async ({ page }) => {
     await createDesign(page, 'Sport');
     const open = page.locator('header.topbar').getByRole('button', { name: 'Open', exact: true });
     await expect(open).toHaveAttribute('title', 'Open a project (.json) or import a wing from XFLR5 (.xfl, .xml)');
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), open.click()]);
     expect(chooser.isMultiple()).toBe(false);
-    expect(await chooser.element().getAttribute('accept')).toBe('.json,.xfl,.xml,application/json');
+    expect(await chooser.element().getAttribute('accept')).toBe('.json,.xfl,.xml,.wpa,.fl5,application/json');
     await chooser.setFiles(fixturePath('uaslab/Rascal110.xfl'));
     const dlg = importDialog(page);
     await expect(dlg.locator('.xflr5-source')).toHaveText('Rascal110.xfl · XFLR5 project, format 200001 (XFLR5 6.10 to 6.43)');
@@ -369,6 +393,12 @@ test.describe('XFLR5 import', () => {
     // A plane XML saved as text.
     dlg = await openImport(page, { name: 'plane_xml.txt', mimeType: 'text/plain', buffer: fixture('xml_mm/0.plane.xml') });
     await expect(dlg.locator('.xflr5-source')).toHaveText('plane_xml.txt · XFLR5 plane file (XML), lengths in millimetres');
+    await dlg.getByRole('button', { name: 'Cancel' }).click();
+    await expect(importDialog(page)).toHaveCount(0);
+    // The same XML saved as UTF-16 with a byte order mark (Windows "Unicode" text).
+    const utf16 = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(fixture('xml_mm/0.plane.xml').toString('utf8'), 'utf16le')]);
+    dlg = await openImport(page, { name: 'plane_utf16.txt', mimeType: 'text/plain', buffer: utf16 });
+    await expect(dlg.locator('.xflr5-source')).toHaveText('plane_utf16.txt · XFLR5 plane file (XML), lengths in millimetres');
     await dlg.getByRole('button', { name: 'Cancel' }).click();
     await expect(importDialog(page)).toHaveCount(0);
     await expect(statusOf(page)).toHaveText(SPORT_STATUS);

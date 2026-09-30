@@ -15,6 +15,8 @@ export default {
     'Die Längeneinheit der XML-Datei ist ungültig: length_unit_to_meter ist „{value}“.',
   'The XML file is cut off: the element <{name}> is not closed.': 'Die XML-Datei ist abgeschnitten: Das Element <{name}> ist nicht geschlossen.',
   'The XML file is damaged at line {line}: a tag is malformed.': 'Die XML-Datei ist in Zeile {line} beschädigt: Ein Tag ist fehlerhaft.',
+  'The XML file is damaged at line {line}: content follows the end of the root element.':
+    'Die XML-Datei ist in Zeile {line} beschädigt: Nach dem Ende des Wurzelelements folgt weiterer Inhalt.',
   'The XML file is damaged at line {line}: a comment, CDATA section or declaration is not closed.':
     'Die XML-Datei ist in Zeile {line} beschädigt: Ein Kommentar, ein CDATA-Abschnitt oder eine Deklaration ist nicht geschlossen.',
   'The XML file is damaged at line {line}: </{name}> closes no open element.': 'Die XML-Datei ist in Zeile {line} beschädigt: </{name}> schließt kein offenes Element.',

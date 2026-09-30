@@ -54,8 +54,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   **Airfoils** upload refuses XFLR5 files with a notice. The Airfoils tab shows `XFLR5: <file>`
   under an imported airfoil, the title of **Open** names the import, and Help lists it. German
   texts: 199 new (areas `xfl`, `xflxml`, `xflr5`). Wiki: User Guide section Import from XFLR5, File
-  Formats section XFLR5 import, the screenshot `xflr5-import.png`. Tests: 144 unit tests in
-  `test/xflr5-xfl.test.js`, `test/xflr5-xml.test.js` and `test/xflr5-map.test.js`, 9 browser tests
+  Formats section XFLR5 import, the screenshot `xflr5-import.png`. Tests: 145 unit tests in
+  `test/xflr5-xfl.test.js`, `test/xflr5-xml.test.js` and `test/xflr5-map.test.js`, 10 browser tests
   in `e2e/xflr5.spec.js`.
 - Bundled airfoil library: Clark Y, USA 35B, NACA M-6 and NACA 8-H-12 from NACA report tables, RAF 34
   from a Royal Aircraft Establishment table reprinted by NACA, and S9104 (CC BY 4.0, Michael Selig).
