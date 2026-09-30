@@ -173,6 +173,34 @@ test.describe('new-design wizard', () => {
     await expect(statusOf(page)).toHaveText(SPORT_STATUS);
   });
 
+  test('a V-tail of 55 degrees per half builds; the field accepts -60 to 60 degrees; a short one that folds keeps Create disabled', async ({ page }) => {
+    const wizard = await openFirstRun(page);
+    await pickPreset(wizard, 'Tail surface');
+    const dihedral = wizard.getByLabel('Dihedral per half (deg)', { exact: true });
+    await expect(dihedral).toHaveAttribute('max', '60');
+    await expect(dihedral).toHaveAttribute('min', '-60');
+    await dihedral.fill('55');
+    // 100 mm span with 8 sections: the next section lies 7.1 mm out from the vertical root, and the
+    // mitred planes between them turn faster than the airfoils allow. The build error keeps Create off.
+    const span = wizard.getByLabel('Span (both halves) (mm)');
+    const sections = wizard.getByLabel('Number of sections');
+    const create = wizard.getByRole('button', { name: 'Create design' });
+    await span.fill('100');
+    await sections.fill('8');
+    await expect(create).toBeDisabled();
+    await expect(summaryOf(wizard)).toHaveText(/^Sections 1 and 2: at y = 0\.0 mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds\./);
+    await span.fill('500');
+    await sections.fill('2');
+    await expect(create).toBeEnabled();
+    await createFromWizard(page);
+    // Tip 250 mm out and 250 * tan 55 = 357.04 mm up; mitred planes, no build error.
+    expect(await sectionValues(page, ['y', 'z'])).toEqual([
+      { y: 0, z: 0 },
+      { y: 250, z: 357.04 },
+    ]);
+    await statusFigures(page, 500, { clean: true });
+  });
+
   test('an empty project name falls back to "<span> mm wing"', async ({ page }) => {
     const wizard = await openFirstRun(page);
     await pickPreset(wizard, 'Sport');

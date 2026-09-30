@@ -6,6 +6,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Changed
+
+- Wizard: **Dihedral per half** accepts −60 to 60° (−15 to 30° before), for V-tails and inverted
+  V-tails. 60° is the steepest first panel that **Mitred** section planes build (stretch 2 at the
+  vertical root). Every preset with both planforms, both tips and 2 to 8 sections builds at −60,
+  −55, −45, −30, 30, 35, 45, 50, 55, 59.5 and 60° (1,056 builds, no error). A short, steep V-tail
+  with many sections folds at its root and keeps **Create design** disabled with the build error:
+  Tail surface at 100 mm span with 8 sections and 55°; from 200 mm span, 2 to 8 sections build up
+  to 60°.
+- XFLR5 import: every airfoil frame applies exactly. The leading edge of the fitted curve lies up
+  to 1e-3 of the chord off the nose point of real files (32 of 64 airfoil entries); dropping such
+  offsets put sections up to 0.30 mm off XFLR5's placement (NACA 4415, 391 mm chord). Offsets up to
+  1e-9 of the chord count as round-off. `FRAME_TOLERANCE` (0.1 % of the chord) decides only whether
+  the report names the move. The report line says "scaled" only when its figures show a chord other
+  than 100 %. Against XFLR5's STL of 93 real surfaces, 19 lie closer (NACA 4415 0.094 mm instead of
+  0.325 mm, Clark YS 0.883 mm instead of 1.008 mm) and 32 lie 0.012 to 0.078 mm farther: the dropped
+  offset had pointed against XFLR5's straight-segment sag or a construction difference (flat wings
+  of `Wing Design and Analysis.xfl` 0.277 mm instead of 0.229 mm). 284 random parts: 0.033 mm
+  instead of 0.151 mm.
+- File Formats, section Differences from XFLR5: the distances to XFLR5's STL split into airfoil
+  interpolation (largest part on 58 of 93 surfaces), construction (23: twist shear, vertical planes
+  of tilted parts, chordwise stations) and flaps (12), each with its mechanism and size. The flap
+  row names XFLR5's hinge-split chordwise points (2.41 and 2.62 mm) besides the deflection (1.61 and
+  1.76 mm).
+
 ## [0.2.0] - 2026-09-30
 
 ### Added

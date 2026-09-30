@@ -136,8 +136,8 @@ XFLR5 draws the coordinates of an airfoil as they are: the x axis of the file li
 | Other airfoil of the current project, library airfoil | Keep the values of the file: their coordinates in XFLR5 are unknown. A library airfoil with an inclined chord line (Clark Y 2.00°, USA 35B 1.57°) gets a warning: if XFLR5 used a copy with a level chord line, as the UIUC file `clarky.dat`, its sections sit that angle more nose up than in XFLR5. Upload the `.dat` file that XFLR5 used. |
 
 - Example: `fixtures_v662.xfl`, plane Fixture A. The Clark Y of the file has its leading edge 3.55 % of the chord above the x axis. The root section (chord 240 mm) moves 8.53 mm along its normal. The Sections table then differs from the wing table of XFLR5 by this offset.
-- Offsets up to 0.1 % of the chord count as none (0.25 mm at 250 mm chord).
-- The report names each airfoil that moves sections: info, and a warning above 2 % of the chord.
+- Every offset applies, however small. The leading edge is the point of least x on the fitted curve, which can reach ahead of the nose point of the file: 0.0016 % of the chord for the Clark Y of the example, 0.003 to 0.1 % for cambered NACA sections. The sections move by that as well.
+- The report names each airfoil that moves sections by more than 0.1 % of the chord (0.25 mm at 250 mm chord): info, and a warning above 2 % of the chord. Smaller moves apply without a report line.
 - A library airfoil whose leading edge lies, in its own coordinates, more than 2 % of the chord from 0 in x or y, or whose chord differs from 1 by more than 2 %, gets an info line: bundled Clark Y 3.55 %, USA 35B 2.87 %. So does an airfoil of the current project taken from the library. Uploading the `.dat` file that XFLR5 used places the sections as XFLR5 does.
 - An airfoil of the current project from an XFLR5 import or an upload is stored scaled to a chord of 1; its own coordinates are lost. It gets an info line: `Airfoil "Clark Y" (sections 1–2) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. …` Example: the XML file of a plane opened while the project of its `.xfl` import is open.
 - Coordinates that are not in chord units (x or y of the leading edge more than 10 % of the chord from 0, a chord below 0.5 or above 2, or a file read as percent of chord with a chord outside 98 to 102; e.g. a file in millimetres): an airfoil of an `.xfl` file fails the check (`The coordinates are not in chord units (leading edge at x = …, y = …; trailing edge at x = …).`), and the other sources of the table in section [Airfoil table](#airfoil-table) are tried. A source that passes is used, with the warning `Airfoil "<name>" from the file fails the check: … "<match>" is used instead.` Without one the row is missing: `Airfoil "<name>" (…) from the file fails the check: The coordinates are not in chord units (…). Upload a .dat file or pick an airfoil.` An uploaded file is used without a move, scaled to a chord of 1, with a warning.
@@ -366,11 +366,11 @@ The wizard builds a complete project from 12 inputs (table below). It generates 
 | Field | Range | Effect |
 | --- | --- | --- |
 | Project name | text | Default: preset name. Empty: `<span> mm wing`. Both are made in the current language (section [Language](#language)). |
-| Span (both halves) | 100 to 20,000 mm | Tip-to-tip span |
+| Span (both halves) | 100 to 20,000 mm | Tip-to-tip span, measured along y. With a dihedral δ each half is span / 2 / cos δ long along its panel: 436 mm for 500 mm span at 55°. |
 | Root chord | 10 to 3000 mm | Chord at y = 0 |
 | Taper (tip / root chord) | 0.1 to 1.5 | Tip chord divided by root chord. Elliptic planform with flat tip: below 1. Elliptic planform with pointed tip: not used. |
 | Sweep of the 25 % line | −45 to 60° | Sweep of the quarter-chord line; positive = swept back |
-| Dihedral per half | −15 to 30° | Section z = y · tan(dihedral) |
+| Dihedral per half | −60 to 60° | Section z = y · tan(dihedral). A V-tail takes the angle of each half, e.g. 55°; an inverted V-tail a negative angle. 60° is the steepest first panel that **Mitred** section planes build: the vertical root plane stretches the airfoil 1 / cos 60° = 2 times (section [Checks](#checks)). |
 | Tip twist (negative = washout) | −15 to 15° | Twist changes linearly from 0° at the root to this value at the tip |
 | Number of sections | 2 to 8, integer | Sections evenly spaced from root to tip |
 | Planform | **Straight taper**, **Elliptic (guide curves)** | Chord law, see below |
@@ -406,7 +406,7 @@ The line turns red, lists the problems, and **Create design** is disabled when:
 - **Number of sections** is not an integer;
 - a root or tip airfoil is not a valid NACA code;
 - **Elliptic** with **Flat** tip has taper ≥ 1 (`An elliptic planform needs taper < 1.`);
-- the wing has a build error (section [Checks](#checks)).
+- the wing has a build error (section [Checks](#checks)). Example: preset **Tail surface** with 100 mm span, 8 sections and 55° dihedral per half. The section plane of the vertical root and that of the next section, 7.1 mm further out in y, turn faster than the airfoils allow, so the surface folds. A larger span, fewer sections or less dihedral builds; from 200 mm span, this preset builds with 2 to 8 sections up to 60°.
 
 | Preset | Span mm | Root chord mm | Taper | Sweep ° | Dihedral ° | Tip twist ° | Sections | Planform | Tip | Root / tip airfoil |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

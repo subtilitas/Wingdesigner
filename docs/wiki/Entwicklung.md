@@ -137,7 +137,7 @@ Der Import liest eine XFLR5-Datei und baut aus einem Flügel eines Flugzeugs dar
 | `MIN_PANEL` (`src/import/xflr5.js`) | 0,1 mm | Ein Feld, das kürzer ist, zählt als Schnitte bei gleichem y_position; XFLR5 überspringt solche Felder |
 | `NUDGE` | 0,5 mm | Größte Verschiebung eines Schnitts, der sein y_position mit dem nächsten teilt; außerdem höchstens ¼ des Feldes |
 | `DIHEDRAL_WARN` | 10° | V-Form, über der der Bericht vor den dünneren senkrechten Schnitten warnt |
-| `FRAME_TOLERANCE` | 0,001 der Profiltiefe | Abweichung von x oder y der Profilnase von 0 oder der Profiltiefe von 1, bis zu der die Schnitte die Werte der Datei behalten |
+| `FRAME_TOLERANCE` | 0,001 der Profiltiefe | Abweichung von x oder y der Profilnase von 0 oder der Profiltiefe von 1, bis zu der der Bericht die Verschiebung der Schnitte nicht nennt; jede Profillage über 1e-9 der Profiltiefe (`FRAME_ROUND_OFF`, Rundungsrest der Kurvenanpassung) wird angewendet |
 | `FRAME_WARN` | 0,02 der Profiltiefe | Abweichung, über der die Verschiebung der Schnitte eine Warnung ist, keine Infozeile |
 | `FRAME_LIMIT` | x oder y der Profilnase 0,1 der Profiltiefe, Profiltiefe 0,5 bis 2 | Darüber liegen die Koordinaten nicht in Einheiten der Profiltiefe |
 | `MAX_XFL_BYTES` (`src/import/xfl.js`) | 2 000 000 000 Byte | Größtes `.xfl`-Projekt |
@@ -375,7 +375,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 542 Tests in 18 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 543 Tests in 18 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -420,7 +420,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-178 Tests in 12 Spec-Dateien, 356 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+179 Tests in 12 Spec-Dateien, 358 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 

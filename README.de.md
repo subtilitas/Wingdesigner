@@ -59,7 +59,7 @@ Browseranwendung zum Konstruieren von Flügeln für ferngesteuerte Flugmodelle (
 | **Wurzeltiefe** (Root chord) | 10 bis 3000 | mm |
 | **Zuspitzung (Randtiefe / Wurzeltiefe)** (Taper (tip / root chord)) | 0,1 bis 1,5 | — |
 | **Pfeilung der 25-%-Linie** (Sweep of the 25 % line) | −45 bis 60 | ° |
-| **V-Form je Hälfte** (Dihedral per half) | −15 bis 30 | ° |
+| **V-Form je Hälfte** (Dihedral per half) | −60 bis 60 | ° |
 | **Schränkung am Rand (negativ = Nase ab)** (Tip twist (negative = washout)) | −15 bis 15 | ° |
 | **Anzahl der Schnitte** (Number of sections) | 2 bis 8 | — |
 
@@ -168,9 +168,9 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 | Ein Projekt innerhalb aller Grenzen kann die 100 MB einer Projektdatei überschreiten. | Namen und Quelltexte nahe an ihren Grenzen: 10 000 Profile mit Namen von 10 000 Zeichen enthalten 100 000 000 Namenszeichen (mit 5 Punkten je Profil: 100,8 MB). **Speichern** (Save) schreibt keine Datei und zeigt `Speichern fehlgeschlagen: Das Projekt belegt als Datei 100,8 MB, mehr als die 100 MB, die „Öffnen“ liest.` Projekte mit kürzeren Namen und Quelltexten passen: 1 000 000 Profilpunkte belegen etwa 40 MB. |
 | Browser nur mit Chromium getestet. | Playwright-Tests bei 1280 x 720 und im Smartphone-Profil Pixel 7. Firefox und Safari: nicht getestet. |
 | Schätzwerte für Zeit und Speicher stammen von einem Desktop-Rechner. | Die Warnung `Großes Projekt`, die Warnung für Profile über 5000 Punkten, die Titel von **+** und **Punkt hinzufügen** (Add point), der Hinweis zum Flächengitter unter **Einstellungen** (Settings) und der Hinweis im Exportdialog verwenden lineare Anpassungen an Messungen in Chromium 141 auf 4 Kernen einer Server-CPU mit 2,1 GHz. Gemessen: JavaScript-Zeit ohne Zeichnen der 3D-Ansicht; die 3D-Ansicht fügt ihre Zeichenzeit hinzu. Der Satz zum ersten Aufbau in der Warnung `Großes Projekt` enthält einen Anteil, der nur in Node.js 24 gemessen ist. |
-| Klappen von XFLR5-Profilen werden ohne Ausschlag importiert. | Ein `.xfl`-Projekt speichert die Grundform und die Klappenparameter. Der Import verwendet die Grundform und schneidet keine Ruderfläche. Bericht: Info bei einer Klappe mit 0°, Warnung bei einem anderen Winkel. |
+| Klappen von XFLR5-Profilen werden ohne Ausschlag importiert. | Ein `.xfl`-Projekt speichert die Grundform und die Klappenparameter. Der Import verwendet die Grundform und schneidet keine Ruderfläche. Bericht: Info bei einer Klappe mit 0°, Warnung bei einem anderen Winkel. Eine 0,5°-Klappe mit dem Drehpunkt bei 50 % der Profiltiefe legt die Endleiste bei 368 mm Profiltiefe 1,61 mm neben die von XFLR5. |
 | Ein XFLR5-Teil mit Einstellwinkel behält senkrechte Schnittebenen. | Der Import rechnet den Einstellwinkel in die Schnittwerte ein, was nur für senkrechte Ebenen genau ist. Quer zu einem Feld mit der V-Form δ beträgt die Dicke dann cos δ des Werts von XFLR5: 99,9 % bei 3°, 98,5 % bei 10°, 82 % bei 35° (ein V-Leitwerk, das als Höhenleitwerk modelliert ist); der Import warnt über 10° und unter −10°. Auf **Auf Gehrung** gestellt, liegt das Teil bis zu 0,75 · Profiltiefe · sin(Einstellwinkel) · sin(Neigung) neben dem von XFLR5 (0,45 mm beim Rechenbeispiel, etwa 1,6 mm bei einem 35°-V-Leitwerk mit 3° Einstellwinkel), mit einer Warnung unter **Prüfungen**. Projekte des XFLR5-Imports im Format Version 1 enthalten keinen gespeicherten Einstellwinkel und ergeben keine solche Warnung. |
-| Der importierte Flügel ist nicht identisch mit der Fläche, die XFLR5 baut. | Verglichen mit den STL-Dateien, die der Code von XFLR5 6.62 für 93 Flächen aus 15 echten Projekten geschrieben hat: 80 liegen innerhalb von 0,6 mm; die übrigen sind 4 V-Leitwerke mit Einstellwinkel (2,87 mm), 8 Flügel mit einer 0,5°-Klappe (2,5 bis 2,7 mm) und 1 Flügel mit einem Clark YS aus 33 Punkten (1,01 mm). XFLR5 schert das Profil eines geschränkten Schnitts; Wingdesigner dreht es als starre Form (0,37 mm bei 3° Schränkung und 300 mm Profiltiefe). Einzelheiten: Abschnitt „Unterschiede zu XFLR5“ der [Dateiformate](https://github.com/subtilitas/Wingdesigner/wiki/Dateiformate). |
+| Der importierte Flügel ist nicht identisch mit der Fläche, die XFLR5 baut. | Verglichen mit den STL-Dateien, die der Code von XFLR5 6.62 für 93 Flächen aus 15 echten Projekten geschrieben hat: 35 liegen innerhalb von 0,1 mm, 80 innerhalb von 0,6 mm; die übrigen sind 4 V-Leitwerke mit Einstellwinkel (2,87 mm), 8 Flügel mit einer 0,5°-Klappe (2,43 und 2,65 mm) und 1 Flügel mit einem Clark YS aus 33 Punkten (0,88 mm). XFLR5 verbindet die Profilpunkte mit geraden Strecken, Wingdesigner mit einer glatten Kurve (größter Anteil bei 58 Flächen); XFLR5 schert das Profil eines geschränkten Schnitts, Wingdesigner dreht es als starre Form (0,37 mm bei 3° Schränkung und 300 mm Profiltiefe); XFLR5 verzieht die Felder neben einer Klappe. Einzelheiten: Abschnitt „Unterschiede zu XFLR5“ der [Dateiformate](https://github.com/subtilitas/Wingdesigner/wiki/Dateiformate). |
 | Profile der Bibliothek und des aktuellen Projekts haben keine Profillage, außer NACA-Profilen des aktuellen Projekts (sie erhalten die Profillage des erzeugten Schnitts ihrer NACA-Bezeichnung). | Die XFLR5-Koordinaten des Namens sind nicht bekannt. Der Bericht nennt mitgelieferte Profile, bei denen x oder y der Profilnase in den eigenen Koordinaten mehr als 2 % der Profiltiefe von 0 entfernt liegt: Clark Y 3,55 %, USA 35B 2,87 %; ebenso Profile des aktuellen Projekts aus einem XFLR5-Import oder einem Upload, deren eigene Koordinaten nicht gespeichert sind. Das Hochladen der `.dat`-Datei, die XFLR5 verwendet hat, setzt die Schnitte wie XFLR5. |
 | Die Dateiauswahlen von Smartphones mit dem Filter `.xfl` sind ungetestet. | Ob die Dateiauswahlen von Android und iOS `.xfl`-Dateien mit dem Filter von **Öffnen** anzeigen, ist unbekannt. Die Playwright-Tests (Chromium auf dem Desktop und im Profil Pixel 7) prüfen das Attribut `accept` und übergeben die Datei an die Dateiauswahl; eine Dateiauswahl eines Smartphones wird nicht geöffnet. |
 | Der Importdialog für XFLR5 ist mit Screenreadern ungetestet. | **.dat hochladen** (Upload .dat) im Dialog meldet sein Ergebnis in einer Statusmeldung, die nur Screenreader anzeigen. Ein Screenreader wurde mit dem Dialog nicht ausgeführt. |
@@ -214,11 +214,11 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 542 Unit-Tests (Vitest)
+npm test                 # 543 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern
-npm run e2e              # Produktions-Build, dann 178 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (356 Läufe)
+npm run e2e              # Produktions-Build, dann 179 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (358 Läufe)
 npm run coverage         # Unit-Tests mit Abdeckungsbericht in coverage/
 npm run coverage:readme  # Abdeckungstabellen in README.md und README.de.md schreiben
 npm run coverage:check   # Exit-Code 1, wenn eine README-Abdeckungstabelle von coverage/ abweicht
@@ -241,7 +241,7 @@ Die Playwright-Tests führen den DOM-Code (Document Object Model) aus; seine Abd
 <!-- coverage:start -->
 | Anweisungen | Verzweigungen | Funktionen | Zeilen |
 | ---: | ---: | ---: | ---: |
-| 98,3 % | 95,3 % | 98,7 % | 99,0 % |
+| 98,3 % | 95,3 % | 98,8 % | 99,0 % |
 
 Unit-Tests (Vitest, V8-Coverage) über `src/`, ohne den DOM-Code in `src/ui/` und `src/main.js`.
 <!-- coverage:end -->

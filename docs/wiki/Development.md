@@ -137,7 +137,7 @@ The import reads an XFLR5 file and builds a project from one wing of one plane i
 | `MIN_PANEL` (`src/import/xflr5.js`) | 0.1 mm | A panel shorter than this counts as sections at one y_position; XFLR5 skips such panels |
 | `NUDGE` | 0.5 mm | Largest move of a section that shares its y_position with the next one; also at most ¼ of the panel |
 | `DIHEDRAL_WARN` | 10° | Dihedral above which the report warns about the thinner vertical sections |
-| `FRAME_TOLERANCE` | 0.001 chord | Offset of x or y of the leading edge from 0, or of the chord from 1, up to which the sections keep the values of the file |
+| `FRAME_TOLERANCE` | 0.001 chord | Offset of x or y of the leading edge from 0, or of the chord from 1, up to which the report does not name the move of the sections; every frame above 1e-9 of the chord (`FRAME_ROUND_OFF`, round-off of the curve fit) applies |
 | `FRAME_WARN` | 0.02 chord | Offset above which the move of the sections is a warning, not an info line |
 | `FRAME_LIMIT` | x or y of the leading edge 0.1 chord, chord 0.5 to 2 | Beyond it the coordinates are not in chord units |
 | `MAX_XFL_BYTES` (`src/import/xfl.js`) | 2,000,000,000 bytes | Largest `.xfl` project |
@@ -375,7 +375,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 542 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 543 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -420,7 +420,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-178 tests in 12 spec files, 356 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+179 tests in 12 spec files, 358 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 

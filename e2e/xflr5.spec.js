@@ -176,10 +176,11 @@ test.describe('XFLR5 import', () => {
     await expect(page.getByRole('tab', { name: 'Sections', exact: true })).toHaveAttribute('aria-selected', 'true');
     await expect(sectionRows(page)).toHaveCount(2);
     // The elevator of "Fixture A" with its tilt and position; the tip section moved 0.735 mm along its
-    // normal, where XFLR5 draws the uploaded airfoil's own coordinates.
+    // normal, where XFLR5 draws the uploaded airfoil's own coordinates, and its chord scaled by
+    // 1.0000188: the fitted curve reaches 1.9e-5 of the chord ahead of the nose point (0, 0.01).
     const sections = await sectionValues(page, ['airfoilName', 'y', 'x', 'z', 'chord', 'twist']);
     expect(sections.map((s) => s.airfoilName)).toEqual(['NACA 0009', 'TEST 12']);
-    for (const [s, want] of sections.map((s, i) => [s, [{ y: 0, x: 649.9906, z: 40.7199, chord: 110, twist: -1.5 }, { y: 230, x: 674.9662, z: 41.8473, chord: 70, twist: -1.5 }][i]])) {
+    for (const [s, want] of sections.map((s, i) => [s, [{ y: 0, x: 649.9906, z: 40.7199, chord: 110, twist: -1.5 }, { y: 230, x: 674.9649, z: 41.8473, chord: 70.0013, twist: -1.5 }][i]])) {
       for (const k of ['y', 'x', 'z', 'chord', 'twist']) expect(s[k], k).toBeCloseTo(want[k], 4);
     }
     const figures = await statusFigures(page, 460);
