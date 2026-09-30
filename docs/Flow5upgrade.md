@@ -171,9 +171,13 @@ A rigid rotation of the whole part after the build brings the trailing edges to 
 whole part (flow5's `rx`) is the same kind of transform; see F4.
 
 A part tilt is a new project value. An app with step 1 only would drop it without a message
-(`resolveSettings` and the loader in `src/model/io.js` keep only known keys). So step 2 either ships in
-the same release as step 1 under project format version 2, or raises the format to version 3. Not
-decided.
+(`resolveSettings` and the loader in `src/model/io.js` keep only known keys). Format rule:
+
+- Step 2 in the same release as step 1: project format version 2 holds both the section-plane
+  setting and the part tilt.
+- Step 2 in a later release: it raises the project format to version 3. An app with step 1 only
+  refuses a version 3 file (`validateProject`) instead of dropping the tilt.
+- Older files (version 1, and version 2 without the tilt) open with a part tilt of 0°.
 
 ## 3. flow5 import
 
