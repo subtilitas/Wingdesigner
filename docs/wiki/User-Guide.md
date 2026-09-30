@@ -123,8 +123,27 @@ Example, status bar of the **Sport** preset:
 
 Number fields:
 
-- The value of a number field is written with a decimal point (`0.6`) in both languages.
-- The browser decides how a number field shows and accepts numbers. Checked only in Chromium 141 (headless, locales `en-US` and `de-DE`): the field shows `0.6`. A typed comma is dropped, so `0,7` reads `07` and commits 7; **Twist pivot** then takes its maximum 1. The app shows no message. Type a decimal point. Other browsers, and Chromium with a German interface language: not tested.
+- A number field shows the shortest decimal that reads back to the stored value, without digit groups: `0.6`, `1500` in English, `0,6`, `1500` in German.
+- A typed number is read in the current language, by these rules in this order:
+  1. Spaces are dropped, also no-break and narrow no-break spaces: `1 500` is 1500.
+  2. A leading `+` or `-` and an exponent are accepted: `-6,5`, `1e-7`, `1,5E3`.
+  3. A number in the grouped form of the current language drops its groups: `1,500` and `1,234,567.5` in English, `1.500` and `1.234.567,5` in German. Groups have 3 digits; the first group has 1 to 3 digits and does not start with `0`.
+  4. A number with both a point and a comma takes the last one as the decimal separator and the other one as group separator: `1.234,5` and `1,234.5` are 1234.5 in both languages. The decimal separator occurs once, and every group separator stands between digits.
+  5. A single point or comma is the decimal separator in both languages: `0,7` is 0.7 also in English, `12.5` is 12.5 also in German, `0.500` is 0.5 in German.
+  6. Any other text is no number, e.g. `1.2.3` (a point several times outside the grouped form), `12 mm`, `0x10`, `1e999` (beyond the range of a 64-bit floating-point number).
+
+| Typed | English | German |
+| --- | --- | --- |
+| `0.7` | 0.7 | 0.7 |
+| `0,7` | 0.7 | 0.7 |
+| `1,500` | 1500 | 1.5 |
+| `1.500` | 1.5 | 1500 |
+| `1.234,5` | 1234.5 | 1234.5 |
+| `1.2.3` | no number | no number |
+
+- In a panel, a text that is no number and an empty field show the stored value again when the field applies its value (section [Controls](#controls)). In the wizard, they disable **Create design** (section [Wizard](#wizard)).
+- Fields whose lower limit is 0 or more carry `inputmode="decimal"`, which asks the on-screen keyboard of a phone or tablet for a decimal keypad. The other fields keep the full keyboard: x, z and **Twist** in **Sections**, the guide point fields, and sweep, dihedral and tip twist in the wizard. They take negative values, and the decimal keypad of iOS has no minus key. The keypads themselves are not tested on a phone.
+- For assistive technology a number field has the role `spinbutton`: `aria-valuenow` holds the typed number (absent while the text is no number), `aria-valuemin` and `aria-valuemax` the limits of the field.
 
 ### What stays as it is
 
@@ -167,8 +186,9 @@ File names of downloads (**Save**, **Export**, airfoil `.dat`) write German umla
 - Pick radius for points in the planform editor: 9 px with mouse or pen, 18 px with touch. Within the radius the nearest point is picked.
 - Keyboard shortcuts are inactive while the focus is in an input field, text area or drop-down list, or while a dialog is open.
 - Keyboard focus stays on number fields, the airfoil lists of the **Sections** table, the lists of **Settings** and of the guide curves (**Mode**, **Degree**), the checkboxes of **Settings** and **Use guide curve**, the project name field and the row buttons **+** and **×** of the **Sections** table when the panel renders again after a change. Text and number fields also select their text again.
-- Number fields apply a value on Enter, when the field loses focus, and on each arrow step. A non-numeric entry reverts to the previous value.
-- A number field shows the shortest decimal that reads back to the stored value, e.g. `600.0000002`; a value is never rounded for display.
+- Number fields apply a value on Enter, when the field loses focus, and on each arrow step. An empty field or a text that is no number (section [Numbers](#numbers)) reverts to the previous value.
+- The Up and Down arrow keys step a number field from the typed number by the step of the field, e.g. 5 mm for y and 0.1° for twist in the **Sections** table, and stop at the limits of the field.
+- A number field shows the shortest decimal that reads back to the stored value, e.g. `600.0000002` (German: `600,0000002`); a value is never rounded for display.
 - One drag is one undo step, however long it pauses: its updates merge until the pointer is released.
 - **Undo** or **Redo** during a drag ends the drag; further pointer movement until release moves nothing. **Redo** restores an undone drag or point.
 - An action that changes nothing adds no undo step and keeps the redo steps, e.g. **Remove unused** while every airfoil is in use, **Add to project** of an airfoil the project already holds, or typing the value a field already has.
@@ -193,6 +213,7 @@ The wizard builds a complete project from 12 inputs (table below). It generates 
 - Opens on the first visit (title "Start a new wing design") and with **New** (title "New wing design").
 - Preselected preset: **Sport**. A click on a preset card loads its values.
 - Airfoils are NACA (National Advisory Committee for Aeronautics) 4-digit or 5-digit sections. Valid codes: section [NACA generator](#naca-generator).
+- The number fields read a typed number as in section [Numbers](#numbers) and check it while it is typed. Leaving a field shows the number as read, e.g. `1500` for `1.500` typed in German. The Up and Down arrow keys step as in the panels; in a field that is empty or holds no number they step from the value of the selected preset.
 
 | Field | Range | Effect |
 | --- | --- | --- |
@@ -233,7 +254,7 @@ The preview shows the planform of both halves. The line below it lists wing area
 
 The line turns red, lists the problems, and **Create design** is disabled when:
 
-- a value is outside its range (column Range);
+- a value is outside its range (column Range), or its field is empty or holds no number (section [Numbers](#numbers));
 - **Number of sections** is not an integer;
 - a root or tip airfoil is not a valid NACA code;
 - **Elliptic** with **Flat** tip has taper ≥ 1 (`An elliptic planform needs taper < 1.`);

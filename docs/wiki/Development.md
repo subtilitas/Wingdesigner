@@ -255,7 +255,8 @@ Rules for texts:
 
 - A plural is two keys, or a German entry that is a function of the params (`({ n }) => …`) and compares the printed number with `'1'`.
 - Numbers inside a text go through four helpers. `fixed(value, digits)` writes `digits` decimals: `1200.5` in English, `1.200,5` in German. `count(value)` rounds to a whole number and groups the digits: `20,000` in English, `20.000` in German. `whole(value)` is for counts and limits that can have 4 or more digits: English prints `String(value)`, German groups an integer and never rounds. `plain(value)` prints the shortest text that reads back as the number (`String(value)`), with a decimal comma in German.
-- Data numbers (values of input fields, attributes, file contents) stay unformatted.
+- Number fields are text fields with the role `spinbutton` (`numberField` and `numberInput` in `src/ui/dom.js`, also used by the wizard), because a native `<input type="number">` in Chromium drops a typed decimal comma. They show `inputText(value)`, which is `plain(value)`, and read the typed text with `readNumber(text)` from `src/i18n/index.js`: a decimal comma or point in both languages, the digit groups of the current language, rule in section Numbers of the [[User Guide|User-Guide]]. `aria-valuenow`, `aria-valuemin` and `aria-valuemax` hold plain JavaScript numbers.
+- Data numbers (attributes, file contents) stay unformatted.
 - Not translated: file contents (STEP, STL, 3MF, JSON, `.dat`), the project JSON, airfoil names, attributions and licenses, names of external sources, file names, cascading style sheets (CSS) classes, `data-*` values, option values and issue codes such as `many-points`. The text of an exception inside `Internal error: {message}` (thrown in `src/geom/nurbs.js` and `src/geom/linalg.js`) stays English; the frame around it is translated. The 3MF file declares `xml:lang="en-US"` in both languages.
 - Code never compares a translated text. It compares a code or a recorded field (`issue.code`, `build.sizeWarning`), because the same message reads differently in German. The one text test, `/zero pivot/` in `src/geom/wing.js`, reads an exception from `src/geom/linalg.js` that is never translated.
 - The descriptive texts of the library are data: `category` and `use` of `NACA_PRESETS` in `src/airfoil/library.js` and of the entries in `public/airfoils/index.json`, and the `note` of `EXTERNAL_SOURCES`. `libraryText()` in `src/ui/airfoils.js` shows them. A new text needs a `case` there with its own `tr()` literal and a German entry in `src/i18n/de/panels.js`. An unknown text is shown as it is.
@@ -288,7 +289,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 360 tests in 15 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 371 tests in 15 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -333,7 +334,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` sets `de-DE` in its block `German browser` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-160 tests in 11 spec files, 320 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+165 tests in 11 spec files, 330 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 30 tests run in one project only (`test.skip` in the other project):
 

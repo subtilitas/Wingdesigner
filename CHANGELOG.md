@@ -23,7 +23,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   row wraps instead of scrolling sideways. File contents, airfoil names, attributions, license
   identifiers and texts typed by the user are not translated. The English text is unchanged,
   with one exception: the `<noscript>` line of `index.html` names both languages, because JavaScript
-  cannot translate it. The browser tests run with the locale `en-US`; `e2e/language.spec.js` (11
+  cannot translate it. The browser tests run with the locale `en-US`; `e2e/language.spec.js` (16
   tests) sets `de-DE` in its block `German browser`.
 - `npm run i18n:check` (in continuous integration, CI): exit code 1 when a text in `src/` has no
   German entry, a German entry is unused, key and entry differ in their `{placeholders}`, two areas
@@ -102,6 +102,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ### Fixed
 
+- Number fields read a typed decimal comma: `0,7` is 0.7 in both languages, not 7 (the native number
+  field of Chromium drops the comma). They are text fields with the role `spinbutton`, read a decimal
+  comma or point in both languages and the digit groups of the current language (`1.500` is 1500 in
+  German, `1,500` in English), and show a decimal comma in German. The wizard reads its fields the
+  same way; a field that holds no number disables **Create design**.
 - Wiki: links in table rows ([[Label|Page]]) split the table cell at the |; tables link with the page
   title alone. `npm run docs:check` reports a | inside a wiki link in a table row.
 - STEP faces of symmetric airfoils: the leading-edge split parameter snaps to an existing knot

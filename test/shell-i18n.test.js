@@ -1,10 +1,11 @@
-// German texts of the shell (src/main.js, src/ui/settings.js, src/ui/wizard.js) and the number
-// format of the label helper in src/ui/dom.js. The browser parts are tested in e2e/language.spec.js.
+// German texts of the shell (src/main.js, src/ui/settings.js, src/ui/wizard.js), the number format
+// of the label helper and the text and arrow step of the number fields in src/ui/dom.js. The browser
+// parts are tested in e2e/language.spec.js.
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { count, fixed, plain, setLanguage, tr } from '../src/i18n/index.js';
 import { AREAS } from '../src/i18n/de/index.js';
-import { formatNum, slugFile } from '../src/ui/dom.js';
+import { formatNum, inputText, slugFile, stepValue } from '../src/ui/dom.js';
 
 afterEach(() => setLanguage('en'));
 
@@ -13,6 +14,20 @@ describe('formatNum', () => {
     expect([formatNum(1.5), formatNum(1.23456, 2), formatNum(600), formatNum(0.1 + 0.2, 1), formatNum(NaN)]).toEqual(['1.5', '1.23', '600', '0.3', '']);
     setLanguage('de');
     expect([formatNum(1.5), formatNum(1.23456, 2), formatNum(600), formatNum(0.1 + 0.2, 1), formatNum(Infinity)]).toEqual(['1,5', '1,23', '600', '0,3', '']);
+  });
+});
+
+describe('number fields', () => {
+  it('show the shortest round-trip decimal: unchanged in English, with a decimal comma in German', () => {
+    const values = [0.25, -6.5, 600.0000002, 1e-7, 1200, NaN];
+    expect(values.map(inputText)).toEqual(['0.25', '-6.5', '600.0000002', '1e-7', '1200', '']);
+    setLanguage('de');
+    expect(values.map(inputText)).toEqual(['0,25', '-6,5', '600,0000002', '1e-7', '1200', '']);
+  });
+
+  it('step by the step from the value without binary rounding residue, clamped to min and max', () => {
+    expect([stepValue(0.25, 0.05), stepValue(0.3, -0.1), stepValue(-6.5, 0.1), stepValue(600.0000002, 5), stepValue(1e-7, 0.1)]).toEqual([0.3, 0.2, -6.4, 605.0000002, 0.1000001]);
+    expect([stepValue(0.97, 0.05, 0, 1), stepValue(0.02, -0.05, 0, 1), stepValue(-300, 50, 100, 1000), stepValue(60, 4, 16, 200)]).toEqual([1, 0, 100, 64]);
   });
 });
 

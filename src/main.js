@@ -442,8 +442,8 @@ function rebuild() {
       const el = document.querySelector(`[data-focus-key="${CSS.escape(focusKey)}"]`);
       if (el && el !== document.activeElement) {
         el.focus();
-        // Text is selected in text and number fields only: lists, boxes and buttons keep focus alone.
-        if (el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'number')) el.select();
+        // Text is selected in text fields only (number fields are text fields): lists, boxes and buttons keep focus alone.
+        if (el instanceof HTMLInputElement && el.type === 'text') el.select();
       }
     }
     undoBtn.disabled = !store.canUndo();

@@ -339,6 +339,133 @@ test.describe('English browser', () => {
   });
 });
 
+test.describe('Number fields', () => {
+  const pivotField = (page, name) => settingsPane(page).getByRole('spinbutton', { name });
+  const pivotSaved = async (page) => (await savedProject(page)).settings.twistPivot;
+
+  test('German: a typed decimal comma commits the value and the field shows it; 1.500 in a mm field is 1500', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await chooseLanguage(page, 'de', 'Settings');
+    const pivot = pivotField(page, /^Drehpunkt der Schränkung/);
+    await expect(pivot).toHaveValue('0,25');
+    await commit(pivot, '0,7');
+    await expect.poll(() => pivotSaved(page)).toBe(0.7);
+    await expect(pivot).toHaveValue('0,7');
+    // A decimal point is read as well; the field shows the comma.
+    await commit(pivot, '0.3');
+    await expect.poll(() => pivotSaved(page)).toBe(0.3);
+    await expect(pivot).toHaveValue('0,3');
+
+    // The dot groups thousands in German: y 1.500 at the tip is 1500 mm, span 3.000 mm.
+    await openTab(page, 'Schnitte');
+    const row = sectionRows(page).nth(1);
+    const tipY = row.getByRole('spinbutton', { name: 'Spannweitenposition der Schnittebene', exact: true });
+    await commit(tipY, '1.500');
+    await expect.poll(async () => (await savedProject(page)).sections[1].y).toBe(1500);
+    await expect(tipY).toHaveValue('1500');
+    await expect(statusOf(page)).toHaveText(/^Spannweite 3\.000 mm · /);
+    // A negative value with a decimal comma.
+    const twist = row.getByRole('spinbutton', { name: 'Schränkung um den Drehpunkt; positiv = Nase hoch', exact: true });
+    await commit(twist, '-6,5');
+    await expect.poll(async () => (await savedProject(page)).sections[1].twist).toBe(-6.5);
+    await expect(twist).toHaveValue('-6,5');
+    // A text that is no number restores the stored value.
+    await commit(tipY, '1.2.3');
+    await expect(tipY).toHaveValue('1500');
+    expect((await savedProject(page)).sections[1].y).toBe(1500);
+  });
+
+  test('English: 1,500 is 1500 and 0,7 is 0.7; the field shows a decimal point', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const tipY = sectionField(page, 1, 'y');
+    await commit(tipY, '1,500');
+    await expect.poll(async () => (await savedProject(page)).sections[1].y).toBe(1500);
+    await expect(tipY).toHaveValue('1500');
+    await expect(statusOf(page)).toHaveText(/^Span 3000 mm · /);
+
+    await openTab(page, 'Settings');
+    const pivot = pivotField(page, /^Twist pivot/);
+    await commit(pivot, '0,7');
+    await expect.poll(() => pivotSaved(page)).toBe(0.7);
+    await expect(pivot).toHaveValue('0.7');
+    await commit(pivot, 'abc');
+    await expect(pivot).toHaveValue('0.7');
+    expect(await pivotSaved(page)).toBe(0.7);
+  });
+
+  test('ArrowUp and ArrowDown step by the step of the field from the typed value, stop at the limits and commit', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await openTab(page, 'Settings');
+    await frames(page);
+    const pivot = pivotField(page, /^Twist pivot/);
+    await pivot.press('ArrowUp');
+    await expect.poll(() => pivotSaved(page)).toBe(0.3);
+    await frames(page);
+    await expect(pivot).toHaveValue('0.3');
+    // The panel renders again after the commit; the new field keeps the focus.
+    await expect(pivot).toBeFocused();
+    await pivot.press('ArrowDown');
+    await pivot.press('ArrowDown');
+    await expect.poll(() => pivotSaved(page)).toBe(0.2);
+    await frames(page);
+    await expect(pivot).toHaveValue('0.2');
+    // From the typed text before Enter, clamped to the maximum 1.
+    await pivot.fill('0,98');
+    await pivot.press('ArrowUp');
+    await expect.poll(() => pivotSaved(page)).toBe(1);
+    await frames(page);
+    await expect(pivot).toHaveValue('1');
+    await pivot.press('ArrowUp');
+    await frames(page);
+    await expect(pivot).toHaveValue('1');
+
+    // Twist of the tip: step 0.1 below 0, in German with a decimal comma.
+    await chooseLanguage(page, 'de', 'Settings');
+    await openTab(page, 'Schnitte');
+    await frames(page);
+    const twist = sectionRows(page).nth(1).getByRole('spinbutton', { name: 'Schränkung um den Drehpunkt; positiv = Nase hoch', exact: true });
+    await expect(twist).toHaveValue('-1');
+    await twist.press('ArrowDown');
+    await expect.poll(async () => (await savedProject(page)).sections[1].twist).toBe(-1.1);
+    await frames(page);
+    await expect(twist).toHaveValue('-1,1');
+    await expect(twist).toBeFocused();
+  });
+
+  test('a number field is a text field with the role spinbutton; inputmode decimal only without negative values', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await openTab(page, 'Settings');
+    const pivot = pivotField(page, /^Twist pivot/);
+    await expect(pivot).toHaveAttribute('type', 'text');
+    await expect(pivot).toHaveAttribute('role', 'spinbutton');
+    await expect(pivot).toHaveAttribute('inputmode', 'decimal');
+    await expect(pivot).toHaveAttribute('autocomplete', 'off');
+    await expect(pivot).toHaveAttribute('spellcheck', 'false');
+    await expect(pivot).toHaveAttribute('aria-valuemin', '0');
+    await expect(pivot).toHaveAttribute('aria-valuemax', '1');
+    await expect(pivot).toHaveAttribute('aria-valuenow', '0.25');
+    // aria-valuenow follows the typed text and is absent while the text is no number.
+    await pivot.fill('0,5');
+    await expect(pivot).toHaveAttribute('aria-valuenow', '0.5');
+    await pivot.fill('x');
+    await expect(pivot).not.toHaveAttribute('aria-valuenow');
+    await pivot.press('Enter');
+    await expect(pivot).toHaveValue('0.25');
+    await expect(pivot).toHaveAttribute('aria-valuenow', '0.25');
+
+    // Every field of the Sections table is a spinbutton; x, z and twist take negative values, so
+    // their keypad keeps the minus key.
+    await openTab(page, 'Sections');
+    const row = sectionRows(page).nth(1);
+    await expect(row.getByRole('spinbutton')).toHaveCount(5);
+    await expect(row.locator('input[type=number]')).toHaveCount(0);
+    for (const key of ['y', 'chord']) await expect(sectionField(page, 1, key)).toHaveAttribute('inputmode', 'decimal');
+    for (const key of ['x', 'z', 'twist']) await expect(sectionField(page, 1, key)).not.toHaveAttribute('inputmode');
+    await expect(sectionField(page, 1, 'twist')).toHaveAttribute('aria-valuemin', '-360');
+    await expect(sectionField(page, 1, 'twist')).toHaveAttribute('aria-valuenow', '-1');
+  });
+});
+
 test.describe('German browser', () => {
   test.use({ locale: 'de-DE' });
 
@@ -363,8 +490,8 @@ test.describe('German browser', () => {
     await expect(wizard.locator('p[aria-live="polite"]')).toHaveText(
       /^Fläche \d+,\d dm², Streckung \d+,\d\d, mittlere aerodynamische Flügeltiefe \d+,\d mm bei y = -?\d+ mm, Randtiefe \d+,\d mm\.$/,
     );
-    // Number fields keep the plain number as their value.
-    await expect(wizard.getByLabel('Zuspitzung (Randtiefe / Wurzeltiefe)')).toHaveValue('0.6');
+    // Number fields write the decimal comma.
+    await expect(wizard.getByLabel('Zuspitzung (Randtiefe / Wurzeltiefe)')).toHaveValue('0,6');
 
     await wizard.getByRole('button', { name: 'Überspringen (Beispielflügel öffnen)' }).click();
     await expect(dialogOf(page)).toHaveCount(0);
@@ -446,6 +573,38 @@ test.describe('German browser', () => {
     await expect(again.locator('p[aria-live="polite"]')).toHaveText(/^Area \d+\.\d dm², aspect ratio \d+\.\d\d, /);
     await again.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialogOf(page)).toHaveCount(0);
+  });
+
+  test('the wizard reads a decimal comma and dot groups, steps with the arrow keys and disables Entwurf anlegen for a text that is no number', async ({ page }) => {
+    const wizard = await openFirstRunDe(page);
+    const create = wizard.getByRole('button', { name: 'Entwurf anlegen' });
+    const taper = wizard.getByRole('spinbutton', { name: 'Zuspitzung (Randtiefe / Wurzeltiefe)' });
+    const span = wizard.getByRole('spinbutton', { name: 'Spannweite (beide Hälften) (mm)' });
+    await expect(taper).toHaveValue('0,6');
+    await expect(taper).toHaveAttribute('inputmode', 'decimal');
+    await expect(wizard.getByRole('spinbutton', { name: 'Schränkung am Rand (negativ = Nase ab) (°)' })).not.toHaveAttribute('inputmode');
+
+    await taper.fill('0,5,5');
+    await expect(create).toBeDisabled();
+    await expect(wizard.locator('p[aria-live="polite"]')).toHaveText('Zuspitzung muss zwischen 0,1 und 1,5 liegen.');
+    await taper.fill('0,5');
+    await expect(create).toBeEnabled();
+    await taper.press('ArrowUp');
+    await expect(taper).toHaveValue('0,55');
+    // 1.500 is 1500 mm; leaving the field shows the number as read.
+    await span.fill('1.500');
+    await expect(create).toBeEnabled();
+    await span.press('Tab');
+    await expect(span).toHaveValue('1500');
+    await create.click();
+    await expect(dialogOf(page)).toHaveCount(0);
+    await expect(statusOf(page)).toHaveText(/^Spannweite 1\.500 mm · /);
+    // Tip chord 240 mm × 0,55.
+    const saved = await savedProject(page);
+    expect(saved.sections.map((q) => [q.y, q.chord])).toEqual([
+      [0, 240],
+      [750, 132],
+    ]);
   });
 });
 

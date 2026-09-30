@@ -123,8 +123,27 @@ Beispiel, Statusleiste des Entwurfstyps **Sportmodell** (Sport):
 
 Zahlenfelder:
 
-- Der Wert eines Zahlenfelds wird in beiden Sprachen mit Dezimalpunkt geschrieben (`0.6`).
-- Wie ein Zahlenfeld Werte anzeigt und annimmt, entscheidet der Browser. Geprüft nur in Chromium 141 (headless, Gebietsschemata `en-US` und `de-DE`): Das Feld zeigt `0.6`. Ein getipptes Komma entfällt, sodass das Feld `0,7` als `07` liest und die App den Wert 7 übernimmt; **Drehpunkt der Schränkung** (Twist pivot) nimmt dann sein Maximum 1. Die App zeigt keine Meldung. Einen Dezimalpunkt tippen. Andere Browser und Chromium mit deutscher Oberflächensprache: nicht getestet.
+- Ein Zahlenfeld zeigt die kürzeste Dezimalzahl, die den gespeicherten Wert genau wiedergibt, ohne Zifferngruppen: `0.6`, `1500` auf Englisch, `0,6`, `1500` auf Deutsch.
+- Eine getippte Zahl wird in der aktuellen Sprache gelesen, nach diesen Regeln in dieser Reihenfolge:
+  1. Leerzeichen entfallen, auch geschützte und schmale geschützte Leerzeichen: `1 500` ist 1500.
+  2. Ein führendes `+` oder `-` und ein Exponent sind erlaubt: `-6,5`, `1e-7`, `1,5E3`.
+  3. Eine Zahl in der gruppierten Schreibweise der aktuellen Sprache verliert ihre Gruppentrennzeichen: `1.500` und `1.234.567,5` auf Deutsch, `1,500` und `1,234,567.5` auf Englisch. Gruppen haben 3 Ziffern; die erste Gruppe hat 1 bis 3 Ziffern und beginnt nicht mit `0`.
+  4. Eine Zahl mit Punkt und Komma nimmt das letzte der beiden Zeichen als Dezimaltrennzeichen und das andere als Gruppentrennzeichen: `1.234,5` und `1,234.5` sind in beiden Sprachen 1234,5. Das Dezimaltrennzeichen kommt einmal vor, jedes Gruppentrennzeichen steht zwischen Ziffern.
+  5. Ein einzelner Punkt oder ein einzelnes Komma ist in beiden Sprachen das Dezimaltrennzeichen: `0,7` ist auch auf Englisch 0,7, `12.5` ist auch auf Deutsch 12,5, `0.500` ist auf Deutsch 0,5.
+  6. Jeder andere Text ist keine Zahl, z. B. `1.2.3` (mehrere Punkte außerhalb der gruppierten Schreibweise), `12 mm`, `0x10`, `1e999` (außerhalb des Bereichs einer 64-Bit-Gleitkommazahl).
+
+| Getippt | Englisch | Deutsch |
+| --- | --- | --- |
+| `0.7` | 0,7 | 0,7 |
+| `0,7` | 0,7 | 0,7 |
+| `1,500` | 1500 | 1,5 |
+| `1.500` | 1,5 | 1500 |
+| `1.234,5` | 1234,5 | 1234,5 |
+| `1.2.3` | keine Zahl | keine Zahl |
+
+- In einer Registerkarte zeigen ein Text, der keine Zahl ist, und ein leeres Feld wieder den gespeicherten Wert, sobald das Feld seinen Wert übernimmt (Abschnitt [Bedienung](#bedienung)). Im Assistenten sperren sie **Entwurf anlegen** (Abschnitt [Assistent](#assistent)).
+- Felder mit einer unteren Grenze von 0 oder mehr tragen `inputmode="decimal"`, das die Bildschirmtastatur eines Telefons oder Tablets um einen Ziffernblock mit Dezimalzeichen bittet. Die anderen Felder behalten die volle Tastatur: x, z und **Schränkung** (Twist) in **Schnitte** (Sections), die Felder der Leitkurvenpunkte sowie Pfeilung, V-Form und Schränkung am Rand im Assistenten. Sie nehmen negative Werte an, und dieser Ziffernblock hat unter iOS keine Minustaste. Die Ziffernblöcke selbst sind auf keinem Telefon getestet.
+- Für Hilfstechnologien hat ein Zahlenfeld die Rolle `spinbutton`: `aria-valuenow` enthält die getippte Zahl (fehlt, solange der Text keine Zahl ist), `aria-valuemin` und `aria-valuemax` die Grenzen des Felds.
 
 ### Was unverändert bleibt
 
@@ -167,8 +186,9 @@ Dateinamen von Downloads (**Speichern** (Save), **Exportieren**, Profil-`.dat`) 
 - Fangradius für Punkte im Grundriss-Editor: 9 px mit Maus oder Stift, 18 px mit Touchscreen. Innerhalb des Radius wird der nächstgelegene Punkt gewählt.
 - Tastenkürzel wirken nicht, solange der Fokus in einem Eingabefeld, Textbereich oder einer Auswahlliste liegt oder solange ein Dialog offen ist.
 - Der Tastaturfokus bleibt auf Zahlenfeldern, den Profillisten der Tabelle in **Schnitte** (Sections), den Auswahllisten in **Einstellungen** (Settings) und den Auswahllisten der Leitkurven (**Modus** (Mode), **Grad** (Degree)), den Kontrollkästchen in **Einstellungen** und **Leitkurve verwenden** (Use guide curve), dem Feld **Projektname** (Project name) und den Zeilenschaltflächen **+** und **×** der Tabelle in **Schnitte**, wenn die Registerkarte nach einer Änderung neu aufgebaut wird. Text- und Zahlenfelder markieren ihren Text erneut.
-- Eingabefelder für Zahlen übernehmen den Wert mit Enter, beim Verlassen des Eingabefelds und bei jedem Schritt mit den Pfeiltasten oder den Pfeilen im Eingabefeld. Eine nicht numerische Eingabe springt auf den vorherigen Wert zurück.
-- Ein Eingabefeld für Zahlen zeigt die kürzeste Dezimalzahl, die den gespeicherten Wert genau wiedergibt, z. B. `600.0000002`; die Anzeige rundet keinen Wert. Die App setzt den Wert in der Schreibweise mit Dezimalpunkt und ohne Gruppierung. Wie ein Zahlenfeld Werte anzeigt und annimmt, entscheidet der Browser (Abschnitt [Zahlen](#zahlen)).
+- Eingabefelder für Zahlen übernehmen den Wert mit Enter, beim Verlassen des Eingabefelds und bei jedem Schritt mit den Pfeiltasten. Ein leeres Feld oder ein Text, der keine Zahl ist (Abschnitt [Zahlen](#zahlen)), springt auf den vorherigen Wert zurück.
+- Die Pfeiltasten nach oben und unten ändern ein Zahlenfeld ausgehend von der getippten Zahl um die Schrittweite des Felds, z. B. 5 mm für y und 0,1° für **Schränkung** (Twist) in der Tabelle **Schnitte**, und halten an den Grenzen des Felds.
+- Ein Eingabefeld für Zahlen zeigt die kürzeste Dezimalzahl, die den gespeicherten Wert genau wiedergibt, z. B. `600,0000002` (englische Oberfläche: `600.0000002`); die Anzeige rundet keinen Wert.
 - Ein Ziehvorgang ist ein Rückgängig-Schritt, wie lange er auch pausiert: Seine Änderungen werden zusammengefasst, bis der Zeiger losgelassen wird.
 - **Rückgängig** oder **Wiederholen** während eines Ziehvorgangs beendet den Ziehvorgang; weitere Zeigerbewegungen bis zum Loslassen bewegen nichts. **Wiederholen** stellt einen rückgängig gemachten Ziehvorgang oder Punkt wieder her.
 - Eine Aktion, die nichts ändert, ergibt keinen Rückgängig-Schritt und behält die Wiederholen-Schritte, z. B. **Unbenutzte entfernen** (Remove unused), wenn jedes Profil verwendet wird, **Zum Projekt hinzufügen** (Add to project) eines Profils, das das Projekt schon enthält, oder die Eingabe des Werts, den ein Feld schon hat.
@@ -193,6 +213,7 @@ Der Assistent erzeugt aus 12 Eingaben (Tabelle unten) ein vollständiges Projekt
 - Öffnet sich beim ersten Aufruf mit dem Titel „Neuen Flügelentwurf beginnen“ (Start a new wing design) und mit **Neu** (New) mit dem Titel „Neuer Flügelentwurf“ (New wing design).
 - Vorausgewählter Entwurfstyp: **Sportmodell** (Sport). Ein Klick auf die Karte eines Entwurfstyps lädt dessen Werte.
 - Profile sind NACA-Profile (National Advisory Committee for Aeronautics) der 4- oder 5-stelligen Reihe. Gültige Bezeichnungen: Abschnitt [NACA-Generator](#naca-generator).
+- Die Zahlenfelder lesen eine getippte Zahl wie in Abschnitt [Zahlen](#zahlen) und prüfen sie schon beim Tippen. Beim Verlassen eines Felds zeigt es die gelesene Zahl, z. B. `1500` für ein auf Deutsch getipptes `1.500`. Die Pfeiltasten nach oben und unten ändern den Wert wie in den Registerkarten; in einem leeren Feld oder einem Feld ohne Zahl gehen sie vom Wert des gewählten Entwurfstyps aus.
 
 | Eingabefeld | Bereich | Wirkung |
 | --- | --- | --- |
@@ -233,7 +254,7 @@ Die Vorschau zeigt den Grundriss beider Hälften. Die Zeile darunter nennt Fläc
 
 Bei einer der folgenden Bedingungen wird die Zeile rot und nennt die Probleme; **Entwurf anlegen** (Create design) ist dann gesperrt:
 
-- Ein Wert liegt außerhalb seines Bereichs (Spalte Bereich).
+- Ein Wert liegt außerhalb seines Bereichs (Spalte Bereich), oder sein Feld ist leer oder enthält keine Zahl (Abschnitt [Zahlen](#zahlen)).
 - **Anzahl der Schnitte** ist nicht ganzzahlig.
 - Wurzel- oder Randprofil ist keine gültige NACA-Bezeichnung.
 - **Elliptisch** mit Flügelende **Flach** hat eine Zuspitzung ≥ 1 (`Ein elliptischer Grundriss braucht eine Zuspitzung < 1.`).
@@ -291,7 +312,7 @@ Berechnung: [[Geometrie|Geometrie]].
 Tooltip von **+**: `Einen Schnitt nach diesem einfügen`. Ergibt das Einfügen mehr als 200 Schnitte, ergänzt der Tooltip die Schätzung aus Abschnitt [Projektgröße](#projektgröße): `Einen Schnitt nach diesem einfügen. Mit … Schnitten: Jede Änderung dauert … und belegt … Arbeitsspeicher.`
 
 - Ein y, das ein anderer Schnitt bereits hat, wird mit einer Fehlermeldung abgewiesen (`Ein anderer Schnitt liegt bereits bei y = … mm; …`). Das Eingabefeld behält seinen vorherigen Wert.
-- Ein eingegebener Wert außerhalb der Grenze wird auf die nächste Grenze gesetzt, z. B. wird ein negatives y zu 0 und eine Profiltiefe unter 1 mm zu 1 mm. Schritte mit den Pfeiltasten oder den Pfeilen im Eingabefeld enden an den Grenzen. Die Grenzen gelten auch für Projektdateien ([[Dateiformate|Dateiformate]]).
+- Ein eingegebener Wert außerhalb der Grenze wird auf die nächste Grenze gesetzt, z. B. wird ein negatives y zu 0 und eine Profiltiefe unter 1 mm zu 1 mm. Schritte mit den Pfeiltasten enden an den Grenzen. Die Grenzen gelten auch für Projektdateien ([[Dateiformate|Dateiformate]]).
 - Ein Klick irgendwo in eine Zeile außerhalb ihrer Eingabefelder, Auswahllisten und Schaltflächen wählt den Schnitt aus, auch in der Kartenansicht schmaler Bildschirme. Die Zeile wird markiert, die 3D-Ansicht zeichnet die Schnittkontur rot, der Grundriss-Editor Tiefenlinie und Griffe des Schnitts rot. Die Auswahl baut den Flügel nicht neu auf: Sie braucht 2 ms JavaScript bei 200 Schnitten und 100 bis 110 ms bei 20 000 Schnitten.
 - Profil-Auswahllisten: Bei mehr als 20 000 Listeneinträgen (Schnitte × Projektprofile) enthält jede Liste nur ihr gewähltes Profil, bis sie den Fokus erhält oder angeklickt wird; dann listet sie alle Projektprofile.
 - Ändert sich y von Wurzel- oder Randschnitt, skalieren die y-Werte der Leitkurvenpunkte linear auf den geänderten Bereich von Wurzel bis Rand.

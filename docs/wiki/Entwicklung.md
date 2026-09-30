@@ -255,7 +255,8 @@ Regeln für Texte:
 
 - Ein Plural besteht aus zwei Schlüsseln oder aus einem deutschen Eintrag, der eine Funktion der Parameter ist (`({ n }) => …`) und die gedruckte Zahl mit `'1'` vergleicht.
 - Zahlen in einem Text laufen über vier Hilfsfunktionen. `fixed(value, digits)` schreibt `digits` Nachkommastellen: `1200.5` auf Englisch, `1.200,5` auf Deutsch. `count(value)` rundet auf eine ganze Zahl und gruppiert die Ziffern: `20,000` auf Englisch, `20.000` auf Deutsch. `whole(value)` ist für Anzahlen und Grenzen mit 4 oder mehr Stellen: Englisch druckt `String(value)`, Deutsch gruppiert eine ganze Zahl und rundet nie. `plain(value)` druckt den kürzesten Text, der als dieselbe Zahl gelesen wird (`String(value)`), auf Deutsch mit Dezimalkomma.
-- Zahlen als Daten (Werte von Eingabefeldern, Attribute, Dateiinhalte) bleiben unformatiert.
+- Zahlenfelder sind Textfelder mit der Rolle `spinbutton` (`numberField` und `numberInput` in `src/ui/dom.js`, auch im Assistenten verwendet), weil ein natives `<input type="number">` in Chromium ein getipptes Dezimalkomma verwirft. Sie zeigen `inputText(value)`, also `plain(value)`, und lesen den getippten Text mit `readNumber(text)` aus `src/i18n/index.js`: Dezimalkomma oder Dezimalpunkt in beiden Sprachen, die Zifferngruppen der aktuellen Sprache, Regel in Abschnitt Zahlen im [[Benutzerhandbuch|Benutzerhandbuch]]. `aria-valuenow`, `aria-valuemin` und `aria-valuemax` enthalten einfache JavaScript-Zahlen.
+- Zahlen als Daten (Attribute, Dateiinhalte) bleiben unformatiert.
 - Nicht übersetzt: Dateiinhalte (STEP, STL, 3MF, JSON, `.dat`), die Projekt-JSON, Profilnamen, Quellenangaben und Lizenzen, Namen externer Quellen, Dateinamen, CSS-Klassen (Cascading Style Sheets), `data-*`-Werte, Optionswerte und Codes von Meldungen wie `many-points`. Der Text einer Ausnahme in `Interner Fehler: {message}` (ausgelöst in `src/geom/nurbs.js` und `src/geom/linalg.js`) bleibt Englisch; der Rahmen darum ist übersetzt. Die 3MF-Datei erklärt in beiden Sprachen `xml:lang="en-US"`.
 - Der Code vergleicht nie einen übersetzten Text. Er vergleicht einen Code oder ein aufgezeichnetes Feld (`issue.code`, `build.sizeWarning`), weil dieselbe Meldung auf Deutsch anders lautet. Der einzige Texttest, `/zero pivot/` in `src/geom/wing.js`, liest eine Ausnahme aus `src/geom/linalg.js`, die nie übersetzt wird.
 - Die beschreibenden Texte der Bibliothek sind Daten: `category` und `use` von `NACA_PRESETS` in `src/airfoil/library.js` und der Einträge in `public/airfoils/index.json` sowie die `note` von `EXTERNAL_SOURCES`. `libraryText()` in `src/ui/airfoils.js` zeigt sie an. Ein neuer Text braucht dort einen `case` mit eigenem `tr()`-Literal und einen deutschen Eintrag in `src/i18n/de/panels.js`. Ein unbekannter Text erscheint unverändert.
@@ -288,7 +289,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 360 Tests in 15 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 371 Tests in 15 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -333,7 +334,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` setzt `de-DE` in seinem Block `German browser` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-160 Tests in 11 Spec-Dateien, 320 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+165 Tests in 11 Spec-Dateien, 330 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 30 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 

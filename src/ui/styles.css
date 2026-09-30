@@ -126,7 +126,6 @@ button.icon {
 }
 
 input[type='text'],
-input[type='number'],
 input[type='search'],
 select,
 textarea {
@@ -146,15 +145,6 @@ textarea {
 
 input.num {
   width: 4.6em;
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-/* Spin buttons take a third of the field width; arrow keys and the mouse wheel still step values. */
-input.num::-webkit-inner-spin-button,
-input.num::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
 }
 
 :focus-visible {
@@ -761,8 +751,7 @@ dialog::backdrop {
   button,
   .button,
   select,
-  input[type='text'],
-  input[type='number'] {
+  input[type='text'] {
     min-height: var(--touch);
   }
 }
