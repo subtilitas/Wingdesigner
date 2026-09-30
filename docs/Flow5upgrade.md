@@ -236,7 +236,10 @@ the y axis. With mitred sections the fold is no longer exact:
 
 A rigid rotation of the whole part after the build brings the trailing edges to within 0.003 mm
 (measured). Size, user interface and exports are not analysed; 2 to 4 h is a guess. A roll of the
-whole part (flow5's `rx`) is the same kind of transform; see F4.
+whole part (flow5's `rx`) is the same kind of transform; see F4. The extent check
+(`LIMITS.maxExtent`, 1,200,000 mm, in `buildWing`) runs on the placed sections before the rotation. So
+the rigid tilt checks the extents again after the rotation: a section near x = z = 1,000,000 mm
+passes before and reaches about 1,414,000 mm after a 45° tilt.
 
 Migration of a folded tilt: step 2 first undoes the fold of a project with a stored tilt. It turns
 the twist pivot point of each section back about the stored pivot by the stored angle: x + p · c, with
@@ -340,6 +343,10 @@ Defaults without a question, as for the XFLR5 import:
   `source.kind` gets a `flow5` row.
 - Shared part: from "4 wing slots of an XFLR5 plane" to "a list of typed wings" and from "XFLR5" to
   "XFLR5 or flow5": about 1,400 to 2,200 lines with tests and docs.
+- Content sniffing: `src/main.js` routes a file without the `.xml` extension to the XML readers
+  only when it starts with `<?xml`, a comment or `<explane>`. The flow5 roots `<xflplane>` and
+  `<xflwing>` join that pattern, with tests, so a flow5 XML file that lost its extension does not go to
+  the JSON loader.
 - New: `src/import/fl5xml.js` (flow5 XML), `src/import/fl5.js` (`.fl5` from format 500750, about 25
   to 30 version branches), a test writer `test/fl5-writer.js`, browser tests `e2e/flow5.spec.js`.
 - Size: 4,500 to 6,300 lines in all (code, German texts, tests, docs) for the analysed scope, plus
