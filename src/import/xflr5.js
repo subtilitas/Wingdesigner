@@ -16,8 +16,12 @@
 // .xfl project, an uploaded .dat, which XFLR5 reads as it is, or a NACA section of the generator,
 // whose nose lies at (0, 0) as in XFLR5's own NACA foils) and its leading edge is off the origin or
 // its chord is not 1, the sections that use it are moved and scaled to match (the airfoil frame).
-// Current-project and library airfoils have no frame. A cambered NACA section has one: its
-// thickness is added across the mean line, so the point of least x lies ahead of and above the nose.
+// Library airfoils and current-project airfoils have no frame, except a current-project airfoil
+// generated from the NACA equations (source kind 'naca': the NACA generator and Library presets of
+// the Airfoils tab, the wizard, the sample wing): it gets the frame of the generated section of its
+// NACA code. A cambered NACA section has one: its thickness is added across the mean line, so the
+// point of least x lies ahead of and above the nose. A current-project airfoil of an XFLR5 import or
+// an upload is stored at unit chord; its own coordinates are not known, and the report says so.
 //
 // Everything here is pure: the dialog (src/ui/xflr5.js) calls mapXflr5 again after every choice
 // and shows its report.
@@ -70,7 +74,7 @@ export const FRAME_LIMIT = Object.freeze({ offset: 0.1, chord: [0.5, 2] });
 
 /**
  * The frame of an airfoil at the origin with chord 1, and of an airfoil whose own coordinates are not
- * known (current project, library): the sections stay as mapped.
+ * known (library, current project except its NACA sections): the sections stay as mapped.
  */
 const NO_FRAME = Object.freeze({ x: 0, y: 0, chord: 1 });
 
@@ -577,6 +581,29 @@ function checkNaca(file, code) {
   });
 }
 
+/** True when two point lists agree within 1e-9, as addAirfoil compares NACA metadata with stored points. */
+const samePoints = (p, q) => p.length === q.length && p.every((pt, i) => Math.abs(pt[0] - q[i][0]) <= 1e-9 && Math.abs(pt[1] - q[i][1]) <= 1e-9);
+
+/**
+ * A current-project airfoil, checked. Its coordinates in XFLR5 are not known: it has no frame, except
+ * a section generated from the NACA equations (source kind 'naca') whose points are the generated
+ * section of its code (source.code, or the designation that is its name, as the sample wing stores
+ * it), as generated (the wizard, the sample wing) or checked (the Airfoils tab stores the checked
+ * points, which no longer show the generator's frame). It gets the check and the frame of the
+ * generated section of its code, so that the file gives the same wing as with no project open; where
+ * that frame is not in chord units, it is used without a frame, with the warning of an upload. NACA
+ * metadata with other points (a hand-edited project file) is not trusted, as addAirfoil does not.
+ */
+function checkProjectAirfoil(a) {
+  const c = checked(a.points);
+  if (!c.ok || a.source?.kind !== 'naca') return c;
+  const code = parseNacaCode(a.source.code ?? airfoilLabel(a))?.code;
+  if (!code) return c;
+  const entry = nacaEntry(code, { closedTE: a.source.closedTE === true });
+  const g = checkFramed(cleanPoints(entry.name, entry.points), { refuseOutside: false });
+  return g.ok && samePoints(g.points, c.points) ? { ok: true, points: c.points, issues: g.issues, problem: null, frame: g.frame } : c;
+}
+
 /**
  * Read an airfoil file uploaded in the import dialog. The result goes into the `uploads` option of
  * mapXflr5, which matches it to the XFLR5 names by its name line and by its file name. XFLR5 reads a
@@ -638,10 +665,13 @@ function airfoilSources(file, plane, fileName, { project, library, uploads }) {
       : tr('Airfoil "{name}" from XFLR5 plane "{plane}"; base shape without flap deflection.', { name: displayName(name), plane: displayName(plane.name) });
 
   /**
-   * The airfoil of an option key, or null for an unknown key: { ok, airfoil, shown, issues, problem, frame?, ownFrame?, foil? };
-   * `frame` for the airfoils whose own coordinates XFLR5 draws (file, upload, NACA); `ownFrame` for a
-   * library entry (report only); `shown`: the name of the airfoil in report lines (an upload with its
-   * file name, as the select shows it).
+   * The airfoil of an option key, or null for an unknown key: { ok, airfoil, shown, issues, problem, frame?, ownFrame?, unknownFrame?, foil? };
+   * `frame` for the airfoils whose own coordinates XFLR5 draws (file, upload, NACA, and a current-project
+   * section generated from the NACA equations, with the frame of the generated section of its code);
+   * `ownFrame` for a library entry and a current-project airfoil taken from it (report only);
+   * `unknownFrame` for a current-project airfoil of an XFLR5 import or an upload, stored at unit chord
+   * (report only); `shown`: the name of the airfoil in report lines (an upload with its file name, as
+   * the select shows it).
    */
   const load = (key) => {
     const at = key.indexOf(':');
@@ -664,8 +694,21 @@ function airfoilSources(file, plane, fileName, { project, library, uploads }) {
     if (kind === 'project') {
       const a = projectAirfoils.get(id);
       if (!a) return null;
-      const c = cached(checkCache, a, () => checked(a.points));
-      return { ...c, shown: shownName(airfoilLabel(a)), airfoil: { name: airfoilLabel(a), points: a.points, ...(a.source ? { source: structuredClone(a.source) } : {}) } };
+      // A section generated from the NACA equations gets the frame of the generated section of its code.
+      const c = cached(checkCache, a, () => checkProjectAirfoil(a));
+      // Taken from the Library (the same points): the report notes its own coordinates as for the
+      // library entry. Of an XFLR5 import or an upload: stored at unit chord, its own coordinates are lost.
+      const e = c.ok && a.source?.kind === 'library' ? libraryEntries.get(a.source.id) : undefined;
+      const lib = e ? cached(checkCache, e, () => checkText(e.text, e.file)) : null;
+      const ownFrame = lib?.ok && samePoints(lib.points, c.points) ? lib.ownFrame : null;
+      const unknownFrame = c.ok && (a.source?.kind === 'xflr5' || a.source?.kind === 'upload');
+      return {
+        ...c,
+        ...(ownFrame ? { ownFrame } : {}),
+        ...(unknownFrame ? { unknownFrame } : {}),
+        shown: shownName(airfoilLabel(a)),
+        airfoil: { name: airfoilLabel(a), points: a.points, ...(a.source ? { source: structuredClone(a.source) } : {}) },
+      };
     }
     if (kind === 'library') {
       const e = libraryEntries.get(id);
@@ -755,9 +798,10 @@ function airfoilSources(file, plane, fileName, { project, library, uploads }) {
 }
 
 /**
- * The airfoil checks of the first mapping, one step per distinct airfoil name of the surface: a step
- * resolves one name as mapXflr5 does, which checks its candidates (the file's airfoil, the uploads,
- * current-project and library airfoils, a NACA section) and keeps the results in the caches. The
+ * The airfoil checks of the first mapping (and of a plane or surface chosen later), one step per
+ * distinct airfoil name of the surface: a step resolves one name as mapXflr5 does, which checks its
+ * candidates (the file's airfoil, the uploads, current-project and library airfoils, a NACA section)
+ * and keeps the results in the caches. The
  * dialog runs the steps in slices, so that the page answers meanwhile; mapXflr5 then finds every
  * check in the caches. Nothing is checked for a wing beyond the limits of a project, as in mapXflr5.
  * Yields { done, total }: names checked, and names of the surface.
@@ -847,8 +891,9 @@ function projectName(plane, wing) {
  * @returns {object} { plane, surface, wing, surfaces, others, rows, options, missing, report, errors, name, project, summary }:
  *   rows: one per airfoil name of the surface, in section order: { name, label, sections (1-based), found, foundLabel,
  *   auto, key, picked, ok, airfoil, issues, problem, frame, naca }; frame: where the own coordinates of the airfoil in
- *   use put its sections (an .xfl airfoil or an upload; NO_FRAME for current-project, library and NACA airfoils and
- *   while the row has no usable airfoil); naca: the NACA option of the name, which the dialog offers first;
+ *   use put its sections (an .xfl airfoil, an upload, a generated NACA section or a current-project section
+ *   generated from the NACA equations; NO_FRAME for other current-project airfoils, library airfoils and while the row
+ *   has no usable airfoil); naca: the NACA option of the name, which the dialog offers first;
  *   options: the shared select list of every row (file airfoils, uploads, current-project airfoils, library entries,
  *   NACA presets); report: [{ severity: 'error'|'warning'|'info', text, reader? }], errors first, including the
  *   reader's warnings (reader: true for those of the XML reader, which may concern another plane); project: null
@@ -878,9 +923,10 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     if (!byName.has(s.rightFoil)) byName.set(s.rightFoil, []);
     byName.get(s.rightFoil).push(i + 1);
   });
-  // The airfoils in use, by option key, for the report: one line per airfoil and check warning, per
-  // airfoil that moves its sections (see placeAirfoil), and per library airfoil whose own coordinates
-  // lie far off; each names the airfoil in use and every section that uses it.
+  // The airfoils in use, by option key, for the report: one line per flap of a file airfoil, per
+  // airfoil and check warning, per airfoil that moves its sections (see placeAirfoil), per library
+  // airfoil whose own coordinates lie far off, and per current-project airfoil of an XFLR5 import or an
+  // upload; each names the airfoil in use (and every section that uses it).
   const inUse = new Map();
   // Beyond the limits of a project, no row is resolved or checked: the import cannot go ahead. A name
   // the user gave another airfoil does not count with the file's own.
@@ -931,13 +977,13 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     }
     if (!row.picked && auto.fileProblem) add('warning', tr('Airfoil "{name}" from the file fails the check: {problem} "{match}" is used instead.', { ...params, problem: auto.fileProblem, match: displayName(r.airfoil.name) }));
     if (!row.picked && auto.found === 'loose') add('warning', tr('Airfoil "{name}" matched to "{match}" by a similar name.', { ...params, match: displayName(r.airfoil.name) }));
-    // The flaps of the airfoil in use: a picked file airfoil speaks for itself.
-    if (r.foil) flapNotes(r.foil.name, r.foil, add);
     const entry = inUse.get(row.key);
     if (entry) entry.sections.push(...numbers);
-    else inUse.set(row.key, { shown: r.shown, issues: r.issues, frame: row.frame, ownFrame: row.key.startsWith('library:') ? r.ownFrame : null, sections: [...numbers] });
+    else inUse.set(row.key, { shown: r.shown, issues: r.issues, frame: row.frame, ownFrame: r.ownFrame ?? null, unknownFrame: r.unknownFrame === true, foil: r.foil ?? null, sections: [...numbers] });
   }
-  for (const { shown, issues, frame: fr, ownFrame, sections } of inUse.values()) {
+  // The flaps of each file airfoil in use, once: a picked file airfoil speaks for itself.
+  for (const { foil } of inUse.values()) if (foil) flapNotes(foil.name, foil, add);
+  for (const { shown, issues, frame: fr, ownFrame, unknownFrame, sections } of inUse.values()) {
     sections.sort((a, b) => a - b);
     const at = { name: shown, sections: sectionsText(sections) };
     // The check's warnings, once per airfoil. XFLR5 measures twist from the airfoil's own x axis as
@@ -950,13 +996,24 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     // file's numbers.
     if (moves(fr)) add(far(fr) ? 'warning' : 'info', frameText(fr, sections.length === 1, at));
     // A library airfoil keeps XFLR5's table values; if XFLR5 used its coordinates, it drew these
-    // sections elsewhere.
+    // sections elsewhere. The same holds for a current-project airfoil taken from the Library.
     if (ownFrame && far(ownFrame)) {
       add(
         'info',
         tr(
           'Library airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% of chord in its own coordinates. If XFLR5 used these coordinates, it draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.',
           { ...at, x: pct(ownFrame.x), y: pct(ownFrame.y) },
+        ),
+      );
+    }
+    // A current-project airfoil of an XFLR5 import or an upload keeps the table values as well: its
+    // own coordinates, which XFLR5 drew, were not stored.
+    if (unknownFrame) {
+      add(
+        'info',
+        tr(
+          'Airfoil "{name}" ({sections}) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. If the coordinates that XFLR5 used put the leading edge elsewhere, XFLR5 draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.',
+          at,
         ),
       );
     }

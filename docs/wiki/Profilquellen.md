@@ -16,9 +16,11 @@ Zusammenfassung veröffentlichter Nutzungsbedingungen, keine Rechtsberatung. Zit
 | aerodesign.de, Profile anderer Konstrukteure | Nutzung nur mit Genehmigung des jeweiligen Urhebers. | Nein | Über den Link zu aerodesign.de (HS-Katalogseite); dort herunterladen, dann hochladen |
 | mh-aerotools.de, MH-Profile (Martin Hepperle) | Persönlicher Gebrauch. Veröffentlichungen nennen die Quelle. Eine Neuzusammenstellung darf nicht über den Herstellungskosten verkauft werden. | Nein | Link in der App; dort herunterladen, dann hochladen |
 | UIUC (University of Illinois Urbana-Champaign) Airfoil Coordinates Database | Keine Lizenz für die Koordinatendateien angegeben. Es gelten die Bedingungen des jeweiligen Konstrukteurs. | Nein | Link in der App; dort herunterladen, dann hochladen |
+| Profile in einer XFLR5-Datei | Ein XFLR5-Projekt (`.xfl`; XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln) enthält Profilkoordinaten ohne Urheber und Lizenz; eine XFLR5-Datei im Format XML (Extensible Markup Language) enthält nur Profilnamen. Es gelten die Bedingungen des Konstrukteurs jedes Profils. Die App prüft sie nicht. Wer die Datei importiert, ist für die Rechte an den Profilen in ihr verantwortlich. | Nein | **Öffnen** (Open) (XFLR5-Import); Profile eines `.xfl`-Projekts werden mit `source.kind` `xflr5` gespeichert, die übrigen behalten ihre eigene `source` |
 
 - Mitgelieferte Koordinatendateien: 6, in `public/airfoils/` ([Mitgelieferte Dateien](#mitgelieferte-dateien)).
 - Liste der NACA-Vorlagen und Regeln des Generators: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitte Bibliothek und NACA-Generator.
+- Import von XFLR5-Dateien und die Profilquellen des Importdialogs: [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import; Dialog: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Import aus XFLR5.
 
 ## Links in der App
 
@@ -40,7 +42,7 @@ Registerkarte **Profile** (Airfoils), Kasten **Weitere Profile (extern, nicht mi
 | aerodesign.de | `clarky.txt`: 2 Koordinatentabellen (Daten von 1928 und 1927) in 1 Datei | Nein. Beide Tabellen werden als 1 Kontur gelesen, die sich selbst kreuzt. Die Tabelle von 1927 im Texteditor löschen; die Tabelle von 1928 lässt sich dann laden. |
 | aerodesign.de | „Original“-Koordinaten von HS-0003 und HS-0004 als JPG-Bild (Joint Photographic Experts Group) | Nein (Bild). Die `.dat`-Datei desselben Profils lässt sich laden. |
 | mh-aerotools.de | HTML-Seite (HyperText Markup Language) je Profil, z. B. `mh45koo.htm`. 8 von 56 Tabellen stehen in Prozent der Profiltiefe. | Ja: Seite als `.htm` speichern, dann hochladen |
-| mh-aerotools.de | XML-Datei (Extensible Markup Language) je Profil, z. B. `geo_xml/mh45_geo.xml`. 55 von 56 Profilen; keine für MH 57. | Ja |
+| mh-aerotools.de | XML-Datei je Profil, z. B. `geo_xml/mh45_geo.xml`. 55 von 56 Profilen; keine für MH 57. | Ja |
 | UIUC | Selig-`.dat` | Ja. Ausnahmen: 38 von 1665 Dateien ([Einlesetest](#einlesetest)). |
 
 - Die Spalte „In Wingdesigner ladbar“ gilt für die Vorgabe der **Parametrisierung der Profile** (Profile parametrization), **Zentripetal (empfohlen)** (Centripetal (recommended)). **Sehnenlänge** (Chord length) und **Gleichabständig** (Uniform) lehnen mehr Dateien ab ([Einlesetest](#einlesetest)).
@@ -100,6 +102,7 @@ Endleistenmuster:
 Die Profilvorschau hat das Feld **Quelle / Urheber** (Source / attribution). Die Vorschau öffnet sich bei **Hochladen** (Upload), bei eingefügtem Text, bei **NACA-Generator** (NACA generator) und bei **Bibliothek** (Library).
 
 - Hochgeladene Datei, eingefügter Text, NACA-Profil: Die App füllt das Feld aus dem Profilnamen vor. NACA-Namen ergeben ein leeres Feld.
+- Profil eines XFLR5-Projekts (`.xfl`): Der Import speichert eine Quellenangabe aus dem Profilnamen mit derselben Regel. **Anzeigen** (View) im Importdialog zeigt das Feld **Quelle / Urheber** schreibgeschützt.
 - Mitgelieferte Bibliotheksdatei: Die App füllt `source.author` aus `index.json` vor.
 - Autor, Lizenzkennung und Quelladressen einer Bibliotheksdatei sind Daten: Sie lauten in der deutschen und in der englischen Oberfläche gleich, ebenso `NOTICE.md`. Kategorie und Verwendung jedes Bibliothekseintrags erscheinen in der Sprache der Oberfläche.
 
@@ -132,10 +135,13 @@ Jedes Profil im Projekt trägt ein Objekt `source`:
 | Mitgelieferte Bibliotheksdatei | `kind: "library"`, `id`, `attribution` (vorbelegt mit `source.author` aus `index.json`), `license`, `url`, `terms` |
 | Hochgeladene Datei | `kind: "upload"`, `file` (Dateiname), `attribution` (leere Zeichenkette, wenn kein Text) |
 | Eingefügter Text | `kind: "upload"`; `attribution`, wenn das Feld nicht leer ist |
+| Profil eines XFLR5-Projekts (`.xfl`), importiert mit **Öffnen** (Open) | `kind: "xflr5"`, `file` (Name der `.xfl`-Datei), `note` (`Profil „<name>“ aus dem XFLR5-Flugzeug „<plane>“; Grundform ohne Klappenausschlag.` in der Sprache der Oberfläche zum Zeitpunkt des Imports; englische Oberfläche: `Airfoil "<name>" from XFLR5 plane "<plane>"; base shape without flap deflection.`), `attribution` nur, wenn die Namensregel eine ergibt |
+
+Im XFLR5-Import behalten eine hochgeladene `.dat`-Datei, ein Bibliotheksprofil, ein NACA-Profil und ein Profil des aktuellen Projekts ihre eigene `source`.
 
 | Ort | Quellenangabe enthalten |
 | --- | --- |
-| Liste der Projektprofile (Registerkarte **Profile** (Airfoils)) | Ja, nach der Punktanzahl. NACA-Profile ohne Quellenangabe zeigen „NACA-Gleichungen“ (englische Oberfläche: `NACA equations`). |
+| Liste der Projektprofile (Registerkarte **Profile** (Airfoils)) | Ja, nach der Punktanzahl. NACA-Profile ohne Quellenangabe zeigen „NACA-Gleichungen“ (englische Oberfläche: `NACA equations`); Profile eines XFLR5-Projekts ohne Quellenangabe zeigen `XFLR5: <Datei>` (englische Oberfläche: `XFLR5: <file>`). |
 | Projektdatei, JSON (JavaScript Object Notation): **Speichern** (Save) oder **Exportieren** (Export) > **Projekt-JSON** (Project JSON) | Ja |
 | Automatische Sicherung im Browserspeicher (Schlüssel `wingdesigner.project.v1`) | Ja |
 | `.dat`-Download eines Projektprofils | Nein: nur Namenszeile und Punkte |
@@ -153,6 +159,7 @@ Die App sendet keine Profildaten an einen Server. Ihre einzigen Netzwerkanfragen
 - Nach **Zum Projekt hinzufügen** (Add to project) ist die Quellenangabe in der App schreibgeschützt. **Anzeigen** (View) zeigt sie in einem deaktivierten Feld. Änderungen nur in der Projektdatei (JSON).
 - Ohne gespeicherte Quellenangabe zeigt **Anzeigen** die aus dem Namen abgeleitete Vorbelegung (HS/MH-Regel). Dieser Text ist nicht gespeichert.
 - Gleicher Name und identische Punkte wie ein Projektprofil, oder erzeugtes NACA-Profil mit demselben `code` und `closedTE` wie ein Projektprofil (Name beliebig): **Zum Projekt hinzufügen** behält den vorhandenen Eintrag und dessen `source`. Die neue Quellenangabe wird verworfen. Die Meldung lautet dann `Das Projekt enthält dieses Profil bereits als „<name>“.` statt `Profil „<name>“ hinzugefügt.` Quellenangabe ändern: Profil entfernen (**×** nur verfügbar, solange kein Schnitt es verwendet) und neu hinzufügen, oder die Projektdatei (JSON) bearbeiten.
+- Aus einer XFLR5-Datei importierte Profile: Die Datei nennt weder Urheber noch Lizenz, und die App prüft die Rechte an den Koordinaten nicht. Ein Profil erhält nur dann eine Quellenangabe, wenn sein Name wie in der Tabelle oben mit `HS` oder `MH` beginnt. Wer die Datei importiert, ist für die Rechte an den Profilen in ihr und für die Quellenangabe verantwortlich, die ihre Bedingungen verlangen. Nach dem Import ist die Quellenangabe in der App schreibgeschützt; Änderungen nur in der Projektdatei (JSON).
 - Exportierte STEP-, STL-, 3MF- und `.dat`-Dateien enthalten keine Quellenangabe. Die HS-Bedingungen verlangen Namen und Quelle bei jeder Nutzung. CC BY 4.0 (S9104) verlangt eine Quellenangabe bei der Weitergabe; wer eine solche mit S9104 erstellte Datei weitergibt, fügt den Text der Quellenangabe aus `public/airfoils/NOTICE.md` hinzu.
 
 ## aerodesign.de (Hartmut Siegmann)

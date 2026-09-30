@@ -29,6 +29,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   German entry, a German entry is unused, key and entry differ in their `{placeholders}`, two areas
   translate one text differently, an entry is neither text nor function, or a `tr()` call does not
   start with a string literal.
+- XFLR5 import: **Open** also takes an XFLR5 project (`.xfl`, XFLR5 6.10.01 to 6.62, project formats
+  200001 and 200002) and an XFLR5 plane or wing file (`.xml`, Extensible Markup Language, XFLR5 6.11
+  to 6.62), and imports one surface from it, the main wing or the horizontal stabilizer (XFLR5 calls
+  it the elevator), in place of the current project as one undo step. The dialog **Import from
+  XFLR5** asks for the plane and the surface, draws the planform of the result and lists every value
+  that the import converts, changes or leaves out as error, warning or info. **Import** stays off
+  while an airfoil name has no airfoil or the wing cannot be mapped. An `.xfl` project holds its
+  airfoils. An XML file names them only: the dialog looks each name up in the uploaded `.dat` files,
+  the current project, the bundled library, the NACA (National Advisory Committee for Aeronautics)
+  generator and among similar names, and every
+  row takes another airfoil or an uploaded `.dat` file. The sections follow XFLR5's own geometry:
+  `y_position` runs along the panels, the dihedral of a section is the angle of the panel outboard
+  of it, twist turns about the quarter chord, and the tilt angle and the position of the wing in the
+  plane are applied. A section is moved and scaled by the position of the coordinates of its
+  airfoil, so that an airfoil of the file, an uploaded `.dat` file or a NACA section (also one of
+  the current project) lies where XFLR5 draws it. The project gets straight panels, a twist pivot of 0.25 and the trailing edge as
+  in the airfoils. Flaps are imported undeflected, with a notice. Sections that share one
+  `y_position` move apart by at most 0.5 mm, with a warning. The fin, the second wing, the body,
+  the masses and the analyses are not imported. A `.wpa` project (XFLR5 6.09 and older), a flow5
+  file and a damaged file give a red notice with the reason, and the design stays. An `.xfl`
+  project up to 2,000 MB is read through windows of 4,194,304 bytes (4 MiB); its analysis results
+  are skipped. The
+  **Airfoils** upload refuses XFLR5 files with a notice. The Airfoils tab shows `XFLR5: <file>`
+  under an imported airfoil, the title of **Open** names the import, and Help lists it. German
+  texts: 199 new (areas `xfl`, `xflxml`, `xflr5`). Wiki: User Guide section Import from XFLR5, File
+  Formats section XFLR5 import, the screenshot `xflr5-import.png`. Tests: 144 unit tests in
+  `test/xflr5-xfl.test.js`, `test/xflr5-xml.test.js` and `test/xflr5-map.test.js`, 9 browser tests
+  in `e2e/xflr5.spec.js`.
 - Bundled airfoil library: Clark Y, USA 35B, NACA M-6 and NACA 8-H-12 from NACA report tables, RAF 34
   from a Royal Aircraft Establishment table reprinted by NACA, and S9104 (CC BY 4.0, Michael Selig).
   `public/airfoils/NOTICE.md` gives source, legal basis, conditions and attribution per file; the
@@ -37,7 +65,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   Geometry, File Formats, Airfoil Sources, Development, each in both languages). The English pages
   name the interface elements by their English labels and show English screenshots. The German wiki
   pages name them by the German labels of the German interface, quote messages in German and show
-  German screenshots. `npm run screenshots` writes 24 images: 12 in `docs/wiki/images/` and 12 in
+  German screenshots. `npm run screenshots` writes 26 images: 13 in `docs/wiki/images/` and 13 in
   `docs/wiki/images/de/`. `npm run docs:check` (in CI) checks that every page has its counterpart,
   that wiki links and images resolve, and that both README coverage tables are present.
 - Size warnings: above 200 sections, 200 airfoils, 5,000 points in one airfoil, 100,000 airfoil
@@ -99,6 +127,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - The build writes one classic deferred script (immediately invoked function expression, IIFE)
   instead of an ES module loaded in cross-origin resource sharing (CORS) mode; the bundled airfoil
   library is compiled into it instead of fetched from `airfoils/` at run time.
+- Airfoil files saved as UTF-16 (16-bit Unicode Transformation Format) text with a byte order mark (Windows editors call it "Unicode") are
+  decoded; they were read as Windows-1252 text before.
+- The planform preview of the wizard and the canvas of the airfoil preview have the role `img` with
+  their labels.
 
 ### Fixed
 

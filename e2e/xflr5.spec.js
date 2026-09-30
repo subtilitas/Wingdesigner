@@ -3,10 +3,12 @@
 // the status bar and the toast, Undo, Cancel, files that cannot be imported, the Open file types,
 // XFLR5 files whose name lost its extension, the refusal of XFLR5 files in the Airfoils upload, the
 // dialog on a 360 px phone and in German.
-// Input files: test/fixtures/xflr5/ (origin and license in its SOURCE.md).
+// Input files: test/fixtures/xflr5/ (origin and license in its SOURCE.md), and a project with many
+// airfoils from test/xflr5-writer.js.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createDesign, dialogOf, expect, openTab, savedProject, sectionRows, sectionValues, statusFigures, statusOf, test, toastOf } from './helpers.js';
+import { writeProject } from '../test/xflr5-writer.js';
 
 const FIXTURES = new URL('../test/fixtures/xflr5/', import.meta.url);
 const fixturePath = (name) => fileURLToPath(new URL(name, FIXTURES));
@@ -38,6 +40,26 @@ async function openImport(page, file) {
   const dlg = importDialog(page);
   await expect(dlg.getByRole('heading', { name: 'Import from XFLR5' })).toBeVisible();
   return dlg;
+}
+
+/** A symmetric NACA 4-digit section of thickness t (fraction of chord), 99 points in Selig order. */
+function symmetric(t) {
+  const yt = (x) => 5 * t * (0.2969 * Math.sqrt(x) - 0.126 * x - 0.3516 * x ** 2 + 0.2843 * x ** 3 - 0.1015 * x ** 4);
+  const upper = Array.from({ length: 50 }, (_, k) => (1 + Math.cos((Math.PI * k) / 49)) / 2).map((x) => [x, yt(x)]);
+  const lower = Array.from({ length: 49 }, (_, k) => (1 - Math.cos((Math.PI * (k + 1)) / 49)) / 2).map((x) => [x, -yt(x)]);
+  return [...upper, ...lower];
+}
+
+/**
+ * An .xfl project, plane "Many": the main wing "Big" names `n` distinct airfoils (8 % to 20 % thick,
+ * one per section), the stabilizer "Stab" one. Checking the main wing takes seconds, in slices.
+ */
+function manyAirfoils(n) {
+  const foils = Array.from({ length: n }, (_, i) => ({ name: `F${i}`, points: symmetric(0.08 + (0.12 * i) / n) }));
+  const big = { name: 'Big', sections: foils.map((f, i) => ({ rightFoil: f.name, chord: 0.2, y: 0.005 * i })) };
+  const stab = { name: 'Stab', sections: [{ rightFoil: 'S', chord: 0.1, y: 0 }, { rightFoil: 'S', chord: 0.08, y: 0.2 }] };
+  const project = writeProject({ planes: [{ name: 'Many', wings: [big, { name: 'Second Wing' }, stab, { name: 'Fin' }] }], foils: [...foils, { name: 'S', points: symmetric(0.09) }, { name: 'Foil A' }, { name: 'Foil B' }] });
+  return Buffer.from(project.bytes);
 }
 
 /**
@@ -173,7 +195,7 @@ test.describe('XFLR5 import', () => {
     await expect.poll(() => sectionValues(page)).toEqual(sport);
   });
 
-  test('.xfl project with two planes: plane choice, a plane without stabilizer, airfoil notes kept after a reload', async ({ page }) => {
+  test('.xfl project with two planes: plane choice, a plane without stabilizer, airfoil notes kept after a reload; checks of another surface in slices', async ({ page }) => {
     await createDesign(page, 'Sport');
     const dlg = await openImport(page, fixturePath('fixtures_v662.xfl'));
     await expect(dlg.locator('.xflr5-source')).toHaveText('fixtures_v662.xfl · XFLR5 project, format 200002 (XFLR5 6.44 or later)');
@@ -235,6 +257,33 @@ test.describe('XFLR5 import', () => {
     await expect(listed).toHaveCount(2);
     // The list names where the airfoils came from.
     await expect(listed.first()).toContainText('XFLR5: fixtures_v662.xfl');
+
+    // Another surface whose airfoils are not checked yet is checked in slices, with Import off and
+    // nothing of the previous wing in the dialog; afterwards the dialog follows it.
+    const many = await openImport(page, { name: 'many.xfl', mimeType: 'application/octet-stream', buffer: manyAirfoils(300) });
+    const importBtn = many.getByRole('button', { name: 'Import', exact: true });
+    const name = many.getByRole('textbox', { name: 'Project name' });
+    await expect(reportOf(many)).toHaveText([/^Checking the airfoils …/]);
+    await expect(importBtn).toBeDisabled();
+    // Chosen during the first checks, which follow it.
+    await many.getByRole('radio', { name: /^Horizontal stabilizer/ }).check();
+    await expect(importBtn).toBeEnabled({ timeout: 30_000 });
+    await expect(airfoilRows(many).getByRole('rowheader')).toHaveText(['S sections 1–2']);
+    await expect(statsOf(many)).toContainText('Span 400 mm');
+    await expect(name).toHaveValue('Many Stab');
+    await many.getByRole('radio', { name: /^Main wing/ }).check();
+    await expect(reportOf(many)).toHaveText([/^Checking the airfoils …/]);
+    await expect(importBtn).toBeDisabled();
+    await expect(airfoilRows(many)).toHaveCount(0);
+    await expect(statsOf(many)).toHaveText('');
+    await expect(name).toHaveValue('');
+    await expect(importBtn).toBeEnabled({ timeout: 30_000 });
+    await expect(airfoilRows(many)).toHaveCount(200);
+    await expect(many.getByText('100 more airfoil names are not listed; uploaded .dat files are matched to them by name.')).toBeVisible();
+    await expect(name).toHaveValue('Many Big');
+    await page.keyboard.press('Escape');
+    await expect(importDialog(page)).toHaveCount(0);
+    await expect(sectionRows(page)).toHaveCount(4);
   });
 
   test('Cancel keeps the design and adds no undo step', async ({ page }) => {
@@ -334,6 +383,9 @@ test.describe('XFLR5 import', () => {
     await expect(toastOf(page)).toHaveClass(/\berror\b/);
     await upload.setInputFiles(fixturePath('xml_mm/0.plane.xml'));
     await expect(toastOf(page)).toHaveText('0.plane.xml is an XFLR5 file, not an airfoil. Use Open to import a wing from it.');
+    // A project above the 20 MB of an airfoil file (analysis results make it so) gets the same hint.
+    await upload.setInputFiles({ name: 'big.xfl', mimeType: 'application/octet-stream', buffer: Buffer.concat([fixture('fixtures_v662.xfl'), Buffer.alloc(21_000_000)]) });
+    await expect(toastOf(page)).toHaveText('big.xfl is an XFLR5 file, not an airfoil. Use Open to import a wing from it.');
     await expect(dialogOf(page)).toHaveCount(0);
   });
 

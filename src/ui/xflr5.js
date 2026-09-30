@@ -82,8 +82,14 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
       let report = [];
       // The row whose Upload button opened the file chooser.
       let uploadRow = null;
-      // False while the first airfoil checks run: a choice meanwhile is kept for the first mapping.
+      // False while airfoil checks run: a choice meanwhile is kept for the mapping after them.
       let ready = false;
+      // Runs the checks of another plane or surface (set once the dialog is drawn).
+      let recheck = null;
+      /** A change of plane or surface: while checks run, they follow it; afterwards the new wing is checked. */
+      const changed = () => {
+        if (ready) recheck();
+      };
 
       const map = () =>
         mapXflr5(file, { plane, surface, fileName, project, library, uploads, choices, name: nameEdited ? nameInput.value.trim() : undefined });
@@ -140,7 +146,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
                   plane = Number(e.target.value);
                   surface = planeSurfaces(file, plane).surfaces.some((s) => s.key === wanted && s.available) ? wanted : defaultSurface(file, plane);
                   renderSurfaces();
-                  refresh();
+                  changed();
                 },
               },
               file.planes.map((p, i) => h('option', { value: String(i) }, p.name.trim() ? displayName(p.name) : tr('Plane {n}', { n: plain(i + 1) }))),
@@ -165,7 +171,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
                 onchange: () => {
                   surface = s.key;
                   wanted = s.key;
-                  refresh();
+                  changed();
                 },
               }),
               // The space keeps label and detail apart in the radio's accessible name.
@@ -427,7 +433,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
         for (let at = null; at !== `${plane}/${surface}`; ) {
           at = `${plane}/${surface}`;
           let last = performance.now();
-          for (const { done, total } of checkSteps(file, { plane, surface, fileName, project, library })) {
+          for (const { done, total } of checkSteps(file, { plane, surface, fileName, project, library, uploads })) {
             if (performance.now() - last < SLICE_MS) continue;
             progress.textContent = tr('Checking the airfoils … {n} of {total}', { n: count(done), total: count(total) });
             await nextTask();
@@ -439,6 +445,42 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
         await nextTask();
         return dialog.open;
       };
+      /** Open reports an error of the checks; the dialog goes. */
+      const fail = (e) => {
+        failed = e;
+        dialog.close();
+      };
+      /**
+       * Another plane or surface once the dialog is ready: its airfoils not checked yet (another wing,
+       * up to 10,000 airfoils) are checked in slices as the first ones, with Import off. Checks that
+       * are done take no time, and the dialog follows at once.
+       */
+      recheck = () => {
+        const steps = checkSteps(file, { plane, surface, fileName, project, library, uploads });
+        const start = performance.now();
+        let step = steps.next();
+        while (!step.done && performance.now() - start < SLICE_MS) step = steps.next();
+        if (step.done) return refresh();
+        ready = false;
+        importBtn.disabled = true;
+        progress.textContent = tr('Checking the airfoils …');
+        clear(reportBox).append(progress);
+        // Nothing of the previous wing stays, as during the first checks: a pick in its table would
+        // go to a name of that wing. refresh() fills table, planform, stats and name again.
+        clear(airfoilBox);
+        stats.textContent = '';
+        if (!nameEdited) nameInput.value = '';
+        build = null;
+        outline = [];
+        pz.redraw();
+        checkAll()
+          .then((open) => {
+            if (!open) return;
+            ready = true;
+            refresh();
+          })
+          .catch(fail);
+      };
       checkAll()
         .then((open) => {
           if (!open) return;
@@ -446,11 +488,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
           refresh();
           pz.fit();
         })
-        .catch((e) => {
-          // Open reports the error; the dialog goes.
-          failed = e;
-          dialog.close();
-        });
+        .catch(fail);
     } catch (e) {
       // A dialog that failed while it was set up must not stay in the page; Open reports the error.
       dialog?.remove();

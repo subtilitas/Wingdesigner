@@ -116,6 +116,25 @@ async function run(lang) {
     await ctx.close();
   }
 
+  // Import dialog for an XFLR5 project: the test file with two planes, opened through Open. The window
+  // is tall enough for the whole dialog (airfoil table, planform, report and buttons).
+  {
+    const { ctx, page } = await newPage({ viewport: { width: 1280, height: 1200 }, deviceScaleFactor: 1 });
+    const wizard = await createDesign(page, 'Sport');
+    await wizard.getByRole('button', { name: t('Create design') }).click();
+    await page.waitForTimeout(400);
+    await page.locator('header.topbar input[type=file]').setInputFiles('test/fixtures/xflr5/fixtures_v662.xfl');
+    const dialog = page.locator('dialog.xflr5[open]');
+    // The airfoil checks run first; the dialog is complete when Import is on.
+    await dialog.getByRole('button', { name: t('Import'), exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('dialog.xflr5[open] button.primary')?.disabled);
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.waitForTimeout(400);
+    await shoot(dialog, 'xflr5-import');
+    await dialog.getByRole('button', { name: t('Cancel') }).click();
+    await ctx.close();
+  }
+
   // Swept flying wing with the NURBS control net.
   {
     const { ctx, page } = await newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });

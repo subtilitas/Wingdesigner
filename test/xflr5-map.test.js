@@ -19,6 +19,7 @@ import {
   refusedUpload,
 } from '../src/import/xflr5.js';
 import { bundledLibrary } from '../src/airfoil/bundled.js';
+import { nacaEntry } from '../src/airfoil/library.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { toSeligDat } from '../src/airfoil/parse.js';
 import { LIMITS, SOURCE_KEYS, validateProject } from '../src/model/project.js';
@@ -27,6 +28,7 @@ import { buildWing, placeSection } from '../src/geom/wing.js';
 import { fitProfile } from '../src/geom/profile.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { surfacePoint } from '../src/geom/nurbs.js';
+import { defaultProject } from '../src/model/defaults.js';
 import { sampleProject } from './helpers.js';
 
 const DEG = Math.PI / 180;
@@ -538,6 +540,14 @@ describe('XFLR5 mapping: airfoils', () => {
     expect(rascal.project.sections).toHaveLength(9);
   });
 
+  it('reports the flaps of a file airfoil once, however many names use it', () => {
+    const f = xfl('uaslab/UltraStick25e_v662_stripped.xfl');
+    const names = mapXflr5(f).rows.map((row) => row.name);
+    expect(names.length).toBeGreaterThan(1);
+    const r = mapXflr5(f, { choices: Object.fromEntries(names.map((n) => [n, 'file:Flat_Elev'])) });
+    expect(texts(r.report).filter((t) => t.includes('flap'))).toEqual(['Airfoil "Flat_Elev" has a trailing-edge flap at 0° in XFLR5 (hinge at 68.97 % chord); control surfaces are not cut.']);
+  });
+
   it('resolves names of XML files: uploads by name line, then trimmed, then by file name', () => {
     const f = simple('Eppler 423 ');
     const dat = (name) => toSeligDat(name, NACA2412);
@@ -880,10 +890,11 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     expect(again.project.sections.map(values)).toEqual(geometry);
     expect(frameText(first)).toEqual([]);
     // The report says that the library Clark Y lies 3.55 % of the chord off in its own coordinates,
-    // and that the .dat file XFLR5 used would place the sections as in XFLR5; the project airfoil
-    // (normalized) has no such line.
+    // and that the .dat file XFLR5 used would place the sections as in XFLR5; so does the project
+    // airfoil taken from it (source kind 'library', the same points).
     expect(libraryText(first)).toEqual([expect.stringMatching(/^Library airfoil "Clark Y" \(sections 1–2\) has its leading edge at x\u00a0=\u00a00\u00a0%, y\u00a0=\u00a03\.55\u00a0% of chord/)]);
-    expect(libraryText(again)).toEqual([]);
+    expect(first.project.airfoils[0].source).toMatchObject({ kind: 'library', id: 'clark-y' });
+    expect(libraryText(again)).toEqual(libraryText(first));
     // An upload of the file's Clark Y gives the wing of the .xfl project.
     const clarkDat = readAirfoilUpload(toSeligDat('Clark Y', FIXTURES.foils.get('Clark Y').points), 'clarky.dat');
     const fromDat = mapXflr5(f, { uploads: [clarkDat] });
@@ -942,6 +953,83 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     const sym = mapXflr5(simple('NACA 0015'));
     expect(sym.rows[0].frame).toEqual({ x: 0, y: 0, chord: 1 });
     expect(frameText(sym)).toEqual([]);
+  });
+
+  it('gives a current-project section generated from the NACA equations the frame of the generated section of its code, as with no project open', () => {
+    // The sample wing (and the wizard) store NACA 2412 as generated: the same file gives the same wing
+    // with it open as with no project.
+    const f = readXflr5Xml(readFileSync(new URL('fixtures/xflr5/xml_mm/0.plane.xml', import.meta.url), 'utf8').replaceAll('NACA 0009', 'NACA 2412'));
+    const choices = { 'Clark Y': 'naca:0012' };
+    const alone = mapXflr5(f, { choices });
+    const sample = defaultProject();
+    const withSample = mapXflr5(f, { choices, project: sample });
+    expect(alone.rows[1]).toMatchObject({ found: 'naca', key: 'naca:2412' });
+    expect(withSample.rows[1]).toMatchObject({ found: 'project', key: `project:${sample.airfoils[0].id}` });
+    expect(withSample.rows[1].frame).toEqual(alone.rows[1].frame);
+    expect(alone.rows[1].frame.y * 100).toBeCloseTo(0.1558, 3);
+    expect(withSample.project.sections.map(values)).toEqual(alone.project.sections.map(values));
+    const line = /^Airfoil "NACA 2412" \(section 3\) has its leading edge at x\u00a0=\u00a00\u00a0%, y\u00a0=\u00a00\.16\u00a0% and its trailing edge/;
+    expect(frameText(alone)).toEqual([expect.stringMatching(line)]);
+    expect(frameText(withSample)).toEqual([expect.stringMatching(line)]);
+    // A current-project airfoil of another source keeps the mapped sections, with the same points.
+    const copy = { airfoils: [{ ...sample.airfoils[0], id: 'copy', source: { kind: 'upload', file: 'naca2412.dat' } }] };
+    const other = mapXflr5(f, { choices, project: copy });
+    expect(other.rows[1]).toMatchObject({ found: 'project', key: 'project:copy', frame: { x: 0, y: 0, chord: 1 } });
+    expect(frameText(other)).toEqual([]);
+    // NACA metadata with other points (a hand-edited project file) is not trusted: no frame.
+    const edited = { airfoils: [{ id: 'edited', name: 'NACA 2412', points: nacaAirfoil('4412').points, source: nacaEntry('2412').source }] };
+    expect(mapXflr5(f, { choices, project: edited }).rows[1]).toMatchObject({ found: 'project', key: 'project:edited', frame: { x: 0, y: 0, chord: 1 } });
+    // The Airfoils tab (NACA generator, Library presets) stores the checked points, which no longer
+    // show the frame: the section gets the frame of the generated section of its code all the same.
+    const f4412 = readXflr5Xml(readFileSync(new URL('fixtures/xflr5/xml_mm/0.plane.xml', import.meta.url), 'utf8').replaceAll('NACA 0009', 'NACA 4412'));
+    const generated = nacaEntry('4412');
+    const tab = { airfoils: [{ id: 'tab', name: 'NACA 4412', points: checkAirfoil(generated.points).points, source: generated.source }] };
+    const none4412 = mapXflr5(f4412, { choices });
+    const tab4412 = mapXflr5(f4412, { choices, project: tab });
+    expect(tab4412.rows[1]).toMatchObject({ found: 'project', key: 'project:tab', frame: none4412.rows[1].frame });
+    expect(none4412.rows[1].frame.y * 100).toBeCloseTo(0.304, 3);
+    expect(tab4412.project.sections.map(values)).toEqual(none4412.project.sections.map(values));
+    const line4412 = /^Airfoil "NACA 4412" \(section 3\) has its leading edge at x\u00a0=\u00a00\u00a0%, y\u00a0=\u00a00\.3\u00a0% and its trailing edge/;
+    expect(frameText(none4412)).toEqual([expect.stringMatching(line4412)]);
+    expect(frameText(tab4412)).toEqual([expect.stringMatching(line4412)]);
+  });
+
+  it('says so when a current-project airfoil of an XFLR5 import or an upload keeps the table values', () => {
+    // The project of an .xfl import stores its airfoils at unit chord, and their own coordinates are
+    // lost: the XML of the same plane, opened with that project, keeps the table values, as with the
+    // library Clark Y, and the report says so for each such airfoil.
+    const f = xml('xml_mm/0.plane.xml');
+    const imported = mapXflr5(FIXTURES, { fileName: 'fixtures_v662.xfl' }).project;
+    expect(imported.airfoils.map((a) => a.source.kind)).toEqual(['xflr5', 'xflr5']);
+    const alone = mapXflr5(f, { library: LIBRARY });
+    const withImport = mapXflr5(f, { library: LIBRARY, project: imported });
+    expect(withImport.rows.map((r) => r.found)).toEqual(['project', 'project']);
+    expect(withImport.project.sections.map(values)).toEqual(alone.project.sections.map(values));
+    const stored = (r) => texts(r.report, 'info').filter((t) => t.includes('of the current project is stored'));
+    const line = (name, sections) =>
+      `Airfoil "${name}" (${sections}) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. If the coordinates that XFLR5 used put the leading edge elsewhere, XFLR5 draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.`;
+    expect(stored(withImport)).toEqual([line('Clark Y', 'sections 1–2'), line('NACA 0009', 'section 3')]);
+    expect(stored(alone)).toEqual([]);
+    // An airfoil uploaded in the Airfoils tab (source kind 'upload'), picked, too.
+    const tabUpload = { airfoils: [{ id: 'up', name: 'My Clark', points: imported.airfoils[0].points, source: { kind: 'upload', file: 'my-clark.dat' } }] };
+    const picked = mapXflr5(f, { project: tabUpload, choices: { 'Clark Y': 'project:up' } });
+    expect(stored(picked)).toEqual([line('My Clark', 'sections 1–2')]);
+    // The .xfl project itself uses its own airfoils first: no such line.
+    expect(stored(mapXflr5(FIXTURES, { project: imported }))).toEqual([]);
+    // A current-project airfoil taken from the Library gets the line of the library entry, also when
+    // the library entries have not been checked before.
+    const fromLibrary = alone.project;
+    expect(fromLibrary.airfoils[0].source).toMatchObject({ kind: 'library', id: 'clark-y' });
+    const withLibrary = mapXflr5(f, { library: LIBRARY.map((e) => ({ ...e })), project: fromLibrary });
+    expect(withLibrary.rows[0]).toMatchObject({ found: 'project', frame: { x: 0, y: 0, chord: 1 } });
+    expect(texts(withLibrary.report, 'info').filter((t) => t.startsWith('Library airfoil "Clark Y" (sections 1–2)'))).toHaveLength(1);
+    expect(stored(withLibrary)).toEqual([]);
+    // A NACA airfoil of the project whose name holds no designation and whose source no code (a
+    // renamed sample-wing airfoil): no frame, no line.
+    const renamed = { airfoils: [{ id: 'renamed', name: 'Clark Y', points: nacaAirfoil('2412').points, source: { kind: 'naca', note: 'Generated.' } }] };
+    const r = mapXflr5(f, { project: renamed });
+    expect(r.rows[0]).toMatchObject({ found: 'project', key: 'project:renamed', frame: { x: 0, y: 0, chord: 1 } });
+    expect(stored(r)).toEqual([]);
   });
 
   it('ignores the offset of a fitted leading edge from a nose point at (0, 0)', () => {

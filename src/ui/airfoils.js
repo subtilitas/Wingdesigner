@@ -280,11 +280,22 @@ export const AIRFOIL_ACCEPT = '.dat,.txt,.cor,.xml,.htm,.html,.csv,text/plain';
 /**
  * Read an airfoil file chosen for upload (the Airfoils tab, the XFLR5 import): its bytes and decoded
  * text, or `problem`, a sentence naming the file, when it is too large, cannot be read or is an XFLR5
- * file.
+ * file. An XFLR5 project is recognized by its first 4 bytes before the size check: projects with
+ * analysis results are larger than an airfoil file may be, and they get the hint to use Open too.
  * @returns {Promise<{bytes: ArrayBuffer, text: string}|{problem: string}>}
  */
 export async function readAirfoilFile(file) {
-  if (file.size > MAX_FILE_BYTES) return { problem: tr('{file}: {size} MB; airfoil files are limited to {limit} characters.', { file: file.name, size: fixed(file.size / 1e6, 1), limit: count(MAX_INPUT) }) };
+  const xflr5 = () => ({ problem: tr('{file} is an XFLR5 file, not an airfoil. Use Open to import a wing from it.', { file: file.name }) });
+  if (file.size > MAX_FILE_BYTES) {
+    let head = null;
+    try {
+      head = await file.slice(0, 4).arrayBuffer();
+    } catch {
+      // Unreadable: the size is the reason given.
+    }
+    if (head && startsLikeXfl(head)) return xflr5();
+    return { problem: tr('{file}: {size} MB; airfoil files are limited to {limit} characters.', { file: file.name, size: fixed(file.size / 1e6, 1), limit: count(MAX_INPUT) }) };
+  }
   let bytes;
   try {
     bytes = await file.arrayBuffer();
@@ -292,7 +303,7 @@ export async function readAirfoilFile(file) {
     return { problem: tr('{file}: the browser could not read the file ({error}).', { file: file.name, error: err?.name ?? 'Error' }) };
   }
   const text = decodeText(bytes);
-  if (isXflr5File(bytes, text)) return { problem: tr('{file} is an XFLR5 file, not an airfoil. Use Open to import a wing from it.', { file: file.name }) };
+  if (isXflr5File(bytes, text)) return xflr5();
   return { bytes, text };
 }
 
