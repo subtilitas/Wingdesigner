@@ -4,9 +4,10 @@
 //   upper face  - B-spline surface, trailing edge -> leading edge (u), root -> tip (v)
 //   lower face  - B-spline surface, leading edge -> trailing edge (u), root -> tip (v)
 //   TE face     - ruled B-spline surface between the trailing-edge curves (open trailing edge only)
-//   root, tip   - planar caps (sections lie in planes y = const)
+//   root, tip   - planar caps (end sections lie in planes, rolled about x when mitred)
 // Every edge is the exact boundary iso-curve of the adjacent B-spline surface.
 
+import { upAxisMap } from './axes.js';
 import { knotMultiplicities, splitSurfaceU, surfaceBoundaryU, surfaceBoundaryV, surfacePoint } from '../geom/nurbs.js';
 import { plain, tr } from '../i18n/index.js';
 
@@ -112,11 +113,13 @@ function mapSurface(s, f) {
 }
 
 /**
- * Topology of one half wing (right side, y >= root). Geometry is transformed by `xf`; `mirrored`
- * flips orientation flags so that faces stay outward after a reflection.
+ * Topology of one half wing (right side, y >= root). Geometry is transformed by `xf`: the mirror of
+ * the left half, then the turn of the up axis (src/export/axes.js). `mirrored` flips orientation flags
+ * so that faces stay outward after a reflection; the turn is a rotation and keeps them.
  */
-function writeHalfWing(w, build, name, mirrored) {
-  const xf = mirrored ? mirrorPoint : (P) => P;
+function writeHalfWing(w, build, name, mirrored, up = 'z') {
+  const turn = upAxisMap(up);
+  const xf = mirrored ? (P) => turn(mirrorPoint(P)) : turn;
   const [SU, SL] = splitSurfaceU(build.surface, build.uLE);
   const closed = build.closedTE;
 
@@ -208,9 +211,11 @@ function writeHalfWing(w, build, name, mirrored) {
     rootLoop.push([E.rootTE, true]);
     tipLoop.push([E.tipTE, false]);
   }
-  // Caps: plane normals are geometric vectors, so mirroring the axis keeps them outward.
-  faces.push(w.face(rootLoop, w.plane(xf(P.le0), xf([0, -1, 0]), [1, 0, 0]), true, bound));
-  faces.push(w.face(tipLoop, w.plane(xf(P.le1), xf([0, 1, 0]), [1, 0, 0]), true, bound));
+  // Caps: plane normals are geometric vectors, so mirroring the axis keeps them outward. A rolled end
+  // section has the normal (0, cos φ, sin φ); the reference direction x lies in every such plane.
+  const normal = (roll, sign) => (roll ? [0, sign * Math.cos((roll * Math.PI) / 180), sign * Math.sin((roll * Math.PI) / 180)] : [0, sign, 0]);
+  faces.push(w.face(rootLoop, w.plane(xf(P.le0), xf(normal(build.rootRoll ?? 0, -1)), xf([1, 0, 0])), true, bound));
+  faces.push(w.face(tipLoop, w.plane(xf(P.le1), xf(normal(build.tipRoll ?? 0, 1)), xf([1, 0, 0])), true, bound));
   const shell = w.add(`CLOSED_SHELL('',(${faces.join(',')}))`);
   return w.add(`MANIFOLD_SOLID_BREP(${stepString(name)},${shell})`);
 }
@@ -218,9 +223,10 @@ function writeHalfWing(w, build, name, mirrored) {
 /**
  * Serialize a wing build to STEP text.
  * @param {object} build result of buildWing()
- * @param {{mirror?: boolean, name?: string, timestamp?: string, author?: string}} [options]
+ * @param {{mirror?: boolean, name?: string, timestamp?: string, author?: string, up?: 'z'|'y'}} [options]
+ *   up: the up axis of the file (src/export/axes.js)
  */
-export function wingToStep(build, { mirror = true, name = 'Wing', timestamp, author = '' } = {}) {
+export function wingToStep(build, { mirror = true, name = 'Wing', timestamp, author = '', up = 'z' } = {}) {
   if (!build.surface) throw new Error(tr('The wing has no surface; fix the reported errors first.'));
   const w = new StepWriter();
   const appCtx = w.add(`APPLICATION_CONTEXT('core data for automotive mechanical design processes')`);
@@ -240,8 +246,8 @@ export function wingToStep(build, { mirror = true, name = 'Wing', timestamp, aut
     `(GEOMETRIC_REPRESENTATION_CONTEXT(3)GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((${unc}))GLOBAL_UNIT_ASSIGNED_CONTEXT((${mm},${rad},${sr}))REPRESENTATION_CONTEXT('Context #1','3D Context with UNIT and UNCERTAINTY'))`,
   );
   const origin = w.add(`AXIS2_PLACEMENT_3D('',${w.point([0, 0, 0])},${w.direction([0, 0, 1])},${w.direction([1, 0, 0])})`);
-  const solids = [writeHalfWing(w, build, `${name} right`, false)];
-  if (mirror) solids.push(writeHalfWing(w, build, `${name} left`, true));
+  const solids = [writeHalfWing(w, build, `${name} right`, false, up)];
+  if (mirror) solids.push(writeHalfWing(w, build, `${name} left`, true, up));
   const rep = w.add(`ADVANCED_BREP_SHAPE_REPRESENTATION(${stepString(name)},(${[origin, ...solids].join(',')}),${ctx})`);
   w.add(`SHAPE_DEFINITION_REPRESENTATION(${pds},${rep})`);
 

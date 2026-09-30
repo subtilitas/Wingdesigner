@@ -89,10 +89,83 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   unit tests and files from Vitest, browser tests, spec files and runs from the Playwright listing,
   tests that run on one device only from the report of the CI browser run, and the STEP and 3MF
   validation cases from `test/step-cases.js`. Exit code 1 on a difference or a missing statement.
-  Playwright writes a JSON report to `playwright-report/results.json`.
+  Playwright writes a JSON report to `playwright-report/results.json`. It also checks the unit tests
+  of one file where a page states them: a table row with the path of a test file and a count or
+  `<n> of <m>`, and the path followed by `(<n>)`.
+- Spanwise interpolation **Straight panels (straight lines between sections, as XFLR5)**
+  (`settings.spanwise` `"straight"`): every point of a section joins the point of the same chord
+  fraction of the next section in a straight line, as XFLR5 builds its panels. Stations lie at the
+  sections only, and no stations are added. A guide curve on stops the build with a message. On the
+  tip panel of `UltraStick120.xfl` (NACA 0014 at 406.4 mm to a 12.7 mm chord) the STL that the code of
+  XFLR5 6.62 writes lies within 0.04 mm of the surface; with **Linear** it lies up to 4.17 mm off.
+- Setting **Section planes** (`settings.sectionPlanes`): **Mitred (square to the panels, as XFLR5)**
+  or **Vertical (y = const)**. Mitred planes keep the root vertical, put a section between two panels
+  in their bisector plane and the tip square to the last panel, and stretch each airfoil in
+  thickness by 1/cos of the angle between its plane and the panel, as XFLR5 and flow5 do. The wing
+  is as thick across every panel as its airfoil; vertical planes give cos δ (81.9 % on a 35° V-tail).
+  Build errors: a stretch above 2 (60° between plane and panel), and planes of neighbouring sections
+  or stations that meet within the airfoils. Smooth interpolation builds vertical planes, with an
+  info line in Checks. **Linear** panels between planes of different roll get the spanwise stations
+  per panel and a cubic loft. Meshes, STEP caps and the project JSON follow the rolled end planes;
+  `derived.stations[]` carries `roll` and `stretch`.
+- XFLR5 import: an untilted part gets **Mitred** section planes. Against the STL that the code of
+  XFLR5 6.62 writes, the 4 untilted 35° V-tails of `initialAerodynamicSym.xfl` lie within 0.013 mm
+  (2.87 mm with vertical planes) and the 40° V-tail of `mini_talon.xfl` within 0.025 mm (2.31 mm);
+  80 of 93 real surfaces lie within 0.6 mm (75 before). A tilted part imports with **Vertical**
+  section planes and stores its folded tilt (`foldedTilt`: angle, pivot x and z); a part whose
+  mitred planes would fold or stretch an airfoil more than 2 times imports vertical too. The report
+  names the section planes and the reason. A tilted part set to **Mitred** later gets a warning with
+  the estimated distance from XFLR5's part.
+- Info lines in the Checks tab, after errors and warnings.
+- Export checkbox **Fusion 360 fix: Y up (also SolidWorks)** (STEP, STL, 3MF): writes every point
+  (x, y, z) as (x, z, −y), so the upper surface faces +Y. CAD programs with Y as the up axis show a
+  Z-up file on its side: Fusion 360 set to Y up showed the side of the wing in its top view. The
+  checkbox starts as it was at the last export (browser storage, key `wingdesigner.upAxis`); the
+  project JSON keeps the axes of the app. `test/step-cases.js` adds the 35° V-tail written with the
+  fix (11 cases).
+- Build error for mitred planes that turn faster along a **Linear** panel than its airfoils allow:
+  where a point moves backwards across the plane of its station the surface folds, also between
+  stations whose planes do not cross. Without this check such a fold built without an error at 3
+  stations per panel, and the right half crossed y = 0 by up to 0.7 mm.
+- `scripts/validate_step.py` checks that the edges of every planar face (the end caps) lie in the
+  plane within 1e-6 mm; `test/step-cases.js` adds a mitred 35° V-tail and a mitred 15°/−5° gull
+  (10 cases).
+- Section field `panelAngle` and the Sections column **Panel angle** (shown with **Mitred** and
+  **Linear** or **Straight panels**): the angle of the panel to the next section that the mitred
+  planes use for rolls and stretches, −89.9999 to 89.9999°. Empty: the dihedral from y and z, shown
+  as `auto …`. It stays when a section moves; **+** halfway along a panel copies it. The side panel
+  is up to 650 px wide (600 px before), so the table keeps its row buttons in view; the German
+  headers **Schränkung** and **Feldwinkel** break at a soft hyphen.
+- XFLR5 import: where airfoil frames move the two sections of a panel differently, the section
+  stores XFLR5's dihedral as `panelAngle` (difference above 0.001°), so the planes and stretches are
+  XFLR5's. 284 random untilted parts with cambered NACA sections: largest distance of a built section
+  from XFLR5's placement 0.151 mm (0.417 mm with the dihedrals of the moved sections); the rest is
+  the fitted nose of cambered NACA sections, 0.43 mm at 1000 mm chord for NACA 4415. A flat wing with
+  a tip airfoil 10 % of the chord off (0, 0): 0.017 mm (0.80 mm before).
+- Mitred planes: a panel less than 1 mm wide in y counts as no panel. The sections at its ends share
+  the bisector plane of the panels around it, as XFLR5 does for panels shorter than 0.1 mm. An XFLR5
+  airfoil switch (two sections at one y, moved 0.5 mm apart) now imports with **Mitred** planes
+  instead of the vertical fallback. `test/step-cases.js` adds such a switch with a stored panel angle
+  (12 cases).
 
 ### Changed
 
+- Mitred plane checks: the end-plane fold check applies to **Straight panels**; **Linear** panels
+  are checked where their planes turn, at a section for both panels next to it. A Linear panel whose
+  end planes meet within the airfoils but whose surface does not fold builds: NACA 0021 at 400 mm and
+  100 mm chord, a flat 33 mm panel before an 80° panel (planes 0° and 40° meet 39.3 mm from the root);
+  with **Straight panels** that surface folds and the build stops. A plane that rounds to 60.0° from its panel builds (limit 60.05°); the
+  stretch error gives the stretch to 3 decimals (`2.366 times` for a first panel at 65°).
+- Project format version 2. A version 1 file opens with **Vertical** section planes, as designed; an
+  app that reads version 1 only refuses a version 2 file. New projects, the wizard and the sample wing
+  get **Mitred**: a preset with dihedral builds more stations (Sport, Trainer, Plank: 9 instead of 2;
+  sample wing: 17 instead of 3). The Sport wing has 1.4 % less volume, because the loft follows the
+  **Linear** blend exactly instead of a ruled surface 0.343 mm off it.
+
+- XFLR5 import: the project gets **Straight panels** instead of **Linear**. A panel whose chord changes
+  together with the airfoil or the twist gets XFLR5's shape.
+- Settings: the option **Linear between sections (straight panels)** reads **Linear between
+  sections**; linear panels bend where the chord changes together with the airfoil or the twist.
 - File names of **Save**, **Export** and `.dat` downloads write German umlauts out, in both languages
   (`Sportflügel` becomes `Sportfluegel`; `ü` became `u` before); other accents are dropped as before.
 - Minimum chord (profile depth) 1 mm instead of 0.01 mm, for every section, span position and pointed
@@ -134,6 +207,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ### Fixed
 
+- 3D view after a reload: the empty status bar was 17 px lower at start-up, so the first camera fit
+  took a 3D view 17 px higher than the one that followed. A 3D view narrower than high (a desktop
+  window with the 650 px side panel, or a narrow window) then showed the wing smaller after a reload
+  than after **New**. The status bar keeps the height of one line from the start.
+- Airfoil check: a crossing of the first and the last outline segment does not count when their free
+  ends lie at most 1e-4 of the chord apart (`TE_CROSS_TOLERANCE`, the limit of `te-crossed`). 19 UIUC
+  files that start at x = 1.00000 and end at x = 1.00001 (`sd7003.dat`, `sd8000.dat` and others)
+  and the aerodesign.de copies of `s3021.dat` and `sd7080.dat` load; the main wing of the XFLR5
+  project `Gertie.xfl` (airfoil SD8000-089-88) imports.
+- XFLR5 import: `.xfl` projects of XFLR5 6.10.01 to 6.10.04 read. These versions write the index
+  into the reserved blocks of wings and planes (0 to 19 and 0 to 49), which the reader refused as
+  damage.
+- XFLR5 import: a library airfoil whose chord line is inclined more than 0.5° gets a warning with the
+  angle and the trailing-edge offset at the largest chord of its sections, in place of the info line
+  of the airfoil check. The Library Clark Y (2.00° nose up) picked for a level copy such as the UIUC
+  `CLARK Y AIRFOIL` sits 2.00° more nose up than in XFLR5: 14.0 mm at the trailing edge of a 400 mm
+  chord.
 - Number fields read a typed decimal comma: `0,7` is 0.7 in both languages, not 7 (the native number
   field of Chromium drops the comma). They are text fields with the role `spinbutton`, read a decimal
   comma or point in both languages and the digit groups of the current language (`1.500` is 1500 in

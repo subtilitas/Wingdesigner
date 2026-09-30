@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../src/i18n/index.js';
 import { LIMITS } from '../src/model/project.js';
 import { addPointTitle, guideLabel, guidePointReadout, sectionReadout } from '../src/ui/planform.js';
-import { insertTitle, sectionFields } from '../src/ui/sections.js';
+import { insertTitle, panelAngleField, sectionFields } from '../src/ui/sections.js';
 import { sampleProject } from './helpers.js';
 
 afterEach(() => setLanguage('en'));
@@ -18,9 +18,18 @@ describe('Sections table', () => {
     expect(text()).toEqual(['y (mm)', 'x (mm)', 'z (mm)', 'Chord (mm)', 'Twist (deg)']);
     expect(sectionFields()[3].title).toBe('Chord length (profile scale)');
     setLanguage('de');
-    expect(text()).toEqual(['y (mm)', 'x (mm)', 'z (mm)', 'Tiefe (mm)', 'Schränkung (°)']);
+    // Soft hyphens (U+00AD) let the long German headers break.
+    expect(text()).toEqual(['y (mm)', 'x (mm)', 'z (mm)', 'Tiefe (mm)', 'Schrän\u00ADkung (°)']);
     expect(sectionFields()[3].title).toBe('Profiltiefe (Maßstab des Profils)');
     expect(sectionFields()[4].title).toBe('Schränkung um den Drehpunkt; positiv = Nase hoch');
+  });
+
+  it('labels the panel angle column, shown with mitred section planes', () => {
+    const f = panelAngleField();
+    expect([f.key, `${f.label} (${f.unit})`, f.min, f.max, f.step]).toEqual(['panelAngle', 'Panel angle (deg)', -89.9999, 89.9999, 0.1]);
+    setLanguage('de');
+    expect(`${panelAngleField().label} (${panelAngleField().unit})`).toBe('Feld\u00ADwinkel (°)');
+    expect(panelAngleField().title).toBe('Winkel des Felds zum nächsten Schnitt für die Schnittebenen auf Gehrung. Leer: aus y und z der beiden Schnitte.');
   });
 
   it('keeps the limits of the columns in every language', () => {

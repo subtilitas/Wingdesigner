@@ -186,7 +186,9 @@ test.describe('XFLR5 import', () => {
     expect(figures.area).toBeCloseTo((2 * 230 * (110 + 70)) / 2 / 1e4, 1);
     await expect.poll(async () => (await savedProject(page))?.name).toBe('Fixture A Elevator');
     const saved = await savedProject(page);
-    expect(saved.settings).toMatchObject({ twistPivot: 0.25, spanwise: 'linear', trailingEdge: { mode: 'asis' } });
+    expect(saved.settings).toMatchObject({ twistPivot: 0.25, spanwise: 'straight', trailingEdge: { mode: 'asis' } });
+    // A tilted part keeps vertical section planes, and the browser copy keeps its folded tilt.
+    expect([saved.settings.sectionPlanes, saved.foldedTilt]).toEqual(['vertical', { angle: -1.5, x: 650, z: 40 }]);
     expect(saved.airfoils.map((a) => a.source.kind)).toEqual(['naca', 'upload']);
 
     // Undo brings the previous design back.

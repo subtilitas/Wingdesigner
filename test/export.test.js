@@ -282,6 +282,52 @@ describe('STEP', () => {
     expect(half.match(/MANIFOLD_SOLID_BREP/g).length).toBe(1);
   });
 
+  it('writes a copy with Y as the up axis: (x, y, z) becomes (x, z, −y), orientation and volume kept', () => {
+    const b = buildWing(stepCases().find((c) => c.name === 'mitred-vtail-35').project);
+    const turn = ([x, y, z]) => [x, z, -y];
+    const numbers = (txt, entity) => [...txt.matchAll(new RegExp(`${entity}\\('',\\(([^)]*)\\)\\)`, 'g'))].map((m) => m[1].split(',').map(Number));
+    const zUp = wingToStep(b, { mirror: true, timestamp: 'T' });
+    const yUp = wingToStep(b, { mirror: true, timestamp: 'T', up: 'y' });
+    // The same entities in the same order; every point and direction turned.
+    expect(yUp.replace(/\(([-\d.E+]+,){2}[-\d.E+]+\)/g, '()')).toBe(zUp.replace(/\(([-\d.E+]+,){2}[-\d.E+]+\)/g, '()'));
+    // The world placement of the representation (origin, z and x directions) stays; the part turns.
+    for (const entity of ['CARTESIAN_POINT', 'DIRECTION']) {
+      const [a, c] = [numbers(zUp, entity), numbers(yUp, entity)];
+      expect(c).toHaveLength(a.length);
+      const world = entity === 'DIRECTION' ? 2 : 1;
+      expect(c.slice(0, world)).toEqual(a.slice(0, world));
+      for (let i = world; i < a.length; i++) expect(dist3(turn(a[i]), c[i]), `${entity} ${i}`).toBeLessThan(1e-12);
+    }
+    // Meshes: turned positions, the same triangles, closed and of the same volume.
+    for (const mode of ['right', 'halves', 'merged']) {
+      const [plain, turned] = [exportMeshes(b, mode), exportMeshes(b, mode, { up: 'y' })];
+      turned.forEach(({ mesh }, k) => {
+        const m = plain[k].mesh;
+        expect(mesh.indices).toEqual(m.indices);
+        for (let i = 0; i < m.positions.length; i += 3) expect(dist3(turn([m.positions[i], m.positions[i + 1], m.positions[i + 2]]), [mesh.positions[i], mesh.positions[i + 1], mesh.positions[i + 2]])).toBe(0);
+        expect(edgeCheck(mesh).closed).toBe(true);
+        expect(meshVolume(mesh)).toBeCloseTo(meshVolume(m), 6);
+      });
+    }
+    // The upper surface faces +Y: the tip of the 35° V-tail is the highest point.
+    const ys = exportMeshes(b, 'right', { up: 'y' })[0].mesh.positions.filter((_, i) => i % 3 === 1);
+    expect(Math.max(...ys)).toBeCloseTo(Math.max(...b.stations.at(-1).points.map((P) => P[2])), 6);
+  });
+
+  it('writes the end caps in the planes of the end sections', () => {
+    const b = buildWing(stepCases().find((c) => c.name === 'mitred-vtail-35').project);
+    const directions = (txt) => [...txt.matchAll(/DIRECTION\('',\(([^)]*)\)\)/g)].map((m) => m[1].split(',').map(Number));
+    const near = (list, d) => list.some((q) => q.every((c, k) => Math.abs(c - d[k]) < 1e-12));
+    const [c, s] = [Math.cos((b.tipRoll * Math.PI) / 180), Math.sin((b.tipRoll * Math.PI) / 180)];
+    expect(b.tipRoll).toBeCloseTo(35, 9);
+    // The vertical root faces −y; the tip faces along the normal of its plane rolled 35°; the
+    // mirrored half mirrors both.
+    const half = directions(wingToStep(b, { mirror: false }));
+    expect([near(half, [0, -1, 0]), near(half, [0, c, s]), near(half, [0, -c, s])]).toEqual([true, true, false]);
+    const both = directions(wingToStep(b, { mirror: true }));
+    expect([near(both, [0, 1, 0]), near(both, [0, -c, s])]).toEqual([true, true]);
+  });
+
   it('handles every validation case and closed trailing edges', () => {
     for (const c of stepCases()) {
       const b = buildWing(c.project);
@@ -293,6 +339,9 @@ describe('STEP', () => {
     expect(() => wingToStep({ surface: null })).toThrow();
   });
 });
+
+/** Distance of two 3D points. */
+const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 describe('project JSON', () => {
   const project = sampleProject();
@@ -491,6 +540,13 @@ describe('project JSON', () => {
         const s = p.sections[0];
         p.sections = Array.from({ length: LIMITS.maxSections + 1 }, (_, i) => ({ ...s, id: `s${i}`, y: i * 3 }));
       },
+      (p) => (p.settings.sectionPlanes = 'tilted'),
+      (p) => (p.foldedTilt = 5),
+      (p) => (p.foldedTilt = { angle: '2', x: 0, z: 0 }),
+      (p) => (p.foldedTilt = { angle: 2, x: 0 }),
+      (p) => (p.foldedTilt = { angle: 180.5, x: 0, z: 0 }),
+      (p) => (p.foldedTilt = { angle: 2, x: 1_000_001, z: 0 }),
+      (p) => (p.foldedTilt = { angle: 2, x: 0, z: -1_000_001 }),
     ];
     for (const mutate of cases) {
       const p = base();
@@ -505,7 +561,35 @@ describe('project JSON', () => {
     p.sections[1].chord = 100_000;
     p.guides.nose.edited = true;
     p.guides.nose.points = Array.from({ length: LIMITS.maxGuidePoints }, (_, i) => [0, (600 * i) / (LIMITS.maxGuidePoints - 1)]);
+    p.foldedTilt = { angle: -180, x: -1_000_000, z: 1_000_000 };
     expect(validateProject(p).ok).toBe(true);
+    p.foldedTilt = null;
+    expect(validateProject(p).ok).toBe(true);
+  });
+
+  it('opens version 1 files with vertical section planes, and version 2 files as saved', () => {
+    const mitred = sampleProject({ settings: { sectionPlanes: 'mitred' } });
+    const v2 = projectToJson(mitred, null);
+    expect([v2.version, v2.settings.sectionPlanes]).toEqual([2, 'mitred']);
+    // A version 1 file holds no section-plane setting; its wing keeps the vertical sections it was
+    // designed with, not the default of new projects.
+    const v1 = structuredClone(v2);
+    v1.version = 1;
+    delete v1.settings.sectionPlanes;
+    const old = projectFromJsonText(JSON.stringify(v1));
+    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 2, 'vertical']);
+    expect(buildWing(old.project).surface).toEqual(buildWing(sampleProject()).surface);
+    // A version 2 file without the setting takes the default, and one with it keeps it.
+    const bare = structuredClone(v2);
+    delete bare.settings.sectionPlanes;
+    expect(projectFromJsonText(JSON.stringify(bare)).project.settings.sectionPlanes).toBe('mitred');
+    expect(projectFromJsonText(JSON.stringify({ ...v2, settings: { ...v2.settings, sectionPlanes: 'vertical' } })).project.settings.sectionPlanes).toBe('vertical');
+    // A later format is refused rather than opened without its values.
+    expect(projectFromJsonText(JSON.stringify({ ...v2, version: 3 })).errors).toEqual(['Unsupported project version 3.']);
+    // A stored folded tilt comes back with its three numbers only.
+    const tilted = projectFromJsonText(JSON.stringify({ ...v2, foldedTilt: { angle: 2, x: 10, z: -5, note: 'x' } }));
+    expect(tilted.project.foldedTilt).toEqual({ angle: 2, x: 10, z: -5 });
+    expect(projectFromJsonText(JSON.stringify(v2)).project.foldedTilt).toBeUndefined();
   });
 
   it('creates projects with defaults', () => {

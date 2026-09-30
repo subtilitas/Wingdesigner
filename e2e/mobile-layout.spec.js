@@ -22,7 +22,8 @@ import {
 
 const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const TOP_BAR = ['New', 'Open', 'Save', 'Export', 'Undo', 'Redo', 'Help'];
-const CARD_LABELS = ['Airfoil', 'y (mm)', 'x (mm)', 'z (mm)', 'Chord (mm)', 'Twist (deg)'];
+// With mitred section planes (the default) every card but the tip's has the panel angle.
+const CARD_LABELS = ['Airfoil', 'y (mm)', 'x (mm)', 'z (mm)', 'Chord (mm)', 'Twist (deg)', 'Panel angle (deg)'];
 // A valid airfoil with a "few points" warning (from the smoke test).
 const DAT = 'TEST 12\n1 0.001\n0.75 0.05\n0.5 0.07\n0.25 0.07\n0.1 0.045\n0.02 0.02\n0 0\n0.02 -0.015\n0.1 -0.03\n0.25 -0.04\n0.5 -0.035\n0.75 -0.02\n1 -0.001\n';
 
@@ -461,8 +462,9 @@ test.describe('phone layout', () => {
       // Cards span the panel and stack vertically.
       expect(card.box.width).toBeGreaterThanOrEqual(0.95 * scroller.client);
       if (i) expect(card.box.top).toBeGreaterThanOrEqual(layout[i - 1].box.bottom - 0.5);
-      expect(card.cells.map((c) => c.label)).toEqual(CARD_LABELS);
-      expect(card.cells.map((c) => c.dataLabel)).toEqual(CARD_LABELS);
+      const labels = i < layout.length - 1 ? CARD_LABELS : CARD_LABELS.slice(0, -1);
+      expect(card.cells.map((c) => c.label)).toEqual(labels);
+      expect(card.cells.map((c) => c.dataLabel)).toEqual(labels);
       for (const c of card.cells) {
         expect(c.labelDisplay, `${c.label}: label on its own line`).toBe('block');
         // The label line sits above the control, inside the cell.
@@ -484,6 +486,10 @@ test.describe('phone layout', () => {
       expect(at['Twist (deg)'].top).toBeCloseTo(at['Chord (mm)'].top, 0);
       expect(at['Chord (mm)'].left).toBeCloseTo(at['y (mm)'].left, 0);
       expect(at['Twist (deg)'].left).toBeCloseTo(at['x (mm)'].left, 0);
+      if (at['Panel angle (deg)']) {
+        expect(at['Panel angle (deg)'].top).toBeCloseTo(at['Chord (mm)'].top, 0);
+        expect(at['Panel angle (deg)'].left).toBeCloseTo(at['z (mm)'].left, 0);
+      }
       expect(at.Airfoil.bottom).toBeLessThanOrEqual(at['y (mm)'].top + 0.5);
     });
 
@@ -697,7 +703,7 @@ test('desktop keeps the sections table, the brand and one row of top-bar buttons
   await expect(page.locator('header.topbar .brand')).toBeVisible();
   await expect(page.locator('header.topbar .brand')).toHaveText('Wingdesigner');
   await expect(page.locator('table.sections thead')).toBeVisible();
-  await expect(page.locator('table.sections thead th')).toHaveText(['#', 'Airfoil', 'y mm', 'x mm', 'z mm', 'Chord mm', 'Twist deg', '']);
+  await expect(page.locator('table.sections thead th')).toHaveText(['#', 'Airfoil', 'y mm', 'x mm', 'z mm', 'Chord mm', 'Twist deg', 'Panel angle deg', '']);
   const rows = await cards(page).evaluateAll((trs) =>
     trs.map((tr) => ({
       display: getComputedStyle(tr).display,
@@ -721,4 +727,12 @@ test('desktop keeps the sections table, the brand and one row of top-bar buttons
   expect(tops).toHaveLength(TOP_BAR.length);
   expect(Math.max(...tops) - Math.min(...tops)).toBeLessThan(0.5);
   await expectNoSideScroll(page, 'desktop');
+  // The 7 value columns and the row buttons fit the 650 px side panel in both languages.
+  const tableFits = () => page.locator('#pane-sections .table-scroll').evaluate((el) => el.scrollWidth <= el.clientWidth);
+  expect(await tableFits(), 'sections table needs no sideways scrolling (English)').toBe(true);
+  await openTab(page, 'Settings');
+  await page.getByRole('combobox', { name: 'Language / Sprache', exact: true }).selectOption('de');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+  await openTab(page, 'Schnitte');
+  expect(await tableFits(), 'sections table needs no sideways scrolling (German)').toBe(true);
 });

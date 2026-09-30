@@ -6,7 +6,10 @@ export function naca(code, id = code, opts = {}) {
   return { id, name: a.name, points: a.points, source: { kind: 'naca' } };
 }
 
-/** Three-section tapered wing with twist and dihedral. */
+/**
+ * Three-section tapered wing with twist and dihedral. Vertical section planes unless the overrides
+ * set others: most tests exercise other parts of the build; the mitred planes have tests of their own.
+ */
 export function sampleProject(overrides = {}) {
   return createProject({
     name: 'Test wing',
@@ -17,5 +20,6 @@ export function sampleProject(overrides = {}) {
       { airfoil: 'tip', x: 60, y: 600, z: 30, chord: 110, twist: -3 },
     ],
     ...overrides,
+    settings: { sectionPlanes: 'vertical', ...overrides.settings },
   });
 }

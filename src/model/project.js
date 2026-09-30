@@ -6,14 +6,26 @@
 // chord point at `settings.twistPivot`. The half wing spans y >= 0 and is mirrored at the plane y = 0.
 
 import { defaultGuides } from '../geom/guide.js';
+import { SECTION_PLANES } from '../geom/planes.js';
 import { MAX_NAME, MAX_POINTS } from '../airfoil/parse.js';
 import { count, plain, tr, whole } from '../i18n/index.js';
 
 export const FORMAT = 'wingdesigner-project';
-export const VERSION = 1;
+// Version 2: settings.sectionPlanes and the stored folded tilt of an XFLR5 import (foldedTilt).
+export const VERSION = 2;
+
+/**
+ * Spanwise interpolation: 'linear' blends every section value (leading edge, chord, z, twist, airfoil
+ * shape) linearly and fits the loft to it; 'straight' joins the points of equal chord fraction of two
+ * neighbouring sections with straight lines (a ruled surface, as XFLR5 builds its panels); 'smooth'
+ * blends with a natural cubic spline through all sections.
+ */
+export const SPANWISE = Object.freeze(['linear', 'straight', 'smooth']);
 
 export const DEFAULT_SETTINGS = Object.freeze({
   spanwise: 'linear',
+  // Owner decision R2 (docs/Flow5upgrade.md): mitred for new projects; version 1 files open vertical.
+  sectionPlanes: 'mitred',
   twistPivot: 0.25,
   trailingEdge: Object.freeze({ mode: 'asis', thickness: 0.4 }),
   tip: Object.freeze({ mode: 'flat', ratio: 0.005 }),
@@ -31,6 +43,8 @@ export const LIMITS = Object.freeze({
   maxChord: 100_000,
   maxCoordinate: 1_000_000,
   maxTwist: 360,
+  // A stored panel angle (section.panelAngle, degrees): a panel stays below 90°, as y is the span.
+  maxPanelAngle: 89.9999,
   // Hard size limits: beyond them a desktop browser tab runs out of memory or a change takes about
   // a minute (measurements in RECORD.md). Sizes above the warning thresholds in budget.js work, with
   // a warning that names the expected time and memory.
@@ -102,7 +116,7 @@ function isObject(v) {
 /**
  * Create a project from airfoils and sections; guides default to the section edges (disabled).
  */
-export function createProject({ name = tr('Untitled wing'), airfoils, sections, guides, settings } = {}) {
+export function createProject({ name = tr('Untitled wing'), airfoils, sections, guides, settings, foldedTilt } = {}) {
   const secs = sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, twist: 0, z: 0, ...s }));
   return {
     format: FORMAT,
@@ -113,6 +127,7 @@ export function createProject({ name = tr('Untitled wing'), airfoils, sections, 
     sections: secs,
     guides: guides ?? defaultGuides(secs),
     settings: resolveSettings(settings),
+    ...(foldedTilt ? { foldedTilt: { angle: foldedTilt.angle, x: foldedTilt.x, z: foldedTilt.z } } : {}),
   };
 }
 
@@ -145,7 +160,16 @@ export function limitErrors(p) {
       if (isNum(s[k]) && Math.abs(s[k]) > LIMITS.maxCoordinate) errors.push(tr('Section {n}: {axis} must be within ±{max} mm.', { n: plain(i + 1), axis: k, max: whole(LIMITS.maxCoordinate) }));
     }
     if (isNum(s.twist) && Math.abs(s.twist) > LIMITS.maxTwist) errors.push(tr('Section {n}: twist must be within ±{max} degrees.', { n: plain(i + 1), max: plain(LIMITS.maxTwist) }));
+    if (isNum(s.panelAngle) && Math.abs(s.panelAngle) > LIMITS.maxPanelAngle) errors.push(tr('Section {n}: panelAngle must be within ±{max} degrees.', { n: plain(i + 1), max: plain(LIMITS.maxPanelAngle) }));
   });
+  // The tilt angle an XFLR5 import folded into the sections, reduced by whole turns, and its pivot.
+  const tilt = p?.foldedTilt;
+  if (isObject(tilt)) {
+    if (isNum(tilt.angle) && Math.abs(tilt.angle) > 180) errors.push(tr('foldedTilt.angle must be within ±180 degrees.'));
+    for (const k of ['x', 'z']) {
+      if (isNum(tilt[k]) && Math.abs(tilt[k]) > LIMITS.maxCoordinate) errors.push(tr('foldedTilt.{axis} must be within ±{max} mm.', { axis: k, max: whole(LIMITS.maxCoordinate) }));
+    }
+  }
   for (const key of ['nose', 'end']) {
     const g = isObject(p?.guides) ? p.guides[key] : null;
     if (!isObject(g) || !Array.isArray(g.points)) continue;
@@ -214,6 +238,8 @@ export function validateProject(p) {
       if (!isNum(s[k])) errors.push(tr('Section {n}: {field} must be a finite number.', { n, field: k === 'chord' ? tr('chord') : k === 'twist' ? tr('twist') : k }));
     }
     if (isNum(s.chord) && s.chord < LIMITS.minChord) errors.push(tr('Section {n}: chord must be at least {min} mm.', { n, min: plain(LIMITS.minChord) }));
+    // The angle of the panel to the next section that the mitred planes use; absent or null: from y and z.
+    if (s.panelAngle !== undefined && s.panelAngle !== null && !isNum(s.panelAngle)) errors.push(tr('Section {n}: panelAngle must be a finite number or null.', { n }));
     if (isNum(s.y) && s.y < 0) errors.push(tr('Section {n}: y must be >= 0 (the half wing lies on the +y side).', { n }));
     if (!ids.has(s.airfoil)) errors.push(tr('Section {n}: unknown airfoil "{id}".', { n, id: shown(s.airfoil) }));
     // Sections without an id get "s<n>" on import; check the effective id.
@@ -240,7 +266,11 @@ export function validateProject(p) {
     }
   }
   const st = resolveSettings(p.settings);
-  if (!['linear', 'smooth'].includes(st.spanwise)) errors.push(tr('settings.spanwise must be "linear" or "smooth".'));
+  if (!SPANWISE.includes(st.spanwise)) errors.push(tr('settings.spanwise must be "linear", "straight" or "smooth".'));
+  if (!SECTION_PLANES.includes(st.sectionPlanes)) errors.push(tr('settings.sectionPlanes must be "vertical" or "mitred".'));
+  if (p.foldedTilt !== undefined && p.foldedTilt !== null && !(isObject(p.foldedTilt) && isNum(p.foldedTilt.angle) && isNum(p.foldedTilt.x) && isNum(p.foldedTilt.z))) {
+    errors.push(tr('foldedTilt must be an object with the numbers angle, x and z.'));
+  }
   if (!['asis', 'closed', 'thickness'].includes(st.trailingEdge.mode)) errors.push(tr('settings.trailingEdge.mode must be "asis", "closed" or "thickness".'));
   if (!isNum(st.trailingEdge.thickness) || st.trailingEdge.thickness < 0) errors.push(tr('settings.trailingEdge.thickness must be >= 0.'));
   if (!['flat', 'pointed'].includes(st.tip.mode)) errors.push(tr('settings.tip.mode must be "flat" or "pointed".'));

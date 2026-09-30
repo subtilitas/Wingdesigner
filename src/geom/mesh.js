@@ -1,6 +1,7 @@
 // Tessellation of the wing surface into a closed, outward-oriented triangle mesh, mirroring,
 // and mesh measures (volume, area, edge manifold check).
 
+import { meshToUpAxis } from '../export/axes.js';
 import { surfacePointGrid } from './nurbs.js';
 import { stripTriangulate } from './triangulate.js';
 
@@ -58,8 +59,12 @@ export function tessellateHalf(build, { uRefine = 1, vRefine } = {}) {
   const leIndex = build.leIndex * uRefine;
   const rootLoop = loop(0);
   const tipLoop = loop(V - 1);
-  const cap = (ring, flip) => {
-    const poly = ring.map((i) => [positions[i * 3], positions[i * 3 + 2]]);
+  // Each cap lies in the plane of its end section: x and the in-plane up direction (0, −sin φ, cos φ)
+  // of its roll φ (0: the plane y = const, (x, z)).
+  const cap = (ring, flip, roll = 0) => {
+    const sr = Math.sin((roll * Math.PI) / 180);
+    const cr = Math.cos((roll * Math.PI) / 180);
+    const poly = ring.map((i) => [positions[i * 3], roll ? cr * positions[i * 3 + 2] - sr * positions[i * 3 + 1] : positions[i * 3 + 2]]);
     const out = [];
     for (const [a, b, c] of stripTriangulate(poly, leIndex)) {
       if (flip) out.push(ring[a], ring[c], ring[b]);
@@ -68,8 +73,8 @@ export function tessellateHalf(build, { uRefine = 1, vRefine } = {}) {
     return out;
   };
   // Selig order is counterclockwise in (x, z); a CCW triangle in (x, z) has normal -y.
-  const rootCap = cap(rootLoop, false);
-  const tipCap = cap(tipLoop, true);
+  const rootCap = cap(rootLoop, false, build.rootRoll ?? 0);
+  const tipCap = cap(tipLoop, true, build.tipRoll ?? 0);
   return { positions, surface, trailingEdge, rootCap, tipCap, rows: V, cols, rootLoop, tipLoop };
 }
 
@@ -211,20 +216,24 @@ export function exportTriangles(build, mode = 'halves', { uRefine = 1, vRefine }
  * mode 'right': the right half as one closed shell.
  * mode 'halves': right and left halves as two closed shells (root caps included).
  * mode 'merged': one closed shell for the full wing when the root lies exactly on y = 0, otherwise like 'halves'.
+ * up: the up axis of the file (src/export/axes.js); the meshes are turned after mirroring and merging.
  * @returns {{name: string, mesh: {positions: Float64Array, indices: Uint32Array}}[]}
  */
-export function exportMeshes(build, mode = 'halves', { uRefine = 1, vRefine } = {}) {
+export function exportMeshes(build, mode = 'halves', { uRefine = 1, vRefine, up = 'z' } = {}) {
   const half = tessellateHalf(build, { uRefine, vRefine });
   const right = halfWingMesh(half);
-  if (mode === 'right') return [{ name: 'Wing right', mesh: right }];
-  if (mode === 'merged' && build.rootY === 0) {
+  let meshes;
+  if (mode === 'right') meshes = [{ name: 'Wing right', mesh: right }];
+  else if (mode === 'merged' && build.rootY === 0) {
     const full = fullWingMesh(half, build.rootY);
-    return [{ name: 'Wing', mesh: { positions: full.positions, indices: full.indices } }];
+    meshes = [{ name: 'Wing', mesh: { positions: full.positions, indices: full.indices } }];
+  } else {
+    meshes = [
+      { name: 'Wing right', mesh: right },
+      { name: 'Wing left', mesh: mirrorMesh(right) },
+    ];
   }
-  return [
-    { name: 'Wing right', mesh: right },
-    { name: 'Wing left', mesh: mirrorMesh(right) },
-  ];
+  return meshes.map((m) => ({ ...m, mesh: meshToUpAxis(m.mesh, up) }));
 }
 
 /** Concatenate meshes into one vertex/index buffer (shells stay separate). */

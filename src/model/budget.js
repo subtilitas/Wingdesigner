@@ -11,6 +11,7 @@
 
 import { count, plain, tr } from '../i18n/index.js';
 import { LIMITS, resolveSettings } from './project.js';
+import { rolledPanelCount } from '../geom/planes.js';
 
 /** Sizes above which a warning names the expected time and memory. */
 export const WARN = Object.freeze({
@@ -66,17 +67,19 @@ export function stepPoints(build, half) {
 
 /**
  * Loft grid of a build: chord samples N, stations per panel as set (Kset) and as used (K), and the
- * grid points (stations times profile points 2N + 1) before added stations. Above
+ * grid points (stations times profile points 2N + 1) before added stations. With a guide curve or
+ * Smooth every panel takes K stations; otherwise the `rolledPanels` linear panels between two
+ * different mitred section planes do (rolledPanelCount in src/geom/planes.js), the others one. Above
  * LIMITS.maxGridPoints the stations per panel go down, at least to one.
  */
-export function loftGrid(sectionCount, settings, guidesOn = false) {
+export function loftGrid(sectionCount, settings, guidesOn = false, rolledPanels = 0) {
   const N = Math.round(Math.min(Math.max(settings.chordSamples, LIMITS.chordSamples[0]), LIMITS.chordSamples[1]));
-  const dense = guidesOn || settings.spanwise === 'smooth';
-  const Kset = dense ? Math.max(LIMITS.panelStations[0], Math.min(settings.panelStations, LIMITS.panelStations[1])) : 1;
   const panels = Math.max(1, sectionCount - 1);
-  // Largest K with (panels * K + 1) * (2N + 1) <= LIMITS.maxGridPoints.
-  const K = Math.max(1, Math.min(Kset, Math.floor((LIMITS.maxGridPoints / (2 * N + 1) - 1) / panels)));
-  return { N, Kset, K, points: (panels * K + 1) * (2 * N + 1) };
+  const dense = guidesOn || settings.spanwise === 'smooth' ? panels : Math.min(rolledPanels, panels);
+  const Kset = dense ? Math.max(LIMITS.panelStations[0], Math.min(settings.panelStations, LIMITS.panelStations[1])) : 1;
+  // Largest K with (dense * K + panels - dense + 1) * (2N + 1) <= LIMITS.maxGridPoints.
+  const K = dense ? Math.max(1, Math.min(Kset, Math.floor((LIMITS.maxGridPoints / (2 * N + 1) - 1 - (panels - dense)) / dense))) : 1;
+  return { N, Kset, K, points: (dense * K + panels - dense + 1) * (2 * N + 1) };
 }
 
 /** Sizes of a project that drive time and memory. */
@@ -109,7 +112,7 @@ export function projectSize(project) {
     largestAirfoil,
     guidePoints: Math.max(0, ...enabled.map((k) => guides[k].points?.length ?? 0)),
     // Settings with their defaults: a project from the module API may carry some or none.
-    gridPoints: loftGrid(project.sections.length, resolveSettings(project.settings), enabled.length > 0).points,
+    gridPoints: loftGrid(project.sections.length, resolveSettings(project.settings), enabled.length > 0, rolledPanelCount(project.sections, resolveSettings(project.settings))).points,
     longestName,
   };
 }

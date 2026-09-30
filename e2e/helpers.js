@@ -128,6 +128,7 @@ export const SECTION_TITLES = {
   z: 'Leading-edge height (dihedral)',
   chord: 'Chord length (profile scale)',
   twist: 'Twist about the pivot; positive = leading edge up',
+  panelAngle: 'Angle of the panel to the next section for the mitred section planes. Empty: from y and z of the two sections.',
 };
 
 export const sectionRows = (page) => page.locator('table.sections tbody tr');
@@ -247,6 +248,8 @@ export async function downloadOf(page, trigger) {
 export const FORMAT_LABEL = { step: /^STEP/, stl: /^STL/, '3mf': /^3MF/, json: /^Project JSON/ };
 export const HALF_LABEL = { halves: /^Both halves as separate bodies/, merged: /^Full wing as one body/, right: /^Right half only/ };
 export const DENS_LABEL = { normal: /^Normal/, fine: /^Fine/ };
+/** The checkbox that writes Y as the up axis (the Fusion 360 fix). */
+export const FUSION_FIX = /^Fusion 360 fix: Y up/;
 
 export async function openExport(page) {
   await page.getByRole('button', { name: 'Export', exact: true }).click();
@@ -256,11 +259,14 @@ export async function openExport(page) {
 }
 
 /** Exports through the dialog (fmt: step, stl, 3mf, json) and returns the downloaded file. */
-export async function exportFile(page, fmt, { half = 'halves', dens = 'normal' } = {}) {
+export async function exportFile(page, fmt, { half = 'halves', dens = 'normal', up } = {}) {
   const dlg = await openExport(page);
   await dlg.getByLabel(FORMAT_LABEL[fmt]).check();
   await dlg.getByLabel(HALF_LABEL[half]).check();
   await dlg.getByLabel(DENS_LABEL[dens]).check();
+  // Without `up` the dialog keeps the up axis it starts with (the one of the last export); 'y' is the
+  // Fusion 360 fix.
+  if (up) await dlg.getByLabel(FUSION_FIX).setChecked(up === 'y');
   const file = await downloadOf(page, () => dlg.getByRole('button', { name: 'Download' }).click());
   await expect(dialogOf(page)).toHaveCount(0);
   return file;

@@ -42,7 +42,8 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/geom/profile.js` | Airfoil as NURBS curve; chordwise resampling; `fitProfile` (curve fit and shape check of an airfoil, used by the airfoil preview and the XFLR5 import) |
 | `src/geom/spanwise.js` | Spanwise blending of section values (`linear`, `smooth`) |
 | `src/geom/guide.js` | Guide curves (nose line, end line) |
-| `src/geom/wing.js` | Wing loft: `buildWing`; profile cache |
+| `src/geom/planes.js` | Section planes: roll and stretch of each section (`sectionPlanes`), stretch limit, extent of a placed airfoil (`upExtent`) and fold test of two neighbouring planes (`planeFold`, `firstFold`) |
+| `src/geom/wing.js` | Wing loft: `buildWing`; `mitredPlaneProblem` (stretch and fold checks without the loft, for the XFLR5 import); profile cache |
 | `src/geom/mesh.js` | Tessellation, mirror, mesh volume, area and edge check |
 | `src/geom/triangulate.js` | End-cap triangulation: strip of upper and lower point pairs (linear time); ear clipping as fallback |
 | `src/geom/stats.js` | Planform statistics |
@@ -52,6 +53,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/airfoil/naca.js` | NACA 4- and 5-digit generator; `leadingNacaCode` finds the code that starts a name (`NACA0014_Flap`) |
 | `src/airfoil/library.js` | 17 NACA presets, bundled library, external sources; `librarySource` (source record of a bundled entry) |
 | `src/export/step.js` | STEP writer; file format International Organization for Standardization (ISO) 10303-21 |
+| `src/export/axes.js` | Up axis of the exported files (the Fusion 360 fix of the export dialog): `UP_AXES`, `upAxisMap` (identity for Z up, (x, z, −y) for Y up), `meshToUpAxis` |
 | `src/export/stl.js` | Binary stereolithography (STL) writer |
 | `src/export/threemf.js` | 3MF writer |
 | `src/import/errors.js` | `XflrError`: file-level error of the XFLR5 readers, with a `code` and, for an `.xfl` project, the byte `offset` |
@@ -177,7 +179,7 @@ Large projects in the browser:
 | Change | 1 chord edit in the **Sections** table |
 | Values | JavaScript time of the change; JavaScript heap after the rebuild |
 
-**Linear** and **Smooth** stand for the options **Linear between sections (straight panels)** and **Smooth (natural cubic spline through sections)** of the list **Spanwise interpolation**.
+**Linear** and **Smooth** stand for the options **Linear between sections** and **Smooth (natural cubic spline through sections)** of the list **Spanwise interpolation**.
 
 | Case | JavaScript time per change | Heap |
 | --- | ---: | ---: |
@@ -343,12 +345,12 @@ Unit tests (Vitest, Node.js):
 
 | File | Tests | Content |
 | --- | ---: | --- |
-| `test/xflr5-xfl.test.js` | 38 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the old formats of `Rascal110.xfl`; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
-| `test/xflr5-xml.test.js` | 45 | Reader of XML files: fixtures in millimetres, inches and metres; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
-| `test/xflr5-map.test.js` | 61 | Mapping: y and z from developed span and dihedral, twist, fold of tilt angle and position; clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
-| `test/airfoil.test.js` | 1 of 78 | `leadingNacaCode` |
+| `test/xflr5-xfl.test.js` | 39 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the old formats of `Rascal110.xfl`; the reserved blocks of XFLR5 6.10.01 to 6.10.04; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
+| `test/xflr5-xml.test.js` | 46 | Reader of XML files: fixtures in millimetres, inches and metres; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
+| `test/xflr5-map.test.js` | 67 | Mapping: y and z from developed span and dihedral, twist, fold of tilt angle and position; section planes of an import (mitred, tilted, fold and stretch fallback, an airfoil switch in one plane, the airfoil frame along a rolled plane with XFLR5's panel angles); clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library, and for library airfoils with an inclined chord line; a file airfoil whose trailing edge crosses its own end; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
+| `test/airfoil.test.js` | 1 of 79 | `leadingNacaCode` |
 
-`test/xflr5-writer.js` writes big-endian XFLR5 project files from options with default values, written from the description of the format in `src/import/xfl.js`. Numbers that the reader skips are written as recognizable non-zero values, so a reader that skips too many or too few bytes misreads what follows. `writeProject(options)` returns `{ bytes, marks }`; `marks` lists the offset of every record for the truncation tests.
+`test/xflr5-writer.js` writes big-endian XFLR5 project files from options with default values, written from the description of the format in `src/import/xfl.js`. Numbers that the reader skips are written as recognizable non-zero values, so a reader that skips too many or too few bytes misreads what follows. `writeProject(options)` returns `{ bytes, marks }`; `marks` lists the offset of every record for the truncation tests. The plane option `spare: 'index'` writes the reserved blocks of the plane and its wings as XFLR5 6.10.01 to 6.10.04 do.
 
 Browser tests: `e2e/xflr5.spec.js`, 9 tests, 18 runs:
 
@@ -373,14 +375,14 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 517 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 542 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit code 1 when a README table differs from `coverage/coverage-summary.json`; exit code 2 when that file or a marker is missing |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 8 STEP files, 8 3MF files and `cases.json` in `step-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 12 STEP files, 12 3MF files and `cases.json` in `step-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 26 Portable Network Graphics (PNG) files: 13 in `docs/wiki/images/` (English) and 13 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
@@ -418,7 +420,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-175 tests in 12 spec files, 350 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+178 tests in 12 spec files, 356 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 
@@ -455,6 +457,7 @@ Both scripts print a JSON report.
 | Boundary representation (B-rep) validity | `BRepCheck_Analyzer` reports valid |
 | Shell | Closed and consistently oriented: no free edges |
 | Volume | Greater than 0; relative deviation from the expected volume at most `5e-4` (0.05 %) |
+| Planar faces | At least 1; every edge of a planar face (the end caps) within `1e-6` mm of its plane, sampled at 51 points per edge. A cap off its plane can change the volume by less than 0.05 % (0.0475 % for a vertical tip cap on `mitred-gull-15-5`, 0.67 mm off). |
 
 Exit code 1 when a check fails.
 
@@ -466,7 +469,7 @@ Exit code 1 when a check fails.
 
 Exit code 1 when a check fails or when `cases.json` holds no 3MF case.
 
-Cases from `test/step-cases.js`. Base wing (`sampleProject()` in `test/helpers.js`):
+Cases from `test/step-cases.js`. Base wing (`sampleProject()` in `test/helpers.js`, **Vertical** section planes):
 
 | Section | y (mm) | x (mm) | z (mm) | Chord (mm) | Twist (°) | Airfoil |
 | ---: | ---: | ---: | ---: | ---: | ---: | --- |
@@ -486,6 +489,10 @@ x and z: position of the leading edge.
 | `pointed-tip` | Pointed tip, ratio 0.002 (1/500); trailing-edge thickness 0.4 mm | 2 |
 | `pointed-elliptic-closed` | Pointed tip, ratio 0.005 (1/200); nose line and end line meet at x = 115 mm, y = 600 mm; closed trailing edge | 2 |
 | `symmetric-0009` | NACA 0009 at every section | 2 |
+| `mitred-vtail-35` | Not the base wing: 2 sections of NACA 0009, chords 120 and 70 mm, the tip 320 mm along a 35° panel, x 40 mm; **Straight panels**, **Mitred** section planes (tip cap rolled 35°) | 2 |
+| `mitred-vtail-35-y-up` | As `mitred-vtail-35`, written with the **Fusion 360 fix** (Y up): every point as (x, z, −y) | 2 |
+| `mitred-gull-15-5` | z 80.3848 mm at section 2 and 54.1382 mm at the tip (panels of 15° and −5°); **Mitred** section planes (rolls 0°, 5°, −5°), linear blending with 8 stations per panel | 2 |
+| `mitred-switch-short-panel` | Not the base wing: NACA 2412 at y 0 and 299.5 mm (chords 200 and 180 mm), NACA 0012 at y 300 and 600 mm (chords 180 and 120 mm, tip z 52.8981 mm, twist −2°); **Straight panels**, **Mitred** section planes: the 0.5 mm panel counts as none, both switch sections roll 5.25°; the outer panel stores a panel angle of 10.5° (tip roll 10.5°) | 2 |
 
 ## Documentation
 
@@ -531,13 +538,13 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `planform.png` | **Planform** tab, **Glider**, nose line and end line on | 600 x 730 | 600 x 730 |
 | `airfoils.png` | **Airfoils** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `upload-preview.png` | Upload preview of a synthetic X/Yo/Yu percent table with decimal commas, opened over the **Glider** | 640 x 646 | 640 x 710 |
-| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 506 | 640 x 552 |
+| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 548 | 640 x 594 |
 | `settings.png` | **Settings** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `checks.png` | **Checks** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 | 680 x 730 |
 | `mobile-main.png` | Phone, **Sport** preset | 1082 x 2202 | 1082 x 2202 |
 | `mobile-planform.png` | Phone, **Planform**, **Sport**, end line on | 1082 x 2202 | 1082 x 2202 |
-| `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 888 | 960 x 964 |
+| `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 966 | 960 x 1042 |
 
 ### Documentation check
 
@@ -558,7 +565,7 @@ Not checked: language switch line, alt text language, link target language, link
 ### Test count check
 
 `npm run counts:check` derives every test count that `README.md`, `README.de.md`, `RECORD.md`, Development, Entwicklung, Geometry and Geometrie state from the suites.
-Exit code 1 when a stated number differs or a statement is not found; `scripts/check-test-counts.mjs` holds each statement as a pattern with the number of times it occurs.
+Exit code 1 when a stated number differs or a statement is not found; `scripts/check-test-counts.mjs` holds each statement as a pattern with the number of times it occurs. It also checks the tests of one file wherever a page states them: a table row that starts with the path of a test file in backticks and a count (all tests of the file) or `<n> of <m>` (`<m>` all tests of the file), and the path followed by `(<n>)`.
 
 | Count | Source |
 | --- | --- |

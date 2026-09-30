@@ -17,6 +17,7 @@ import {
   sizeWarning,
 } from '../src/model/budget.js';
 import { buildWing } from '../src/geom/wing.js';
+import { rolledPanelCount } from '../src/geom/planes.js';
 import { LIMITS } from '../src/model/project.js';
 import { PRESETS, wizardProject } from '../src/model/wizard.js';
 import { sampleProject } from './helpers.js';
@@ -136,12 +137,21 @@ describe('project size warnings', () => {
   });
 
   it('computes the loft grid of a project as the build does', () => {
-    for (const settings of [{ spanwise: 'linear' }, { spanwise: 'smooth', panelStations: 12, chordSamples: 40 }]) {
+    const cases = [
+      [{ spanwise: 'linear' }, 3],
+      [{ spanwise: 'smooth', panelStations: 12, chordSamples: 40 }, 25],
+      // Mitred planes: both linear panels lie between planes that differ, 5 stations each.
+      [{ spanwise: 'linear', sectionPlanes: 'mitred', panelStations: 5 }, 11],
+      [{ spanwise: 'straight', sectionPlanes: 'mitred' }, 3],
+    ];
+    for (const [settings, stations] of cases) {
       const p = sampleProject({ settings });
       const b = buildWing(p);
-      const g = loftGrid(p.sections.length, b.settings);
-      expect((b.stations.length - b.extraStations) * (2 * g.N + 1)).toBe(g.points);
+      const g = loftGrid(p.sections.length, b.settings, false, rolledPanelCount(p.sections, b.settings));
+      expect([b.stations.length - b.extraStations, (b.stations.length - b.extraStations) * (2 * g.N + 1)]).toEqual([stations, g.points]);
     }
+    // One rolled panel of three reduces with the rest of the grid only in that panel.
+    expect(loftGrid(4, { chordSamples: 50, panelStations: 8, spanwise: 'linear' }, false, 1)).toMatchObject({ Kset: 8, K: 8, points: (8 + 2 + 1) * 101 });
   });
 });
 

@@ -519,7 +519,7 @@ test.describe('German browser', () => {
     await expect(pane.getByRole('combobox', { name: 'Flügelende', exact: true })).toBeVisible();
     await expect(pane.getByRole('combobox', { name: 'Parametrisierung der Profile', exact: true })).toBeVisible();
     await expect(pane.getByRole('spinbutton', { name: /^Stationen je Profilseite \(16 bis 200\)/ })).toBeVisible();
-    await expect(pane.getByRole('spinbutton', { name: /^Stationen je Feld mit Leitkurve oder glatter Interpolation \(3 bis 40\)/ })).toBeVisible();
+    await expect(pane.getByRole('spinbutton', { name: /^Stationen je Feld mit Leitkurve, glatter Interpolation oder linearen Feldern auf Gehrung \(3 bis 40\)/ })).toBeVisible();
     await expect(pane.getByRole('spinbutton', { name: /^Drehpunkt der Schränkung/ })).toBeVisible();
     await expect(pane.getByRole('checkbox', { name: 'NURBS-Kontrollnetz zeigen' })).toBeVisible();
     await expect(pane.getByRole('checkbox', { name: 'Schnittkonturen zeigen' })).toBeVisible();

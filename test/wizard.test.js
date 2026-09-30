@@ -161,6 +161,12 @@ describe('edit operations', () => {
     const lone = sampleProject();
     lone.sections = [lone.sections[0]];
     expect(insertSection(lone, 0).y).toBe(100);
+    // Halfway along a panel that stores its angle, the new section keeps it; beyond the tip it has none.
+    const stored = sampleProject();
+    stored.sections[0].panelAngle = 3;
+    stored.sections[2].panelAngle = 7;
+    expect(insertSection(stored, 0).panelAngle).toBe(3);
+    expect(insertSection(stored, 3)).not.toHaveProperty('panelAngle');
   });
 
   it('keeps enabled guides spanning root to tip', () => {
@@ -519,7 +525,10 @@ describe('wizard planform, edits and estimates at the edges', () => {
   });
 
   it('adds stations where the deviation exceeds its shrinking tolerance', () => {
-    const b = buildWing(wizardProject({ span: 1000, rootChord: 10, taper: 0.99, sweep: -45, dihedral: 5, washout: 15, sections: 2, planform: 'straight', tip: 'pointed', rootAirfoil: '6409', tipAirfoil: '2410' }));
+    // Vertical section planes: mitred planes place stations in every rolled panel from the start.
+    const p = wizardProject({ span: 1000, rootChord: 10, taper: 0.99, sweep: -45, dihedral: 5, washout: 15, sections: 2, planform: 'straight', tip: 'pointed', rootAirfoil: '6409', tipAirfoil: '2410' });
+    p.settings.sectionPlanes = 'vertical';
+    const b = buildWing(p);
     expect(b.errors).toEqual([]);
     expect(b.extraStations).toBeGreaterThan(0);
     expect(b.warnings.filter((w) => w.startsWith('The loft deviates'))).toEqual([]);
@@ -670,7 +679,7 @@ describe('project validation in German', () => {
       'Duplicate airfoil id "root".',
       'Section 2: unknown airfoil "nope".',
       'Section 3: twist must be a finite number.',
-      'settings.spanwise must be "linear" or "smooth".',
+      'settings.spanwise must be "linear", "straight" or "smooth".',
       'settings.tip.ratio must be within 0.001..0.01 (1/1000 to 1/100).',
       'settings.chordSamples must be an integer within 16..200.',
     ]);
@@ -679,15 +688,15 @@ describe('project validation in German', () => {
       'Doppelte Profil-ID „root“.',
       'Schnitt 2: unbekanntes Profil „nope“.',
       'Schnitt 3: Schränkung muss eine endliche Zahl sein.',
-      'settings.spanwise muss "linear" oder "smooth" sein.',
+      'settings.spanwise muss "linear", "straight" oder "smooth" sein.',
       'settings.tip.ratio muss innerhalb von 0,001..0,01 liegen (1/1000 bis 1/100).',
       'settings.chordSamples muss eine ganze Zahl innerhalb von 16..200 sein.',
     ]);
     expect(validateProject(null).errors).toEqual(['Das Projekt ist kein Objekt.']);
     const inches = sampleProject();
     inches.units = 'in';
-    inches.version = 2;
-    expect(validateProject(inches).errors).toEqual(['units muss "mm" sein (gefunden: "in").', 'Nicht unterstützte Projektversion 2.']);
+    inches.version = 3;
+    expect(validateProject(inches).errors).toEqual(['units muss "mm" sein (gefunden: "in").', 'Nicht unterstützte Projektversion 3.']);
     const few = sampleProject();
     few.sections.pop();
     few.sections.pop();

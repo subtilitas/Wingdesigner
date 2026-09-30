@@ -42,7 +42,8 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/geom/profile.js` | Profil als NURBS-Kurve; Neuabtastung in Profiltiefenrichtung; `fitProfile` (Kurvenanpassung und Formprüfung eines Profils, verwendet von der Profilvorschau und vom XFLR5-Import) |
 | `src/geom/spanwise.js` | Interpolation der Schnittwerte in Spannweitenrichtung (`linear`, `smooth`) |
 | `src/geom/guide.js` | Leitkurven (Nasenlinie, Endlinie) |
-| `src/geom/wing.js` | Flügel-Loft: `buildWing`; Profil-Cache |
+| `src/geom/planes.js` | Schnittebenen: Neigung und Dickenstreckung jedes Schnitts (`sectionPlanes`), Grenze der Dickenstreckung, Ausdehnung eines platzierten Profils (`upExtent`) und Faltungstest zweier benachbarter Ebenen (`planeFold`, `firstFold`) |
+| `src/geom/wing.js` | Flügel-Loft: `buildWing`; `mitredPlaneProblem` (Prüfungen auf Dickenstreckung und Faltung ohne den Loft, für den XFLR5-Import); Profil-Cache |
 | `src/geom/mesh.js` | Dreiecksnetz, Spiegelung, Volumen, Fläche und Kantenprüfung des Netzes |
 | `src/geom/triangulate.js` | Triangulierung der Abschlussflächen: Streifen aus Punktpaaren von Ober- und Unterseite (lineare Laufzeit); Ear Clipping als Rückfallverfahren |
 | `src/geom/stats.js` | Grundrisskennwerte |
@@ -52,6 +53,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/airfoil/naca.js` | Generator für 4- und 5-stellige NACA-Profile; `leadingNacaCode` findet den Code, mit dem ein Name beginnt (`NACA0014_Flap`) |
 | `src/airfoil/library.js` | 17 NACA-Vorlagen, mitgelieferte Bibliothek, externe Quellen; `librarySource` (Quellenangabe eines mitgelieferten Eintrags) |
 | `src/export/step.js` | STEP-Export; Dateiformat nach International Organization for Standardization (ISO) 10303-21 |
+| `src/export/axes.js` | Hochachse der exportierten Dateien (die Fusion-360-Korrektur des Exportdialogs): `UP_AXES`, `upAxisMap` (unverändert für Z nach oben, (x, z, −y) für Y nach oben), `meshToUpAxis` |
 | `src/export/stl.js` | Export als binäres STL (Stereolithografie) |
 | `src/export/threemf.js` | 3MF-Export |
 | `src/import/errors.js` | `XflrError`: Fehler auf Dateiebene der XFLR5-Leser, mit einem `code` und, bei einem `.xfl`-Projekt, dem Byte-`offset` |
@@ -177,7 +179,7 @@ Große Projekte im Browser:
 | Änderung | 1 Änderung einer Profiltiefe in der Tabelle **Schnitte** |
 | Werte | JavaScript-Zeit der Änderung; JavaScript-Heap nach dem Neuaufbau |
 
-**Linear** und **Glatt** (Smooth) stehen für die Optionen **Linear zwischen den Schnitten (gerade Felder)** (Linear between sections (straight panels)) und **Glatt (natürlicher kubischer Spline durch die Schnitte)** (Smooth (natural cubic spline through sections)) der Liste **Interpolation in Spannweitenrichtung** (Spanwise interpolation).
+**Linear** und **Glatt** (Smooth) stehen für die Optionen **Linear zwischen den Schnitten** (Linear between sections) und **Glatt (natürlicher kubischer Spline durch die Schnitte)** (Smooth (natural cubic spline through sections)) der Liste **Interpolation in Spannweitenrichtung** (Spanwise interpolation).
 
 | Fall | JavaScript-Zeit je Änderung | Heap |
 | --- | ---: | ---: |
@@ -343,12 +345,12 @@ Unit-Tests (Vitest, Node.js):
 
 | Datei | Tests | Inhalt |
 | --- | ---: | --- |
-| `test/xflr5-xfl.test.js` | 38 | Leser für `.xfl`-Projekte: Byte-Aufbau von `fixtures_v662.xfl`; die alten Formate von `Rascal110.xfl`; `UltraStick25e_v662_stripped.xfl` gegen `UltraStick25e.xml`; Projekte aus `test/xflr5-writer.js` (Analysen mit Steuerverstärkungen und Ergebnispunkten, Flugzeugergebnisse, Null-Zeichenketten, Rümpfe, wiederholte Profilnamen, Klappen, bereinigte Positionen); abgelehnte Dateien (flow5, `.wpa`, JSON, Größe, Anzahlen, ungerade Zeichenkettenlängen); Beschädigung (abgeschnitten an jeder Datensatzgrenze und an jedem Byte, Beschädigung nach den Flugzeugen); Fenster beliebiger Größe; deutsche Meldungen |
-| `test/xflr5-xml.test.js` | 45 | Leser für XML-Dateien: Fixtures in Millimetern, Zoll und Metern; Flügeldateien; Einheiten; Syntax (Byte-Order-Mark, Text im 16-Bit Unicode Transformation Format (UTF-16), Kommentare, Abschnitte mit Zeichendaten (CDATA), Entitäten, Groß- und Kleinschreibung, aufgefüllte Zahlen, Exponenten); fehlende und unlesbare Zahlen; Flügelplätze nach `<Type>` und nach der Reihenfolge; abgelehnte Dateien; Grenzen; lineare Laufzeit bei langer und feindlicher Eingabe; deutsche Meldungen |
-| `test/xflr5-map.test.js` | 61 | Abbildung: y und z aus abgewickelter Spannweite und V-Form, Schränkung, Einrechnung von Einstellwinkel und Position; Bereinigung (Schnitte bei gleichem y, Profiltiefen unter 1 mm, Grenzen); Flächen eines Flugzeugs; Profilquellen, Wahl, Uploads und Klappen; Profillage gegen die Zahlen von Fixture A und B, auch für NACA-Schnitte des aktuellen Projekts (erzeugte und geprüfte Punkte, von Hand bearbeitete Angaben); Berichtszeilen für Profile des aktuellen Projekts aus einem XFLR5-Import, einem Upload oder der Bibliothek; Projekt, JSON-Rundlauf und Bericht; 10 000 Profilnamen in linearer Zeit; Deutsch |
-| `test/airfoil.test.js` | 1 von 78 | `leadingNacaCode` |
+| `test/xflr5-xfl.test.js` | 39 | Leser für `.xfl`-Projekte: Byte-Aufbau von `fixtures_v662.xfl`; die alten Formate von `Rascal110.xfl`; die reservierten Blöcke von XFLR5 6.10.01 bis 6.10.04; `UltraStick25e_v662_stripped.xfl` gegen `UltraStick25e.xml`; Projekte aus `test/xflr5-writer.js` (Analysen mit Steuerverstärkungen und Ergebnispunkten, Flugzeugergebnisse, Null-Zeichenketten, Rümpfe, wiederholte Profilnamen, Klappen, bereinigte Positionen); abgelehnte Dateien (flow5, `.wpa`, JSON, Größe, Anzahlen, ungerade Zeichenkettenlängen); Beschädigung (abgeschnitten an jeder Datensatzgrenze und an jedem Byte, Beschädigung nach den Flugzeugen); Fenster beliebiger Größe; deutsche Meldungen |
+| `test/xflr5-xml.test.js` | 46 | Leser für XML-Dateien: Fixtures in Millimetern, Zoll und Metern; Flügeldateien; Einheiten; Syntax (Byte-Order-Mark, Text im 16-Bit Unicode Transformation Format (UTF-16), Kommentare, Abschnitte mit Zeichendaten (CDATA), Entitäten, Groß- und Kleinschreibung, aufgefüllte Zahlen, Exponenten); fehlende und unlesbare Zahlen; Flügelplätze nach `<Type>` und nach der Reihenfolge; abgelehnte Dateien; Grenzen; lineare Laufzeit bei langer und feindlicher Eingabe; deutsche Meldungen |
+| `test/xflr5-map.test.js` | 67 | Abbildung: y und z aus abgewickelter Spannweite und V-Form, Schränkung, Einrechnung von Einstellwinkel und Position; Schnittebenen eines Imports (auf Gehrung, mit Einstellwinkel, Rückfall bei Faltung und Dickenstreckung, ein Profilwechsel in einer Ebene, die Profillage entlang einer geneigten Ebene mit den Feldwinkeln von XFLR5); Bereinigung (Schnitte bei gleichem y, Profiltiefen unter 1 mm, Grenzen); Flächen eines Flugzeugs; Profilquellen, Wahl, Uploads und Klappen; Profillage gegen die Zahlen von Fixture A und B, auch für NACA-Schnitte des aktuellen Projekts (erzeugte und geprüfte Punkte, von Hand bearbeitete Angaben); Berichtszeilen für Profile des aktuellen Projekts aus einem XFLR5-Import, einem Upload oder der Bibliothek und für Bibliotheksprofile mit geneigter Profilsehne; ein Profil der Datei, dessen Endleiste ihr eigenes Ende kreuzt; Projekt, JSON-Rundlauf und Bericht; 10 000 Profilnamen in linearer Zeit; Deutsch |
+| `test/airfoil.test.js` | 1 von 79 | `leadingNacaCode` |
 
-`test/xflr5-writer.js` schreibt XFLR5-Projektdateien im Big-Endian-Format aus Optionen mit Vorgabewerten, nach der Beschreibung des Formats in `src/import/xfl.js`. Zahlen, die der Leser überspringt, stehen als erkennbare Werte ungleich 0 in der Datei, sodass ein Leser, der zu viele oder zu wenige Byte überspringt, das Folgende falsch liest. `writeProject(options)` liefert `{ bytes, marks }`; `marks` listet den Offset jedes Datensatzes für die Tests mit abgeschnittenen Dateien.
+`test/xflr5-writer.js` schreibt XFLR5-Projektdateien im Big-Endian-Format aus Optionen mit Vorgabewerten, nach der Beschreibung des Formats in `src/import/xfl.js`. Zahlen, die der Leser überspringt, stehen als erkennbare Werte ungleich 0 in der Datei, sodass ein Leser, der zu viele oder zu wenige Byte überspringt, das Folgende falsch liest. `writeProject(options)` liefert `{ bytes, marks }`; `marks` listet den Offset jedes Datensatzes für die Tests mit abgeschnittenen Dateien. Die Flugzeugoption `spare: 'index'` schreibt die reservierten Blöcke des Flugzeugs und seiner Flügel wie XFLR5 6.10.01 bis 6.10.04.
 
 Browsertests: `e2e/xflr5.spec.js`, 9 Tests, 18 Läufe:
 
@@ -373,14 +375,14 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 517 Tests in 18 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 542 Tests in 18 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit-Code 1, wenn eine README-Tabelle von `coverage/coverage-summary.json` abweicht; Exit-Code 2, wenn diese Datei oder eine Markierung fehlt |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Prüfungen unter [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek); Exit-Code 1 bei einem Problem |
 | `npm run e2e` | `npm run build && playwright test` | Browsertests in `e2e/` gegen `vite preview` auf Port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 8 STEP-Dateien, 8 3MF-Dateien und `cases.json` in `step-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 12 STEP-Dateien, 12 3MF-Dateien und `cases.json` in `step-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 26 Dateien im Format Portable Network Graphics (PNG): 13 in `docs/wiki/images/` (Englisch) und 13 in `docs/wiki/images/de/` (Deutsch) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Prüfungen unter [Prüfung der Testanzahlen](#prüfung-der-testanzahlen); Exit-Code 1 bei einer Abweichung |
@@ -418,7 +420,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-175 Tests in 12 Spec-Dateien, 350 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+178 Tests in 12 Spec-Dateien, 356 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 
@@ -455,6 +457,7 @@ Beide Skripte geben einen JSON-Bericht aus.
 | Gültigkeit der Randdarstellung (B-rep, Boundary Representation) | `BRepCheck_Analyzer` meldet gültig |
 | Hülle | Geschlossen und einheitlich orientiert: keine freien Kanten |
 | Volumen | Größer als 0; relative Abweichung vom erwarteten Volumen höchstens `5e-4` (0,05 %) |
+| Ebene Flächen | Mindestens 1; jede Kante einer ebenen Fläche (der Abschlussflächen) innerhalb von `1e-6` mm von ihrer Ebene, abgetastet an 51 Punkten je Kante. Eine Abschlussfläche neben ihrer Ebene kann das Volumen um weniger als 0,05 % ändern (0,0475 % bei einer senkrechten Randfläche an `mitred-gull-15-5`, 0,67 mm daneben). |
 
 Exit-Code 1, wenn eine Prüfung fehlschlägt.
 
@@ -466,7 +469,7 @@ Exit-Code 1, wenn eine Prüfung fehlschlägt.
 
 Exit-Code 1, wenn eine Prüfung fehlschlägt oder `cases.json` keinen 3MF-Testfall enthält.
 
-Testfälle aus `test/step-cases.js`. Basisflügel (`sampleProject()` in `test/helpers.js`):
+Testfälle aus `test/step-cases.js`. Basisflügel (`sampleProject()` in `test/helpers.js`, Schnittebenen **Senkrecht** (Vertical)):
 
 | Schnitt | y (mm) | x (mm) | z (mm) | Profiltiefe (mm) | Schränkung (°) | Profil |
 | ---: | ---: | ---: | ---: | ---: | ---: | --- |
@@ -486,6 +489,10 @@ x und z: Lage der Profilnase.
 | `pointed-tip` | Spitzer Rand, Verhältnis 0,002 (1/500); Endleistendicke 0,4 mm | 2 |
 | `pointed-elliptic-closed` | Spitzer Rand, Verhältnis 0,005 (1/200); Nasenlinie und Endlinie treffen sich bei x = 115 mm, y = 600 mm; geschlossene Endleiste | 2 |
 | `symmetric-0009` | NACA 0009 an jedem Schnitt | 2 |
+| `mitred-vtail-35` | Nicht der Basisflügel: 2 Schnitte mit NACA 0009, Profiltiefen 120 und 70 mm, der Rand 320 mm entlang eines Feldes mit 35°, x 40 mm; **Gerade Felder** (Straight panels), Schnittebenen **Auf Gehrung** (Mitred) (Randfläche um 35° geneigt) | 2 |
+| `mitred-vtail-35-y-up` | Wie `mitred-vtail-35`, mit **Fusion-360-Korrektur** (Y nach oben) geschrieben: jeder Punkt als (x, z, −y) | 2 |
+| `mitred-gull-15-5` | z 80,3848 mm an Schnitt 2 und 54,1382 mm am Rand (Felder mit 15° und −5°); Schnittebenen **Auf Gehrung** (Neigungen 0°, 5°, −5°), lineare Interpolation mit 8 Stationen je Feld | 2 |
+| `mitred-switch-short-panel` | Nicht der Basisflügel: NACA 2412 bei y 0 und 299,5 mm (Profiltiefen 200 und 180 mm), NACA 0012 bei y 300 und 600 mm (Profiltiefen 180 und 120 mm, Rand-z 52,8981 mm, Schränkung −2°); **Gerade Felder**, Schnittebenen **Auf Gehrung**: Das 0,5 mm breite Feld gilt als keines, beide Schnitte des Profilwechsels sind um 5,25° geneigt; das äußere Feld speichert einen Feldwinkel von 10,5° (Neigung am Rand 10,5°) | 2 |
 
 ## Dokumentation
 
@@ -531,13 +538,13 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | `planform.png` | Registerkarte **Grundriss** (Planform), **Segelflugmodell**, Nasenlinie und Endlinie eingeschaltet | 600 x 730 | 600 x 730 |
 | `airfoils.png` | Registerkarte **Profile** (Airfoils), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `upload-preview.png` | Vorschau beim Hochladen einer synthetischen X/Yo/Yu-Prozenttabelle mit Dezimalkomma, geöffnet über dem Entwurfstyp **Segelflugmodell** | 640 x 646 | 640 x 710 |
-| `export-dialog.png` | Dialog **Exportieren** (Export), **Segelflugmodell** | 640 x 506 | 640 x 552 |
+| `export-dialog.png` | Dialog **Exportieren** (Export), **Segelflugmodell** | 640 x 548 | 640 x 594 |
 | `settings.png` | Registerkarte **Einstellungen** (Settings), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `checks.png` | Registerkarte **Prüfungen** (Checks), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `flying-wing-control-net.png` | 3D-Ansicht, **Pfeilnurflügel** (Swept flying wing), **NURBS-Kontrollnetz zeigen** (Show NURBS control net) an | 680 x 730 | 680 x 730 |
 | `mobile-main.png` | Smartphone, Entwurfstyp **Sportmodell** (Sport) | 1082 x 2202 | 1082 x 2202 |
 | `mobile-planform.png` | Smartphone, **Grundriss**, **Sportmodell**, Endlinie eingeschaltet | 1082 x 2202 | 1082 x 2202 |
-| `xflr5-import.png` | Dialog **Aus XFLR5 importieren** (Import from XFLR5) für `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** geöffnet, Fenster 1280 x 1200 CSS-Pixel | 960 x 888 | 960 x 964 |
+| `xflr5-import.png` | Dialog **Aus XFLR5 importieren** (Import from XFLR5) für `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** geöffnet, Fenster 1280 x 1200 CSS-Pixel | 960 x 966 | 960 x 1042 |
 
 ### Dokumentationsprüfung
 
@@ -558,7 +565,7 @@ Nicht geprüft: Sprachumschaltzeile, Sprache des Alternativtexts, Sprache des Li
 ### Prüfung der Testanzahlen
 
 `npm run counts:check` leitet jede Testanzahl, die `README.md`, `README.de.md`, `RECORD.md`, Development, Entwicklung, Geometry und Geometrie nennen, aus den Testsuiten ab.
-Exit-Code 1, wenn eine genannte Zahl abweicht oder eine Aussage nicht gefunden wird; `scripts/check-test-counts.mjs` enthält jede Aussage als Muster mit der Anzahl ihrer Fundstellen.
+Exit-Code 1, wenn eine genannte Zahl abweicht oder eine Aussage nicht gefunden wird; `scripts/check-test-counts.mjs` enthält jede Aussage als Muster mit der Anzahl ihrer Fundstellen. Sie prüft außerdem die Tests einer Datei überall, wo eine Seite sie nennt: eine Tabellenzeile, die mit dem Pfad einer Testdatei in Backticks und einer Anzahl beginnt (alle Tests der Datei) oder mit `<n> von <m>` (`<m>` alle Tests der Datei), und den Pfad gefolgt von `(<n>)`.
 
 | Anzahl | Quelle |
 | --- | --- |

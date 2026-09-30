@@ -18,8 +18,8 @@ for (const c of stepCases()) {
   if (build.errors.length) throw new Error(`${c.name}: ${build.errors.join(' ')}`);
   const vol = meshVolume(halfWingMesh(tessellateHalf(build, { uRefine: 4, vRefine: 8 })));
   const file = join(out, `${c.name}.step`);
-  writeFileSync(file, wingToStep(build, { mirror: c.mirror, name: c.name, timestamp: '2026-01-01T00:00:00' }));
-  const meshes = exportMeshes(build, c.mirror ? 'halves' : 'right');
+  writeFileSync(file, wingToStep(build, { mirror: c.mirror, name: c.name, timestamp: '2026-01-01T00:00:00', up: c.up }));
+  const meshes = exportMeshes(build, c.mirror ? 'halves' : 'right', { up: c.up });
   const threemf = join(out, `${c.name}.3mf`);
   writeFileSync(threemf, meshesTo3mf(meshes, { title: c.name }));
   cases.push({ file, volumes: c.mirror ? [vol, vol] : [vol], tolerance: 5e-4, threemf, triangles: meshes.map((m) => m.mesh.indices.length / 3) });

@@ -1,6 +1,7 @@
 // Export dialog: STEP, STL, 3MF and the project JSON.
 
 import { wingToStep } from '../export/step.js';
+import { UP_AXES } from '../export/axes.js';
 import { MeshPrecisionError } from '../export/precision.js';
 import { meshToStl } from '../export/stl.js';
 import { meshesTo3mf } from '../export/threemf.js';
@@ -13,6 +14,25 @@ import { count, fixed, plain, tr } from '../i18n/index.js';
 
 /** Refinement of the display grid in v: cubic lofts are refined 3 times, straight panels once, times the density. */
 const vRefine = (build, dens) => (build?.surface?.degreeV === 1 ? 1 : 3) * dens;
+
+/** Browser storage key of the up axis last used for an export: a choice of the user's CAD program, not of the project. */
+export const UP_AXIS_KEY = 'wingdesigner.upAxis';
+
+/** The stored up axis, 'z' when there is none or storage is unavailable. */
+function storedUpAxis() {
+  try {
+    const up = localStorage.getItem(UP_AXIS_KEY);
+    return UP_AXES.includes(up) ? up : 'z';
+  } catch {
+    return 'z';
+  }
+}
+
+/** The axes of an export: the project JSON keeps the axes of the app. */
+const axesText = (fmt, up) =>
+  fmt !== 'json' && up === 'y'
+    ? tr('Units: millimetres. Axes: x chordwise towards the trailing edge, y up, z spanwise towards the left tip.')
+    : tr('Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.');
 
 /**
  * Size, expected time, memory and file size of the chosen export (triangles for STL and 3MF, control
@@ -63,9 +83,13 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
     h('label', { class: 'check' }, h('input', { type: 'radio', name: group, value, checked, disabled }), label);
   const sizeNote = h('p', { class: 'small', 'aria-live': 'polite' });
   const downloadBtn = h('button', { value: 'ok', class: 'primary' }, tr('Download'));
-  const choice = (form) => ({ fmt: form.fmt.value, half: form.half.value, dens: Number(form.dens.value) });
+  const choice = (form) => ({ fmt: form.fmt.value, half: form.half.value, dens: Number(form.dens.value), up: form.fusion.checked ? 'y' : 'z' });
+  const up = storedUpAxis();
+  const axesNote = h('p', { class: 'small muted' });
   const refresh = () => {
-    const note = exportSizeNote(build, choice(dialog.querySelector('form').elements));
+    const current = choice(dialog.querySelector('form').elements);
+    axesNote.textContent = axesText(current.fmt, current.up);
+    const note = exportSizeNote(build, current);
     sizeNote.hidden = !note;
     if (note) {
       sizeNote.className = note.className;
@@ -99,8 +123,10 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         radio('half', 'right', tr('Right half only'), false),
       ),
       h('fieldset', {}, h('legend', {}, tr('Mesh density (STL, 3MF)')), radio('dens', '1', tr('Normal'), true), radio('dens', '2', tr('Fine (4x triangles)'), false)),
+      // The Fusion 360 fix: Y as the up axis (src/export/axes.js) for STEP, STL and 3MF.
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'fusion', checked: up === 'y' }), tr('Fusion 360 fix: Y up (also SolidWorks)')),
       sizeNote,
-      h('p', { class: 'small muted' }, tr('Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.')),
+      axesNote,
       h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close('cancel') }, tr('Cancel')), downloadBtn),
     ),
   );
@@ -114,6 +140,14 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
     const fmt = data.get('fmt');
     const half = data.get('half');
     const dens = Number(data.get('dens'));
+    const upAxis = data.get('fusion') === 'on' ? 'y' : 'z';
+    if (fmt !== 'json') {
+      try {
+        localStorage.setItem(UP_AXIS_KEY, upAxis);
+      } catch {
+        // Without storage the dialog starts with Z up next time.
+      }
+    }
     try {
       if (fmt === 'json') {
         const file = projectFileText(project, build, { generatorVersion: version });
@@ -123,10 +157,10 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
       }
       if (blocked) return;
       if (fmt === 'step') {
-        download(slugFile(name, 'step'), wingToStep(build, { mirror: half !== 'right', name }), 'application/step');
+        download(slugFile(name, 'step'), wingToStep(build, { mirror: half !== 'right', name, up: upAxis }), 'application/step');
         return;
       }
-      const meshes = exportMeshes(build, half, { uRefine: dens, vRefine: vRefine(build, dens) });
+      const meshes = exportMeshes(build, half, { uRefine: dens, vRefine: vRefine(build, dens), up: upAxis });
       if (fmt === 'stl') {
         download(slugFile(name, 'stl'), meshToStl(concatMeshes(meshes.map((m) => m.mesh)), `Wingdesigner ${name}`), 'model/stl');
       } else {

@@ -2,6 +2,7 @@
 
 import { defaultGuides, guideXAt } from '../geom/guide.js';
 import { paramsApart } from '../geom/nurbs.js';
+import { storesPanelAngle } from '../geom/planes.js';
 import { LIMITS, airfoilPoints, newId } from './project.js';
 import { nacaAirfoil } from '../airfoil/naca.js';
 import { count, plain, tr, whole } from '../i18n/index.js';
@@ -99,7 +100,10 @@ export function syncGuidesToSpan(project) {
   return project;
 }
 
-/** Section inserted after sorted index afterIndex: halfway to the next one, or beyond the tip. */
+/**
+ * Section inserted after sorted index afterIndex: halfway to the next one, or beyond the tip. Halfway
+ * it lies on the panel, so it keeps the panel angle the panel stores.
+ */
 function nextSection(project, afterIndex) {
   const s = sortedSections(project);
   const a = s[Math.min(afterIndex, s.length - 1)];
@@ -115,6 +119,7 @@ function nextSection(project, afterIndex) {
         z: (a.z + b.z) / 2,
         chord: (a.chord + b.chord) / 2,
         twist: (a.twist + b.twist) / 2,
+        ...(storesPanelAngle(a) ? { panelAngle: a.panelAngle } : {}),
       },
     };
   }

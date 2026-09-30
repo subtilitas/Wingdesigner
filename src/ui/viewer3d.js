@@ -132,16 +132,19 @@ export function displayGeometry(build, origin = [0, 0, 0]) {
   const flat = [];
   const rel = (P) => [P[0] - origin[0], P[1] - origin[1], P[2] - origin[2]];
   const tri = (a, b, c) => flat.push(...rel(a), ...rel(b), ...rel(c));
-  const cap = (row, flip) => {
+  // Each cap is triangulated in the plane of its end section (roll about x; 0: the plane y = const).
+  const cap = (row, flip, roll = 0) => {
     const ring = build.closedTE ? row.slice(0, -1) : row;
-    const poly = ring.map((P) => [P[0], P[2]]);
+    const sr = Math.sin((roll * Math.PI) / 180);
+    const cr = Math.cos((roll * Math.PI) / 180);
+    const poly = ring.map((P) => [P[0], roll ? cr * P[2] - sr * P[1] : P[2]]);
     for (const [a, b, c] of stripTriangulate(poly, build.leIndex)) {
       if (flip) tri(ring[a], ring[c], ring[b]);
       else tri(ring[a], ring[b], ring[c]);
     }
   };
-  cap(grid[0], false);
-  cap(grid[V - 1], true);
+  cap(grid[0], false, build.rootRoll ?? 0);
+  cap(grid[V - 1], true, build.tipRoll ?? 0);
   if (!build.closedTE) {
     for (let k = 0; k < V - 1; k++) {
       const a = grid[k][M - 1];

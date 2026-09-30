@@ -191,7 +191,7 @@ The checks run:
 | `zero-chord` | Error | all points have the same x | – |
 | `outline-length` | Error | length of the normalized outline (sum of the segment lengths) above the threshold. Runs after normalization, before `self-intersection`; stops the remaining checks. Message: `The outline is … chords long; an airfoil outline is about 2 chords long.` | 10 chords |
 | `folds` | Error | number of points at which the upper or lower surface (split at the LE point) runs back in x (from LE to TE, x smaller than at the previous point) above the threshold. Runs after `outline-length`, before `self-intersection`; stops the remaining checks. Message: `The upper surface runs back in x at <n> points; the limit is 50.` (`lower` likewise). | 50 points |
-| `self-intersection` | Error | 2 non-adjacent outline segments cross. The segments are binned in a grid of about 1 cell per segment; a pair of binned segments is tested once, in the lower-left cell that both bounding boxes share; a segment that covers more than 16 cells is tested against every segment; a cell with more than 32 segments is searched again with its own grid, at most 6 levels deep. The search stops at 10 crossings; the message then counts `10+`. | – |
+| `self-intersection` | Error | 2 non-adjacent outline segments cross. A crossing of the first and the last segment does not count when their free ends lie at most 1e-4 of the chord apart (`TE_CROSS_TOLERANCE`, the `te-crossed` limit): UIUC files that start at x = 1.00000 and end at x = 1.00001 cross there by 2.7e-7 of the chord. The segments are binned in a grid of about 1 cell per segment; a pair of binned segments is tested once, in the lower-left cell that both bounding boxes share; a segment that covers more than 16 cells is tested against every segment; a cell with more than 32 segments is searched again with its own grid, at most 6 levels deep. The search stops at 10 crossings; the message then counts `10+`. | – |
 | `one-surface` | Error | upper or lower surface (split at the LE point) has fewer points than the minimum | 3 points |
 | `crossed-surfaces` | Error | thickness at one of 199 interior cosine-spaced x positions below the threshold | −0.01 % chord |
 | `surfaces-touch` | Error | upper and lower surface touch: thickness at a file point or a cosine-spaced sample between 1 % and 99 % chord at or below the threshold. At each x the lowest point of the upper surface and the highest point of the lower surface count (vertical segments, surfaces that fold back in x). Reported only without `crossed-surfaces`. | 0.001 % chord |
@@ -257,7 +257,7 @@ The checks run:
 | Key | Type | Written | On **Open** |
 | --- | --- | --- | --- |
 | `format` | `"wingdesigner-project"` | always | required, must match |
-| `version` | integer `1` | always | required, must be 1 |
+| `version` | integer `2` | always | required, 1 or 2. A version 1 file opens with `settings.sectionPlanes` `"vertical"`, the section planes it was designed with. An app that reads version 1 only refuses a version 2 file (`Unsupported project version 2.`) instead of dropping `sectionPlanes` and `foldedTilt`. |
 | `generator` | `{ "name": "Wingdesigner", "version": "<app version>" }` | always | ignored |
 | `exportedAt` | ISO 8601 time, UTC | always | ignored |
 | `name` | string | always | not a string: `Imported wing` (German interface: `Importierter Flügel`); at most 10,000 characters |
@@ -267,9 +267,10 @@ The checks run:
 | `sections` | array | always | required, 2 to 20,000 entries |
 | `guides` | object with `nose` and `end` | always | optional; `null` counts as missing; a missing guide is created from the section edges, disabled |
 | `settings` | object | always, every key | optional; a missing key takes its default; an unknown key is dropped |
+| `foldedTilt` | `{ "angle": <°>, "x": <mm>, "z": <mm> }` | only for a tilted part of an XFLR5 import (section "XFLR5 import", step 6) | optional; `null` counts as missing. `angle` within ±180°, `x` and `z` within ±1,000,000 mm; other keys inside are dropped. The tilt angle that the import folded into the section values, and the wing origin it turned the sections about. The build warns when such a project uses **Mitred** section planes. |
 | `derived` | object | only when the wing builds without errors and the file stays within 100 MB | ignored; recomputed |
 
-**Open** drops unknown keys and their contents: at the top level and inside `airfoils[]`, `airfoils[].source`, `sections[]`, `guides`, `guides.nose`, `guides.end` and `settings`.
+**Open** drops unknown keys and their contents: at the top level and inside `airfoils[]`, `airfoils[].source`, `sections[]`, `guides`, `guides.nose`, `guides.end`, `settings` and `foldedTilt`.
 
 ### `airfoils[]`
 
@@ -314,8 +315,9 @@ Ids made by the app:
 | `z` | mm | height of the LE; −1,000,000 to 1,000,000 mm |
 | `chord` | mm | 1 to 100,000 mm |
 | `twist` | ° | rotation about the chord point at `settings.twistPivot`; positive = LE up; −360 to 360° |
+| `panelAngle` | ° | optional; `null` or missing: the dihedral from `y` and `z`. Angle of the panel to the next section (in the order of `y`) that **Mitred** section planes use for the rolls and the thickness stretch ([[Geometry]], section 3.8); −89.9999 to 89.9999°. Unused on the tip section and with **Vertical**. Written by the XFLR5 import (section "XFLR5 import", step 4) and the **Panel angle** column of the Sections tab. |
 
-- Every value is a finite number.
+- Every value except `panelAngle` is a finite number.
 - Limits: `LIMITS` in `src/model/project.js` (`minChord`, `maxChord`, `maxCoordinate`, `maxTwist`, `maxSections`, `maxAirfoils`, `maxAirfoilPoints`, `maxGuidePoints`, `maxGuideCoordinate`, `maxExtent`, `maxName`, `maxId`, `maxText`); points per airfoil: `MAX_POINTS` in `src/airfoil/parse.js`; names: `MAX_NAME` in `src/airfoil/parse.js`.
 - The wing build checks the same limits (`limitErrors`), so a project that cannot be saved cannot be exported. Planform drags stay within them: chord 1 to 100,000 mm, leading-edge x within ±1,000,000 mm, section y at most 1,000,000 mm, guide point x within ±1,100,000 mm.
 - Array order is free. The build sorts the sections by `y`.
@@ -336,14 +338,15 @@ Ids made by the app:
 
 | Key | Values | Default | **Settings** control |
 | --- | --- | --- | --- |
-| `spanwise` | `"linear"`, `"smooth"` | `"linear"` | **Spanwise interpolation** |
+| `spanwise` | `"linear"`, `"straight"`, `"smooth"` | `"linear"` | **Spanwise interpolation**. `"straight"`: **Straight panels (straight lines between sections, as XFLR5)**; an app that knows only `"linear"` and `"smooth"` refuses the file (`settings.spanwise must be "linear" or "smooth".`). |
+| `sectionPlanes` | `"mitred"`, `"vertical"` | `"mitred"`; a version 1 file opens with `"vertical"` | **Section planes**: **Mitred (square to the panels, as XFLR5)** or **Vertical (y = const)** ([[Geometry]], section 3.8). `"smooth"` builds vertical planes with either value. |
 | `twistPivot` | `0`–`1`, fraction of chord | `0.25` | **Twist pivot (fraction of chord)** |
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Trailing edge** |
 | `trailingEdge.thickness` | ≥ 0 mm; used with `"thickness"`; limited to 5 % of the local chord | `0.4` | **Trailing-edge thickness (mm)** |
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Wing tip** |
 | `tip.ratio` | `0.001`–`0.01` (tip profile 1/1000 to 1/100 of the previous section chord); tip chord at least 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N of the previous section chord** |
 | `chordSamples` | integer `16`–`200` | `60` | **Chordwise stations per surface** |
-| `panelStations` | integer `3`–`40`; the build uses fewer only when the loft grid would exceed 5,000,000 points ([[Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides or smooth mode** |
+| `panelStations` | integer `3`–`40`; the build uses fewer only when the loft grid would exceed 5,000,000 points ([[Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides, smooth mode or mitred linear panels** |
 | `parametrization` | `"uniform"`, `"chord"`, `"centripetal"` | `"centripetal"` | **Profile parametrization** |
 | `mirror` | `true`, `false`; 3D view only, no effect on exports | `true` | **Show mirrored half (y < 0)** |
 
@@ -355,8 +358,8 @@ Unknown keys inside `settings` are dropped on **Open**. **Save** writes the keys
 | --- | --- |
 | `profiles[]` | one entry per airfoil that a section uses: `airfoil` (id), `name`, `curve`, `leadingEdgeParameter` (curve parameter at the LE) |
 | `guides.nose`, `guides.end` | guide curve, control points `[x, y]` in mm; `null` when the guide is disabled |
-| `stations[]` | every spanwise station: `y` (mm), `v` (span fraction 0–1), `xLE`, `z`, `chord` (mm), `twist` (°) |
-| `surface` | surface of the right half: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` without guides; `"linear"` with a guide enabled: 3, or 2 or 1 when the loft grid limit lowers the stations per panel to 2 or 1; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
+| `stations[]` | every spanwise station: `y` (mm), `v` (span fraction 0–1), `xLE`, `z`, `chord` (mm), `twist` (°), `roll` (°, roll of the station plane about x) and `stretch` (thickness factor), [[Geometry]], section 3.8 |
+| `surface` | surface of the right half: `degreeU` (3), `degreeV` (1 when no panel has intermediate stations: `spanwise` `"straight"`, and `"linear"` without guides and without panels between mitred planes of different roll; with intermediate stations (a guide enabled, or `"linear"` panels between mitred planes of different roll): 3, or 2 or 1 when the loft grid limit lowers the stations per panel to 2 or 1; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
 
 - Curve object: `degree`, `knots`, `controlPoints`. All curves and the surface are non-rational; no `weights` key is written.
 - `profiles[].curve.controlPoints`: `[x, y]` in normalized airfoil coordinates (chord 1).
@@ -382,10 +385,11 @@ The file is rejected, and the first 3 messages are shown, when:
 - `name` is longer than 10,000 characters, or an airfoil `name` is present and not a string or longer than 10,000 characters;
 - an airfoil `source` is present, not `null` and not an object, or a known `source` key holds something other than a string, `true`, `false` or `null`, or a string longer than 2,000 characters;
 - an airfoil has fewer than 5 or more than 100,000 points, or a point that is not an `[x, y]` pair of finite numbers;
-- a section `x`, `y`, `z`, `chord` or `twist` is not a finite number;
+- a section `x`, `y`, `z`, `chord` or `twist` is not a finite number, or `panelAngle` is present and neither `null` nor a finite number;
 - `chord` < 1 mm or > 100,000 mm, `y` < 0, 2 sections share `y`, or `airfoil` names an unknown id;
-- a section `x`, `y` or `z` lies outside −1,000,000 to 1,000,000 mm, or `twist` outside −360 to 360°;
+- a section `x`, `y` or `z` lies outside −1,000,000 to 1,000,000 mm, `twist` outside −360 to 360°, or `panelAngle` outside −89.9999 to 89.9999°;
 - a `settings` value is outside the table above;
+- `foldedTilt` is present, not `null`, and not an object with the numbers `angle`, `x` and `z`, or `angle` lies outside ±180° or `x` or `z` outside ±1,000,000 mm;
 - `guides.nose` or `guides.end` is neither an object nor `null`;
 - a guide `enabled` is not `true` or `false`, or a guide `edited` is present and not `true` or `false`;
 - a guide `mode` is not `"fit"` or `"control"`;
@@ -401,13 +405,17 @@ Checked only when the wing is built, in this order:
 - the airfoil sanity checks;
 - `curve-shape`: the NURBS profile curve crosses itself (loop size, mean width, above 0.05 % chord) or runs back in x (above 0.01 % chord);
 - guide curves: y strictly increasing; the curve does not double back in span direction; x of every control point of the curve within ±1,200,000 mm;
+- `spanwise` `"straight"` with a guide curve on;
+- `sectionPlanes` `"mitred"` (not with `"smooth"`): a section plane more than 60° from a panel next to it (thickness stretch above 2; a plane that rounds to 60.0° builds), or, with `spanwise` `"straight"`, the planes of 2 neighbouring sections meet within the airfoils ([[Geometry]], section 3.6);
 - interpolated section values are finite numbers (leading-edge x, chord, z, cosine of the twist);
 - interpolated leading-edge x, trailing-edge x and z within ±1,200,000 mm, chord at most 100,000 mm;
+- `sectionPlanes` `"mitred"` with `spanwise` `"linear"`: along a panel the section planes turn faster than its airfoils allow, so the surface folds; at a section both panels next to it count ([[Geometry]], section 3.6);
 - `spanwise` `"smooth"`: an interpolated value (leading-edge x, chord, z, twist or a profile point height) lies more than 2 × the range of its section values outside that range;
 - blended profile thickness below 0 (`spanwise` `"smooth"`: overshoot; `"linear"`: upper and lower surface of a section airfoil cross);
 - thickness after the trailing-edge setting below 0;
 - upper and lower surface touch after blending or after the trailing-edge setting: thickness at a chord station between 1 % and 99 % chord at or below 0.001 % chord;
 - chord below 1 mm;
+- `sectionPlanes` `"mitred"`: after the fit, the planes of 2 neighbouring stations cross within the airfoils;
 - fitted surface has non-finite coordinates;
 - fitted surface turns inside out (local thickness below 0) or has zero thickness (at most 0.001 % chord between 1 % and 99 % chord) between stations;
 - fitted surface chord below 0.9 mm between stations (surface folds or narrows);
@@ -424,9 +432,9 @@ Sample wing `Sport wing 1500`, shortened; `"..."` marks omitted entries:
 ```json
 {
  "format": "wingdesigner-project",
- "version": 1,
+ "version": 2,
  "generator": { "name": "Wingdesigner", "version": "0.1.0" },
- "exportedAt": "2026-09-29T12:00:00.000Z",
+ "exportedAt": "2026-09-30T12:00:00.000Z",
  "name": "Sport wing 1500",
  "units": "mm",
  "coordinateSystem": "x chordwise towards the trailing edge, y spanwise towards the right tip, z up; mirror plane y = 0",
@@ -446,7 +454,7 @@ Sample wing `Sport wing 1500`, shortened; `"..."` marks omitted entries:
   "end": { "enabled": false, "mode": "fit", "degree": 3, "points": [[240, 0], [217, 450], [185, 750]] }
  },
  "settings": {
-  "spanwise": "linear", "twistPivot": 0.25,
+  "spanwise": "linear", "sectionPlanes": "mitred", "twistPivot": 0.25,
   "trailingEdge": { "mode": "thickness", "thickness": 0.5 },
   "tip": { "mode": "flat", "ratio": 0.005 },
   "chordSamples": 60, "panelStations": 8, "parametrization": "centripetal", "mirror": true
@@ -460,21 +468,22 @@ Sample wing `Sport wing 1500`, shortened; `"..."` marks omitted entries:
   ],
   "guides": { "nose": null, "end": null },
   "stations": [
-   { "y": 0, "v": 0, "xLE": 0, "z": 0, "chord": 240, "twist": 0 },
-   { "y": 450, "v": 0.6, "xLE": 12, "z": 12, "chord": 205, "twist": -0.8 },
-   { "y": 750, "v": 1, "xLE": 55, "z": 33, "chord": 130, "twist": -2.5 }
+   { "y": 0, "v": 0, "xLE": 0, "z": 0, "chord": 240, "twist": 0, "roll": 0, "stretch": 1.00035549236814 },
+   { "y": 17.127105185, "v": 0.022836140247, "xLE": 0.456722804932, "z": 0.456722804932, "chord": 238.667891819, "twist": -0.030448186995, "roll": 0.105268866729, "stretch": 1.00030817127560 },
+   "...",
+   { "y": 750, "v": 1, "xLE": 55, "z": 33, "chord": 130, "twist": -2.5, "roll": 4.00417294071, "stretch": 1 }
   ],
   "surface": {
-   "degreeU": 3, "degreeV": 1,
-   "knotsU": [0, 0, 0, 0, 0.00508170557159, "..."], "knotsV": [0, 0, 0.6, 1, 1],
-   "controlPoints": [[[240.020113789, 0, -0.123958345176], "..."], "..."],
-   "leadingEdgeU": 0.501704806629, "closedTrailingEdge": false
+   "degreeU": 3, "degreeV": 3,
+   "knotsU": [0, 0, 0, 0, 0.00508113999608, "..."], "knotsV": [0, 0, 0, 0, 0.0986330253937, "...", 0.6, 0.6, 0.6, "...", 1, 1, 1, 1],
+   "controlPoints": [[[240.020113789, 0, -0.124002411422], "..."], "..."],
+   "leadingEdgeU": 0.501717967263, "closedTrailingEdge": false
   }
  }
 }
 ```
 
-Counts in this file: 161 points per airfoil, 165 profile knots, 121 × 3 surface control points, 125 `knotsU`.
+Counts in this file: 161 points per airfoil, 165 profile knots, 17 stations (8 per panel: both panels lie between mitred planes of different roll), 121 × 17 surface control points, 125 `knotsU`, 21 `knotsV`.
 
 ### Browser copy (`localStorage`)
 
@@ -559,6 +568,7 @@ A refused file shows the red notice `Cannot open <file>: <message>`. The design 
 | XML text | Element names are compared without case; unknown elements are skipped. The spelling `Symetric` (one m) is XFLR5's. The 5 XML entities and numeric character references are decoded. XML declaration, DOCTYPE, comments, CDATA sections and a byte order mark are accepted. |
 | Position | `x, y, z` in the file unit. XML with fewer than 3 values: 0, 0, 0 and a warning, as in XFLR5. `.xfl`: a position component or a tilt angle that is not a number, below 1e-6 in magnitude or above 1000 in magnitude becomes 0, as when XFLR5 loads the file. |
 | Left-side airfoils | not used. The geometry of XFLR5's wing is mirrored; the right-side airfoils build the half wing (+y). |
+| Reserved blocks (`.xfl`) | Every wing and plane record ends in a block of 20 integers and 50 numbers. XFLR5 6.11 and later write zeros; a wing writes 0 or 1 first and its type (0 to 4) last. XFLR5 6.10.01 to 6.10.04 write the index instead: 0 to 19 and 0 to 49. Any other content ends the read with `damaged` at that record: records have no end mark, so other values show a read that has lost its place. |
 | `.xfl` airfoils | the base (undeflected) coordinates. Names are compared exactly, with case and spaces (`E205  (10.48%)`). A later airfoil of the same name replaces the earlier one. An empty name finds no airfoil. |
 
 ### Wings and surfaces
@@ -594,7 +604,7 @@ Notation, for the sections i = 0 … n−1 from the root to the tip: y_i, c_i, h
 | Tilt angle | incidence of the wing in the plane: rotation of the whole wing about the y axis through the wing origin; positive = nose up |
 | Position | x, y, z of the wing origin in the plane. y is not used, as in XFLR5 (which uses it only for double fins). |
 
-The order of the steps: panels, clean-up, tilt and position, airfoil frame, rounding.
+The order of the steps: panels, clean-up, tilt and position, airfoil frame, rounding, section planes.
 
 **1. Panels.** The dihedral of the panel outboard of a section sets its direction:
 
@@ -623,10 +633,10 @@ section i:  x = k·h_i   y = Y_i   z = Z_i   chord = k·c_i   twist = τ_i
 | chord above 0 and below 1 mm (`LIMITS.minChord`) | raised to 1 mm: warning `Chords below 1 mm were raised to 1 mm, the smallest chord Wingdesigner builds, at <sections>.` |
 | all sections at one y | error `All sections of the wing lie at y = <y> mm: the wing has no span.` |
 | a panel whose outer end does not lie at least 0.001 mm further out in y than its inner end (dihedral near 90° or more) | error `The panel from section <a> to <b> has <angle>° dihedral: its outer end must lie further out in y than its inner end.` |
-| dihedral above 10° or below −10° | kept: warning `The panel from section <a> to <b> has <angle>° dihedral: the vertical sections are <pct> % as thick across the panel as in XFLR5.` |
+| dihedral above 10° or below −10° | kept. With **Vertical** section planes (step 6): warning `The panel from section <a> to <b> has <angle>° dihedral: the vertical sections are <pct> % as thick across the panel as in XFLR5.` With **Mitred** section planes no warning: the thickness across the panel is XFLR5's. |
 | root y_position above 0.1 mm | kept; the halves are built as separate bodies, as in XFLR5: info `The root lies at y = <y> mm: the two halves are built as separate bodies, as in XFLR5.` |
 | two sections at one y (a panel shorter than 0.1 mm), identical: same chord, `xOffset`, `Twist`, right and left airfoil name | the inner section is dropped without a message |
-| two or more sections at one y, not identical (XFLR5's way to switch the airfoil abruptly) | the inner sections move inwards along the inner panel by d = min(0.5 mm, ¼ of the inner panel length): warning `Sections <a> and <b> share y = <y> mm; section <a> was moved <d> mm inwards.` In a run of m + 1 sections at one y the outermost stays and the others move by d, d·(m−1)/m … d/m. A run at the root has no inner panel: the innermost stays and the others move outwards along the outer panel by d/m … d, with d = min(0.5 mm, ¼ of the outer panel length): `… section <b> was moved <d> mm outwards.` The project needs strictly increasing y. |
+| two or more sections at one y, not identical (XFLR5's way to switch the airfoil abruptly) | the inner sections move inwards along the inner panel by d = min(0.5 mm, ¼ of the inner panel length): warning `Sections <a> and <b> share y = <y> mm; section <a> was moved <d> mm inwards.` In a run of m + 1 sections at one y the outermost stays and the others move by d, d·(m−1)/m … d/m. A run at the root has no inner panel: the innermost stays and the others move outwards along the outer panel by d/m … d, with d = min(0.5 mm, ¼ of the outer panel length): `… section <b> was moved <d> mm outwards.` The project needs strictly increasing y. The moved sections lie less than 1 mm apart in y: with **Mitred** section planes they share one plane, the bisector plane of the panels around the run, as in XFLR5 ([[Geometry]], section 3.8, short panels). |
 | left airfoil name differs from the right one | the right one is used: warning `Left and right airfoils differ at <sections>; the right-side airfoils are used.` |
 | a position beyond ±1,000,000 mm, a chord above 100,000 mm, a twist beyond ±360° after the tilt | error naming the section, e.g. `Section <n>: the position lies beyond ±1000000 mm, the limit of Wingdesigner.` |
 
@@ -641,7 +651,7 @@ z' = −xq·sin θ + zq·cos θ + k·LE_z
 twist' = τ + θ             y unchanged      LE_y not used
 ```
 
-- Wingdesigner places every airfoil in a plane of constant y. A rotation about the y axis keeps such a plane, so the fold is exact for every section.
+- A rotation about the y axis keeps a vertical section plane, so the fold is exact with **Vertical** section planes; mitred planes are not turned with it. A tilted part therefore imports with **Vertical** section planes (step 6), and the project stores the tilt as `foldedTilt`: `angle` θ reduced by whole turns to −180 … 180° (a tilt of 400° stores 40°), `x` = k·LE_x, `z` = k·LE_z, the wing origin. A tilt of whole turns stores none.
 - Info `Tilt angle -1.5° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.`
 - Info `Position in the XFLR5 plane applied: the wing origin moved to x 650 mm, z 40 mm.` A position y other than 0: info `Position y <y> mm is not used, as in XFLR5.`
 - When the mean twist after the fold lies beyond ±180° (a tilt of 400°, say), a whole number of turns common to all sections is taken out: info `All twists were changed by -360°, a whole number of turns; the sections stay the same.`
@@ -653,24 +663,28 @@ twist' = τ + θ             y unchanged      LE_y not used
 | --- | --- |
 | an airfoil of the `.xfl` project | measured on its coordinates |
 | an uploaded `.dat` file (XFLR5 reads a `.dat` file as it is; the file is the one XFLR5 used) | measured on its coordinates |
-| an airfoil of the NACA generator | measured on the generated coordinates. XFLR5 draws the nose (0, 0) of its own NACA airfoils at the section point. The generator adds the thickness across the mean line, so the leading edge (the point of least x) of a cambered section lies above and slightly ahead of the nose: for the cambered presets 0.11 % of the chord (NACA 2410) to 0.68 % (NACA 23015), 0.16 % for NACA 2412. The frame puts the nose where XFLR5 draws it. Symmetric sections have no frame; NACA 2408, whose offset lies within `FRAME_TOLERANCE`, has none either. |
+| an airfoil of the NACA generator | measured on the generated coordinates. XFLR5 draws the nose (0, 0) of its own NACA airfoils at the section point. The generator adds the thickness across the mean line, so the leading edge (the point of least x) of a cambered section lies above and slightly ahead of the nose: for the cambered presets 0.11 % of the chord (NACA 2410) to 0.68 % (NACA 23015), 0.16 % for NACA 2412. The frame puts the nose where XFLR5 draws it. Symmetric sections have no frame; NACA 2408, whose offset lies within `FRAME_TOLERANCE`, has none either. The shape of a cambered section still differs from XFLR5's own NACA airfoil, which adds the thickness vertically: at 250 mm chord by 0.28 mm (NACA 2412, 0.11 % of the chord) to 1.41 mm (NACA 23018, 0.56 %), near 1 to 3 % of the chord; the report does not name it. |
 | an airfoil of the current project generated from the NACA equations (`source.kind` `naca`: sections of the **NACA generator** and the NACA presets of **Library** in the **Airfoils** tab, of the wizard and of the sample wing), whose points are the generated section of its NACA code (`source.code`, or the name) as generated or as checked | the frame of the generated section of its NACA code, as for the generator: with such an airfoil in the project under the name, the file gives the same wing as with no project open. Outside `FRAME_LIMIT` it is used without a frame, with the warning of an upload. |
 | another airfoil of the current project (also NACA metadata with other points, e.g. in a project file edited by hand), a bundled library airfoil | none: the XFLR5 coordinates of the name are not known. The report says so for a library airfoil far off (0, 0) in its own coordinates and for a current-project airfoil of an XFLR5 import or an upload (section "Report"). |
 
 - The frame goes with the airfoil in use, not with the XFLR5 name. A library airfoil picked for a name of the `.xfl` keeps the values of steps 1 to 3. The file's Clark Y picked for another name moves the sections of that name.
 - Measured on the coordinates after the clean-up of the airfoil parser (duplicate points, closing point, percent of chord, point order), before the normalization, in fractions of the chord: (l_x, l_y) is the leading edge (the point of least x on the fitted profile curve) and cT the chord from l_x to the x of the trailing-edge midpoint.
-- Offsets of at most `FRAME_TOLERANCE` = 0.001 (0.25 mm at 250 mm chord) count as none: l_x and l_y become 0 and cT becomes 1. In the airfoils checked (Clark Y and E205 of real projects, the library files RAF 34 and S9104), whose nose point lies at (0, 0), the leading edge of the fitted curve lies up to 5.6e-4 from it; they get no frame.
+- Offsets of at most `FRAME_TOLERANCE` = 0.001 (0.25 mm at 250 mm chord) count as none: l_x and l_y become 0 and cT becomes 1. In the airfoils checked (Clark Y and E205 of real projects, the library files RAF 34 and S9104), whose nose point lies at (0, 0), the leading edge of the fitted curve lies up to 5.6e-4 from it; they get no frame. The largest offset below the tolerance in the airfoils of 29 real `.xfl` projects is 7.6e-4 (NACA 4415 of one project, 0.30 mm at 391 mm chord): the section keeps its values, a rigid shift of at most 0.1 % of the chord against XFLR5.
 
-For a section after steps 1 to 3 with x, z, chord c and twist t (degrees):
+For a section after steps 1 to 3 with x, y, z, chord c and twist t (degrees), in a section plane of roll φ with thickness stretch m ([[Geometry]], section 3.8):
 
 ```
-s  = 0.25·(1 − cT)       u = l_x − s        w = l_y
+s  = 0.25·(1 − cT)       u = l_x − s        w = m·l_y
 x' = x + c·(s + u·cos t + w·sin t)
-z' = z + c·(−u·sin t + w·cos t)
-chord' = c·cT            y and twist unchanged
+e  = c·(−u·sin t + w·cos t)
+y' = y − e·sin φ
+z' = z + e·cos φ
+chord' = c·cT            twist unchanged
 ```
 
-- With l_x = 0 and cT = 1 the section moves by c · l_y along its normal (sin t, cos t).
+- φ and m are XFLR5's: from the dihedrals of the file, with the mitred rules of [[Geometry]], section 3.8. With **Vertical** section planes (step 6) φ = 0 and m = 1: y stays.
+- The move turns a panel whose two sections move differently: two airfoils, or one airfoil at two twists or chords. The dihedral of the moved sections then differs from the file's, and the build would take other rolls and stretches. With **Mitred** section planes, a section i whose panel to section i + 1 is at least 1 mm wide in y stores the dihedral of the file as `panelAngle` (4 decimals) when the two differ by more than 0.001° (`PANEL_ANGLE_TOLERANCE`). The Sections tab shows it in the **Panel angle** column. Worked example without its tilt: the moved sections give panels of 2.92° and 4.88°, the file 3° and 6°; the sections store 3 and 6, and the build rolls 0°, 4.5° and 6°, as XFLR5.
+- With l_x = 0 and cT = 1 the section moves by c · m · l_y along the up direction of its twisted airfoil, (sin t, cos t) in x and the up direction (0, −sin φ, cos φ) of its plane.
 - Every airfoil point then lies where a rigid rotation of the airfoil about the quarter chord puts it; XFLR5's own mesh differs slightly (section "Differences from XFLR5").
 - The Sections table then differs from XFLR5's wing table by this move: 8.53 mm at the root of the worked example.
 - A frame with |l_x| or |l_y| above 0.1, or cT outside 0.5 … 2 (`FRAME_LIMIT`), is not in chord units (a file in millimetres, say): XFLR5 would draw the airfoil many chords long. An airfoil of an `.xfl` then fails the check (`The coordinates are not in chord units (leading edge at x = <x>, y = <y>; trailing edge at x = <te>).`) and the other sources of section "Airfoils" are tried. An upload is used without a frame, scaled to chord 1, with a warning: `The coordinates are not in chord units (leading edge at x = <x>, y = <y>; trailing edge at x = <te>): XFLR5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file.`
@@ -678,17 +692,40 @@ chord' = c·cT            y and twist unchanged
 
 **5. Rounding.** The project holds section values to 4 decimals (1e-4 mm, 1e-4 °). This drops noise of the unit conversion such as a chord of 400.04999999999995 mm. The section ids are `s1`, `s2` … in root-to-tip order.
 
+**6. Section planes.** XFLR5 places its sections in mitred planes. The import sets **Section planes** as follows:
+
+| Part | **Section planes** | Report (info) |
+| --- | --- | --- |
+| tilt angle 0 or whole turns, the mitred planes build | **Mitred** | `Section planes: mitred, as in XFLR5. The root section is vertical, a section between two panels lies in the bisector plane of the panels, and the tip section is square to the last panel; the airfoils keep their thickness across the panels.` Only when a roll is not 0. |
+| tilted (step 3) | **Vertical**; `foldedTilt` stored | `Section planes: vertical. The tilt angle of 3° is folded into the section values, which is exact for vertical section planes only: with mitred planes, as in XFLR5, the part would lie up to about 1.58 mm off XFLR5's.` Only when a roll is not 0. The estimate is the largest 0.75 · c · \|sin θ · sin φ\| over the sections, φ = XFLR5's roll. The dihedral warnings of step 2 apply. |
+| untilted, mitred planes would fold the surface | **Vertical** | `Section planes: vertical. Mitred planes, as in XFLR5, would fold the surface between sections 2 and 3.` The dihedral warnings of step 2 apply. |
+| untilted, a mitred plane more than 60° from its panel (stretch above 2) | **Vertical** | `Section planes: vertical. The mitred plane of section 1, as in XFLR5, would lie 65.0° from its panel, beyond the limit of 60°.` The dihedral warnings of step 2 apply. |
+
+- The check runs on the section values and the airfoils of the project, without the loft (`mitredPlaneProblem` in `src/geom/wing.js`): the stretch and fold checks of the build ([[Geometry]], section 3.6). So it also holds where the dialog does not build the wing (sizes above the warning thresholds) and where the build has other errors. Sections that the airfoil frames of step 4 move past each other in y count as a fold.
+- Example of a fold: a panel of 10° and 1.5 mm between panels of 0° and 30°, NACA 0012 of 150 mm chord. The planes of sections 2 and 3, rolled 5° and 20°, meet 5.7 mm from section 2, inside its airfoil (±9 mm).
+- Two sections at one y (step 2) do not fold: 0.5 mm apart, they share one plane.
+- The build takes the rolls from the section positions of the project, after the airfoil frames of step 4, and from the stored panel angles of step 4, which are XFLR5's dihedrals. The main wing of the worked example without its tilt builds rolls of 0°, 4.5° and 6°, as XFLR5; its trailing edges lie within 1e-3 mm of XFLR5's.
+
 ### Differences from XFLR5
 
-Steps 1 to 3 give the section values of XFLR5's wing table with tilt angle and position applied; step 4 moves them to where XFLR5 draws the airfoils. The built wing differs from XFLR5's own surface in three ways.
+Steps 1 to 3 give the section values of XFLR5's wing table with tilt angle and position applied; step 4 moves them to where XFLR5 draws the airfoils. With **Straight panels** and **Mitred** section planes, which the import sets for an untilted part, the built wing joins the sections as XFLR5 does, in XFLR5's planes (section "Result of the import"). It differs from XFLR5's own surface in the ways below.
+
+Measured against the STL files that the code of XFLR5 6.62 wrote through a local driver (100 × 10 panels per surface) for 93 surfaces of 15 real projects: the largest distance from an XFLR5 vertex to the built surface is at most 0.6 mm on 80 surfaces. The other 13 are the 4 tilted V-tails, 8 wings with the 0.5° flap and 1 wing with a 33-point Clark YS (rows below).
 
 | Difference | Size |
 | --- | --- |
-| XFLR5 twists a section about an axis along its panels: at a dihedral break about the bisector of the two panels, and it cuts the section in the miter plane; at the tip about the axis of the outer panel. Wingdesigner twists about the y axis and keeps the section in a plane of constant y. | Trailing-edge midpoints of the imported worked example against the STL files that the code of XFLR5 6.62 wrote for its wings through a local driver: main wing 0.0001 mm at the root, 0.24 mm at the dihedral break (section 2), 0.51 mm at the tip; elevator 0.0001 mm; Fixture B 0.006, 0.057, 0.091 and 0.16 mm at sections 1 to 4. Leading-edge points: at most 0.56 mm. |
-| The thickness across a panel with dihedral δ is cos δ times XFLR5's. | 99.9 % at 3°, 98.5 % at 10°, 82 % at 35° (a V-tail modelled as an elevator with large dihedral). The report warns above 10°. |
-| XFLR5 shears the airfoil of a twisted section: the thickness stays along the untwisted panel normal. Wingdesigner rotates the airfoil as a rigid shape. | 0.37 mm at 3° twist and 300 mm chord (Fixture B root) |
+| With **Vertical** section planes (a tilted part, or the fallback of step 6): XFLR5 twists a section about an axis along its panels: at a dihedral break about the bisector of the two panels, and it cuts the section in the miter plane; at the tip about the axis of the outer panel, with the tip face square to that panel. Wingdesigner twists about the y axis and keeps the section in a plane of constant y. | Trailing-edge midpoints of the imported worked example: main wing 0.0001 mm at the root, 0.24 mm at the dihedral break (section 2), 0.51 mm at the tip; elevator 0.0001 mm; Fixture B 0.006, 0.057, 0.091 and 0.16 mm at sections 1 to 4. Tip face of real wings with 4° and 10° outer panels: 0.40 and 0.42 mm from XFLR5's vertices, up to 1.4 mm from XFLR5's surface. |
+| With **Vertical** section planes the thickness across a panel with dihedral δ is cos δ times XFLR5's. | 99.9 % at 3°, 98.5 % at 10°, 82 % at 35° (a V-tail modelled as an elevator with large dihedral). The report warns above 10°. The 4 tilted 35° V-tails of `initialAerodynamicSym.xfl` (tilt −3° and −10°) lie 2.87 mm off. With **Mitred** planes the 4 untilted 35° V-tails of that file lie within 0.013 mm and the 40° V-tail of `mini_talon.xfl` within 0.025 mm (2.87 and 2.31 mm with vertical planes). |
+| XFLR5 skips a panel shorter than 0.1 mm along the span; Wingdesigner puts the two sections of a panel less than 1 mm wide in y into one plane ([[Geometry]], section 3.8). A panel 0.1 to 1 mm long is a panel in XFLR5 and none in Wingdesigner. | Not measured: none of the 93 surfaces has such a panel. The frame-moved sections take XFLR5's plane angles (step 4): the 9 flat wings of `Wing Design and Analysis.xfl` lie within 0.229 mm, as with vertical planes (0.234 mm with the angles of the moved sections); the other 84 surfaces change by less than 0.001 mm. |
+| XFLR5 shears the airfoil of a twisted section: the thickness stays along the untwisted panel normal. The tilt angle of the wing turns the section rigidly in XFLR5 as well; only the twist of the file shears. Wingdesigner rotates the airfoil as a rigid shape. | 0.37 mm at 2° twist of the file and 300 mm chord (Fixture B root; 3° after the 1° tilt angle). 0.29 to 0.60 mm on 10 surfaces of real projects (0.60 mm: MH 112, 400 mm chord, 2°). |
+| XFLR5 joins the airfoil points with straight segments; Wingdesigner fits a cubic B-spline through them. | Median 0.15 mm over the 93 surfaces; 1.01 mm for a Clark YS of 33 points at 400 mm chord, 0.53 mm for the Rascal airfoil at 406 mm chord. |
+| XFLR5 draws a flap deflected; the import builds the base shape (section "Airfoils", flaps). | 2.5 to 2.7 mm behind the hinge for the 0.5° flap of `Wing Design and Analysis.xfl`. |
 
 The STL files are not in the repository. In this comparison, a wrong sign of twist or tilt, a cumulative dihedral or a projected y would each move points by 3 to 20 mm.
+
+With **Spanwise interpolation** set to **Linear** instead of **Straight panels**, a panel whose chord changes together with the airfoil or the twist bends away from XFLR5's (measured with **Vertical** section planes): 4.17 mm on the tip panel of `UltraStick120.xfl` (NACA 0014 at 406.4 mm to a 12.7 mm chord), 2.00 mm on `UltraStick25e.xfl`, 1.60 and 1.25 mm on two planes of `initialAerodynamicSym.xfl` (chord and twist). With **Straight panels** these four surfaces lie within 0.04, 0.03, 0.39 and 0.09 mm.
+
+The statistics (**Checks** tab, status bar, the line below the planform preview of the import dialog) give span and area projected onto the x-y plane. XFLR5 gives them along the panels. For a wing with dihedral the two differ: the 35° V-tails of the real samples show 17.5 % less span and 18.1 % less area than XFLR5's **Wing span** and **Area**, the 40° V-tail 19.8 % and 23.4 %. The geometry is the same.
 
 ### Airfoils
 
@@ -706,7 +743,7 @@ Each distinct right-side airfoil name of the surface is one row of the airfoil t
 | 5 | a similar name | case-insensitive, ignoring spaces, `-` and `_`, among the uploads (name line and file name), the current project and the library. Preselected, with a warning. |
 
 - The airfoil check is the one of the **Airfoils** tab (parser clean-up, sanity checks). In addition the fitted profile curve must not cross itself or run back in x (`curve-shape`, **Profile parametrization** centripetal).
-- Warnings of the check appear once per airfoil in use, with its sections: `Airfoil "Clark Y" (sections 1–2): <message>`. The upload is named with its file name, as the select shows it: `Airfoil "TEST 12 (test12.dat)" (section 2): …`. An inclined chord line (`rotated`) is info: `Airfoil "Clark Y" (sections 1–2): The line from the leading edge to the trailing edge is inclined by -1.97 degrees; the coordinates are kept, so twist refers to the file's x axis.`
+- Warnings of the check appear once per airfoil in use, with its sections: `Airfoil "Clark Y" (sections 1–2): <message>`. The upload is named with its file name, as the select shows it: `Airfoil "TEST 12 (test12.dat)" (section 2): …`. An inclined chord line (`rotated`) is info, because XFLR5 draws the same coordinates: `Airfoil "Clark Y" (sections 1–2): The line from the leading edge to the trailing edge is inclined by -1.97 degrees; the coordinates are kept, so twist refers to the file's x axis.` A library airfoil gets a warning instead (section "Report").
 - No candidate passes: the row shows **Missing** in the column **Found**, and **Import** stays disabled (`Import (2 airfoils missing)`). The error names the first candidate that failed, e.g. `Airfoil "NACA 5128" (sections 1–2): the matching airfoil (NACA generator: NACA 5128) fails the check: … Upload a .dat file or pick an airfoil.` Generated sections with high camber and thickness run back in x at 11 to 13 % of the chord and fail the check, for example NACA 5128, 5130, 6130, 8130 and 9130.
 - The user can change every row: any airfoil of the list (airfoils of the file, uploads, current project, library, NACA presets), or **Upload .dat** for that row. A picked airfoil replaces the automatic choice.
 - Without a name (an empty airfoil name in the file): error `XFLR5 names no airfoil at <sections>: upload a .dat file or pick an airfoil.`
@@ -729,8 +766,9 @@ The report is calculated again after every choice. Order: errors, then warnings,
 | --- | --- | --- | --- |
 | second wing, fin, the other surface | not imported | info | `Not imported: the horizontal stabilizer "Elevator", the fin "Fin". One surface per import; open the file again for another one.` |
 | dihedral other than 0 | y and z computed | info | `XFLR5 measures y_position along the panels; y and z were computed from it and the dihedral.` |
-| dihedral above 10° | kept | warning | section "Mapping to sections", step 2 |
+| dihedral above 10° | kept | warning with **Vertical** section planes only | section "Mapping to sections", step 2 |
 | tilt angle, position | applied | info | step 3 |
+| section planes | **Mitred** or **Vertical** | info | step 6 |
 | root gap, root within 0.1 mm of the centre | kept, set to 0 | info | steps 1 and 2 |
 | equal y, chord below 1 mm, left ≠ right airfoil | moved, raised, right used | warning | step 2 |
 | length unit other than mm | converted | info | section "How the file is read" |
@@ -749,8 +787,9 @@ The dropped data: the fin, the second wing, the other surface, the body, masses,
 | --- | --- | --- | --- |
 | airfoil that moves its sections | moved (and scaled) | info; warning when any offset exceeds 2 % of the chord (`FRAME_WARN` = 0.02) | `Airfoil "Clark Y" (sections 1–2) has its leading edge at x = 0 %, y = 3.55 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.` For one section: `this section was moved`. With cT ≠ 1: `moved and scaled`. Where the frame applies, the check's note on scaling to chord 1 is left out. |
 | library airfoil, or a current-project airfoil taken from the Library (`source.kind` `library`, the same points), whose own coordinates put x or y of the leading edge more than 2 % of the chord from 0, or the chord more than 2 % from 1; bundled: Clark Y 3.55 %, USA 35B 2.87 % | table values kept | info | `Library airfoil "Clark Y" (sections 1–2) has its leading edge at x = 0 %, y = 3.55 % of chord in its own coordinates. If XFLR5 used these coordinates, it draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.` |
+| library airfoil, or a current-project airfoil taken from the Library, whose chord line (from the leading edge of the fitted curve to the trailing-edge midpoint) is inclined more than 0.5° (`rotationDeg` of the airfoil check); bundled: Clark Y 2.00° and USA 35B 1.57° nose up | angle kept, twist refers to its x axis | warning | `Library airfoil "Clark Y" (sections 1–2) has its chord line inclined 2.00° nose up in its own coordinates, and the built sections keep this angle. If the airfoil that XFLR5 used has a level chord line, these sections sit 2.00° more nose up than in XFLR5, the trailing edge 8.4 mm lower at 240 mm chord; upload the .dat file that XFLR5 used to place them as in XFLR5.` The distance is the largest chord of these sections times sin(angle). The UIUC file `clarky.dat` (name line `CLARK Y AIRFOIL`) has a level chord line. `nose down` and `higher` for a trailing edge above the leading edge. |
 | current-project airfoil of an XFLR5 import or an upload (`source.kind` `xflr5` or `upload`): stored at chord 1, its own coordinates are not stored | table values kept | info | `Airfoil "Clark Y" (sections 1–2) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. If the coordinates that XFLR5 used put the leading edge elsewhere, XFLR5 draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.` |
-| warnings of the airfoil check | kept | warning; inclined chord line: info | `Airfoil "Clark Y" (sections 1–2): <message>` |
+| warnings of the airfoil check | kept | warning; inclined chord line: info (library airfoil: the row above instead) | `Airfoil "Clark Y" (sections 1–2): <message>` |
 | flap | base shape | info at 0°, warning otherwise | see "Flaps" above |
 | file airfoil fails the check, another source passes | the other source used | warning | `Airfoil "<name>" from the file fails the check: <problem> "<match>" is used instead.` |
 | file airfoil fails the check, none passes | blocks Import | error | `Airfoil "<name>" (sections 1–2) from the file fails the check: <problem> Upload a .dat file or pick an airfoil.` |
@@ -792,12 +831,16 @@ Time with 10,000 airfoils of 99 points each: the first mapping, which checks eve
 | --- | --- |
 | Project name | `<plane name> <wing name>`, or the wing name of a wing file; parts trimmed, empty parts left out. Both empty: `Imported wing` (German interface: `Importierter Flügel`). At most 10,000 characters. The name field of the dialog changes it; an emptied field follows the plane and the surface again. |
 | Sections | ids `s1`, `s2` …; values as in section "Mapping to sections" |
-| `settings` | `twistPivot` 0.25, `spanwise` `"linear"`, `mirror` `true`, `tip.mode` `"flat"`, `trailingEdge.mode` `"asis"`. The other keys have their defaults. |
+| `settings` | `twistPivot` 0.25, `spanwise` `"straight"`, `sectionPlanes` `"mitred"` or `"vertical"` (step 6), `mirror` `true`, `tip.mode` `"flat"`, `trailingEdge.mode` `"asis"`. The other keys have their defaults. |
+| `foldedTilt` | a tilted part only: the stored tilt angle and wing origin (step 3) |
 | `guides` | defaults: created from the section edges, disabled |
 | Airfoils | one entry per source in use. Rows that use the same source, or sources with equal name and equal points, share one entry. Ids follow the rules of section "Project JSON" (`clark-y`, `naca-0009`, `clark-y-2` for the same name with other points). The points: the checked points (leading edge at (0, 0), chord 1) for an airfoil of the file, an upload and a library airfoil; the generated points for a NACA section (source `naca`); the stored points for an airfoil of the current project. |
 | Toast | `Imported the main wing "Main Wing" of "Fixture A" from fixtures_v662.xfl: 3 sections, 2 airfoils.` For a stabilizer: `Imported the horizontal stabilizer "Elevator" of "Fixture A" from fixtures_v662.xfl: 2 sections, 1 airfoil.` Without a plane name: `Imported the main wing "Main Wing" from wing.xml: 3 sections, 2 airfoils.` Then the first warning and `(<n> more warnings in the import report.)`. The warnings of the XML reader stay in the report. |
-| Not stored | tilt angle, position, flap parameters and the other dropped data. The provenance stays in the project name and, for airfoils of an `.xfl` project, in `source.note`. |
+| Not stored | the position (folded into the section values), flap parameters and the other dropped data. The provenance stays in the project name and, for airfoils of an `.xfl` project, in `source.note`. |
 | Undo | **Undo** restores the previous project. The autosave follows the import. |
+| Tilted part set to **Mitred** later | the switch is not blocked. **Checks** shows the warning `The tilt angle of 3.00° of the XFLR5 import is folded into the section values, which is exact for vertical section planes only: with mitred planes the part lies up to about 1.57 mm off XFLR5's (0.75 · chord · sin(tilt angle) · sin(roll)). Settings > Section planes Vertical keeps the import exact.` The estimate uses the rolls of the build. |
+
+**Projects of earlier imports.** A project written by the XFLR5 import of format version 1 (2026-09-30), and its browser copy, holds a folded tilt without `foldedTilt`. It opens with **Vertical** section planes, which keep it exact. Set to **Mitred**, it carries the error of the folded tilt (0.45 mm on the worked example, about 1.6 mm on a 35° V-tail with a 3° tilt) without the warning above. Importing the XFLR5 file again stores the tilt.
 
 **Source of an imported airfoil.** An airfoil that comes from the `.xfl` project gets this `source`:
 
@@ -852,7 +895,7 @@ The results come from the unrounded values of the earlier steps. Section values 
 | s2 | x 10, y 499.3148, z 26.1680, chord 220, twist −1 | x 10.8737, y 499.3148, z 23.8836, chord 220, twist 1 | x 11.0101, y 499.3148, z 31.7024, chord 220, twist 1 |
 | s3 | x 45, y 897.1235, z 67.9794, chord 150, twist −2.5 | x 47.3222, y 897.1235, z 65.0587, chord 150, twist −0.5 | x 47.3222, y 897.1235, z 65.0587, chord 150, twist −0.5 |
 
-The report of this import holds one warning (the Clark Y moves its sections by more than 2 % of the chord: 3.55 %) and the info lines for the dihedral, the tilt angle, the inclined chord line of the Clark Y, the elevator and the fin that are not imported, the dropped data and the trailing edge. The toast reads `Imported the main wing "Main Wing" of "Fixture A" from fixtures_v662.xfl: 3 sections, 2 airfoils.`, followed by the warning about the Clark Y.
+The report of this import holds one warning (the Clark Y moves its sections by more than 2 % of the chord: 3.55 %) and the info lines for the dihedral, the tilt angle, the inclined chord line of the Clark Y, the elevator and the fin that are not imported, the dropped data, the trailing edge and the section planes: the tilt of 2° gives **Vertical** section planes and `foldedTilt` `{ "angle": 2, "x": 0, "z": 0 }`; mitred planes would put the part up to about 0.45 mm off XFLR5's. The toast reads `Imported the main wing "Main Wing" of "Fixture A" from fixtures_v662.xfl: 3 sections, 2 airfoils.`, followed by the warning about the Clark Y.
 
 The XML file of the same plane in millimetres (`test/fixtures/xflr5/xml_mm/0.plane.xml`) names the airfoils only:
 
@@ -867,6 +910,16 @@ Elevator of "Fixture A" (slot 2): position x 0.65 m, y 0, z 0.04 m; tilt angle �
 | s1 | x 0, y 0, z 0, chord 110, twist 0 | x 649.9906, y 0, z 40.7199, chord 110, twist −1.5 |
 | s2 | x 25, y 230, z 0, chord 70, twist 0 | x 674.9854, y 230, z 41.1125, chord 70, twist −1.5 |
 
+The elevator is tilted too: **Vertical** section planes, `foldedTilt` `{ "angle": -1.5, "x": 650, "z": 40 }`. It has no dihedral, so the report has no line on the section planes.
+
+The same main wing without its tilt imports with **Mitred** section planes. XFLR5's rolls are 0°, 4.5° and 6°, the stretches 1.00137, 1.00034 and 1. The Clark Y moves section 2 by 220 · 1.00034 · 0.035546 = 7.8228 mm along its plane rolled 4.5°, so y changes too:
+
+| Section | Steps 1 and 2 | Imported, **Mitred** (step 4) |
+| --- | --- | --- |
+| s1 | x 0, y 0, z 0, chord 240, twist 0 | x 0, y 0, z 8.5427, chord 240, twist 0 |
+| s2 | x 10, y 499.3148, z 26.1680, chord 220, twist −1 | x 9.8635, y 498.7011, z 33.9654, chord 220, twist −1 |
+| s3 | x 45, y 897.1235, z 67.9794, chord 150, twist −2.5 | x 45, y 897.1235, z 67.9794, chord 150, twist −2.5 |
+
 Fixture B (tilt angle 1°, position 50, 0, 10 mm; Clark Y at sections 1 and 2): section 1 moves from x 49.9886, z 8.6911 to x 50.5467, z 19.3402, section 2 from x 109.9810, z 7.8184 to x 110.3035, z 17.0547. The twists are 3° and 2° after the fold.
 
 ## Bodies per file
@@ -878,10 +931,11 @@ Fixture B (tilt angle 1°, position 50, 0, 10 mm; Clark Y at sections 1 and 2): 
 | **Right half only** | 1 solid | 1 closed shell | 1 object: `Wing right` |
 
 - **Full wing** needs the root section at exactly y = 0 mm. Otherwise STL and 3MF contain 2 shells, as with **Both halves**.
+- **Fusion 360 fix: Y up (also SolidWorks)** (STEP, STL, 3MF): off, the export writes the axes of the app (x chordwise towards the TE, y spanwise towards the right tip, z up). On, it writes every point as (x, z, −y) and every direction the same way (`src/export/axes.js`): the upper surface faces +Y, the chord runs along X, `right` lies at Z ≤ 0 and `left` at Z ≥ 0. The turn is a rotation: orientations, closed shells and volumes stay. The STEP world placement (`AXIS2_PLACEMENT_3D` at the origin with z and x directions) stays. The project JSON always holds the axes of the app. Why and when: [[User Guide|User-Guide]], section Export.
 - **Mesh density (STL, 3MF)**: **Normal** or **Fine (4x triangles)**. **Fine** splits every u interval (chordwise) and every v interval (spanwise) of the **Normal** mesh into 2. Measured triangle count: 3.0 to 3.9 times **Normal** (table "File sizes").
 - Mesh construction and triangle counts: [[Geometry|Geometry]], section 5 "Meshes".
 
-![Export dialog: format, wing halves, mesh density](images/export-dialog.png)
+![Export dialog: format, wing halves, mesh density, Fusion 360 fix](images/export-dialog.png)
 
 ## STEP
 
@@ -898,7 +952,8 @@ Fixture B (tilt angle 1°, position 50, 0, 10 mm; Clark Y at sections 1 and 2): 
 | Units | millimetre, radian, steradian |
 | Uncertainty | 1e-7 mm (`distance_accuracy_value`) |
 | Solids | 1 `MANIFOLD_SOLID_BREP` (boundary representation solid) per half |
-| Solid names | `<name> right` (y ≥ 0), `<name> left` (mirrored, y ≤ 0) |
+| Solid names | `<name> right` (y ≥ 0; with **Fusion 360 fix**: Z ≤ 0), `<name> left` (mirrored, y ≤ 0; with **Fusion 360 fix**: Z ≥ 0) |
+| Axes | as the app; with **Fusion 360 fix**: (x, z, −y) (section "Bodies per file") |
 | Shape representation | 1 `ADVANCED_BREP_SHAPE_REPRESENTATION` named `<name>` holds all solids |
 | Surfaces | `B_SPLINE_SURFACE_WITH_KNOTS`, non-rational: upper surface, lower surface, open TE. `PLANE`: root and tip. |
 | Edge curves | `B_SPLINE_CURVE_WITH_KNOTS` |
@@ -917,6 +972,7 @@ Faces, edges, orientation flags and the OpenCascade validation: [[Geometry|Geome
 | Per triangle | 50 bytes: normal (3 × `float32`), 3 vertices (9 × `float32`), attribute `uint16` = 0 |
 | File size | 84 + 50 × triangle count bytes |
 | Units | mm. STL has no unit field. |
+| Axes | as the app; with **Fusion 360 fix**: (x, z, −y) (section "Bodies per file") |
 | Normals | unit length, computed from the vertices; vertices counterclockwise seen from outside, normals point outward |
 
 ## 3MF
@@ -926,6 +982,7 @@ Faces, edges, orientation flags and the OpenCascade validation: [[Geometry|Geome
 | Package | zip, deflate level 6: `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` |
 | Namespace | `http://schemas.microsoft.com/3dmanufacturing/core/2015/02` (3MF Core) |
 | `<model>` | `unit="millimeter"`, `xml:lang="en-US"` |
+| Axes | as the app; with **Fusion 360 fix**: (x, z, −y) (section "Bodies per file") |
 | Metadata | `Title` = `<name>` (section "Export file names"), `Application` = `Wingdesigner` |
 | Objects | 1 `<object type="model">` per shell, 1 `<build><item>` per object; names: table "Bodies per file" |
 | Vertices | 9 significant digits (enough for every 32-bit float), shortest form without trailing zeros, e.g. `1000000.12`, `0.123456789`, `12`; magnitudes below 1e-6 mm in exponent notation, e.g. `-1e-7`; zero as `0` |

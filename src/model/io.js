@@ -34,6 +34,7 @@ export function projectToJson(project, build, meta = {}) {
     sections: structuredClone(project.sections),
     guides: structuredClone(project.guides),
     settings: resolveSettings(structuredClone(project.settings)),
+    ...(project.foldedTilt ? { foldedTilt: structuredClone(project.foldedTilt) } : {}),
   };
   if (build && build.surface) {
     out.derived = {
@@ -44,7 +45,7 @@ export function projectToJson(project, build, meta = {}) {
         leadingEdgeParameter: p.tLE,
       })),
       guides: { nose: curveJson(build.guides.nose), end: curveJson(build.guides.end) },
-      stations: build.stations.map((s) => ({ y: s.y, v: s.v, xLE: s.xLE, z: s.z, chord: s.chord, twist: s.twist })),
+      stations: build.stations.map((s) => ({ y: s.y, v: s.v, xLE: s.xLE, z: s.z, chord: s.chord, twist: s.twist, roll: s.roll, stretch: s.stretch })),
       surface: {
         degreeU: build.surface.degreeU,
         degreeV: build.surface.degreeV,
@@ -109,7 +110,7 @@ export function utf8Length(s) {
 /** Numbers in the derived data of a build. */
 function derivedNumbers(build) {
   const curve = (c) => (c ? 2 * c.points.length + c.knots.length + (c.weights?.length ?? 0) : 0);
-  let n = 6 * build.stations.length + curve(build.guides.nose) + curve(build.guides.end);
+  let n = 8 * build.stations.length + curve(build.guides.nose) + curve(build.guides.end);
   for (const p of build.profiles.values()) n += curve(p.curve) + 1;
   const S = build.surface;
   return n + 3 * S.points.length * S.points[0].length + S.knotsU.length + S.knotsV.length;
@@ -165,6 +166,7 @@ export function omittedNote() {
 }
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
 const samePoints = (a, b) => a.length === b.length && a.every((p, i) => Math.abs(p[0] - b[i][0]) <= 1e-9 && Math.abs(p[1] - b[i][1]) <= 1e-9);
 
@@ -195,8 +197,11 @@ export function projectFromJsonText(text) {
       points: a.points.map((p) => [p[0], p[1]]),
       ...(isObject(a.source) ? { source: Object.fromEntries(SOURCE_KEYS.filter((k) => a.source[k] !== undefined).map((k) => [k, a.source[k]])) } : {}),
     })),
-    sections: data.sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, airfoil: s.airfoil, x: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist })),
-    settings: resolveSettings(data.settings),
+    sections: data.sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, airfoil: s.airfoil, x: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist, ...(isNum(s.panelAngle) ? { panelAngle: s.panelAngle } : {}) })),
+    // Version 1 files predate section planes: they open with vertical planes (owner decision R2,
+    // docs/Flow5upgrade.md), set before the defaults fill the missing settings.
+    settings: resolveSettings(data.version < 2 ? { ...(isObject(data.settings) ? data.settings : {}), sectionPlanes: 'vertical' } : data.settings),
+    ...(isObject(data.foldedTilt) ? { foldedTilt: { angle: data.foldedTilt.angle, x: data.foldedTilt.x, z: data.foldedTilt.z } } : {}),
   };
   // Fill each missing guide from the section edges.
   const defaults = defaultGuides(project.sections);
