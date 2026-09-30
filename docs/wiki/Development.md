@@ -541,7 +541,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 | 680 x 730 |
 | `mobile-main.png` | Phone, **Sport** preset | 1082 x 2202 | 1082 x 2202 |
 | `mobile-planform.png` | Phone, **Planform**, **Sport**, end line on | 1082 x 2202 | 1082 x 2202 |
-| `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 888 | 960 x 964 |
+| `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 966 | 960 x 1042 |
 
 ### Documentation check
 
