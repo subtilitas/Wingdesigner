@@ -463,10 +463,10 @@ Checks in code order. Every row is an error; no surface is built.
 | Surface contact | min t_k ≤ 1e-5 (0.001 % of the chord) at chord stations s_k from 0.01 to 0.99, after the gap change of section 3.7. Checked at positions with c ≥ 1 mm. The message gives y and x. **As in the airfoil files**: remedy **Linear** or more sections; other modes: remedy **As in the airfoil files** or a thicker TE. |
 | Chord | minimum chord < 1 mm; the message gives the chord and its y |
 | Chord, hint | as above, minimum at the tip, chord > −0.01 mm, **Wing tip** = **Flat**: the message adds "set **Settings** > **Wing tip** to **Pointed**" |
+| Station planes | **Mitred** section planes, after the fit: for two neighbouring stations of different roll, a point of the outer station does not lie beyond the planes of both stations, seen from the same point of the inner station. Message: "The surface folds between the stations at y = … mm and y = … mm (panel from section a to b): their section planes cross within the airfoils. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." |
 | Fitted surface, finite | after the surface fit and the added stations (section 4): a control point coordinate is not a finite number. Message: "The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections." |
 | Fitted thickness | at every fitted position: local thickness of the fitted surface < −1e-9 (beyond 99 % chord: < −min(1e-4, 0.1 mm / c)) at a compared chord station ("The fitted surface turns inside out between stations"), or ≤ 1e-5 (0.001 % of the chord) at a compared chord station from 1 % to 99 % chord ("The fitted surface has zero thickness between stations"). The message gives y and the thickness. Cause in the message: the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in **Smooth** mode). Remedy in the message: smooth the guide curves, space the sections more evenly or add sections. |
 | Fitted chord | at every fitted position: c_fit < 0.9 mm (1 mm minimum chord less 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)) projected onto the intended chord direction of the station at y, in 3D. Message: "The fitted surface folds or narrows between stations" |
-| Station planes | **Mitred** section planes, after the fit: for two neighbouring stations of different roll, a point of the outer station does not lie beyond the planes of both stations, seen from the same point of the inner station. Message: "The surface folds between the stations at y = … mm and y = … mm (panel from section a to b): their section planes cross within the airfoils. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." |
 | Surface self-crossing | the surface row at a section, halfway between 2 neighbouring sections or halfway between the 2 stations of one of the 64 widest station intervals (added stations included) crosses itself in the plane of its station (section 1.4) with a loop size (mean width) above 5e-4 · c; 4 samples per knot span (section 1.4) |
 
 ### 3.7 Trailing edge
@@ -614,7 +614,7 @@ Counts per half (n_u = 2N · d, V = number of v samples):
 | TE strip triangles | 2 (V − 1) | 0 |
 | Triangles per cap (root, tip) | n_u − 1 | n_u − 2 |
 
-Example: **Sport** preset, N = 60, d = 1, open TE: 242 vertices, 480 triangles per half.
+Example: **Sport** preset, N = 60, d = 1, open TE: **Mitred** section planes (9 stations, degree 3 along v, V = 25): 3,025 vertices, 6,046 triangles per half; **Vertical** (2 stations, degree 1, V = 2): 242 vertices, 480 triangles.
 
 - Orientation: every triangle faces outward (normal S_v × S_u).
 - Caps: the root and tip outlines are triangulated in the plane of their section (x and the up

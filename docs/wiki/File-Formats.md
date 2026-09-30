@@ -413,10 +413,10 @@ Checked only when the wing is built, in this order:
 - thickness after the trailing-edge setting below 0;
 - upper and lower surface touch after blending or after the trailing-edge setting: thickness at a chord station between 1 % and 99 % chord at or below 0.001 % chord;
 - chord below 1 mm;
+- `sectionPlanes` `"mitred"`: after the fit, the planes of 2 neighbouring stations cross within the airfoils;
 - fitted surface has non-finite coordinates;
 - fitted surface turns inside out (local thickness below 0) or has zero thickness (at most 0.001 % chord between 1 % and 99 % chord) between stations;
 - fitted surface chord below 0.9 mm between stations (surface folds or narrows);
-- `sectionPlanes` `"mitred"`: after the fit, the planes of 2 neighbouring stations cross within the airfoils;
 - loft surface row crosses itself at a section, halfway between 2 sections or halfway between the 2 stations of one of the 64 widest station intervals (loop size, mean width, above 0.05 % of the local chord).
 
 With `parametrization` `"chord"` or `"uniform"`, an airfoil error at wing build (sanity check or `curve-shape`) ends with `Settings > Profile parametrization "centripetal" follows the points more closely.`

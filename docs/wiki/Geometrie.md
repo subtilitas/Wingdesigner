@@ -13,7 +13,7 @@ English: [[Geometry|Geometry]]
 | Kurven und Flächen | NURBS (Non-Uniform Rational B-Spline, nicht-uniformer rationaler B-Spline) mit allen Gewichten 1, d. h. nicht-rationale B-Splines |
 | Algorithmusnummern (A2.1 …) und Gleichungsnummern | Piegl und Tiller, *The NURBS Book*, 2. Auflage, Springer 1997 |
 | Meldungen | Die auf dieser Seite zitierten Meldungen sind die deutschen Texte der App; Ausnahme: der englische Text der Ausnahme in Abschnitt 1.2. Die englische Oberfläche schreibt sie auf Englisch ([[Geometry]]). Prüfungen, Grenzen und Ergebnisse sind in beiden Sprachen gleich. |
-| Optionen von Auswahllisten | Im Text steht eine Option mit dem ersten Wort ihrer Beschriftung: **Linear** und **Glatt** (Smooth) für Optionen von **Interpolation in Spannweitenrichtung** (Spanwise interpolation), **Flach** (Flat) und **Spitz** (Pointed) für Optionen von **Flügelende** (Wing tip). Die vollständigen Beschriftungen stehen in den Abschnitten 3.1 und 3.5. |
+| Optionen von Auswahllisten | Im Text steht eine Option mit dem ersten Wort ihrer Beschriftung: **Linear** und **Glatt** (Smooth) für Optionen von **Interpolation in Spannweitenrichtung** (Spanwise interpolation), **Flach** (Flat) und **Spitz** (Pointed) für Optionen von **Flügelende** (Wing tip). Die Optionen von **Schnittebenen** (Section planes) stehen als **Auf Gehrung** (Mitred) und **Senkrecht** (Vertical). Die vollständigen Beschriftungen stehen in den Abschnitten 3.1, 3.5 und 3.8. |
 
 ## Symbole
 
@@ -24,6 +24,9 @@ English: [[Geometry|Geometry]]
 | K | Stationen je Feld in Spannweitenrichtung: **Einstellungen** > **Stationen je Feld mit Leitkurve oder glatter Interpolation** (Spanwise stations per panel with guides or smooth mode), Vorgabe 8, Bereich 3 bis 40; die Gittergrenze aus Abschnitt 3.2 kann K verringern |
 | c | Profiltiefe in mm |
 | f_pivot | Drehpunkt der Schränkung als Anteil der Profiltiefe: **Einstellungen** > **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)), Vorgabe 0,25, Bereich 0 bis 1 |
+| δ | V-Form eines Feldes: atan2(z_(i+1) − z_i, y_(i+1) − y_i) seiner beiden Schnittpositionen, in Grad |
+| φ | Neigung einer Schnittebene um die x-Achse (Abschnitt 3.8); φ = 0 ist die Ebene y = konst. |
+| m | Dickenstreckung eines platzierten Profils (Abschnitt 3.8); 1 in einer senkrechten Ebene |
 | n | Index des letzten Punkts einer Punktliste (Punkte 0 … n) |
 | p | Grad einer Kurve |
 | u | Flächenparameter um das Profil: 0 obere Endleiste, u_LE Profilnase, 1 untere Endleiste |
@@ -112,7 +115,7 @@ Profilkurve und für die Flächenzeilen (Abschnitt 4).
 
 | Eigenschaft | Profilkurve | Flächenzeile |
 | --- | --- | --- |
-| Kurve | NURBS-Kurve aus Abschnitt 1.2, normierte Koordinaten | Zeile v = konst. der Fläche S, in die x-z-Ebene projiziert |
+| Kurve | NURBS-Kurve aus Abschnitt 1.2, normierte Koordinaten | Zeile v = konst. der Fläche S, projiziert in die Ebene ihrer Station: x und die Aufwärtsrichtung (0, −sin φ, cos φ) ihrer Neigung φ (die x-z-Ebene bei φ = 0, Abschnitt 3.8) |
 | Geprüfte Zeilen | – | beim y jedes Schnitts, in der Mitte zwischen 2 benachbarten Schnitten und in der Mitte zwischen den 2 Stationen jedes der 64 breitesten Stationsintervalle (`MAX_STATION_ROWS`; jedes Intervall, wenn es höchstens 64 gibt; zusätzliche Stationen eingeschlossen); übrige Zeilen: Dickenprüfungen aus Abschnitt 3.6 |
 | Abtastwerte je Knotenintervall | per = max(1, min(256, round(4000 · L_span / L_total))); L_span = Länge des Kontrollpolygons des Knotenintervalls (p Strecken), L_total = Summe über die nicht leeren Knotenintervalle | 4 |
 | Abtastwerte insgesamt | Σ per + 1, etwa 4001 | 4 · spans + 1 |
@@ -228,7 +231,9 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
   S(u_j, v) = (1 − t) P_j(y_i) + t P_j(y_(i+1))          t = (y − y_i) / (y_(i+1) − y_i)
   ```
 
-  P_j(y_i) ist Punkt j des Schnitts i, im Raum platziert (Abschnitt 3.8). Beispiel: NACA 0014 bei 400 mm
+  P_j(y_i) ist Punkt j des Schnitts i, im Raum platziert, in der Ebene des Schnitts (Abschnitt 3.8). Mit
+  Schnittebenen **Auf Gehrung** ist das die Fläche von XFLR5; mit Schnittebenen **Senkrecht** sind die
+  Schnitte quer zu einem Feld mit V-Form dünner (Abschnitt 3.8). Beispiel: NACA 0014 bei 400 mm
   Profiltiefe und NACA 0008 bei 100 mm Profiltiefe, 100 mm voneinander entfernt. In der Mitte ergeben
   **Gerade Felder** eine Dicke von 32,0 mm (der Mittelwert von 56 mm und 8 mm), **Linear** 27,5 mm
   (11 % von 250 mm), und die Fläche bei **Linear** liegt bis zu 2,3 mm neben den geraden Linien (3,1 mm
@@ -261,11 +266,22 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | **Linear**, keine Leitkurve eingeschaltet | 1 (der Schnitt) | – | 1 |
 | **Gerade Felder** (keine Leitkurve) | 1 (der Schnitt) | – | 1 |
 | **Linear**, eine Leitkurve eingeschaltet | K (der Schnitt und K − 1 Zwischenstationen) | kosinusförmig | min(3, K): 3 bei K ≥ 3; 2 oder 1, wenn die Grenze des Flächengitters K auf 2 oder 1 senkt |
+| **Linear**, keine Leitkurve, **Schnittebenen** (Section planes) = **Auf Gehrung** (Mitred), die beiden Schnitte des Feldes in Ebenen verschiedener Neigung φ | K (der Schnitt und K − 1 Zwischenstationen) | kosinusförmig | wie oben; Felder ohne Zwischenstationen sind gerade Strecken, auf diesen Grad erhöht (Abschnitt 4) |
 | **Glatt** | K (der Schnitt und K − 1 Zwischenstationen) | kosinusförmig | 3 (Stationen − 1 bei weniger als 4 Stationen) |
 
-Der Randschnitt ist die letzte Station. Anzahl der Stationen bei K je Feld: (Schnitte − 1) · K + 1,
-dazu die zusätzlichen Stationen unten (**Linear** und **Glatt**; **Gerade Felder** fügen keine hinzu).
-Beispiel: Entwurfstyp **Segelflugmodell** (Glider), 3 Schnitte, K = 8: 17 Stationen.
+Der Randschnitt ist die letzte Station. Anzahl der Stationen: D · K + (Schnitte − 1 − D) + 1, dazu die
+zusätzlichen Stationen unten (**Linear** und **Glatt**; **Gerade Felder** fügen keine hinzu). D ist die
+Anzahl der Felder mit K Stationen: Schnitte − 1 (alle Felder) mit eingeschalteter Leitkurve oder mit
+**Glatt**; sonst die Felder mit **Linear** zwischen Gehrungsebenen verschiedener Neigung. Beispiele:
+Entwurfstyp **Segelflugmodell** (Glider), 3 Schnitte, K = 8: 17 Stationen; Entwurfstyp **Sportmodell**
+(Sport) (2 Schnitte, 1,5° V-Form, **Auf Gehrung**): 9 Stationen.
+
+In einem Feld mit **Linear** zwischen Gehrungsebenen trägt jede Zwischenstation das überblendete Profil
+in ihrer eigenen Ebene (Neigung und Dickenstreckung aus Abschnitt 3.8), wie mit einer Leitkurve. Mit
+einer Station je Feld wäre die Fläche die Regelfläche von **Gerade Felder**. Die beiden unterscheiden
+sich, wo sich die Profiltiefe zusammen mit dem Profil oder der Schränkung ändert: Beim Entwurfstyp
+**Sportmodell** (NACA 2412 bei 240 mm, NACA 2410 bei 144 mm, −1° Schränkung am Rand) liegt die
+Regelfläche bis zu 0,343 mm neben der Fläche bei **Linear**, und das Volumen unterscheidet sich um 1,4 %.
 
 ```
 y_(i,k) = y_i + (y_(i+1) − y_i) (1 − cos(π k / K)) / 2          k = 0 … K − 1
@@ -277,14 +293,15 @@ eine Zwischenstation, die von der letzten behaltenen Station oder vom Rand nicht
 Leitkurven im Modus „Durch Punkte“ wenden dieselbe Regel auf das normierte y ihrer Punkte an.
 
 Flächengitter (`loftGrid` in `src/model/budget.js`): Stationen mal Konturpunkte vor dem Einfügen
-zusätzlicher Stationen, ((Schnitte − 1) · K + 1) · (2N + 1) Punkte. **Linear** ohne Leitkurve und
-**Gerade Felder** verwenden K_set = 1. Die Grenzen gelten in jedem Modus.
+zusätzlicher Stationen, (D · K + (Schnitte − 1 − D) + 1) · (2N + 1) Punkte. Mit D = 0 (**Linear** ohne
+Leitkurve und ohne Felder zwischen Gehrungsebenen verschiedener Neigung, und **Gerade Felder**) gilt
+K_set = 1. Die Grenzen gelten in jedem Modus.
 
 | Größe | Wert |
 | --- | --- |
 | Warnschwelle | über 60 000 Gitterpunkten (`WARN.gridPoints`): Der Aufbau ergänzt die Warnung „Großes Projekt: …“ mit „… Punkte im Flächengitter (Warnung über 60.000)“ und der erwarteten Zeit und dem Arbeitsspeicher jeder Änderung. **Einstellungen** (Settings) zeigt unter den Auflösungsfeldern „Flächengitter: … Punkte.“, über 60 000 mit Zeit und Speicher. |
 | Grenze | 5 000 000 Gitterpunkte (`LIMITS.maxGridPoints` in `src/model/project.js`); darüber geht einem Browser-Tab auf einem Desktop-Rechner der Speicher aus |
-| Verwendetes K | max(1, min(K_set, floor((5 000 000 / (2N + 1) − 1) / (Schnitte − 1)))), das größte K, dessen Gitter ((Schnitte − 1) · K + 1) · (2N + 1) höchstens 5 000 000 Punkte hat; K_set = Wert in **Einstellungen**. K < K_set nur über 5 000 000 Gitterpunkten. |
+| Verwendetes K | max(1, min(K_set, floor((5 000 000 / (2N + 1) − 1 − (Schnitte − 1 − D)) / D))), das größte K, dessen Gitter (D · K + (Schnitte − 1 − D) + 1) · (2N + 1) höchstens 5 000 000 Punkte hat; K_set = Wert in **Einstellungen**. K < K_set nur über 5 000 000 Gitterpunkten. |
 | Warnung (K < K_set) | „Stationen je Feld von K_set auf K verringert: S Schnitte mit N Stationen je Profilseite halten die Fläche bei höchstens 5.000.000 Gitterpunkten.“ |
 | Fehler (mehr als 5 000 000 Gitterpunkte mit dem verwendeten K) | „Das Flächengitter braucht P Punkte bei einer Station je Feld (S Schnitte, N Stationen je Profilseite); die Grenze liegt bei 5.000.000. Die Stationen je Profilseite verringern oder Schnitte entfernen.“ Es wird keine Fläche aufgebaut. |
 | Beispiel | 200 Schnitte, K_set = 8, N = 60 (Vorgaben): K = 8, 1593 Stationen, 192 753 Gitterpunkte: Warnung mit Zeit und Speicher |
@@ -442,7 +459,8 @@ Stationsintervalls nach der letzten Anpassung (Abschnitt 3.2).
 
 Örtliche Dicke der angepassten Fläche bei y, für die verglichenen Tiefenstationen k aus Abschnitt 3.2:
 die Flächenpunkte S(u_(N−k), v) und S(u_(N+k), v), zurückgerechnet in das System mit Einheitstiefe der
-Station bei y (Verschiebung, Tiefenmaßstab und Schränkung rückgängig gemacht), oberes z minus unteres z.
+Station bei y (Verschiebung, Neigung, Tiefenmaßstab, Schränkung und Dickenstreckung rückgängig gemacht),
+oberes z minus unteres z.
 
 Prüfungen in der Reihenfolge des Codes. Jede Zeile ist ein Fehler; es wird keine Fläche aufgebaut.
 
@@ -456,7 +474,9 @@ Prüfungen in der Reihenfolge des Codes. Jede Zeile ist ein Fehler; es wird kein
 | Profil | Fehler der Plausibilitätsprüfungen, fehlgeschlagene NURBS-Interpolation, sich selbst überschneidende NURBS-Kurve (Abschnitt 1.4) oder Rücklauf in x (Abschnitt 1.5). Bei Parametrisierung **Sehnenlänge** (Chord length) oder **Gleichabständig** (Uniform) endet die Meldung mit „Die Einstellung ‚Zentripetal‘ unter Einstellungen > Parametrisierung der Profile folgt den Punkten genauer.“ |
 | Leitkurven | eine Bedingung aus Abschnitt 3.3 verletzt |
 | Gerade Felder | **Gerade Felder** mit eingeschalteter Leitkurve (Abschnitt 3.1) |
+| Schnittebenen, Dickenstreckung | Schnittebenen **Auf Gehrung** (nicht mit **Glatt**, Abschnitt 3.8): ein Schnitt, dessen Ebene mehr als 60° schräg zu einem benachbarten Feld liegt, eine Dickenstreckung m über 2 (`MAX_STRETCH` in `src/geom/planes.js`): ein erstes Feld steiler als 60° oder eine Änderung der V-Form um mehr als 120° an einem Schnitt. Die Dickenstreckung wird nie begrenzt. Meldung: „Schnitt n: Seine Gehrungsebene liegt …° schräg zum benachbarten Feld, das streckt das Profil auf das …-Fache (Grenze 2, 60°). Die Änderung der V-Form dort verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.“ |
 | Flächengitter | mehr als 5 000 000 Gitterpunkte mit den verwendeten Stationen je Feld (Abschnitt 3.2) |
+| Schnittebenen, Faltung | Schnittebenen **Auf Gehrung**: Die Ebenen zweier benachbarter Schnitte verschiedener Neigung schneiden sich in einer Geraden parallel zu x. Die Fläche zwischen ihnen faltet sich, wenn diese Gerade durch eines der beiden platzierten Profile geht (seine Ausdehnung entlang der Aufwärtsrichtung seiner Ebene, mit Profiltiefe, Schränkung und Dickenstreckung), wenn die beiden Profile auf verschiedenen Seiten der Geraden liegen oder wenn das innere Profil weiter außen liegt als die Ebene des äußeren (`planeFold` in `src/geom/planes.js`). Meldung: „Schnitte a und b: Ihre Gehrungsebenen schneiden sich … mm von der Position (y, z) von Schnitt a entfernt, innerhalb der Profile, daher faltet sich die Fläche zwischen ihnen. Das Feld verlängern, die Änderung der V-Form verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.“ Beispiel: Felder mit 0°, 40° (10 mm lang) und 80°, NACA 0012 bei 300 mm Profiltiefe: Die um 20° und 60° geneigten Ebenen schneiden sich 14,6 mm von Schnitt 2 entfernt, innerhalb seiner ±19,2 mm; bei 150 mm Profiltiefe (±9,6 mm) wird die Fläche gebaut. |
 | Schnittwerte | x_LE, c, z oder cos(Schränkung) einer Prüfposition ist keine endliche Zahl. Meldung: „Die Schnittwerte ergeben bei y = … mm nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen.“ |
 | Ausdehnung der Geometrie | an einer Prüfposition: x_LE, x_LE + c (Endleiste) oder z außerhalb von ±1 200 000 mm (`LIMITS.maxExtent`) oder c über 100 000 mm. Ursachen: Überschwingen bei **Glatt**; eine Leitkurve nahe ±1 200 000 mm, bei der die hinzugerechnete oder abgezogene Profiltiefe die Ausdehnung verlässt; Nasenlinie und Endlinie mehr als 100 000 mm voneinander entfernt. Meldung: „Bei y = … mm verlässt der Flügel die Projektgrenzen (x der Profilnase … mm, z … mm, Profiltiefe … mm; Grenzen ±1.200.000 mm und 100.000 mm Profiltiefe). Die Leitkurven prüfen oder lineare Interpolation verwenden.“ |
 | Überschwingen bei **Glatt** | Nur **Glatt**. An einer Prüfposition liegt ein interpolierter Wert um mehr als 2 × (max − min) seiner Schnittwerte außerhalb von [min, max] (`OVERSHOOT_LIMIT` = 2). Werte: x_LE (keine Leitkurve eingeschaltet), Profiltiefe (nicht beide Leitkurven eingeschaltet), z, Schränkung und die Höhe z_unit jedes Konturpunkts k = 1 … 2N − 1. Die Meldung nennt den Wert mit dem größten Überschwingen (`x der Profilnase`, `Profiltiefe`, `z`, `Schränkung`, `Höhe der Oberseite bei x = … % der Profiltiefe` oder `Höhe der Unterseite bei x = … % der Profiltiefe`), sein y, den Bereich der Schnittwerte und den kleinsten Abstand zwischen 2 Schnitten. Abhilfe laut Meldung: **Linear**, gleichmäßiger verteilte Schnitte oder weniger dicht liegende Schnitte. |
@@ -465,10 +485,11 @@ Prüfungen in der Reihenfolge des Codes. Jede Zeile ist ein Fehler; es wird kein
 | Berührung der Profilseiten | min t_k ≤ 1e-5 (0,001 % der Profiltiefe) an den Tiefenstationen s_k von 0,01 bis 0,99, nach der Einstellung **Endleiste** aus Abschnitt 3.7. Geprüft an Positionen mit c ≥ 1 mm. Die Meldung nennt y und x. **Wie in den Profildateien** (As in the airfoil files): Abhilfe **Linear** oder mehr Schnitte; andere Modi: Abhilfe **Wie in den Profildateien** oder eine dickere Endleiste. |
 | Profiltiefe | kleinste Profiltiefe < 1 mm; die Meldung nennt Profiltiefe und zugehöriges y |
 | Profiltiefe, Hinweis | wie oben, Minimum am Rand, Profiltiefe > −0,01 mm, **Flügelende** = **Flach** (Flat): die Meldung ergänzt „Für ein Flügelende, das in einer Spitze endet, Einstellungen > Flügelende auf ‚Spitz‘ setzen.“ |
+| Stationsebenen | Schnittebenen **Auf Gehrung**, nach der Anpassung: Bei zwei benachbarten Stationen verschiedener Neigung liegt ein Punkt der äußeren Station, vom selben Punkt der inneren Station aus gesehen, nicht jenseits der Ebenen beider Stationen. Meldung: „Die Fläche faltet sich zwischen den Stationen bei y = … mm und y = … mm (Feld von Schnitt a bis b): Ihre Schnittebenen kreuzen sich innerhalb der Profile. Das Feld verlängern, die Änderung der V-Form verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.“ |
 | Angepasste Fläche, endlich | nach der Flächenanpassung und den zusätzlichen Stationen (Abschnitt 4): eine Koordinate eines Kontrollpunkts ist keine endliche Zahl. Meldung: „Die angepasste Fläche hat nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen.“ |
 | Dicke der angepassten Fläche | an jeder Position der angepassten Fläche: örtliche Dicke < −1e-9 (hinter 99 % der Profiltiefe: < −min(1e-4, 0,1 mm / c)) an einer verglichenen Tiefenstation („Die angepasste Fläche stülpt sich zwischen den Stationen … um“), oder ≤ 1e-5 (0,001 % der Profiltiefe) an einer verglichenen Tiefenstation von 1 % bis 99 % der Profiltiefe („Die angepasste Fläche hat zwischen den Stationen … die Dicke null“). Die Meldung nennt y und die Dicke. Ursache laut Meldung: Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven oder ungleich verteilte Schnitte im Modus **Glatt**). Abhilfe laut Meldung: Leitkurven glätten, Schnitte gleichmäßiger verteilen oder Schnitte hinzufügen. |
-| Profiltiefe der angepassten Fläche | an jeder Position der angepassten Fläche: c_fit < 0,9 mm (1 mm Mindesttiefe abzüglich 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)), in der x-z-Ebene auf die vorgesehene Profiltiefenrichtung der Station bei y projiziert. Meldung: „Die angepasste Fläche faltet sich oder schnürt sich zwischen den Stationen … ein“ |
-| Selbstüberschneidung der Fläche | eine Flächenzeile an einem Schnitt, in der Mitte zwischen 2 benachbarten Schnitten oder in der Mitte zwischen den 2 Stationen eines der 64 breitesten Stationsintervalle (zusätzliche Stationen eingeschlossen) überschneidet sich in der x-z-Ebene mit einer Schleifengröße (mittlere Breite) über 5e-4 · c; 4 Abtastwerte je Knotenintervall (Abschnitt 1.4) |
+| Profiltiefe der angepassten Fläche | an jeder Position der angepassten Fläche: c_fit < 0,9 mm (1 mm Mindesttiefe abzüglich 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)), im Raum auf die vorgesehene Profiltiefenrichtung der Station bei y projiziert. Meldung: „Die angepasste Fläche faltet sich oder schnürt sich zwischen den Stationen … ein“ |
+| Selbstüberschneidung der Fläche | eine Flächenzeile an einem Schnitt, in der Mitte zwischen 2 benachbarten Schnitten oder in der Mitte zwischen den 2 Stationen eines der 64 breitesten Stationsintervalle (zusätzliche Stationen eingeschlossen) überschneidet sich in der Ebene ihrer Station (Abschnitt 1.4) mit einer Schleifengröße (mittlere Breite) über 5e-4 · c; 4 Abtastwerte je Knotenintervall (Abschnitt 1.4) |
 
 ### 3.7 Endleiste
 
@@ -513,20 +534,50 @@ Topologie der Endleiste über alle Stationen:
 
 ### 3.8 Platzierung im Raum
 
-Punkt mit Einheitstiefe (x_unit, z_unit) aus Abschnitt 2, Schränkung θ, Drehpunkt f_pivot. Die
-Drehachse liegt parallel zu y durch den Punkt (x_unit, z_unit) = (f_pivot, 0). Der Schnitt liegt
-in der Ebene Y = y.
+Punkt mit Einheitstiefe (x_unit, z_unit) aus Abschnitt 2, Schränkung θ, Drehpunkt f_pivot, Neigung φ und
+Dickenstreckung m der Schnittebene. Die Schränkung dreht das Profil in seiner Ebene um den Drehpunkt
+(f_pivot, 0); die Dickenstreckung skaliert seine Dicke vor der Schränkung.
 
 ```
 dx  = x_unit − f_pivot
-r_x =  dx cos θ + z_unit sin θ
-r_z = −dx sin θ + z_unit cos θ
+r_x =  dx cos θ + m z_unit sin θ
+r_z = −dx sin θ + m z_unit cos θ
 X = x_LE + c (f_pivot + r_x)
-Y = y
-Z = z + c r_z
+Y = y − c r_z sin φ
+Z = z + c r_z cos φ
 ```
 
-**Schnitte aus einem XFLR5-Import.** XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln. Der Import setzt **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (f_pivot) auf 0,25, den Punkt, um den XFLR5 einen Schnitt schränkt, und **Interpolation in Spannweitenrichtung** auf **Gerade Felder**, die Bauweise der Felder von XFLR5 (Abschnitt 3.1). Außerdem wendet er eine Regel der Profillage an. XFLR5 zeichnet die Koordinaten eines Profils, wie sie sind; der Aufbau legt die Profilnase der Kurve (Abschnitt 1.3) auf den Schnittursprung und skaliert das Profil auf die Profiltiefe 1 (Abschnitt 2). Sind die Koordinaten bekannt, die XFLR5 verwendet hat (ein Profil der `.xfl`-Datei, eine hochgeladene `.dat`-Datei, ein NACA-Schnitt), verschiebt und skaliert der Import den Schnitt um den Unterschied, sodass das Profil dort liegt, wo XFLR5 es zeichnet; ein Unterschied bis 0,1 % der Profiltiefe gilt als keiner. Schnitte mit einem Bibliotheksprofil oder einem anderen Profil des aktuellen Projekts behalten die Werte der Datei. Wie der Import die Schnitte, den Drehpunkt und die Interpolation setzt, mit Regeln und Formeln: [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import, Unterabschnitt Abbildung auf Schnitte.
+Die Schnittebene verläuft durch die Schnittposition (y, z), die die ungeschränkte Profilnase, der
+Drehpunkt und die Endleiste gemeinsam haben. Ihre Aufwärtsrichtung ist (0, −sin φ, cos φ), ihre Normale
+(0, cos φ, sin φ). Mit φ = 0 und m = 1 liegt der Schnitt in der Ebene Y = y.
+
+**Einstellungen** (Settings) > **Schnittebenen** (Section planes) (`settings.sectionPlanes`, `src/geom/planes.js`):
+
+| Wert | Neigung φ | Dickenstreckung m |
+| --- | --- | --- |
+| **Auf Gehrung (senkrecht zu den Feldern, wie XFLR5)** (Mitred (square to the panels, as XFLR5)) (`mitred`, Vorgabe neuer Projekte) | Wurzel 0; ein Schnitt zwischen den Feldern i − 1 und i: (δ_(i−1) + δ_i) / 2, die winkelhalbierende Ebene; Rand: δ des letzten Feldes, rechtwinklig zu ihm | 1 / cos(φ − δ) mit δ des Feldes außerhalb des Schnitts (am Rand: das letzte Feld; an einer Winkelhalbierenden ergeben beide Felder denselben Wert): Wurzel 1 / cos δ_0, ein Knick 1 / cos((δ_i − δ_(i−1)) / 2), Rand 1 |
+| **Senkrecht (y = konstant)** (Vertical (y = const)) (`vertical`) | 0 | 1 |
+
+- Stationen zwischen Schnitten: φ wird wie die Schränkung überblendet (Abschnitt 3.1); m = 1 / cos(φ − δ)
+  mit δ des Feldes der Station.
+- Dicke quer zu einem Feld: m cos(φ − δ) = 1 der Profildicke mit **Auf Gehrung**, cos δ mit
+  **Senkrecht**. 35°-V-Leitwerk: Die senkrechten Schnitte haben quer zum Feld 81,9 % der Dicke; die
+  Wurzel auf Gehrung trägt das Profil auf das 1,221-Fache gestreckt.
+- Die Schränkung dreht das Profil um die Normale seiner Ebene, wie in XFLR5 und flow5. Entlang x
+  gesehen trifft ein um φ geneigter Schnitt mit der Schränkung θ die Anströmung unter
+  atan(tan θ cos φ): 1,64° bei 2° Schränkung und 35°.
+- Die Wurzelebene ist in beiden Modi senkrecht, daher treffen sich die beiden Hälften in der Ebene y = 0.
+- **Glatt** baut senkrechte Schnittebenen: Die Konstruktion auf Gehrung entlang eines Splines wird nicht
+  gebaut. Mit **Auf Gehrung** und einem Flügel mit V-Form zeigt die Registerkarte **Prüfungen** (Checks)
+  die Info-Zeile „Glatte Interpolation in Spannweitenrichtung baut senkrechte Schnittebenen;
+  Schnittebenen auf Gehrung brauchen „Linear“ oder „Gerade Felder“.“
+- Die Ebenen folgen den Schnittpositionen. Ein in z verschobener Schnitt ändert die Neigung seiner Ebene
+  und der Ebenen seiner Nachbarn.
+- Grenzen: Dickenstreckung höchstens 2 und keine Faltung zwischen benachbarten Ebenen (Abschnitt 3.6).
+- Projektdateien des Formats Version 1 enthalten keine Einstellung der Schnittebenen und öffnen mit
+  **Senkrecht** ([[Dateiformate|Dateiformate]]).
+
+**Schnitte aus einem XFLR5-Import.** XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln. Der Import setzt **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (f_pivot) auf 0,25, den Punkt, um den XFLR5 einen Schnitt schränkt, **Interpolation in Spannweitenrichtung** auf **Gerade Felder**, die Bauweise der Felder von XFLR5 (Abschnitt 3.1), und **Schnittebenen** auf **Auf Gehrung**, die Ebenen von XFLR5. Ein Teil mit Einstellwinkel und ein Teil, dessen Gehrungsebenen sich falten würden, werden mit Schnittebenen **Senkrecht** importiert. Außerdem wendet er eine Regel der Profillage an. XFLR5 zeichnet die Koordinaten eines Profils, wie sie sind; der Aufbau legt die Profilnase der Kurve (Abschnitt 1.3) auf den Schnittursprung und skaliert das Profil auf die Profiltiefe 1 (Abschnitt 2). Sind die Koordinaten bekannt, die XFLR5 verwendet hat (ein Profil der `.xfl`-Datei, eine hochgeladene `.dat`-Datei, ein NACA-Schnitt), verschiebt und skaliert der Import den Schnitt um den Unterschied, sodass das Profil dort liegt, wo XFLR5 es zeichnet; ein Unterschied bis 0,1 % der Profiltiefe gilt als keiner. Schnitte mit einem Bibliotheksprofil oder einem anderen Profil des aktuellen Projekts behalten die Werte der Datei. Wie der Import die Schnitte, den Drehpunkt und die Interpolation setzt, mit Regeln und Formeln: [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import, Unterabschnitt Abbildung auf Schnitte.
 
 ## 4. Fläche
 
@@ -535,14 +586,16 @@ Tensorprodukt-B-Spline-Fläche S(u, v) durch das Stationsgitter Q (2N + 1 Punkte
 | Richtung | Parameter | Grad | Knotenvektor |
 | --- | --- | --- | --- |
 | u (um das Profil) | Mittel der Parametrisierungen aller Stationen; u_0 = 0, u_2N = 1 | 3 | geklemmt, durch Mittelwertbildung |
-| v (Spannweite), **Linear**, **Gerade Felder** | v = (y − y_root) / (y_tip − y_root) | 1 ohne Leitkurven; mit einer Leitkurve min(3, K) (2 oder 1, wenn die Grenze des Flächengitters K senkt, Abschnitt 3.2) | eine Interpolation je Feld; Felder an den Schnitten mit innerer Knotenvielfachheit p verbunden (C0: stetig in der Lage, Knicke an den Schnitten) |
+| v (Spannweite), **Linear**, **Gerade Felder** | v = (y − y_root) / (y_tip − y_root) | 1, wenn kein Feld Zwischenstationen hat; sonst die kleinste Zahl von Stationsintervallen eines Feldes mit Zwischenstationen, höchstens 3 (min(3, K); 2 oder 1, wenn die Grenze des Flächengitters K senkt, Abschnitt 3.2) | eine Interpolation je Feld; ein Feld aus 2 Stationen ist die gerade Strecke zwischen ihnen, auf diesen Grad erhöht; Felder an den Schnitten mit innerer Knotenvielfachheit p verbunden (C0: stetig in der Lage, Knicke an den Schnitten) |
 | v (Spannweite), **Glatt** (Smooth) | ebenso | 3 (Stationen − 1 bei weniger als 4 Stationen) | eine Interpolation über alle Stationen, Mittelwertbildung (C2: stetig bis zur zweiten Ableitung) |
 
 Ablauf:
 
 1. Jede Stationszeile entlang u interpolieren (eine Band-LU-Zerlegung gilt für alle Zeilen).
 2. Jede Spalte der erhaltenen Kontrollpunkte entlang v interpolieren (Band-LU, Abschnitt 1.2).
-3. y der Kontrollpunkte bei v = 0 auf y_root und bei v = 1 auf y_tip setzen (entfernt Rundungsfehler des Lösers).
+3. y der Kontrollpunkte bei v = 0 auf y_root setzen und die Kontrollpunkte bei v = 1 auf die Randebene
+   projizieren (y = y_tip bei φ = 0). Das entfernt Rundungsfehler des Lösers: Die Zeilen an Wurzel und
+   Rand liegen in ihren Ebenen (10 STEP-Fälle: innerhalb von 2e-13 mm, Abschnitt 6).
 
 Eigenschaften:
 
@@ -561,8 +614,8 @@ Maßstab so dicht, dass sie als Schattierung erscheinen.
 
 | Entwurfstyp des Assistenten (N = 60, K = 8) | Stationen | Kontrollpunkte je Halbflügel | Grad u × v |
 | --- | --- | --- | --- |
-| **Sportmodell** (Sport) | 2 | 121 × 2 | 3 × 1 |
-| **Pfeilnurflügel** | 5 (2 zusätzlich, Abschnitt 3.2) | 121 × 5 | 3 × 1 |
+| **Sportmodell** (Sport) (1,5° V-Form, **Auf Gehrung**) | 9 | 121 × 9 | 3 × 3 |
+| **Pfeilnurflügel** (keine V-Form) | 5 (2 zusätzlich, Abschnitt 3.2) | 121 × 5 | 3 × 1 |
 | **Segelflugmodell** (Glider); elliptische Leitkurven, **Flügelende** (Tip) = **Flach** (Flat) | 17 | 121 × 17 | 3 × 3 |
 | **Segelflugmodell**; elliptische Leitkurven, **Flügelende** = **Spitz (Maßstab 1/200)** (Pointed (1/200 scale)) | 22 (5 zusätzlich, Abschnitt 3.2; größte Abweichung 0,263 mm, keine Warnung) | 121 × 22 | 3 × 3 |
 
@@ -588,12 +641,12 @@ Anzahlen je Halbflügel (n_u = 2N · d, V = Anzahl der Abtastwerte in v):
 | Dreiecke des Endleistenstreifens | 2 (V − 1) | 0 |
 | Dreiecke je Abschlussfläche (Wurzel, Rand) | n_u − 1 | n_u − 2 |
 
-Beispiel: Entwurfstyp **Sportmodell** (Sport), N = 60, d = 1, offene Endleiste: 242 Eckpunkte, 480 Dreiecke je Halbflügel.
+Beispiel: Entwurfstyp **Sportmodell** (Sport), N = 60, d = 1, offene Endleiste: Schnittebenen **Auf Gehrung** (9 Stationen, Grad 3 entlang v, V = 25): 3025 Eckpunkte, 6046 Dreiecke je Halbflügel; **Senkrecht** (2 Stationen, Grad 1, V = 2): 242 Eckpunkte, 480 Dreiecke.
 
 - Orientierung: Jedes Dreieck zeigt nach außen (Normale S_v × S_u).
-- Abschlussflächen: Die Konturen an Wurzel und Rand werden in der x-z-Ebene trianguliert. Oberer Punkt k
-  bildet ein Paar mit unterem Punkt k (dieselbe Tiefenstation): 2 Dreiecke je Stationsintervall,
-  lineare Laufzeit.
+- Abschlussflächen: Die Konturen an Wurzel und Rand werden in der Ebene ihres Schnitts trianguliert (x
+  und die Aufwärtsrichtung seiner Neigung φ; die x-z-Ebene bei φ = 0). Oberer Punkt k bildet ein Paar
+  mit unterem Punkt k (dieselbe Tiefenstation): 2 Dreiecke je Stationsintervall, lineare Laufzeit.
 - Andere Diagonale: Läuft ein Dreieck eines Vierecks nicht gegen den Uhrzeigersinn, verwendet das
   Viereck seine andere Diagonale (verfeinerte Tiefenstationen bilden keine genauen Paare). Mit nur einer
   Diagonale fällt eine Abschlussfläche bei **Fein** (Fine) mit geschlossener Endleiste (NACA 4415, 200
@@ -639,8 +692,8 @@ Flächen (Topologie) des rechten Halbflügels; (+) = Kante in eigener Richtung, 
 | Oberseite | `B_SPLINE_SURFACE_WITH_KNOTS`, Grad 3 × Grad entlang v | obere Endleiste (+), Rand oben (+), Nasenleiste (−), Wurzel oben (−) |
 | Unterseite | `B_SPLINE_SURFACE_WITH_KNOTS`, Grad 3 × Grad entlang v | Nasenleiste (+), Rand unten (+), untere Endleiste (−), Wurzel unten (−) |
 | Endleiste (nur offene Endleiste) | B-Spline-Regelfläche, Grad 1 in u (Knotenvektor (0, 0, 1, 1)) zwischen der unteren und der oberen Endleisten-Kontrollpunktzeile | untere Endleiste (+), Randlinie (+), obere Endleiste (−), Wurzellinie (−) |
-| Abschlussfläche Wurzel | `PLANE`, Normale −y, Ursprung an der Profilnase der Wurzel | Wurzel oben (+), Wurzel unten (+), Wurzellinie (+, nur offene Endleiste) |
-| Abschlussfläche Rand | `PLANE`, Normale +y, Ursprung an der Profilnase am Rand | Rand unten (−), Rand oben (−), Randlinie (−, nur offene Endleiste) |
+| Abschlussfläche Wurzel | `PLANE`, Normale −y (die Wurzelebene ist immer senkrecht), Ursprung an der Profilnase der Wurzel | Wurzel oben (+), Wurzel unten (+), Wurzellinie (+, nur offene Endleiste) |
+| Abschlussfläche Rand | `PLANE`, Normale (0, cos φ_tip, sin φ_tip) (+y bei senkrechtem Rand), Ursprung an der Profilnase am Rand | Rand unten (−), Rand oben (−), Randlinie (−, nur offene Endleiste) |
 
 | Endleiste | Flächen | Kanten | Knoten (Topologie) |
 | --- | --- | --- | --- |
@@ -659,10 +712,11 @@ Orientierungsflags:
 | `same_sense` der B-Spline-Flächen | `.F.` (S_u × S_v zeigt nach innen) | `.T.` |
 | `same_sense` der ebenen Flächen | `.T.` | `.T.` |
 | Orientierung von `FACE_OUTER_BOUND` | `.T.` | `.F.` (jede Schleife umgekehrt) |
-| Normale der Ebene | Wurzel −y, Rand +y | als Vektoren gespiegelt: Wurzel +y, Rand −y (nach außen) |
+| Normale der Ebene | Wurzel −y, Rand (0, cos φ_tip, sin φ_tip) | als Vektoren gespiegelt: Wurzel +y, Rand (0, −cos φ_tip, sin φ_tip) (nach außen) |
 
 Prüfung: `scripts/validate_step.py` liest die von `scripts/export-step-cases.mjs` geschriebenen Dateien
-mit OpenCascade. Fälle: die 10 Fälle aus `test/step-cases.js`.
+mit OpenCascade. Fälle: die 10 Fälle aus `test/step-cases.js`, 2 davon mit Schnittebenen **Auf Gehrung**
+(ein 35°-V-Leitwerk mit **Gerade Felder** und ein Möwenflügel mit 15°/−5° mit **Linear**).
 
 Bestehenskriterien je Datei:
 
@@ -672,6 +726,10 @@ Bestehenskriterien je Datei:
 - je Volumenkörper: Hülle geschlossen (keine freien Kanten, keine fehlerhafte Orientierung)
 - je Volumenkörper: Volumen > 0
 - je Volumenkörper: Abweichung zum Netzvolumen ≤ 5e-4 (relativ) bei Verfeinerung u × 4 und v × 8
+- je Volumenkörper: Jede Kante einer ebenen Fläche (der Abschlussflächen) liegt innerhalb von 1e-6 mm in
+  ihrer Ebene, abgetastet an 51 Punkten je Kante. Eine senkrecht geschriebene Randfläche am Möwenflügel
+  mit 15°/−5° liegt 0,67 mm neben ihren Kanten und ändert das Volumen nur um 0,0475 %, unter der
+  Volumentoleranz.
 
 ## 7. Grundrisskennwerte
 
