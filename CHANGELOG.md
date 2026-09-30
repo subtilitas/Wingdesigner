@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Changed
+
+- Wizard: **Dihedral per half** accepts −60 to 60° (−15 to 30° before), for V-tails and inverted
+  V-tails. 60° is the steepest first panel that **Mitred** section planes build (stretch 2 at the
+  vertical root). Every preset with both planforms, both tips and 2 to 8 sections builds at −60,
+  −55, −45, −30, 30, 35, 45, 50, 55, 59.5 and 60° (1,056 builds, no error).
+
 ## [0.2.0] - 2026-09-30
 
 ### Added

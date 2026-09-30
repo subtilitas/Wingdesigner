@@ -375,7 +375,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 542 Tests in 18 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 543 Tests in 18 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -420,7 +420,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-178 Tests in 12 Spec-Dateien, 356 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+179 Tests in 12 Spec-Dateien, 358 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 

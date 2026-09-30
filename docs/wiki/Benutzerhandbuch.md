@@ -366,11 +366,11 @@ Der Assistent erzeugt aus 12 Eingaben (Tabelle unten) ein vollständiges Projekt
 | Eingabefeld | Bereich | Wirkung |
 | --- | --- | --- |
 | **Projektname** (Project name) | Text | Vorgabe: Name des Entwurfstyps. Leer: `Flügel <Spannweite> mm`. Beide entstehen in der aktuellen Sprache (Abschnitt [Sprache](#sprache)). |
-| **Spannweite (beide Hälften)** (Span (both halves)) | 100 bis 20 000 mm | Spannweite von Flügelende zu Flügelende |
+| **Spannweite (beide Hälften)** (Span (both halves)) | 100 bis 20 000 mm | Spannweite von Flügelende zu Flügelende, gemessen entlang y. Mit einer V-Form δ ist jede Hälfte entlang ihres Feldes Spannweite / 2 / cos δ lang: 436 mm bei 500 mm Spannweite und 55°. |
 | **Wurzeltiefe** (Root chord) | 10 bis 3000 mm | Profiltiefe bei y = 0 |
 | **Zuspitzung (Randtiefe / Wurzeltiefe)** (Taper (tip / root chord)) | 0,1 bis 1,5 | Randtiefe geteilt durch Wurzeltiefe. Elliptischer Grundriss mit flachem Flügelende: kleiner als 1. Elliptischer Grundriss mit spitzem Flügelende: nicht verwendet. |
 | **Pfeilung der 25-%-Linie** (Sweep of the 25 % line) | −45 bis 60° | Pfeilung der 25-%-Linie; positiv = nach hinten gepfeilt |
-| **V-Form je Hälfte** (Dihedral per half) | −15 bis 30° | z des Schnitts = y · tan(V-Form) |
+| **V-Form je Hälfte** (Dihedral per half) | −60 bis 60° | z des Schnitts = y · tan(V-Form). Ein V-Leitwerk erhält den Winkel jeder Hälfte, z. B. 55°; ein umgekehrtes V-Leitwerk einen negativen Winkel. 60° ist das steilste erste Feld, das Schnittebenen **Auf Gehrung** bauen: Die senkrechte Wurzelebene streckt das Profil auf das 1 / cos 60° = 2-Fache (Abschnitt [Prüfungen](#prüfungen)). |
 | **Schränkung am Rand (negativ = Nase ab)** (Tip twist (negative = washout)) | −15 bis 15° | Schränkung ändert sich linear von 0° an der Wurzel bis zu diesem Wert am Rand |
 | **Anzahl der Schnitte** (Number of sections) | 2 bis 8, ganzzahlig | Schnitte gleichmäßig verteilt von Wurzel bis Rand |
 | **Grundriss** (Planform) | **Gerade zugespitzt** (Straight taper), **Elliptisch (mit Leitkurven)** (Elliptic (guide curves)) | Tiefenverlauf, siehe unten |

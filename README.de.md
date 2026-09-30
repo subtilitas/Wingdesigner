@@ -59,7 +59,7 @@ Browseranwendung zum Konstruieren von Flügeln für ferngesteuerte Flugmodelle (
 | **Wurzeltiefe** (Root chord) | 10 bis 3000 | mm |
 | **Zuspitzung (Randtiefe / Wurzeltiefe)** (Taper (tip / root chord)) | 0,1 bis 1,5 | — |
 | **Pfeilung der 25-%-Linie** (Sweep of the 25 % line) | −45 bis 60 | ° |
-| **V-Form je Hälfte** (Dihedral per half) | −15 bis 30 | ° |
+| **V-Form je Hälfte** (Dihedral per half) | −60 bis 60 | ° |
 | **Schränkung am Rand (negativ = Nase ab)** (Tip twist (negative = washout)) | −15 bis 15 | ° |
 | **Anzahl der Schnitte** (Number of sections) | 2 bis 8 | — |
 
@@ -214,11 +214,11 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 542 Unit-Tests (Vitest)
+npm test                 # 543 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern
-npm run e2e              # Produktions-Build, dann 178 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (356 Läufe)
+npm run e2e              # Produktions-Build, dann 179 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (358 Läufe)
 npm run coverage         # Unit-Tests mit Abdeckungsbericht in coverage/
 npm run coverage:readme  # Abdeckungstabellen in README.md und README.de.md schreiben
 npm run coverage:check   # Exit-Code 1, wenn eine README-Abdeckungstabelle von coverage/ abweicht
@@ -241,7 +241,7 @@ Die Playwright-Tests führen den DOM-Code (Document Object Model) aus; seine Abd
 <!-- coverage:start -->
 | Anweisungen | Verzweigungen | Funktionen | Zeilen |
 | ---: | ---: | ---: | ---: |
-| 98,3 % | 95,3 % | 98,7 % | 99,0 % |
+| 98,3 % | 95,3 % | 98,8 % | 99,0 % |
 
 Unit-Tests (Vitest, V8-Coverage) über `src/`, ohne den DOM-Code in `src/ui/` und `src/main.js`.
 <!-- coverage:end -->

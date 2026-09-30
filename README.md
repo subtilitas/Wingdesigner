@@ -59,7 +59,7 @@ Browser application for designing wings of radio-controlled (RC) model aircraft.
 | **Root chord** | 10 to 3000 | mm |
 | **Taper (tip / root chord)** | 0.1 to 1.5 | — |
 | **Sweep of the 25 % line** | −45 to 60 | ° |
-| **Dihedral per half** | −15 to 30 | ° |
+| **Dihedral per half** | −60 to 60 | ° |
 | **Tip twist (negative = washout)** | −15 to 15 | ° |
 | **Number of sections** | 2 to 8 | — |
 
@@ -214,11 +214,11 @@ Version history: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # browser for end-to-end (e2e) tests and screenshots (or set PW_CHROMIUM=/path/to/chrome)
 npm run dev              # development server on http://localhost:5173
-npm test                 # 542 unit tests (Vitest)
+npm test                 # 543 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
-npm run e2e              # production build, then 178 Playwright tests on desktop 1280 x 720 and Pixel 7 (356 runs)
+npm run e2e              # production build, then 179 Playwright tests on desktop 1280 x 720 and Pixel 7 (358 runs)
 npm run coverage         # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage tables into README.md and README.de.md
 npm run coverage:check   # exit code 1 when a README coverage table differs from coverage/
@@ -241,7 +241,7 @@ The Playwright tests run the DOM (Document Object Model) code; its coverage is n
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.3 % | 95.3 % | 98.7 % | 99.0 % |
+| 98.3 % | 95.3 % | 98.8 % | 99.0 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

@@ -82,7 +82,9 @@ export const RANGES = {
   rootChord: [10, 3000],
   taper: [0.1, 1.5],
   sweep: [-45, 60],
-  dihedral: [-15, 30],
+  // V-tails and inverted V-tails: 60° is the steepest first panel that mitred section planes build,
+  // where the vertical root plane stretches the airfoil twice (MAX_STRETCH in src/geom/planes.js).
+  dihedral: [-60, 60],
   washout: [-15, 15],
   sections: [2, 8],
 };

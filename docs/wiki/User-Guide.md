@@ -366,11 +366,11 @@ The wizard builds a complete project from 12 inputs (table below). It generates 
 | Field | Range | Effect |
 | --- | --- | --- |
 | Project name | text | Default: preset name. Empty: `<span> mm wing`. Both are made in the current language (section [Language](#language)). |
-| Span (both halves) | 100 to 20,000 mm | Tip-to-tip span |
+| Span (both halves) | 100 to 20,000 mm | Tip-to-tip span, measured along y. With a dihedral δ each half is span / 2 / cos δ long along its panel: 436 mm for 500 mm span at 55°. |
 | Root chord | 10 to 3000 mm | Chord at y = 0 |
 | Taper (tip / root chord) | 0.1 to 1.5 | Tip chord divided by root chord. Elliptic planform with flat tip: below 1. Elliptic planform with pointed tip: not used. |
 | Sweep of the 25 % line | −45 to 60° | Sweep of the quarter-chord line; positive = swept back |
-| Dihedral per half | −15 to 30° | Section z = y · tan(dihedral) |
+| Dihedral per half | −60 to 60° | Section z = y · tan(dihedral). A V-tail takes the angle of each half, e.g. 55°; an inverted V-tail a negative angle. 60° is the steepest first panel that **Mitred** section planes build: the vertical root plane stretches the airfoil 1 / cos 60° = 2 times (section [Checks](#checks)). |
 | Tip twist (negative = washout) | −15 to 15° | Twist changes linearly from 0° at the root to this value at the tip |
 | Number of sections | 2 to 8, integer | Sections evenly spaced from root to tip |
 | Planform | **Straight taper**, **Elliptic (guide curves)** | Chord law, see below |

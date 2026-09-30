@@ -59,6 +59,20 @@ describe('wizard', () => {
     expect(p.airfoils.map((a) => a.id)).toEqual(['naca23112', 'naca0010']);
   });
 
+  it('builds V-tails and inverted V-tails up to 60 degrees per half', () => {
+    // Tail surface preset (500 mm span, 130 mm root chord, NACA 0009) as a 55 degree V-tail: the tip
+    // lies 250 * tan 55 = 357.04 mm up; the vertical root plane stretches the airfoil 1/cos 55 times.
+    const p = wizardProject({ ...PRESETS.tail.params, dihedral: 55 });
+    expect(p.sections[1]).toMatchObject({ y: 250, z: 357.04 });
+    const b = buildWing(p);
+    expect([b.errors, b.sectionPlanes]).toEqual([[], 'mitred']);
+    expect(b.stretches[0]).toBeCloseTo(1 / Math.cos((55 * Math.PI) / 180), 3);
+    expect(b.tipRoll).toBeCloseTo(55, 3);
+    // 60 degrees builds at the stretch limit of 2, in both directions; beyond it the wizard refuses.
+    for (const dihedral of [60, -60]) expect(buildWing(wizardProject({ ...PRESETS.tail.params, dihedral })).errors).toEqual([]);
+    expect(wizardProblems({ ...PRESETS.tail.params, dihedral: 60.5 })).toEqual(['dihedral must be between -60 and 60.']);
+  });
+
   it('creates elliptic guides that end at the requested tip chord', () => {
     const p = wizardProject(PRESETS.glider.params);
     expect(p.guides.nose.enabled && p.guides.end.enabled).toBe(true);

@@ -173,6 +173,22 @@ test.describe('new-design wizard', () => {
     await expect(statusOf(page)).toHaveText(SPORT_STATUS);
   });
 
+  test('a V-tail of 55 degrees per half builds; the field accepts -60 to 60 degrees', async ({ page }) => {
+    const wizard = await openFirstRun(page);
+    await pickPreset(wizard, 'Tail surface');
+    const dihedral = wizard.getByLabel('Dihedral per half (deg)', { exact: true });
+    await expect(dihedral).toHaveAttribute('max', '60');
+    await expect(dihedral).toHaveAttribute('min', '-60');
+    await dihedral.fill('55');
+    await createFromWizard(page);
+    // Tip 250 mm out and 250 * tan 55 = 357.04 mm up; mitred planes, no build error.
+    expect(await sectionValues(page, ['y', 'z'])).toEqual([
+      { y: 0, z: 0 },
+      { y: 250, z: 357.04 },
+    ]);
+    await statusFigures(page, 500, { clean: true });
+  });
+
   test('an empty project name falls back to "<span> mm wing"', async ({ page }) => {
     const wizard = await openFirstRun(page);
     await pickPreset(wizard, 'Sport');

@@ -375,7 +375,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 542 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 543 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -420,7 +420,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-178 tests in 12 spec files, 356 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+179 tests in 12 spec files, 358 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 
