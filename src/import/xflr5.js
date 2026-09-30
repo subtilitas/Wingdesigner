@@ -62,12 +62,15 @@ export const DIHEDRAL_WARN = 10;
 
 /**
  * Offset of an airfoil's leading edge from the origin, or of its chord from 1 (fraction of chord), in
- * its own coordinates (an .xfl airfoil, an uploaded .dat, a generated NACA section), above which its
- * sections are moved and scaled to where XFLR5 draws it. Below it (0.25 mm at 250 mm chord, below the
- * 0.55 mm of the dihedral-break difference, SPEC 6.6) the sections keep XFLR5's values: the leading
- * edge of the fitted curve lies up to about 5e-4 of the chord from a nose point at (0, 0).
+ * its own coordinates (an .xfl airfoil, an uploaded .dat, a generated NACA section), above which the
+ * report names the move of its sections. Every frame applies exactly: in real files the leading edge
+ * of the fitted curve lies up to 7.6e-4 of the chord off the origin (a NACA 4415 with its nose point at
+ * (0, 0.00075)), and dropping such an offset would put sections 0.30 mm off the coordinates XFLR5 draws.
  */
 export const FRAME_TOLERANCE = 1e-3;
+
+/** Frame offsets (fraction of chord) up to this are round-off of the curve fit and count as none. */
+const FRAME_ROUND_OFF = 1e-9;
 
 /** Frame offsets (fraction of chord) above which the move is a warning rather than an info line. */
 export const FRAME_WARN = 0.02;
@@ -500,7 +503,8 @@ const firstError = (issues) => issues.find((i) => i.severity === 'error')?.messa
  * XFLR5 draws the coordinates as they are. `raw` are the points of the .xfl airfoil or the uploaded
  * file after the clean-up of the parser (cleanPoints, parseDat), before the check normalizes them;
  * `checkedPoints` are the checked points of `raw`: raw points moved by the least x and the
- * leading-edge y and scaled by the x range. Offsets within FRAME_TOLERANCE count as none.
+ * leading-edge y and scaled by the x range. The frame is exact; FRAME_TOLERANCE only decides whether the
+ * report names it.
  */
 function airfoilFrame(raw, checkedPoints, prof) {
   const b = bounds(raw);
@@ -508,8 +512,10 @@ function airfoilFrame(raw, checkedPoints, prof) {
   const origin = [b.xmin, raw[0][1] - checkedPoints[0][1] * scale];
   const le = curvePoint(prof.curve, prof.tLE);
   const teX = (checkedPoints[0][0] + checkedPoints[checkedPoints.length - 1][0]) / 2;
-  const snap = (v, to) => (Math.abs(v - to) > FRAME_TOLERANCE ? v : to);
-  return { x: snap(origin[0] + le[0] * scale, 0), y: snap(origin[1] + le[1] * scale, 0), chord: snap((teX - le[0]) * scale, 1) };
+  // Round-off of the fit (1e-20 for a symmetric NACA section) is no offset: 1e-9 of the chord is
+  // 0.4 nm at 400 mm.
+  const exact = (v, to) => (Math.abs(v - to) > FRAME_ROUND_OFF ? v : to);
+  return { x: exact(origin[0] + le[0] * scale, 0), y: exact(origin[1] + le[1] * scale, 0), chord: exact((teX - le[0]) * scale, 1) };
 }
 
 /**
@@ -563,6 +569,9 @@ function checkText(text, fileName) {
 
 /** True when a frame moves or scales the sections. */
 const moves = (frame) => frame.x !== 0 || frame.y !== 0 || frame.chord !== 1;
+
+/** True when the report names a frame: an offset above FRAME_TOLERANCE of the chord. */
+const noted = (frame) => Math.abs(frame.x) > FRAME_TOLERANCE || Math.abs(frame.y) > FRAME_TOLERANCE || Math.abs(frame.chord - 1) > FRAME_TOLERANCE;
 
 /**
  * An airfoil whose own coordinates XFLR5 draws (an .xfl airfoil, an uploaded .dat, a generated NACA
@@ -1035,7 +1044,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     // An airfoil that moves its sections, named as the airfoil in use (an airfoil picked for another
     // name, too). A move of more than FRAME_WARN of the chord changes the wing noticeably from the
     // file's numbers.
-    if (moves(fr)) add(far(fr) ? 'warning' : 'info', frameText(fr, sections.length === 1, at));
+    if (noted(fr)) add(far(fr) ? 'warning' : 'info', frameText(fr, sections.length === 1, at));
     // A library airfoil keeps XFLR5's table values; if XFLR5 used its coordinates, it drew these
     // sections elsewhere. The same holds for a current-project airfoil taken from the Library.
     if (ownFrame && far(ownFrame)) {
@@ -1131,11 +1140,14 @@ const far = (fr) => Math.abs(fr.chord - 1) > FRAME_WARN || Math.abs(fr.x) > FRAM
 
 /**
  * The report line of an airfoil that moves its sections (`at`: name and sections), for one section or
- * several, and with or without a change of chord.
+ * several, and with or without a change of chord that its figures show.
  */
 function frameText(fr, one, at) {
   const params = { ...at, x: pct(fr.x), y: pct(fr.y), te: pct(fr.x + fr.chord) };
-  if (fr.chord === 1) {
+  // The line says "scaled" when its figures show a chord other than 100 %: a scale that rounds away
+  // (the 0.0016 % of the Clark Y, 0.004 mm at 240 mm chord) applies without a word.
+  const shown = (v) => Number((v * 100).toFixed(2));
+  if (Math.abs(shown(fr.x + fr.chord) - shown(fr.x) - 100) < 0.005) {
     return one
       ? tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; this section was moved so that the airfoil lies as in XFLR5.', params)
       : tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.', params);

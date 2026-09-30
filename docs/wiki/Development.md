@@ -137,7 +137,7 @@ The import reads an XFLR5 file and builds a project from one wing of one plane i
 | `MIN_PANEL` (`src/import/xflr5.js`) | 0.1 mm | A panel shorter than this counts as sections at one y_position; XFLR5 skips such panels |
 | `NUDGE` | 0.5 mm | Largest move of a section that shares its y_position with the next one; also at most ¼ of the panel |
 | `DIHEDRAL_WARN` | 10° | Dihedral above which the report warns about the thinner vertical sections |
-| `FRAME_TOLERANCE` | 0.001 chord | Offset of x or y of the leading edge from 0, or of the chord from 1, up to which the sections keep the values of the file |
+| `FRAME_TOLERANCE` | 0.001 chord | Offset of x or y of the leading edge from 0, or of the chord from 1, up to which the report does not name the move of the sections; every frame above 1e-9 of the chord (`FRAME_ROUND_OFF`, round-off of the curve fit) applies |
 | `FRAME_WARN` | 0.02 chord | Offset above which the move of the sections is a warning, not an info line |
 | `FRAME_LIMIT` | x or y of the leading edge 0.1 chord, chord 0.5 to 2 | Beyond it the coordinates are not in chord units |
 | `MAX_XFL_BYTES` (`src/import/xfl.js`) | 2,000,000,000 bytes | Largest `.xfl` project |

@@ -137,7 +137,7 @@ Der Import liest eine XFLR5-Datei und baut aus einem Flügel eines Flugzeugs dar
 | `MIN_PANEL` (`src/import/xflr5.js`) | 0,1 mm | Ein Feld, das kürzer ist, zählt als Schnitte bei gleichem y_position; XFLR5 überspringt solche Felder |
 | `NUDGE` | 0,5 mm | Größte Verschiebung eines Schnitts, der sein y_position mit dem nächsten teilt; außerdem höchstens ¼ des Feldes |
 | `DIHEDRAL_WARN` | 10° | V-Form, über der der Bericht vor den dünneren senkrechten Schnitten warnt |
-| `FRAME_TOLERANCE` | 0,001 der Profiltiefe | Abweichung von x oder y der Profilnase von 0 oder der Profiltiefe von 1, bis zu der die Schnitte die Werte der Datei behalten |
+| `FRAME_TOLERANCE` | 0,001 der Profiltiefe | Abweichung von x oder y der Profilnase von 0 oder der Profiltiefe von 1, bis zu der der Bericht die Verschiebung der Schnitte nicht nennt; jede Profillage über 1e-9 der Profiltiefe (`FRAME_ROUND_OFF`, Rundungsrest der Kurvenanpassung) wird angewendet |
 | `FRAME_WARN` | 0,02 der Profiltiefe | Abweichung, über der die Verschiebung der Schnitte eine Warnung ist, keine Infozeile |
 | `FRAME_LIMIT` | x oder y der Profilnase 0,1 der Profiltiefe, Profiltiefe 0,5 bis 2 | Darüber liegen die Koordinaten nicht in Einheiten der Profiltiefe |
 | `MAX_XFL_BYTES` (`src/import/xfl.js`) | 2 000 000 000 Byte | Größtes `.xfl`-Projekt |

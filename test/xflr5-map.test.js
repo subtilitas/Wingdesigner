@@ -77,6 +77,22 @@ function expectSections(sections, rows, digits = 4) {
   sections.forEach((s, i) => values(s).forEach((v, k) => expect(v, `section ${i + 1} value ${k}`).toBeCloseTo(rows[i][k], digits)));
 }
 
+/**
+ * Expect the sections at `indices` (vertical planes) to put their leading edge where XFLR5 draws the
+ * airfoil's leading edge (frame.x, frame.y) of its own coordinates on the mapped section `xflr5`,
+ * twisted about XFLR5's quarter chord, with frame.chord of XFLR5's chord.
+ */
+function expectFramed(sections, xflr5, frame, indices = [0, 1]) {
+  indices.forEach((i) => {
+    const q = xflr5[i];
+    const s = sections[i];
+    const [le] = placeSection([[0, 0]], { xLE: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist }, 0.25);
+    const [want] = placeSection([[frame.x, frame.y]], { xLE: q.x, y: q.y, z: q.z, chord: q.chord, twist: q.twist }, 0.25);
+    for (let k = 0; k < 3; k++) expect(le[k], `section ${i + 1} axis ${k}`).toBeCloseTo(want[k], 3);
+    expect(s.chord).toBeCloseTo(q.chord * frame.chord, 3);
+  });
+}
+
 /** A wing without tilt and position. */
 const unplaced = (wing) => ({ ...wing, tilt: 0, position: { x: 0, y: 0, z: 0 } });
 
@@ -686,21 +702,25 @@ describe('XFLR5 mapping: airfoils', () => {
     const f = xflFile([w, null, null, null], [foilOf('Raised', raised), foilOf('NACA 0012', NACA12)]);
     const r = mapXflr5(f);
     const frame = r.rows[0].frame;
-    expect(frame.x).toBe(0);
-    expect(frame.chord).toBe(1);
-    // The leading edge of the fitted curve lies slightly above the lowest-x point of cambered airfoils.
-    expect(frame.y).toBeCloseTo(0.03, 2);
+    // The upper surface of a cambered NACA section reaches ahead of its nose point (0, 0): the leading
+    // edge, the least x of the fitted curve, lies 0.0078 % of the chord ahead of it and 0.16 % above.
+    // Raised by 3 %, the frame is that of NACA 2412 plus 0.03 in y.
+    const own = mapXflr5(xflFile([w, null, null, null], [foilOf('Raised', NACA2412), foilOf('NACA 0012', NACA12)])).rows[0].frame;
+    expect(own.x).toBeCloseTo(-7.757e-5, 8);
+    expect(own.y).toBeCloseTo(1.558e-3, 6);
+    expect(frame.x).toBeCloseTo(own.x, 12);
+    expect(frame.y).toBeCloseTo(own.y + 0.03, 12);
+    expect(frame.chord).toBeCloseTo(own.chord, 12);
+    expect(frame.x + frame.chord).toBeCloseTo(1, 12);
     expect(r.rows[1].frame).toEqual({ x: 0, y: 0, chord: 1 });
-    // One section, and a chord of 1: the section was moved, not scaled. Figures with 2 decimals.
+    // One section; figures with 2 decimals, which show a chord of 100.01 %: the section was moved and scaled.
     expect(texts(r.report, 'warning')).toContain(
-      nb(`Airfoil "Raised" (section 1) has its leading edge at x = 0 %, y = ${Number((frame.y * 100).toFixed(2))} % and its trailing edge at x = 100 % of chord in its own coordinates; this section was moved so that the airfoil lies as in XFLR5.`),
+      nb(`Airfoil "Raised" (section 1) has its leading edge at x = -0.01 %, y = ${Number((frame.y * 100).toFixed(2))} % and its trailing edge at x = 100 % of chord in its own coordinates; this section was moved and scaled so that the airfoil lies as in XFLR5.`),
     );
     const spec = mapSections(w, 1000).sections;
     const [root, tip] = r.project.sections;
-    const t = spec[0].twist * DEG;
     // The project holds 4 decimals.
-    expect(root.x).toBeCloseTo(spec[0].x + 200 * frame.y * Math.sin(t), 3);
-    expect(root.z).toBeCloseTo(spec[0].z + 200 * frame.y * Math.cos(t), 3);
+    expectFramed([root], spec, frame, [0]);
     expect(values(tip)).toEqual(values(spec[1]).map(round4));
     // The built wing puts the trailing edge of the raw airfoil where XFLR5's rigid twist puts it.
     const build = buildWing(r.project);
@@ -712,7 +732,7 @@ describe('XFLR5 mapping: airfoils', () => {
     for (let k = 0; k < 3; k++) expect(Math.abs((u0[k] + u1[k]) / 2 - te[k])).toBeLessThan(1e-3);
   });
 
-  it('scales a section whose airfoil does not span the unit chord, and ignores offsets within the tolerance', () => {
+  it('scales a section whose airfoil does not span the unit chord, and moves by offsets within the tolerance without a report line', () => {
     const short = NACA12.map(([x, y]) => [0.02 + 0.9 * x, 0.9 * y]);
     const w = wingOf([sec(0, 0.2, 0, 0, 0, 'Short'), sec(0.5, 0.15, 0, 0, 0, 'Almost')]);
     const almost = NACA12.map(([x, y]) => [x, y + FRAME_TOLERANCE / 2]);
@@ -722,8 +742,12 @@ describe('XFLR5 mapping: airfoils', () => {
     // Untwisted: the airfoil starts 2 % of the chord behind the section and spans 90 % of it.
     expect(r.project.sections[0].x).toBeCloseTo(4, 6);
     expect(r.project.sections[0].chord).toBeCloseTo(180, 6);
-    expect(r.rows[1].frame).toEqual({ x: 0, y: 0, chord: 1 });
-    expect(values(r.project.sections[1])).toEqual([0, 500, 0, 150, 0]);
+    // Every offset applies; up to FRAME_TOLERANCE of the chord, the report leaves it unnamed. Untwisted,
+    // the section moves up by 0.05 % of its 150 mm chord.
+    expect(r.rows[1].frame.x).toBe(0);
+    expect(r.rows[1].frame.y).toBeCloseTo(FRAME_TOLERANCE / 2, 12);
+    expect(r.rows[1].frame.chord).toBe(1);
+    expect(values(r.project.sections[1])).toEqual([0, 500, 0.075, 150, 0]);
     // The sections are scaled, not the coordinates: the check's note on scaling is left out.
     expect(texts(r.report, 'warning')).toEqual([
       nb('Airfoil "Short" (section 1) has its leading edge at x = 2 %, y = 0 % and its trailing edge at x = 92 % of chord in its own coordinates; this section was moved and scaled so that the airfoil lies as in XFLR5.'),
@@ -759,22 +783,19 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
       [47.3222, 897.1235, 65.0587, 150, -0.5],
     ]);
     const r = mapXflr5(FIXTURES);
-    // The Clark Y's nose lies 3.5546 % of the chord above its flat lower surface, the file's x axis;
-    // the NACA 0009 of the file sits at the origin with unit chord.
+    // The Clark Y's leading edge lies 3.5546 % of the chord above its flat lower surface, the file's x
+    // axis, and 0.0016 % ahead of its nose point; the NACA 0009 of the file sits at the origin with unit chord.
     const fr = r.rows[0].frame;
-    expect([fr.x, round4(fr.y * 100), fr.chord]).toEqual([0, 3.5546, 1]);
+    expect([round4(fr.x * 100), round4(fr.y * 100), round4(fr.chord * 100)]).toEqual([-0.0016, 3.5546, 100.0016]);
     expect(r.rows[1].frame).toEqual({ x: 0, y: 0, chord: 1 });
     expect(r.project.sections.map(values)).toEqual([
-      [0.2612, 0, 6.4318, 240, 2],
-      [11.0101, 499.3148, 31.7024, 220, 1],
+      [0.2574, 0, 6.4319, 240.0038, 2],
+      [11.0066, 499.3148, 31.7025, 220.0035, 1],
       [47.3222, 897.1235, 65.0587, 150, -0.5],
     ]);
-    // Sections 1 and 2 move by chord · y_LE along the twisted section's normal (sin t, cos t).
-    folded.slice(0, 2).forEach((q, i) => {
-      const t = q.twist * DEG;
-      expect(r.project.sections[i].x).toBeCloseTo(q.x + q.chord * fr.y * Math.sin(t), 3);
-      expect(r.project.sections[i].z).toBeCloseTo(q.z + q.chord * fr.y * Math.cos(t), 3);
-    });
+    // The leading edge of sections 1 and 2 lies where XFLR5 draws the airfoil's leading edge (fr.x, fr.y),
+    // twisted about the quarter chord, and the chord is fr.chord of XFLR5's.
+    expectFramed(r.project.sections, folded, fr);
     expect(frameText(r)).toEqual([
       nb('Airfoil "Clark Y" (sections 1–2) has its leading edge at x = 0 %, y = 3.55 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.'),
     ]);
@@ -874,18 +895,17 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     expect(rotatedNote(plain)).toEqual(['Airfoil "Clark Y" (sections 1–2): The line from the leading edge to the trailing edge is inclined by -1.97 degrees; the coordinates are kept, so twist refers to the file\'s x axis.']);
     expect(inclineText(plain)).toEqual([]);
     // A cambered NACA section of the generator adds its thickness across the mean line: its leading
-    // edge lies 0.16 % of the chord above the nose (0, 0), which XFLR5 puts at the section point.
+    // edge lies 0.0078 % of the chord ahead of the nose (0, 0), which XFLR5 puts at the section point,
+    // and 0.16 % above it.
     const naca = mapXflr5(FIXTURES, { choices: { 'Clark Y': 'naca:2412' } });
-    expect(naca.rows[0]).toMatchObject({ key: 'naca:2412', frame: { x: 0, chord: 1 } });
+    expect(naca.rows[0].key).toBe('naca:2412');
+    expect(naca.rows[0].frame.x * 100).toBeCloseTo(-0.0078, 4);
     expect(naca.rows[0].frame.y * 100).toBeCloseTo(0.1558, 3);
-    folded.slice(0, 2).forEach((q, i) => {
-      const t = q.twist * DEG;
-      expect(naca.project.sections[i].x).toBeCloseTo(q.x + q.chord * naca.rows[0].frame.y * Math.sin(t), 3);
-      expect(naca.project.sections[i].z).toBeCloseTo(q.z + q.chord * naca.rows[0].frame.y * Math.cos(t), 3);
-    });
+    expect(naca.rows[0].frame.x + naca.rows[0].frame.chord).toBeCloseTo(1, 12);
+    expectFramed(naca.project.sections, folded, naca.rows[0].frame);
     expect(naca.project.sections[2]).toMatchObject({ x: rows[2][0], z: rows[2][2] });
     expect(texts(naca.report, 'info')).toContain(
-      nb('Airfoil "NACA 2412" (sections 1–2) has its leading edge at x = 0 %, y = 0.16 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.'),
+      nb('Airfoil "NACA 2412" (sections 1–2) has its leading edge at x = -0.01 %, y = 0.16 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved and scaled so that the airfoil lies as in XFLR5.'),
     );
     // The generated section is stored as generated.
     expect(naca.project.airfoils.find((a) => a.name === 'NACA 2412').points).toEqual(nacaAirfoil('2412').points);
@@ -893,9 +913,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     const both = mapXflr5(FIXTURES, { choices: { 'NACA 0009': 'file:Clark Y' } });
     expect(both.rows[1]).toMatchObject({ key: 'file:Clark Y', frame: fr });
     expect(frameText(both)).toEqual([expect.stringMatching(/^Airfoil "Clark Y" \(sections 1–3\) has its leading edge at x\u00a0=\u00a00\u00a0%, y\u00a0=\u00a03\.55\u00a0%.+; these sections were moved so/)]);
-    const t = folded[2].twist * DEG;
-    expect(both.project.sections[2].x).toBeCloseTo(folded[2].x + 150 * fr.y * Math.sin(t), 3);
-    expect(both.project.sections[2].z).toBeCloseTo(folded[2].z + 150 * fr.y * Math.cos(t), 3);
+    expectFramed(both.project.sections, folded, fr, [2]);
     // The file's NACA 0009 picked for "Clark Y" sits at the origin: nothing moves, no line names the Clark Y.
     const none = mapXflr5(FIXTURES, { choices: { 'Clark Y': 'file:NACA 0009' } });
     expect(none.project.sections.map(values)).toEqual(rows);
@@ -985,7 +1003,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
       for (let k = 0; k < 3; k++) expect(nose[k]).toBeCloseTo(xflr5[k], 3);
     });
     expect(frameText(fromXml)).toEqual([
-      nb(`Airfoil "NACA 4415" (sections 1–2) has its leading edge at x = ${Number((fr.x * 100).toFixed(2)) + 0} %, y = 0.47 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.`),
+      nb(`Airfoil "NACA 4415" (sections 1–2) has its leading edge at x = ${Number((fr.x * 100).toFixed(2)) + 0} %, y = 0.47 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved and scaled so that the airfoil lies as in XFLR5.`),
     ]);
     // Symmetric sections sit at the origin: no move, no line.
     const sym = mapXflr5(simple('NACA 0015'));
@@ -1006,7 +1024,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     expect(withSample.rows[1].frame).toEqual(alone.rows[1].frame);
     expect(alone.rows[1].frame.y * 100).toBeCloseTo(0.1558, 3);
     expect(withSample.project.sections.map(values)).toEqual(alone.project.sections.map(values));
-    const line = /^Airfoil "NACA 2412" \(section 3\) has its leading edge at x\u00a0=\u00a00\u00a0%, y\u00a0=\u00a00\.16\u00a0% and its trailing edge/;
+    const line = /^Airfoil "NACA 2412" \(section 3\) has its leading edge at x\u00a0=\u00a0-0\.01\u00a0%, y\u00a0=\u00a00\.16\u00a0% and its trailing edge/;
     expect(frameText(alone)).toEqual([expect.stringMatching(line)]);
     expect(frameText(withSample)).toEqual([expect.stringMatching(line)]);
     // A current-project airfoil of another source keeps the mapped sections, with the same points.
@@ -1027,7 +1045,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     expect(tab4412.rows[1]).toMatchObject({ found: 'project', key: 'project:tab', frame: none4412.rows[1].frame });
     expect(none4412.rows[1].frame.y * 100).toBeCloseTo(0.304, 3);
     expect(tab4412.project.sections.map(values)).toEqual(none4412.project.sections.map(values));
-    const line4412 = /^Airfoil "NACA 4412" \(section 3\) has its leading edge at x\u00a0=\u00a00\u00a0%, y\u00a0=\u00a00\.3\u00a0% and its trailing edge/;
+    const line4412 = /^Airfoil "NACA 4412" \(section 3\) has its leading edge at x\u00a0=\u00a0-0\.03\u00a0%, y\u00a0=\u00a00\.3\u00a0% and its trailing edge/;
     expect(frameText(none4412)).toEqual([expect.stringMatching(line4412)]);
     expect(frameText(tab4412)).toEqual([expect.stringMatching(line4412)]);
   });
@@ -1070,15 +1088,19 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     expect(stored(r)).toEqual([]);
   });
 
-  it('ignores the offset of a fitted leading edge from a nose point at (0, 0)', () => {
-    // RAF 34 has its nose point at (0, 0); the leading edge of the fitted curve lies about 5e-4 of the
-    // chord from it, within FRAME_TOLERANCE.
+  it('moves sections by the offset of a fitted leading edge from a nose point at (0, 0), without a report line', () => {
+    // RAF 34 has its nose point at (0, 0); the leading edge of the fitted curve, its least x, lies
+    // 5.2e-4 of the chord above it and 1.4e-5 ahead, within FRAME_TOLERANCE. The section moves by it:
+    // 0.10 mm up at 200 mm chord.
     const raf = readFileSync(new URL('../public/airfoils/raf-34.dat', import.meta.url), 'utf8');
     const u = readAirfoilUpload(raf, 'raf-34.dat');
-    expect(u).toMatchObject({ ok: true, frame: { x: 0, y: 0, chord: 1 } });
+    expect(u.ok).toBe(true);
+    expect(u.frame.x).toBeCloseTo(-1.358e-5, 8);
+    expect(u.frame.y).toBeCloseTo(5.203e-4, 7);
+    expect(u.frame.x + u.frame.chord).toBeCloseTo(1, 12);
     const r = mapXflr5(simple('NACA 0009'), { uploads: [u], choices: { 'NACA 0009': 'upload:0' } });
     expect(frameText(r)).toEqual([]);
-    expect(values(r.project.sections[0])).toEqual([0, 0, 0, 200, 0]);
+    expect(values(r.project.sections[0])).toEqual([-0.0027, 0, 0.1041, 200.0027, 0]);
     expect(FRAME_TOLERANCE).toBe(1e-3);
   });
 
@@ -1107,8 +1129,8 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     const unitDat = readAirfoilUpload(toSeligDat('Clark Y', clark), 'clarky.dat');
     const percentDat = readAirfoilUpload(toSeligDat('Clark Y', clark.map(([x, y]) => [100 * x, 100 * y])), 'clarky-pct.dat');
     expect(percentDat.issues.map((i) => i.code)).toContain('percent');
-    expect(percentDat.frame.x).toBe(0);
-    expect(percentDat.frame.chord).toBe(1);
+    expect(percentDat.frame.x).toBeCloseTo(unitDat.frame.x, 9);
+    expect(percentDat.frame.chord).toBeCloseTo(unitDat.frame.chord, 9);
     expect(percentDat.frame.y).toBeCloseTo(unitDat.frame.y, 6);
   });
 
@@ -1556,10 +1578,15 @@ describe('XFLR5 mapping: project and report', () => {
     expect(stab.project.sections.map((s) => s.twist)).toEqual(Array(9).fill(0.1));
     const x0 = 1428.75 + 0.25 * 174.625 * (Math.cos(0.1 * DEG) - 1);
     expect(mapSections(f.planes[0].wings[2], 1000).sections[0].x).toBeCloseTo(x0, 9);
-    // The project holds 4 decimals, without the noise of the unit conversion (0.40005 m x 1000).
+    // The project holds 4 decimals, without the noise of the unit conversion (0.40005 m x 1000). The
+    // Rascal airfoils span 0.99984 of the chord from their leading edge, which lies 1.6e-4 of the chord
+    // aft of the file's x = 0: their nose point is at x = 0.00026.
     expect(stab.project.sections[0].x).toBe(round4(x0));
     expect(f.planes[0].wings[0].sections[2].chord * 1000).not.toBe(400.05);
-    expect(main.project.sections[2].chord).toBe(400.05);
+    const rascal = main.rows.find((row) => row.sections.includes(3)).frame;
+    expect(rascal.x).toBeCloseTo(1.56e-4, 6);
+    expect(rascal.chord).toBeCloseTo(0.99984, 5);
+    expect(main.project.sections[2].chord).toBe(round4(400.05 * rascal.chord));
   });
 });
 

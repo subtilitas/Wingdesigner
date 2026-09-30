@@ -61,15 +61,16 @@ Measured on 2026-09-30:
 - XFLR5 6.62 STL of 93 surfaces of 15 real projects: 80 within 0.6 mm (75 with vertical planes).
   Untilted 35° V-tails 2.87 → 0.013 mm, the 40° V-tail of `mini_talon.xfl` 2.31 → 0.025 mm; the 4
   tilted V-tails stay at 2.87 mm (step 2). The flat wings of `Wing Design and Analysis.xfl` lie within
-  0.229 mm with the stored panel angles, as with vertical planes (0.234 mm with the rolls of the
-  frame-moved sections).
+  0.277 mm with exact airfoil frames and the stored panel angles, the sag of XFLR5's straight segments
+  (File Formats, section Differences from XFLR5).
 - OpenCascade on the 12 STEP cases (4 mitred): all valid and closed, volume within 7.6e-5 of the
   mesh, cap edges within 3e-13 mm of their planes. A tip cap written vertical on the gull fails the
   new cap check (0.67 mm) and passes the volume check (0.0475 %).
 - 284 random untilted imports with cambered NACA sections: largest distance of a built section from
-  XFLR5's placement 0.151 mm with the stored panel angles, 0.417 mm with the dihedrals of the
-  frame-moved sections and 0.430 mm with XFLR5's roll alone; the rest is the fitted nose of the
-  cambered NACA sections.
+  XFLR5's placement 0.033 mm with the stored panel angles and exact airfoil frames, the sag of the
+  reference polyline; the built sections lie within 0.002 mm of the exact NACA curves. With frame
+  offsets up to 1e-3 of the chord dropped: 0.417 mm with the dihedrals of the frame-moved sections,
+  0.430 mm with XFLR5's roll alone.
 - Wizard presets with dihedral build 9 or 17 stations; the Sport wing loses 1.4 % volume against the
   vertical build (the **Linear** blend instead of a ruled surface 0.343 mm off it), 0.02 % from the
   planes alone.
