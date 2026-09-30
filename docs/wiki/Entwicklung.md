@@ -27,7 +27,7 @@ Die mitgelieferte Profilbibliothek braucht keine Netzanfrage: Das Plugin `airfoi
 | `scripts/` | Siehe [Skripte](#skripte) |
 | `test/` | Vitest-Unit-Tests (`*.test.js`), `helpers.js` (NACA-Beispielprojekt), `step-cases.js` (Testfälle für die Validierung von Dateien im Standard for the Exchange of Product model data (STEP) und von 3MF-Dateien), `xflr5-writer.js` (Schreiber für XFLR5-Projektdateien), `fixtures/xflr5/` (XFLR5-Testdateien, siehe [XFLR5-Testdateien und Tests](#xflr5-testdateien-und-tests)) |
 | `e2e/` | Playwright-End-to-End-Tests (E2E) im Browser (`*.spec.js`), `helpers.js` |
-| `docs/Flow5upgrade.md` | Plan und Entscheidungen des Eigentümers zu Schnittebenen in Gehrung, einer starren Neigung des ganzen Teils und dem flow5-Import (nur Englisch) |
+| `docs/Flow5upgrade.md` | Plan und Entscheidungen des Eigentümers zu Schnitten in Gehrungsebenen, einer starren Drehung des ganzen Teils um den Einstellwinkel und dem flow5-Import (nur Englisch) |
 | `docs/wiki/` | Wiki-Seiten auf Englisch und Deutsch, `_Sidebar.md`, `images/` (englische Screenshots), `images/de/` (deutsche Screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
 
