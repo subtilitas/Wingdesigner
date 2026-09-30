@@ -29,7 +29,7 @@ Sources:
 | --- | --- | --- | --- |
 | 1 | Mitred section planes behind a switch (option c) | 7 to 11 h | Restores the airfoil thickness on panels with dihedral; the XFLR5 import and the flow5 import both use it |
 | 2 | Rigid tilt of the whole part | 2 to 4 h (not analysed) | With mitred sections, folding an imported tilt into the sections is no longer exact |
-| 3 | flow5 import, Extensible Markup Language (XML) and `.fl5` (option C) | 9 to 12.5 h | Reuses the section mapping of the XFLR5 import and profits from steps 1 and 2 |
+| 3 | flow5 import, Extensible Markup Language (XML) and `.fl5` (option C) | 9 to 12.5 h, plus F3 and F6 (not estimated) | Reuses the section mapping of the XFLR5 import and profits from steps 1 and 2 |
 
 The order follows the two analyses. The owner decided only that the flow5 import starts after the
 XFLR5 import is merged (F1; done: pull request #5, 2026-09-30). The flow5 estimate is made on the code
@@ -131,10 +131,15 @@ Options not taken:
   volume) but not the 15°/−5° gull (+0.22 %); a check of the cap planes is needed.
 - XFLR5 import: the dihedral warning above 10° goes; the airfoil frame moves along the rolled normal;
   R5 decides the tilted parts.
-- Folded tilt: an import that folds a tilt into x, z and twist (R5) stores the tilt angle with the
-  project, as a value of format version 2. Without it, a switch of such a project to mitred repeats
-  the error of the folded tilt (section 2) without a warning, and step 2 cannot find the projects to
-  convert. Step 2 turns the stored angle into a rigid part tilt.
+- Folded tilt: an import that folds a tilt into x, z and twist (R5) stores the tilt angle and its
+  pivot with the project, as values of format version 2. The pivot is the wing origin, the position
+  x, z of the part (`mapSections` in `src/import/xflr5.js` turns each quarter-chord point about it
+  and adds the angle to every twist). Without the stored values, a switch of such a project to
+  mitred repeats the error of the folded tilt (section 2) without a warning, and step 2 cannot find
+  the projects to convert.
+- Untilted imports with a fold: when the mitre planes of an untilted import fail the fold check
+  (R6), for example at the 0.5 mm panel of the equal-y move, the part imports with vertical section
+  planes and an info line that names the sections. A test covers a 10° break with the 0.5 mm move.
 - Tests that change: the 3 XFLR5 frame tests and the dihedral-warning test in
   `test/xflr5-map.test.js`, and the version tests in `test/wizard.test.js` and `e2e/export.spec.js`.
 - Size: 410 to 700 lines of code, 580 to 1,000 lines of tests, 300 to 500 lines of docs in English and
@@ -152,7 +157,8 @@ Options not taken:
   unknown. With automatic mitre planes, the XFLR5 import's move of sections at equal y (at most
   0.5 mm) makes a 0.5 mm panel whose section planes differ by half the break angle. A derived
   estimate, not run, puts their intersection about 5.7 mm from the reference line at a 10° break,
-  inside a 150 mm section of 12 % thickness: the import would fold the surface.
+  inside a 150 mm section of 12 % thickness: the import would fold the surface. The import then
+  falls back to vertical section planes (Work, "Untilted imports with a fold").
 - Not tested: a rolled STEP file in a computer-aided design (CAD) program.
 - Float32 precision of STL and 3MF (3D Manufacturing Format) with rolled caps is not tested.
 - Not tested: the real 35° and 40° V-tail samples with the prototype.
@@ -179,6 +185,11 @@ the y axis. With mitred sections the fold is no longer exact:
 A rigid rotation of the whole part after the build brings the trailing edges to within 0.003 mm
 (measured). Size, user interface and exports are not analysed; 2 to 4 h is a guess. A roll of the
 whole part (flow5's `rx`) is the same kind of transform; see F4.
+
+Migration of a folded tilt: step 2 first undoes the fold of a project with a stored tilt. It turns
+each quarter-chord point back about the stored pivot by the stored angle and subtracts the angle from
+every twist. It then applies the same angle as a rigid part tilt about the same pivot. A test opens
+such a version 2 project and checks that the geometry is unchanged by the upgrade.
 
 A part tilt is a new project value. An app with step 1 only would drop it without a message
 (`resolveSettings` and the loader in `src/model/io.js` keep only known keys). Format rule:
@@ -251,12 +262,12 @@ Defaults without a question, as for the XFLR5 import:
   "XFLR5 or flow5": about 1,400 to 2,200 lines with tests and docs.
 - New: `src/import/fl5xml.js` (flow5 XML), `src/import/fl5.js` (`.fl5` from format 500750, about 25
   to 30 version branches), a test writer `test/fl5-writer.js`, browser tests `e2e/flow5.spec.js`.
-- F3 adds 10 to 20 lines and 5 to 8 tests; F6 adds 25 to 40 lines. The totals below are made for the
-  recommended answers (F3: first main wing and first elevator only), so the F3 lines come on top.
-  Whether the F6 lines are inside them is not stated.
-- Size: 4,500 to 6,300 lines in all (code, German texts, tests, docs).
+- Size: 4,500 to 6,300 lines in all (code, German texts, tests, docs) for the analysed scope, plus
+  the decided F3 scope: 10 to 20 lines of code and 5 to 8 tests. F6 adds 25 to 40 lines; whether
+  the analysis counts them in the 4,500 to 6,300 lines is not stated.
 - Review: 24 to 38 code findings over 2 to 3 rounds, 23 to 41 docs findings.
-- Effort: 9 to 12.5 h wall-clock, 18 to 24 agent hours.
+- Effort: 9 to 12.5 h wall-clock, 18 to 24 agent hours for the analysed scope. The time of the F3
+  and F6 additions is not estimated.
 
 ### Risks
 
