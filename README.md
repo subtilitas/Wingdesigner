@@ -46,7 +46,7 @@ Browser application for designing wings of radio-controlled (RC) model aircraft.
 | Project size | Above a warning threshold the wing builds as usual. **Checks** adds one warning: `Large project: …`, listing each size above its threshold with `(warning above …)`, followed by the estimated time and browser memory of each change (`Each change takes … and … of browser memory.`). When the first build (**Open**, restored autosave, a change of **Profile parametrization**) takes at least 1 s longer than a change, the warning adds `Opening it or changing the profile parametrization takes ….`; estimate: time of a change plus 4.4 ms per airfoil that a section uses plus 30 µs per point of these airfoils (Node.js 24; 20,000 linear sections at 16 stations per surface and 10,000 airfoils of 99 points: `about 83 s`). A message shows the same text when an edit, **Open** or the restored autosave takes a size above its threshold. Estimates: linear fits to measurements in Chromium 141 (see Current limitations). | Warning above: 200 sections, 200 airfoils, 5000 points in one airfoil, 100,000 airfoil points in all, 500 points in an enabled guide curve, 60,000 loft grid points, 2,000,000 export triangles or 1,000,000 STEP control points (export dialog), 200 characters in a name. Hard limits, where a desktop browser tab runs out of memory or a change takes about a minute: 20,000 sections, 10,000 airfoils, 100,000 points in one airfoil, 1,000,000 airfoil points in all, 20,000 points per guide curve, 5,000,000 loft grid points, 10,000,000 export triangles, 3,000,000 STEP control points, 10,000 characters in a name, 200 characters in an id, 2000 characters in an airfoil source text, 100 MB per project file. Lists and messages show the first 200 characters of a name followed by `…`. |
 | Input | Mouse, touchscreen, keyboard. 3D view: drag rotates, wheel or pinch zooms, right button or 2 fingers pan. 2D views (planform, previews): drag a point to move it, drag the background to pan, wheel or pinch zooms, 2 fingers pan, double-click fits. | Undo: Ctrl+Z or Cmd+Z; redo: Ctrl+Shift+Z, Cmd+Shift+Z, Ctrl+Y or Cmd+Y. Shortcuts are ignored while an input field has focus or a dialog is open. Undo history: at most 100 steps and at most 64,000,000 characters of serialized project (undo and redo together); a project above 640,000 characters keeps fewer steps, at least 1. One drag forms 1 undo step, however long it pauses; an action that changes nothing adds no undo step. |
 | Storage | Autosave to browser local storage after every change that passes project validation, with the rebuild in the next animation frame; a pending save is written at once when the page is hidden or left (reload, closing the tab). A stored project that fails to load is kept under `wingdesigner.project.v1.rejected`, and the wizard opens. Nothing is saved while the first-run wizard is open. **Save** downloads the project JSON. **Open** opens a project file. When browser storage refuses the project, a message says so and the status bar shows `Autosave off: use Save` until an autosave succeeds. | Local storage unavailable: the project stays in memory only. Browser storage: about 5,000,000 characters per site. **Open**: files above 100 MB are rejected before reading. |
-| Language | English and German, chosen with **Language / Sprache** at the top of **Settings**. Every text switches without a reload: menus, labels, tooltips, notices, **Checks**, build errors and warnings, airfoil check messages, size warnings. Numbers follow the language (German `1.234,5`). Data stays as it is: file contents, airfoil names, attributions, file names. | Starts in German when the first language of the browser is German, otherwise in English. The choice is stored under `wingdesigner.language`. Project, selection and undo history stay. |
+| Language | English and German, chosen with **Language / Sprache** in the first group of **Settings**. The texts switch without a reload: top bar, tabs, tooltips, **Checks** with the build errors and warnings, airfoil check messages, size warnings. Later notices and dialogs opened later use the new language. A notice that is showing at the switch is removed; an error notice stays in its language until it fades. Numbers follow the language (German `1.234,5`). Not translated: file contents, airfoil names, attributions, license identifiers. | Starts with the stored choice; without one in German when the first language of the browser is German, otherwise in English. Stored in the browser under `wingdesigner.language`. Project, selection and undo history stay. File names of downloads write umlauts out in both languages (`ü` becomes `ue`). Details: [User Guide](https://github.com/subtilitas/Wingdesigner/wiki/User-Guide), section Language. |
 
 ### Wizard inputs
 
@@ -76,13 +76,16 @@ Browser application for designing wings of radio-controlled (RC) model aircraft.
 
 File name, derived from the project name:
 
-1. Accents removed (ü → u).
-2. Each run of characters other than `A-Z a-z 0-9 . _ -` becomes one `_`.
-3. Leading and trailing `_` removed.
-4. Cut to the first 120 characters.
-5. Empty result: `wing`.
+1. German umlauts written out: ä → ae, ö → oe, ü → ue, Ä → Ae, Ö → Oe, Ü → Ue, ß → ss.
+2. Other accents removed (é → e, ñ → n).
+3. Each run of characters other than `A-Z a-z 0-9 . _ -` becomes one `_`.
+4. Leading and trailing `_` removed.
+5. Cut to the first 120 characters.
+6. Empty result: `wing`.
 
-Example: `Flügel V2 (neu)` → `Flugel_V2_neu.step`.
+The rule is the same in the English and the German interface.
+
+Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 
 | Format | File | Content | Verification |
 | --- | --- | --- | --- |
@@ -158,6 +161,7 @@ Example: `Flügel V2 (neu)` → `Flugel_V2_neu.step`.
 | The 25 % MAC point is a geometric reference. | Shown in **Checks** as "25 % MAC (geometric reference)". No neutral-point or centre-of-gravity calculation. |
 | A project within all limits can exceed the 100 MB of a project file. | Names and source texts near their limits: 10,000 airfoils with 10,000-character names hold 100,000,000 name characters (with 5 points per airfoil: 100.8 MB). **Save** writes no file and shows `Save failed: the project takes 100.8 MB as a file, above the 100 MB that Open reads.` Projects with shorter names and source texts fit: 1,000,000 airfoil points take about 40 MB. |
 | Browser support is tested in Chromium only. | Playwright tests at 1280 x 720 and in the Pixel 7 phone profile. Firefox and Safari: not tested. |
+| A decimal comma typed into a number field gives a wrong value. | Chromium 141 (headless, locales `en-US` and `de-DE`): the field drops the comma, so `0,7` reads `07`, and the app commits 7 without a message (**Twist pivot** then takes its maximum 1). Type a decimal point. Other browsers, and Chromium with a German interface language: not tested. |
 | Time and memory estimates come from one desktop computer. | The `Large project` warning, the warning for airfoils above 5000 points, the titles of **+** and **Add point**, the loft grid note in **Settings** and the export note use linear fits to measurements in Chromium 141 on 4 cores of a 2.1 GHz server CPU. Measured: JavaScript time without drawing the 3D view; the 3D view adds its drawing time. The first-build sentence of the `Large project` warning adds a term measured in Node.js 24 only. |
 | Wing computation time and memory use on phones: not measured. | — |
 

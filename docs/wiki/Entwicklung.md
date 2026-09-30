@@ -12,7 +12,7 @@ English: [[Development|Development]]
 | Node.js | 24 oder neuer (`.nvmrc`: 24; `engines.node`: `>=24`) |
 | Unit-Tests | Vitest `^5.0.2` in Node.js; Zeitlimit 20000 ms je Test (`test.testTimeout` in `vite.config.js`); Testabdeckung (Coverage) mit `@vitest/coverage-v8` |
 | Browsertests | Playwright `^1.63.0` |
-| App-Version | `version` aus `package.json`, von `vite.config.js` als `__APP_VERSION__` einkompiliert. Erscheint im Dialog **Help** (Hilfe). Steht in `generator.version` der Projektdatei (JavaScript Object Notation, JSON). |
+| App-Version | `version` aus `package.json`, von `vite.config.js` als `__APP_VERSION__` einkompiliert. Erscheint im Dialog **Hilfe** (Help). Steht in `generator.version` der Projektdatei (JavaScript Object Notation, JSON). |
 
 Der Code in `src/geom/`, `src/airfoil/`, `src/export/` und `src/model/` nutzt die Programmierschnittstelle (API, Application Programming Interface) des Document Object Model (DOM) nicht.
 Unit-Tests und Skripte importieren ihn in Node.js.
@@ -21,13 +21,13 @@ Die mitgelieferte Profilbibliothek braucht keine Netzanfrage: Das Plugin `airfoi
 | Pfad | Inhalt |
 | --- | --- |
 | `index.html` | Seitengerüst; lädt `src/main.js` |
-| `src/main.js` | Einstieg: Store, Planung der Neuberechnung, Kopfleiste, Statusleiste, Registerkarte **Checks** (Prüfungen), Dialog **Help**, automatisches Speichern |
+| `src/main.js` | Einstieg: Store, Planung der Neuberechnung, Kopfleiste, Statusleiste, Registerkarte **Prüfungen** (Checks), Dialog **Hilfe**, automatisches Speichern |
 | `src/geom/`, `src/airfoil/`, `src/export/`, `src/model/`, `src/ui/` | Siehe [Module](#module) |
 | `public/airfoils/` | 6 Koordinatendateien (`.dat`, Selig-Format), `index.json` mit 6 Einträgen, `NOTICE.md` (Quelle, Rechtsgrundlage, Bedingungen und Quellenangabe je Datei). Ein Eintrag braucht eine freie Lizenz und eine Zeile in `NOTICE.md` (siehe [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek)). Die 17 Vorlagen nach National Advisory Committee for Aeronautics (NACA) werden zur Laufzeit berechnet, nicht gespeichert. |
 | `scripts/` | Siehe [Skripte](#skripte) |
 | `test/` | Vitest-Unit-Tests (`*.test.js`), `helpers.js` (NACA-Beispielprojekt), `step-cases.js` (Testfälle für die Validierung von Dateien im Standard for the Exchange of Product model data (STEP) und von 3MF-Dateien) |
 | `e2e/` | Playwright-End-to-End-Tests (E2E) im Browser (`*.spec.js`), `helpers.js` |
-| `docs/wiki/` | Wiki-Seiten auf Englisch und Deutsch, `_Sidebar.md`, `images/` |
+| `docs/wiki/` | Wiki-Seiten auf Englisch und Deutsch, `_Sidebar.md`, `images/` (englische Screenshots), `images/de/` (deutsche Screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
 
 Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/`, `test-results/`, `playwright-report/`.
@@ -62,12 +62,12 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/store.js` | Store mit Rückgängig und Wiederholen |
 | `src/ui/viewer3d.js` | 3D-Ansicht |
 | `src/ui/panzoom.js` | 2D-Canvas mit Verschieben und Zoom |
-| `src/ui/sections.js` | Registerkarte **Sections** (Schnitte) |
-| `src/ui/planform.js` | Registerkarte **Planform** (Grundriss) |
-| `src/ui/airfoils.js` | Registerkarte **Airfoils** (Profile), Vorschau beim Hochladen |
-| `src/ui/settings.js` | Registerkarte **Settings** (Einstellungen) |
+| `src/ui/sections.js` | Registerkarte **Schnitte** (Sections) |
+| `src/ui/planform.js` | Registerkarte **Grundriss** (Planform) |
+| `src/ui/airfoils.js` | Registerkarte **Profile** (Airfoils), Vorschau beim Hochladen |
+| `src/ui/settings.js` | Registerkarte **Einstellungen** (Settings) |
 | `src/ui/wizard.js` | Dialog des Assistenten |
-| `src/ui/exportui.js` | Dialog **Export** |
+| `src/ui/exportui.js` | Dialog **Exportieren** (Export) |
 | `src/ui/dom.js` | DOM-Hilfsfunktionen |
 | `src/ui/styles.css` | Stile |
 | `src/i18n/index.js` | Sprache (`language`, `setLanguage`, `initialLanguage`), `tr()` und die Zahlenformate `fixed`, `count`, `whole`, `plain` |
@@ -82,7 +82,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `scripts/export-step-cases.mjs` | Export der STEP- und 3MF-Testfälle |
 | `scripts/validate_step.py` | STEP-Validierung (OpenCascade) |
 | `scripts/validate_3mf.py` | 3MF-Validierung (lib3mf) |
-| `scripts/screenshots.mjs` | Screenshots für das Wiki |
+| `scripts/screenshots.mjs` | Screenshots für das Wiki, englisch und deutsch |
 | `scripts/check-docs.mjs` | Dokumentationsprüfung |
 | `scripts/check-test-counts.mjs` | Prüfung der Testanzahlen |
 | `scripts/check-i18n.mjs` | Übersetzungsprüfung |
@@ -96,18 +96,20 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 2. Der Store benachrichtigt seine Abonnenten.
    `main.js` plant höchstens 1 Neuberechnung im nächsten Animations-Frame; weitere Benachrichtigungen davor nutzen dieselbe.
 3. Die Neuberechnung ruft `buildWing(project)` auf.
-   Sie aktualisiert die 3D-Ansicht, **Sections**, **Planform**, **Checks** und die Statusleiste.
-   **Airfoils** und **Settings** werden bei jeder Änderung außer einer Auswahländerung erneut aufgebaut.
+   Sie aktualisiert die 3D-Ansicht, **Schnitte**, **Grundriss**, **Prüfungen** und die Statusleiste.
+   **Profile** und **Einstellungen** werden bei jeder Änderung außer einer Auswahländerung erneut aufgebaut.
 4. Nach einer Änderung, die keine Auswahländerung ist, speichert die Neuberechnung das Projekt im lokalen Speicher des Browsers (Local Storage), wenn `validateProject` es akzeptiert.
    Ein ausstehendes Speichern wird bei `pagehide` und beim Verbergen der Seite (`visibilitychange`) sofort ausgeführt, z. B. bei einem Neuladen vor dem nächsten Animations-Frame.
    Solange der Assistent des ersten Aufrufs offen ist, wird nichts gespeichert; ein Neuladen öffnet dann erneut den Assistenten.
-   **Skip (open sample wing)** speichert den Beispielflügel; **Create design** speichert das erzeugte Projekt.
+   **Überspringen (Beispielflügel öffnen)** (Skip (open sample wing)) speichert den Beispielflügel; **Entwurf anlegen** (Create design) speichert das erzeugte Projekt.
 
 | Schlüssel im lokalen Speicher | Inhalt |
 | --- | --- |
 | `wingdesigner.project.v1` | Letztes gültiges Projekt (JSON) |
 | `wingdesigner.project.v1.rejected` | Kopie eines gespeicherten Projekts, das sich nicht laden ließ. Die App startet dann wie beim ersten Besuch, mit dem Assistenten. |
+| `wingdesigner.project.v1.stale` | Zeitpunkt der ersten fehlgeschlagenen automatischen Sicherung; entfällt beim nächsten Start und wenn eine automatische Sicherung gelingt |
 | `wingdesigner.tab` | Aktive Registerkarte |
+| `wingdesigner.language` | Gewählte Sprache, `en` oder `de` (Abschnitt [Übersetzungen](#übersetzungen)) |
 
 ### Build- und Exportzeiten
 
@@ -123,28 +125,30 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | Wiederholung | Mittelwert aus 10 Läufen nach 2 Aufwärmläufen; STEP schreiben: Mittelwert aus 3 Läufen |
 | Einheit | KB = 1024 Byte |
 
-| Fall | **Chordwise stations per surface** (Stationen je Profilseite) | `buildWing`, Profile im Cache | Dreiecksnetz (zusammengeführt) | STEP schreiben | STEP-Größe |
+| Fall | **Stationen je Profilseite** (Chordwise stations per surface) | `buildWing`, Profile im Cache | Dreiecksnetz (zusammengeführt) | STEP schreiben | STEP-Größe |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Entwurfstyp **Sport** (Sportmodell), 2 Schnitte | 60 | 17 ms | 1 ms | 3 ms | 99 KB |
-| Entwurfstyp **Sport** (Sportmodell), 2 Schnitte | 200 | 40 ms | 1 ms | 4 ms | 303 KB |
-| Entwurfstyp **Glider** (Segelflugmodell), elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 60 | 36 ms | 12 ms | 6 ms | 445 KB |
-| Entwurfstyp **Glider** (Segelflugmodell), elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 200 | 89 ms | 42 ms | 19 ms | 1398 KB |
+| Entwurfstyp **Sportmodell** (Sport), 2 Schnitte | 60 | 17 ms | 1 ms | 3 ms | 99 KB |
+| Entwurfstyp **Sportmodell**, 2 Schnitte | 200 | 40 ms | 1 ms | 4 ms | 303 KB |
+| Entwurfstyp **Segelflugmodell** (Glider), elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 60 | 36 ms | 12 ms | 6 ms | 445 KB |
+| Entwurfstyp **Segelflugmodell**, elliptische Leitkurven, 17 Stationen in Spannweitenrichtung | 200 | 89 ms | 42 ms | 19 ms | 1398 KB |
 
 Große Projekte im Browser:
 
 | Bedingung | Wert |
 | --- | --- |
 | Rechner | Chromium 141, headless, Software-Rendering; 4 geteilte Kerne eines Intel-Xeon-Hauptprozessors (CPU) mit 2,1 GHz; Load Average 2 bis 8 (andere Prozesse liefen) |
-| Änderung | 1 Änderung einer Profiltiefe in der Tabelle **Sections** |
+| Änderung | 1 Änderung einer Profiltiefe in der Tabelle **Schnitte** |
 | Werte | JavaScript-Zeit der Änderung; JavaScript-Heap nach dem Neuaufbau |
+
+**Linear** und **Glatt** (Smooth) stehen für die Optionen **Linear zwischen den Schnitten (gerade Felder)** (Linear between sections (straight panels)) und **Glatt (natürlicher kubischer Spline durch die Schnitte)** (Smooth (natural cubic spline through sections)) der Liste **Interpolation in Spannweitenrichtung** (Spanwise interpolation).
 
 | Fall | JavaScript-Zeit je Änderung | Heap |
 | --- | ---: | ---: |
-| 200 Schnitte, **Smooth** (399 Stationen in Spannweitenrichtung) | 0,5 bis 0,65 s | 38 bis 48 MB |
+| 200 Schnitte, **Glatt** (399 Stationen in Spannweitenrichtung) | 0,5 bis 0,65 s | 38 bis 48 MB |
 | 1000 Schnitte, **Linear** | 1,5 bis 1,6 s | 78 bis 91 MB |
-| 2000 Schnitte, **Smooth** | 2,9 bis 3,8 s | 159 bis 175 MB |
+| 2000 Schnitte, **Glatt** | 2,9 bis 3,8 s | 159 bis 175 MB |
 | 5000 Schnitte, **Linear** | 6,9 bis 7,4 s | 345 bis 361 MB |
-| 5000 Schnitte, **Smooth** | 6,2 bis 8,3 s | 237 bis 413 MB |
+| 5000 Schnitte, **Glatt** | 6,2 bis 8,3 s | 237 bis 413 MB |
 | 10 000 Schnitte, **Linear** | 15,8 bis 16,4 s | 490 MB |
 | 15 000 Schnitte, **Linear** | 19 bis 23 s | 678 MB |
 | 20 000 Schnitte, **Linear** | 24 s | 969 MB |
@@ -152,19 +156,19 @@ Große Projekte im Browser:
 - 20 000 Schnitte, **Linear**: 57 s Seitenzeit je Änderung mit Software-Rendering. Öffnen des Projekts: 24 s JavaScript-Zeit, 59 s Seitenzeit, danach 496 MB Heap.
 - Auswahl eines Schnitts: 2 bis 100 ms JavaScript-Zeit bei 200 bis 20 000 Schnitten.
 - Profile mit je 20 001 Punkten: 100 Profile öffnen in 17 s, eine Änderung dauert 2,3 s, Heap 546 MB; 200 Profile öffnen in 35 s, eine Änderung dauert 5,8 bis 7,9 s, Heap 1,1 GB.
-- Export als Dreiecksnetz, 16 Schnitte × 40 Stationen, 200 **Chordwise stations per surface**: STL mit 8,5 Millionen Dreiecken in 6,9 s, Datei 423 MB, Arbeitsspeicher in der Spitze 2,7 GB. STL mit 20 Millionen Dreiecken schlägt fehl; 80 Millionen Dreiecke bringen den Tab zum Absturz. 3MF mit 8,5 Millionen Dreiecken in 49 s, Datei 97 MB.
+- Export als Dreiecksnetz, 16 Schnitte × 40 Stationen, 200 **Stationen je Profilseite**: STL mit 8,5 Millionen Dreiecken in 6,9 s, Datei 423 MB, Arbeitsspeicher in der Spitze 2,7 GB. STL mit 20 Millionen Dreiecken schlägt fehl; 80 Millionen Dreiecke bringen den Tab zum Absturz. 3MF mit 8,5 Millionen Dreiecken in 49 s, Datei 97 MB.
 - STEP-Export: 81 MB in 2,2 s (1041 Stationen), 330 MB in 8,4 s (4161 Stationen).
 - Node.js 24, 5000 Schnitte, **Linear**: `buildWing` 5,1 s, Flügelkennwerte 20 ms, 363 MB Heap behalten.
-- Node.js 24, Leitkurve mit 50 000 Punkten: 5,1 bis 6,1 s je Aufbau. Die Registerkarte **Planform** öffnet mit 10 000 Leitkurvenpunkten in 6 s und mit 50 000 in 36 s bei 3,4 GB.
+- Node.js 24, Leitkurve mit 50 000 Punkten: 5,1 bis 6,1 s je Aufbau. Die Registerkarte **Grundriss** öffnet mit 10 000 Leitkurvenpunkten in 6 s und mit 50 000 in 36 s bei 3,4 GB.
 
 Rechenzeit ohne Profile im Cache: in diesem Lauf nicht gemessen.
 Rechenzeit und Speicherbedarf auf Smartphones: nicht gemessen.
 
 ### Größenwarnungen und Grenzen
 
-Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt dann 1 Warnung in der Registerkarte **Checks**: `Large project: <sizes>. Each change takes <time> and <memory> of browser memory.` Jede Größe lautet `<value> (warning above <threshold>)`, zum Beispiel `250 sections (warning above 200)`. `<time>` lautet `under 1 s` oder `about X s`; `<memory>` lautet `about X MB` oder `about X GB`. Dauert der geschätzte erste Aufbau mindestens 1 s länger als eine Änderung (`firstBuildSeconds`), endet die Warnung mit `Opening it or changing the profile parametrization takes <time>.` Der erste Aufbau läuft nach **Open**, für die wiederhergestellte automatische Sicherung und nach einer Änderung von **Profile parametrization**; er prüft und interpoliert jedes Profil neu, das ein Schnitt verwendet. Die Statusleiste zählt die Warnung. Steigt eine Größe über ihre Schwelle (Bearbeitung, **Open**, wiederhergestellte automatische Sicherung), zeigt eine Kurzmeldung denselben Text. Jenseits einer harten Grenze läuft einem Browser-Tab auf dem Desktop der Speicher aus oder eine Änderung dauert etwa 1 Minute; die App weist solche Projekte und Änderungen ab.
+Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt dann 1 Warnung in der Registerkarte **Prüfungen**: `Großes Projekt: <Größen>. Jede Änderung dauert <Zeit> und belegt <Speicher> Arbeitsspeicher.` Jede Größe lautet `<Wert> (Warnung über <Schwelle>)`, zum Beispiel `250 Schnitte (Warnung über 200)`. `<Zeit>` lautet `unter 1 s` oder `etwa X s`; `<Speicher>` lautet `etwa X MB` oder `etwa X GB`. Dauert der geschätzte erste Aufbau mindestens 1 s länger als eine Änderung (`firstBuildSeconds`), endet die Warnung mit `Das Öffnen des Projekts oder eine Änderung der Parametrisierung der Profile dauert <Zeit>.` Der erste Aufbau läuft nach **Öffnen** (Open), für die wiederhergestellte automatische Sicherung und nach einer Änderung von **Parametrisierung der Profile** (Profile parametrization); er prüft und interpoliert jedes Profil neu, das ein Schnitt verwendet. Die Statusleiste zählt die Warnung. Steigt eine Größe über ihre Schwelle (Bearbeitung, **Öffnen**, wiederhergestellte automatische Sicherung), zeigt eine Kurzmeldung denselben Text. Jenseits einer festen Grenze geht einem Browser-Tab auf dem Desktop der Speicher aus, oder eine Änderung dauert etwa 1 Minute; die App weist solche Projekte und Änderungen ab.
 
-| Größe | Warnung über (`WARN` in `src/model/budget.js`) | Harte Grenze (`LIMITS` in `src/model/project.js`) |
+| Größe | Warnung über (`WARN` in `src/model/budget.js`) | Feste Grenze (`LIMITS` in `src/model/project.js`) |
 | --- | ---: | ---: |
 | Schnitte | 200 | 20 000 |
 | Profile | 200 | 10 000 |
@@ -176,9 +180,9 @@ Größen über einer Warnschwelle funktionieren wie gewohnt. Der Aufbau ergänzt
 | Kontrollpunkte beim Export (STEP) | 1 000 000 | 3 000 000 |
 | Zeichen eines Namens (Projekt, Profile) | 200 | 10 000 |
 
-- Wo die Warnungen erscheinen: Punkte eines Profils in der Profilvorschau (`many-points`); Dreiecke und STEP-Kontrollpunkte beim Export im Exportdialog, der **Download** über 10 000 000 Dreiecken oder 3 000 000 Kontrollpunkten sperrt; alle anderen Größen in der Warnung `Large project`. Die Registerkarte **Settings** zeigt unter den Feldern der Auflösung `Loft grid: N points.`, über 60 000 Punkten mit Rechenzeit und Speicher.
-- Weitere harte Grenzen: IDs 200 Zeichen; Quellentexte eines Profils 2000 Zeichen; Profileingabe 5 000 000 Zeichen (`MAX_INPUT` in `src/airfoil/parse.js`); Profildateien über 20 MB werden nicht gelesen; der Parser hört nach 100 001 Koordinatenzeilen auf (`MAX_POINTS`); **Open** weist Projektdateien über 100 MB ungelesen ab (`MAX_PROJECT_BYTES` in `src/model/io.js`).
-- Flächengitter: Stationen in Spannweitenrichtung × (2N + 1) Profilpunkte vor dem Einfügen zusätzlicher Stationen, N = **Chordwise stations per surface** (`loftGrid` in `src/model/budget.js`). Bis 5 000 000 Gitterpunkte verwendet der Aufbau die Einstellungen wie eingegeben. Darüber verwendet er weniger Stationen je Feld und warnt `Spanwise stations per panel reduced from K to k: S sections with N chord samples keep the loft within 5,000,000 grid points.` Überschreitet schon 1 Station je Feld die Grenze, bricht der Aufbau ab mit `The loft grid needs P points with one station per panel (S sections, N chord samples); the limit is 5,000,000. Reduce the chord samples or the sections.`
+- Wo die Warnungen erscheinen: Punkte eines Profils in der Profilvorschau (`many-points`); Dreiecke und STEP-Kontrollpunkte beim Export im Exportdialog, die Schaltfläche **Herunterladen** (Download) über 10 000 000 Dreiecken oder 3 000 000 Kontrollpunkten sperrt; alle anderen Größen in der Warnung `Großes Projekt`. Die Registerkarte **Einstellungen** zeigt unter den Feldern der Auflösung `Flächengitter: N Punkte.`, über 60 000 Punkten mit Rechenzeit und Speicher.
+- Weitere feste Grenzen: IDs 200 Zeichen; Quellentexte eines Profils 2000 Zeichen; Profileingabe 5 000 000 Zeichen (`MAX_INPUT` in `src/airfoil/parse.js`); Profildateien über 20 MB werden nicht gelesen; der Parser hört nach 100 001 Koordinatenzeilen auf (`MAX_POINTS`); **Öffnen** weist Projektdateien über 100 MB ungelesen ab (`MAX_PROJECT_BYTES` in `src/model/io.js`).
+- Flächengitter: Stationen in Spannweitenrichtung × (2N + 1) Profilpunkte vor dem Einfügen zusätzlicher Stationen, N = **Stationen je Profilseite** (`loftGrid` in `src/model/budget.js`). Bis 5 000 000 Gitterpunkte verwendet der Aufbau die Einstellungen wie eingegeben. Darüber verwendet er weniger Stationen je Feld und warnt `Stationen je Feld von K auf k verringert: S Schnitte mit N Stationen je Profilseite halten die Fläche bei höchstens 5.000.000 Gitterpunkten.` Überschreitet schon 1 Station je Feld die Grenze, bricht der Aufbau ab mit `Das Flächengitter braucht P Punkte bei einer Station je Feld (S Schnitte, N Stationen je Profilseite); die Grenze liegt bei 5.000.000. Die Stationen je Profilseite verringern oder Schnitte entfernen.`
 
 Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit ohne das Zeichnen der 3D-Ansicht. Die 3D-Ansicht kommt mit der Zeichenzeit der Grafikkarte hinzu. Smartphones: nicht gemessen. Die Koeffizienten stehen in `COST` (jede Änderung) und `EXPORT` (Export) in `src/model/budget.js`. Einheiten: 1 MB = 1000 KB = 1 000 000 Byte.
 
@@ -186,7 +190,7 @@ Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit o
 | --- | ---: | ---: |
 | Grundwert jeder Änderung | 0,2 s | 15 MB |
 | Punkt im Flächengitter | 11,5 µs | 0,65 KB |
-| Eintrag einer Profilliste in der Tabelle **Sections**: Schnitte × Profile bis 20 000 Einträge (`LAZY_OPTIONS`), darüber 1 je Schnitt | 8,5 µs | 0,5 KB |
+| Eintrag einer Profilliste in der Tabelle **Schnitte**: Schnitte × Profile bis 20 000 Einträge (`LAZY_OPTIONS`), darüber 1 je Schnitt | 8,5 µs | 0,5 KB |
 | Profilpunkt | 1,5 µs | 0,2 KB |
 | Punkt einer eingeschalteten Leitkurve | 110 µs | 50 KB |
 | Profilpunkt, Prüfung beim Import und erster Aufbau eines Flügels mit dem Profil (`airfoilFirstUse`: Warnung `many-points` und erster Aufbau) | 30 µs | nicht verwendet |
@@ -198,23 +202,66 @@ Schätzmodell: lineare Anpassung an die Browsermessungen oben, JavaScript-Zeit o
 | 3MF | 5,8 µs | 110 Byte | 11,5 Byte |
 | STEP, je Kontrollpunkt | 2,5 µs | 620 Byte | 98 Byte |
 
-Erster Aufbau (`firstBuildSeconds`): die Zeit einer Änderung plus 4,4 ms je Profil, das ein Schnitt verwendet, plus 30 µs je Punkt dieser Profile. Grundlage: 7,4 ms je Profil mit 99 Punkten in Node.js 24 bei 1000 und 2000 Profilen, davon 3 ms durch den Punktanteil; im Browser nicht gemessen. Beispiel: 20 000 Schnitte (**Linear**, 16 **Chordwise stations per surface**: 660 000 Punkte im Flächengitter) und 10 000 Profile mit 99 Punkten: `Each change takes about 9.5 s and about 650 MB of browser memory. Opening it or changing the profile parametrization takes about 83 s.`
+Erster Aufbau (`firstBuildSeconds`): die Zeit einer Änderung plus 4,4 ms je Profil, das ein Schnitt verwendet, plus 30 µs je Punkt dieser Profile. Grundlage: 7,4 ms je Profil mit 99 Punkten in Node.js 24 bei 1000 und 2000 Profilen, davon 3 ms durch den Punktanteil; im Browser nicht gemessen. Beispiel: 20 000 Schnitte (**Linear**, 16 **Stationen je Profilseite**: 660 000 Punkte im Flächengitter) und 10 000 Profile mit 99 Punkten: `Jede Änderung dauert etwa 9,5 s und belegt etwa 650 MB Arbeitsspeicher. Das Öffnen des Projekts oder eine Änderung der Parametrisierung der Profile dauert etwa 83 s.`
 
-Der Speicher beim Export enthält zusätzlich den Grundwert von 15 MB. Tests: `test/budget.test.js` (Schwellen, Schätzungen, Flächengitter wie im Aufbau, gekürzte Namen), `e2e/limits.spec.js` (Warnung über 200 Schnitten und Titel der Schaltfläche **+**, Profillisten großer Schnitttabellen, Hinweis im Exportdialog und harte Grenze).
+Der Speicher beim Export enthält zusätzlich den Grundwert von 15 MB. Tests: `test/budget.test.js` (Schwellen, Schätzungen, Flächengitter wie im Aufbau, gekürzte Namen), `e2e/limits.spec.js` (Warnung über 200 Schnitten und Titel der Schaltfläche **+**, Profillisten großer Schnitttabellen, Hinweis im Exportdialog und feste Grenze).
 
 ## Übersetzungen
 
-Die App spricht Englisch oder Deutsch (`src/i18n/index.js`). In Node.js und in den Tests ist die Sprache Englisch; der Browser startet auf Deutsch, wenn seine erste Sprache Deutsch ist oder wenn die Nutzerin oder der Nutzer Deutsch gewählt hat (Einstellung **Language / Sprache**, Schlüssel `wingdesigner.language`).
+Die App spricht Englisch (`en`) oder Deutsch (`de`). Der Code steht in `src/i18n/index.js`. Englisch ist die Vorgabe, auch in Node.js und in den Unit-Tests.
 
-- `tr(text, params)` liefert `text` in der aktuellen Sprache. Der Schlüssel ist der englische Text, den der Code erzeugt, mit Platzhaltern `{name}`: `tr('Created "{name}".', { name })`. Das erste Argument ist ein Zeichenkettenliteral, und ein Text ist ein ganzer Satz: keine englischen Bruchstücke, die zusammengesetzt werden.
-- Der deutsche Text ist der Eintrag mit demselben Schlüssel in der Datei seines Bereichs: `src/i18n/de/shell.js` (`src/main.js`, Assistent, **Settings**), `panels.js` (Registerkarte **Airfoils**, Dialog **Export**, Bibliothek), `editors.js` (Tabelle **Sections**, **Planform**), `model.js` (Projekt, Größenwarnungen, Assistent), `geom.js` (Aufbau, Export), `airfoil.js` (Parser und Prüfungen). Ein Schlüssel ohne deutschen Eintrag zeigt den englischen Text.
+Beim Start der Browser-App wählt `initialLanguage()` die Sprache:
+
+1. Eine gespeicherte Wahl, wenn sie eine Sprache benennt.
+2. Sonst Deutsch, wenn die erste Sprache des Browsers `de` ist oder mit `de-` beginnt.
+3. Sonst Englisch.
+
+Die Liste **Language / Sprache** ändert die Sprache. Sie ist die erste Gruppe der Registerkarte **Einstellungen** (Settings) und enthält `English` und `Deutsch`. Die Wahl wird im `localStorage` unter `wingdesigner.language` gespeichert. Ohne Browserspeicher gilt die Wahl, bis die Seite geschlossen wird. Die Beschriftung **Language / Sprache** und die beiden Optionsnamen lauten in beiden Sprachen gleich und sind keine Katalogeinträge.
+
+Einen Text hinzufügen:
+
+1. Den englischen Text dort schreiben, wo er erscheint: `tr('Created "{name}".', { name })`. Das erste Argument ist ein Zeichenkettenliteral. Ein Text ist ein ganzer Satz: keine englischen Bruchstücke, die zusammengesetzt werden.
+2. Den Eintrag mit demselben Schlüssel und denselben Platzhaltern in die Datei seines Bereichs schreiben: `'Created "{name}".': 'Entwurf „{name}“ angelegt.'`. Ein Schlüssel ohne deutschen Eintrag zeigt den englischen Text.
+3. `npm run i18n:check` ausführen. Der Befehl nennt Datei und Zeile eines Schlüssels ohne deutschen Eintrag.
+4. Ein Text der Bedienoberfläche, der nur einmal entsteht (Kopfleiste, Registerkarten, Ansichtsschaltflächen, Statusleiste, Meta-Beschreibung), wird in `shellLabels` angemeldet, meist über `localized()` in `src/main.js`. `labelShell()` setzt ihn nach einem Sprachwechsel neu. Die Registerkarten holen ihre Texte aus `tr()`, wenn sie neu gezeichnet oder beschriftet werden.
+
+| Datei in `src/i18n/de/` | Texte von |
+| --- | --- |
+| `shell.js` | `src/main.js`, `src/ui/wizard.js`, `src/ui/settings.js` |
+| `panels.js` | `src/ui/airfoils.js`, `src/ui/exportui.js`, `src/ui/viewer3d.js`, Bibliotheksdaten (siehe unten) |
+| `editors.js` | `src/ui/sections.js`, `src/ui/planform.js` |
+| `model.js` | `src/model/` |
+| `geom.js` | `src/geom/`, `src/export/` |
+| `airfoil.js` | `src/airfoil/` |
+
+`src/i18n/de/index.js` fasst die sechs Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`.
+
+Eine Sprache hinzufügen:
+
+1. Einen Ordner `src/i18n/<code>/` mit den Bereichsdateien und einer `index.js` anlegen, die sie zusammenfasst, wie `src/i18n/de/index.js` es tut.
+2. `<code>: 'Name'` in `LANGUAGES` und `<code>: <catalog>` in `CATALOGS` in `src/i18n/index.js` eintragen. Die Liste **Language / Sprache** zeigt `LANGUAGES`. `setLanguage()` akzeptiert die Codes aus `CATALOGS`.
+3. Diese Stellen nennen Deutsch im Code und folgen `LANGUAGES` nicht. Jede braucht eine Regel für die neue Sprache:
+   - `initialLanguage()` liest aus den Sprachen des Browsers nur `de`.
+   - `fixed()`, `count()`, `whole()` und `plain()` vergleichen die Sprache mit `'de'`.
+   - `src/ui/styles.css` hat Regeln `html[lang='de']` für die längeren deutschen Beschriftungen.
+   - Der Link **Dokumentation (Wiki)** (Documentation (wiki)) im Dialog **Hilfe** (Help) in `src/main.js` wählt die Seite mit `language() === 'de'`.
+   - Der Text `<noscript>` in `index.html` nennt beide Sprachen.
+   - `scripts/check-i18n.mjs` importiert nur `src/i18n/de/index.js`.
+   - Die Beschriftung `Language / Sprache` (`LANGUAGE_LABEL` in `src/ui/settings.js`) nennt die Liste auf Englisch und Deutsch.
+   - `scripts/screenshots.mjs` läuft nur für `en` und `de` und sucht Beschriftungen in `DE`. Die Wiki-Seiten einer neuen Sprache brauchen einen eigenen Bildordner.
+   - `PAGE_PAIRS` in `scripts/check-docs.mjs` und die Regeln in `scripts/check-test-counts.mjs` nennen nur die englischen und die deutschen Seiten.
+
+Regeln für Texte:
+
 - Ein Plural besteht aus zwei Schlüsseln oder aus einem deutschen Eintrag, der eine Funktion der Parameter ist (`({ n }) => …`) und die gedruckte Zahl mit `'1'` vergleicht.
-- Zahlen in einem Text laufen über `fixed(value, digits)`, `count(value)`, `whole(value)` oder `plain(value)`: Deutsch schreibt ein Dezimalkomma und Punkte als Tausendertrenner (`1.234,5`). `whole()` ist für Anzahlen und Grenzen mit 4 oder mehr Stellen: Englisch druckt `String(value)`, Deutsch gruppiert eine ganze Zahl und rundet nie. Zahlen als Daten (Werte von Eingabefeldern, Attribute, Dateiinhalte) bleiben unformatiert.
-- Daten werden nicht übersetzt: Dateiinhalte (STEP, STL, 3MF, JSON, `.dat`), Projekt-JSON, Profilnamen, Quellenangaben, Lizenzen, Dateinamen, CSS-Klassen, `data-*`-Werte, Optionswerte und die Ausgabe in der Entwicklerkonsole.
-- Der Code vergleicht nie Meldungstexte. Er vergleicht einen Code oder ein aufgezeichnetes Feld (`issue.code`, `build.sizeWarning`), weil dieselbe Meldung auf Deutsch anders lautet.
-- Die Texte der mitgelieferten Bibliothek (`category`, `use` in `public/airfoils/index.json` und die Hinweise zu den externen Quellen) sind Daten des Index und erscheinen über `libraryText()` in `src/ui/airfoils.js`. Ein neuer Text braucht dort einen `case` mit eigenem `tr()`-Literal und einen deutschen Eintrag in `src/i18n/de/panels.js`; ein unbekannter Text erscheint unverändert.
-- `npm run i18n:check` (`scripts/check-i18n.mjs`, Job `test` in `ci.yml`) schlägt fehl, wenn ein Schlüssel keinen deutschen Eintrag hat, ein deutscher Eintrag unbenutzt ist, Schlüssel und Eintrag verschiedene Platzhalter haben, zwei Bereiche einen Schlüssel verschieden übersetzen oder ein `tr()`-Aufruf nicht mit einem Zeichenkettenliteral beginnt.
-- `changeLanguage()` in `src/main.js` wechselt ohne Neuladen: Es speichert die Wahl, setzt das Attribut `lang`, beschriftet die Bedienoberfläche neu und markiert den Aufbau, sodass der nächste Frame den Flügel neu aufbaut und die Ansicht und jede Registerkarte aus diesem Aufbau zeichnet. Gibt es außer der Größenwarnung keine Meldung, wird nur diese Warnung neu geschrieben.
+- Zahlen in einem Text laufen über vier Hilfsfunktionen. `fixed(value, digits)` schreibt `digits` Nachkommastellen: `1200.5` auf Englisch, `1.200,5` auf Deutsch. `count(value)` rundet auf eine ganze Zahl und gruppiert die Ziffern: `20,000` auf Englisch, `20.000` auf Deutsch. `whole(value)` ist für Anzahlen und Grenzen mit 4 oder mehr Stellen: Englisch druckt `String(value)`, Deutsch gruppiert eine ganze Zahl und rundet nie. `plain(value)` druckt den kürzesten Text, der als dieselbe Zahl gelesen wird (`String(value)`), auf Deutsch mit Dezimalkomma.
+- Zahlen als Daten (Werte von Eingabefeldern, Attribute, Dateiinhalte) bleiben unformatiert.
+- Nicht übersetzt: Dateiinhalte (STEP, STL, 3MF, JSON, `.dat`), die Projekt-JSON, Profilnamen, Quellenangaben und Lizenzen, Namen externer Quellen, Dateinamen, CSS-Klassen (Cascading Style Sheets), `data-*`-Werte, Optionswerte und Codes von Meldungen wie `many-points`. Der Text einer Ausnahme in `Interner Fehler: {message}` (ausgelöst in `src/geom/nurbs.js` und `src/geom/linalg.js`) bleibt Englisch; der Rahmen darum ist übersetzt. Die 3MF-Datei erklärt in beiden Sprachen `xml:lang="en-US"`.
+- Der Code vergleicht nie einen übersetzten Text. Er vergleicht einen Code oder ein aufgezeichnetes Feld (`issue.code`, `build.sizeWarning`), weil dieselbe Meldung auf Deutsch anders lautet. Der einzige Texttest, `/zero pivot/` in `src/geom/wing.js`, liest eine Ausnahme aus `src/geom/linalg.js`, die nie übersetzt wird.
+- Die beschreibenden Texte der Bibliothek sind Daten: `category` und `use` von `NACA_PRESETS` in `src/airfoil/library.js` und der Einträge in `public/airfoils/index.json` sowie die `note` von `EXTERNAL_SOURCES`. `libraryText()` in `src/ui/airfoils.js` zeigt sie an. Ein neuer Text braucht dort einen `case` mit eigenem `tr()`-Literal und einen deutschen Eintrag in `src/i18n/de/panels.js`. Ein unbekannter Text erscheint unverändert.
+- Der Link **Dokumentation (Wiki)** im Dialog **Hilfe** öffnet auf Englisch die Startseite des Wikis und auf Deutsch die Seite `Benutzerhandbuch`.
+- `npm run i18n:check` (`scripts/check-i18n.mjs`, Job `test` in `ci.yml`, auch von `test/i18n.test.js` ausgeführt) liest jeden `tr()`-Aufruf in `src/` außerhalb von `src/i18n/`. Der Befehl endet mit Exit-Code 1, wenn ein Schlüssel keinen deutschen Eintrag hat, ein deutscher Eintrag unbenutzt ist, Schlüssel und Texteintrag verschiedene Platzhalter haben, zwei Bereiche einen Schlüssel verschieden übersetzen, ein Eintrag weder Text noch Funktion ist oder ein `tr()`-Aufruf nicht mit einem Zeichenkettenliteral beginnt. Die Platzhalter von Funktionseinträgen vergleicht er nicht.
+- `changeLanguage()` in `src/main.js` wechselt ohne Neuladen. Es speichert die Wahl, setzt das Attribut `lang` des Elements `html`, beschriftet die Bedienoberfläche neu und entfernt die Kurzmeldung, außer sie meldet einen Fehler. Enthält der Aufbau einen Fehler oder eine andere Warnung als die Größenwarnung, wird der Flügel neu aufgebaut, weil diese Meldungen aus dem Aufbau stammen. Sonst bleibt der Flügel, und die Größenwarnung wird neu geschrieben. In beiden Fällen werden die Registerkarten neu gezeichnet, auch **Prüfungen** (Checks). Projekt, Auswahl und Rückgängig-Verlauf bleiben.
 
 ## Regeln für Testdaten
 
@@ -224,7 +271,7 @@ Die App spricht Englisch oder Deutsch (`src/i18n/index.js`). In Node.js und in d
 | Eingaben der Parser-Tests | Kurze synthetische Zeichenketten in `test/airfoil.test.js` in den Dateiformaten fremder Quellen, mit erfundenen Koordinaten |
 | Hochladen in Browsertests | In den Spec-Dateien erzeugt, keine Daten Dritter: `.dat`-Datei mit 13 Punkten in `e2e/smoke.spec.js` und `e2e/mobile-layout.spec.js`; Selig, Lednicer, X/Yo/Yu-Prozenttabelle mit Dezimalkomma und ungültige Dateien (sich kreuzende Profilseiten, Text) aus den Gleichungen der 4-stelligen NACA-Profile in `e2e/airfoils.spec.js` |
 | Mitgelieferte Bibliothek in Browsertests | `e2e/airfoils.spec.js` listet die 6 Dateien aus `public/airfoils/` auf und fügt S9104 dem Projekt hinzu |
-| Hochladen für Screenshots | NACA 4412, berechnet in `scripts/screenshots.mjs`, 14 x-Positionen von 0 bis 100 %, als X/Yo/Yu-Prozenttabelle mit Dezimalkomma |
+| Hochladen für Screenshots | NACA 4412, berechnet in `scripts/screenshots.mjs`, 14 x-Positionen von 0 bis 100 %, als X/Yo/Yu-Prozenttabelle mit Dezimalkomma; dieselbe Datei in beiden Sprachen |
 
 Profildateien Dritter werden nur unter einer Lizenz aus der Zeile Lizenz in [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek) eingecheckt.
 Quellen: [[Profilquellen|Profilquellen]].
@@ -249,7 +296,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Prüfungen unter [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek); Exit-Code 1 bei einem Problem |
 | `npm run e2e` | `npm run build && playwright test` | Browsertests in `e2e/` gegen `vite preview` auf Port 4173 |
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 8 STEP-Dateien, 8 3MF-Dateien und `cases.json` in `step-check/` |
-| `npm run screenshots` | `node scripts/screenshots.mjs` | 12 Dateien im Format Portable Network Graphics (PNG) in `docs/wiki/images/` |
+| `npm run screenshots` | `node scripts/screenshots.mjs` | 24 Dateien im Format Portable Network Graphics (PNG): 12 in `docs/wiki/images/` (Englisch) und 12 in `docs/wiki/images/de/` (Deutsch) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Prüfungen unter [Prüfung der Testanzahlen](#prüfung-der-testanzahlen); Exit-Code 1 bei einer Abweichung |
 | `npm run i18n:check` | `node scripts/check-i18n.mjs` | Prüfungen unter [Übersetzungen](#übersetzungen); Exit-Code 1 bei einem Problem |
@@ -283,7 +330,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Server | `npm run preview -- --port 4173 --strictPort`; jeder Lauf startet einen eigenen Server (`reuseExistingServer: false`) |
 | Zeitlimits | 60000 ms je Test, 60000 ms für den Serverstart |
 | Wiederholungsversuche | 0 |
-| Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` setzt eigene Sprachen, wo ein Test sie braucht |
+| Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` setzt `de-DE` in seinem Block `German browser` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
 160 Tests in 11 Spec-Dateien, 320 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
@@ -293,7 +340,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Spec-Datei | nur `desktop` | nur `mobile` |
 | --- | --- | --- |
 | `e2e/mobile-layout.spec.js` | 1: Schnitttabelle, Markenname, Kopfleiste in 1 Zeile | 17: jeder Test in `phone layout` (kein seitliches Scrollen, Kopfleiste, Tippflächen, Schnittkarten, Hinweis zur Randtiefe, 360 px breites Smartphone, Dialoge im Hoch- und Querformat) |
-| `e2e/viewer.spec.js` | 3: Drehen per Maus-Ziehen, Verschieben per Ziehen mit rechter Maustaste, Zoom per Mausrad | 4: Drehen mit einem Finger, Verschieben mit zwei Fingern, Pinch-Zoom mit zwei Fingern, **Enlarge** (Vergrößern) |
+| `e2e/viewer.spec.js` | 3: Drehen per Maus-Ziehen, Verschieben per Ziehen mit rechter Maustaste, Zoom per Mausrad | 4: Drehen mit einem Finger, Verschieben mit zwei Fingern, Pinch-Zoom mit zwei Fingern, **Vergrößern** (Enlarge) |
 | `e2e/planform.spec.js` | 1: Zoom-Schaltflächen, Mausrad, Doppelklick zum Einpassen | 2: Ziehen eines Leitkurvenpunkts mit einem Finger, Pinch-Zoom mit zwei Fingern |
 | `e2e/sections.spec.js` | 2: Strg+Z und Strg+Umschalt+Z, Strg+Y | 0 |
 
@@ -377,24 +424,33 @@ Beim nächsten Lauf werden im Wiki bearbeitete Seiten überschrieben und dort an
 
 ### Screenshots
 
-`npm run screenshots` erzeugt alle Bilder in `docs/wiki/images/` erneut.
-Das Skript baut die Website, liefert sie auf Port 4175 aus und steuert Chromium mit Playwright.
-Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräteskalierung 2,625. Helles Farbschema. Englische Oberfläche (Sprache `en-US`), weil die App auf einem deutschen Browser auf Deutsch startet.
+`npm run screenshots` erzeugt alle Bilder erneut. Das Skript baut die Website, liefert sie auf Port 4175 aus und steuert Chromium mit Playwright. Es erzeugt jedes Bild zweimal:
 
-| Datei | Zustand | Größe (Pixel) |
+| Ordner | Sprache der Oberfläche | Sprache des Browsers |
 | --- | --- | --- |
-| `wizard.png` | Assistent, Entwurfstyp **Glider** | 960 x 784 |
-| `main-desktop.png` | Ganzes Fenster nach dem Anlegen des **Glider** | 1280 x 800 |
-| `sections.png` | Registerkarte **Sections**, **Glider**, 3 Schnitte | 600 x 730 |
-| `planform.png` | Registerkarte **Planform**, **Glider**, Nasenlinie und Endlinie eingeschaltet | 600 x 730 |
-| `airfoils.png` | Registerkarte **Airfoils**, **Glider** | 600 x 730 |
-| `upload-preview.png` | Vorschau beim Hochladen einer synthetischen X/Yo/Yu-Prozenttabelle mit Dezimalkomma, geöffnet über dem **Glider** | 640 x 646 |
-| `export-dialog.png` | Dialog **Export**, **Glider** | 640 x 476 |
-| `settings.png` | Registerkarte **Settings**, **Glider** | 600 x 730 |
-| `checks.png` | Registerkarte **Checks**, **Glider** | 600 x 730 |
-| `flying-wing-control-net.png` | 3D-Ansicht, **Swept flying wing** (Pfeilnurflügel), **Show NURBS control net** (Kontrollnetz zeigen) an | 680 x 730 |
-| `mobile-main.png` | Smartphone, Entwurfstyp **Sport** | 1082 x 2202 |
-| `mobile-planform.png` | Smartphone, **Planform**, **Sport**, Endlinie eingeschaltet | 1082 x 2202 |
+| `docs/wiki/images/` | Englisch | `en-US` |
+| `docs/wiki/images/de/` | Deutsch | `de-DE` |
+
+Beide Ordner enthalten 12 Dateien mit denselben Namen und denselben Zuständen. Die englischen Wiki-Seiten binden `images/<name>.png` ein, die deutschen Seiten `images/de/<name>.png`.
+
+Die beiden Sprachen durchlaufen dieselben Schritte. Die Schritte benennen jedes Bedienelement mit seiner englischen Beschriftung. Der deutsche Durchlauf ordnet diese Beschriftung ihrem deutschen Eintrag in `DE` (`src/i18n/de/index.js`) zu und bricht ab, wenn es keinen Texteintrag gibt. Beide Durchläufe brechen ab, wenn die App in einer anderen Sprache startet, als die Sprache des Browsers verlangt (Attribut `lang` des Elements `html`). Der Text `Sample 4412 table` in `upload-preview.png` ist die erste Zeile der erzeugten Datei und lautet in beiden Sprachen gleich.
+
+Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräteskalierung 2,625. Helles Farbschema. Die deutschen Texte sind länger, deshalb weicht die Größe einiger deutscher Bilder ab.
+
+| Datei | Zustand | Größe (Pixel), Englisch | Größe (Pixel), Deutsch |
+| --- | --- | --- | --- |
+| `wizard.png` | Assistent, Entwurfstyp **Segelflugmodell** (Glider) | 960 x 784 | 960 x 784 |
+| `main-desktop.png` | Ganzes Fenster nach dem Anlegen des Entwurfstyps **Segelflugmodell** | 1280 x 800 | 1280 x 800 |
+| `sections.png` | Registerkarte **Schnitte** (Sections), **Segelflugmodell**, 3 Schnitte | 600 x 730 | 600 x 730 |
+| `planform.png` | Registerkarte **Grundriss** (Planform), **Segelflugmodell**, Nasenlinie und Endlinie eingeschaltet | 600 x 730 | 600 x 730 |
+| `airfoils.png` | Registerkarte **Profile** (Airfoils), **Segelflugmodell** | 600 x 730 | 600 x 730 |
+| `upload-preview.png` | Vorschau beim Hochladen einer synthetischen X/Yo/Yu-Prozenttabelle mit Dezimalkomma, geöffnet über dem Entwurfstyp **Segelflugmodell** | 640 x 646 | 640 x 710 |
+| `export-dialog.png` | Dialog **Exportieren** (Export), **Segelflugmodell** | 640 x 506 | 640 x 552 |
+| `settings.png` | Registerkarte **Einstellungen** (Settings), **Segelflugmodell** | 600 x 730 | 600 x 730 |
+| `checks.png` | Registerkarte **Prüfungen** (Checks), **Segelflugmodell** | 600 x 730 | 600 x 730 |
+| `flying-wing-control-net.png` | 3D-Ansicht, **Pfeilnurflügel** (Swept flying wing), **NURBS-Kontrollnetz zeigen** (Show NURBS control net) an | 680 x 730 | 680 x 730 |
+| `mobile-main.png` | Smartphone, Entwurfstyp **Sportmodell** (Sport) | 1082 x 2202 | 1082 x 2202 |
+| `mobile-planform.png` | Smartphone, **Grundriss**, **Sportmodell**, Endlinie eingeschaltet | 1082 x 2202 | 1082 x 2202 |
 
 ### Dokumentationsprüfung
 
@@ -430,7 +486,7 @@ npm run counts:check                                                            
 npm run e2e && npm run counts:check -- --e2e-report playwright-report/results.json  # alle Anzahlen
 ```
 
-Die CI führt sie im Job `test` ohne Bericht aus und im Job `e2e` mit dem Bericht des Laufs dieses Jobs.
+Die Continuous Integration (CI) führt sie im Job `test` ohne Bericht aus und im Job `e2e` mit dem Bericht des Laufs dieses Jobs.
 Nicht geprüft: `CHANGELOG.md` (verzeichnet Änderungen, mit den Anzahlen ihrer Zeit).
 
 ## Continuous Integration (CI)
@@ -473,7 +529,7 @@ Alle aufgeführten Actions laufen auf Node.js 24 (`runs.using: node24`); `upload
 Die CI ändert die Tabellen der Testabdeckung in den READMEs nicht.
 Aktualisieren mit `npm run coverage && npm run coverage:readme`, dann beide READMEs committen.
 
-Der erste Lauf auf `main` (Merge von #1, 2026-09-29): CI-Lauf 36590504445 hat Pages veröffentlicht, Docs-Lauf 36590504459 hat das Wiki gepusht.
+Der erste Lauf auf `main` (Merge von #1, 29.09.2026): CI-Lauf 36590504445 hat Pages veröffentlicht, Docs-Lauf 36590504459 hat das Wiki gepusht.
 Das Klonen in `docs.yml` setzt ein vorhandenes Repository-Wiki voraus; GitHub legt es mit der ersten Seite an, die in der Weboberfläche gespeichert wird.
 
 ## Release

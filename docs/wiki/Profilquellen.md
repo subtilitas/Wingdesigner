@@ -8,10 +8,10 @@ Zusammenfassung veröffentlichter Nutzungsbedingungen, keine Rechtsberatung. Zit
 
 | Quelle | Bedingungen (Zusammenfassung) | Mitgeliefert | Nutzung in Wingdesigner |
 | --- | --- | --- | --- |
-| NACA-Gleichungen (National Advisory Committee for Aeronautics) für 4- und 5-stellige Profile, NACA Report 824 (Abbott, von Doenhoff, Stivers, 1945) | Veröffentlichte Gleichungen. Die App berechnet die Koordinaten und kopiert keine Koordinatendatei. | Im Browser erzeugt | 17 Vorlagen in **Library** (Bibliothek), **NACA generator** (NACA-Generator), Assistent |
-| NACA-Berichtstabellen: Clark Y (NACA Report No. 502), USA 35B (Report No. 233), NACA M-6 (Report No. 221), NACA 8-H-12 (Technical Note 1998) | Werke der Regierung der Vereinigten Staaten. In den Vereinigten Staaten gemeinfrei (public domain); Status außerhalb der Vereinigten Staaten nicht geklärt. Bedingungen der NASA (National Aeronautics and Space Administration): NASA als Quelle nennen, keine Billigung durch die NASA andeuten, kein Urheberrecht beanspruchen. | Ja, 4 Dateien | **Library** |
-| RAF 34: Tabelle des Royal Aircraft Establishment (RAE) in NACA Report No. 286 (erstmals veröffentlicht April 1928) | Urheberrechtliche Schutzfrist in den Vereinigten Staaten abgelaufen; Status außerhalb der Vereinigten Staaten nicht geklärt. NASA-Bedingungen wie in der Zeile darüber; das RAE als Herkunft der Daten nennen. | Ja, 1 Datei | **Library** |
-| S9104 (Michael Selig, University of Illinois Urbana-Champaign) | Creative Commons Attribution 4.0 International (CC BY 4.0): Nutzung, Bearbeitung und Weitergabe mit Quellenangabe. | Ja, 1 Datei | **Library** |
+| NACA-Gleichungen (National Advisory Committee for Aeronautics) für 4- und 5-stellige Profile, NACA Report 824 (Abbott, von Doenhoff, Stivers, 1945) | Veröffentlichte Gleichungen. Die App berechnet die Koordinaten und kopiert keine Koordinatendatei. | Im Browser erzeugt | 17 Vorlagen in **Bibliothek** (Library), **NACA-Generator** (NACA generator), Assistent |
+| NACA-Berichtstabellen: Clark Y (NACA Report No. 502), USA 35B (Report No. 233), NACA M-6 (Report No. 221), NACA 8-H-12 (Technical Note 1998) | Werke der Regierung der Vereinigten Staaten. In den Vereinigten Staaten gemeinfrei (public domain); Status außerhalb der Vereinigten Staaten nicht geklärt. Bedingungen der NASA (National Aeronautics and Space Administration): NASA als Quelle nennen, keine Billigung durch die NASA andeuten, kein Urheberrecht beanspruchen. | Ja, 4 Dateien | **Bibliothek** |
+| RAF 34: Tabelle des Royal Aircraft Establishment (RAE) in NACA Report No. 286 (erstmals veröffentlicht April 1928) | Urheberrechtliche Schutzfrist in den Vereinigten Staaten abgelaufen; Status außerhalb der Vereinigten Staaten nicht geklärt. NASA-Bedingungen wie in der Zeile darüber; das RAE als Herkunft der Daten nennen. | Ja, 1 Datei | **Bibliothek** |
+| S9104 (Michael Selig, University of Illinois Urbana-Champaign) | Creative Commons Attribution 4.0 International (CC BY 4.0): Nutzung, Bearbeitung und Weitergabe mit Quellenangabe. | Ja, 1 Datei | **Bibliothek** |
 | aerodesign.de, HS-Profile (Hartmut Siegmann) | Privat, im Verein, kleingewerblich und wissenschaftlich mit Namen und Quelle. Großserien und industrielle Anwendungen brauchen eine schriftliche Nutzungsvereinbarung. Die Weiterverbreitung durch Dritte ist zum Teil eingeschränkt. | Nein | Link in der App; dort herunterladen, dann hochladen |
 | aerodesign.de, Profile anderer Konstrukteure | Nutzung nur mit Genehmigung des jeweiligen Urhebers. | Nein | Über den Link zu aerodesign.de (HS-Katalogseite); dort herunterladen, dann hochladen |
 | mh-aerotools.de, MH-Profile (Martin Hepperle) | Persönlicher Gebrauch. Veröffentlichungen nennen die Quelle. Eine Neuzusammenstellung darf nicht über den Herstellungskosten verkauft werden. | Nein | Link in der App; dort herunterladen, dann hochladen |
@@ -22,7 +22,7 @@ Zusammenfassung veröffentlichter Nutzungsbedingungen, keine Rechtsberatung. Zit
 
 ## Links in der App
 
-Registerkarte **Airfoils** (Profile), Kasten **More airfoils (external, not bundled)** (weitere Profile, extern, nicht mitgeliefert):
+Registerkarte **Profile** (Airfoils), Kasten **Weitere Profile (extern, nicht mitgeliefert)** (More airfoils (external, not bundled)):
 
 | Linktext | Ziel |
 | --- | --- |
@@ -43,29 +43,29 @@ Registerkarte **Airfoils** (Profile), Kasten **More airfoils (external, not bund
 | mh-aerotools.de | XML-Datei (Extensible Markup Language) je Profil, z. B. `geo_xml/mh45_geo.xml`. 55 von 56 Profilen; keine für MH 57. | Ja |
 | UIUC | Selig-`.dat` | Ja. Ausnahmen: 38 von 1665 Dateien ([Einlesetest](#einlesetest)). |
 
-- Die Spalte „In Wingdesigner ladbar“ gilt für die Vorgabe der **Profile parametrization** (Parametrisierung der Profile), **Centripetal (recommended)**. **Chord length** und **Uniform** lehnen mehr Dateien ab ([Einlesetest](#einlesetest)).
-- Liegt das größte x über 5 und höchstens bei 110, werden alle Koordinaten durch 100 geteilt. Die Vorschau zeigt dazu die Warnung `Coordinates look like percent of chord and were divided by 100.`
+- Die Spalte „In Wingdesigner ladbar“ gilt für die Vorgabe der **Parametrisierung der Profile** (Profile parametrization), **Zentripetal (empfohlen)** (Centripetal (recommended)). **Sehnenlänge** (Chord length) und **Gleichabständig** (Uniform) lehnen mehr Dateien ab ([Einlesetest](#einlesetest)).
+- Liegt das größte x über 5 und höchstens bei 110, werden alle Koordinaten durch 100 geteilt. Die Vorschau zeigt dazu die Warnung `Die Koordinaten sehen nach Prozent der Profiltiefe aus und wurden durch 100 geteilt.`
 
-![Vorschau beim Hochladen einer Prozenttabelle: Warnung „Coordinates look like percent of chord and were divided by 100“, Feld Source / attribution leer, weil der Name „Sample 4412 table“ nicht mit HS oder MH beginnt](images/upload-preview.png)
+![Vorschau beim Hochladen einer Prozenttabelle: Warnung „Die Koordinaten sehen nach Prozent der Profiltiefe aus und wurden durch 100 geteilt.“, Feld Quelle / Urheber leer, weil der Name „Sample 4412 table“ nicht mit HS oder MH beginnt](images/de/upload-preview.png)
 
 - Formate und Prüfungen: [[Dateiformate|Dateiformate]].
 
 ### Datei laden
 
 1. Koordinatendatei auf der Seite herunterladen.
-2. **Airfoils** > **Upload** (Hochladen): Datei auf die Ablagefläche ziehen oder **Choose files** (Dateien wählen) verwenden.
-3. Vorschau und Feld **Source / attribution** (Quellenangabe) prüfen, dann **Add to project** (zum Projekt hinzufügen) klicken.
+2. **Profile** (Airfoils) > **Hochladen** (Upload): Datei auf die Ablagefläche ziehen oder **Dateien wählen** (Choose files) verwenden.
+3. Vorschau und Feld **Quelle / Urheber** (Source / attribution) prüfen, dann **Zum Projekt hinzufügen** (Add to project) klicken.
 
-Über 200 Profilen zeigt die Registerkarte **Checks** (Prüfungen) eine Warnung `Large project: …`. Sie nennt `N airfoils (warning above 200)` mit jeder anderen Größe über ihrer Schwelle sowie die erwartete Rechenzeit und den Arbeitsspeicher je Änderung. Steigt die Zahl über 200, zeigt die Kurzmeldung nach **Add to project** auch diese Warnung. Ein Projekt enthält höchstens 10 000 Profile. Bei 10 000 Profilen öffnet **Upload** keine Vorschau und zeigt `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.` Ein Profil, das die Punkte aller Projektprofile über 1 000 000 bringt, wird mit `With this airfoil the project airfoils hold N points; the limit is 1,000,000. "Remove unused" frees points.` abgelehnt.
+Über 200 Profilen zeigt die Registerkarte **Prüfungen** (Checks) eine Warnung `Großes Projekt: …`. Sie nennt `N Profile (Warnung über 200)` mit jeder anderen Größe über ihrer Schwelle sowie die erwartete Rechenzeit und den Arbeitsspeicher je Änderung. Steigt die Zahl über 200, zeigt die Kurzmeldung nach **Zum Projekt hinzufügen** auch diese Warnung. Ein Projekt enthält höchstens 10 000 Profile. Bei 10 000 Profilen öffnet **Hochladen** keine Vorschau und zeigt `Das Projekt enthält 10.000 Profile und hat damit die Grenze erreicht; „Unbenutzte entfernen“ schafft Platz.` Ein Profil, das die Punkte aller Projektprofile über 1 000 000 bringt, wird mit `Mit diesem Profil enthalten die Projektprofile N Punkte; die Grenze liegt bei 1.000.000. „Unbenutzte entfernen“ gibt Punkte frei.` abgelehnt.
 
 ### Einlesetest
 
 - Datum: 29.09.2026, Code von Commit 89c4f22. Die Testdateien liegen nicht im Repository (Lizenz).
 - Stufe 1: Einlesen und Plausibilitätsprüfung (`importAirfoilText` in `src/airfoil/sanity.js`).
-- Stufe 2: Kurvenprüfung der Vorschau (`profileProblem` in `src/geom/profile.js`) mit jeder der 3 Einstellungen von **Settings** > **Profile parametrization**. Die NURBS-Kurve (Non-Uniform Rational B-Spline) durch die Punkte darf sich nicht selbst kreuzen; Kreuzungsschleifen mit einer mittleren Breite (Fläche / Diagonale des Hüllrechtecks) bis 0,0005 der Profiltiefe (0,05 %) werden ignoriert. Keine Profilseite der Kurve darf um mehr als 0,0001 der Profiltiefe (0,01 %) in x zurücklaufen.
+- Stufe 2: Kurvenprüfung der Vorschau (`profileProblem` in `src/geom/profile.js`) mit jeder der 3 Optionen von **Einstellungen** (Settings) > **Parametrisierung der Profile**. Die NURBS-Kurve (Non-Uniform Rational B-Spline) durch die Punkte darf sich nicht selbst kreuzen; Kreuzungsschleifen mit einer mittleren Breite (Fläche / Diagonale des Hüllrechtecks) bis 0,0005 der Profiltiefe (0,05 %) werden ignoriert. Keine Profilseite der Kurve darf um mehr als 0,0001 der Profiltiefe (0,01 %) in x zurücklaufen.
 - Vorschau und Flügelaufbau verwenden die Parametrisierung des Projekts. Eine Datei lässt sich hinzufügen, wenn sie mit dieser Parametrisierung Stufe 1 und 2 besteht.
 
-| Testmenge | Dateien | Bestehen Stufe 1 | Bestehen Stufe 1 und 2 mit **Centripetal (recommended)** (zentripetal, Vorgabe) | Bestehen Stufe 1 und 2 mit **Chord length** (Sehnenlänge) | Bestehen Stufe 1 und 2 mit **Uniform** (gleichabständig) |
+| Testmenge | Dateien | Bestehen Stufe 1 | Bestehen Stufe 1 und 2 mit der Vorgabe **Zentripetal (empfohlen)** | Bestehen Stufe 1 und 2 mit **Sehnenlänge** | Bestehen Stufe 1 und 2 mit **Gleichabständig** |
 | --- | --- | --- | --- | --- | --- |
 | mh-aerotools.de: HTML-Seiten (`*koo.htm`) | 56 | 56 | 56 | 56 | 53 |
 | mh-aerotools.de: XML-Dateien (`geo_xml/*_geo.xml`) | 55 | 55 | 55 | 55 | 52 |
@@ -74,20 +74,20 @@ Registerkarte **Airfoils** (Profile), Kasten **More airfoils (external, not bund
 | UIUC: alle `.dat`-Dateien in `coord_seligFmt.zip` (Stand 23.02.2026) | 1665 | 1632 | 1627 | 1619 | 1563 |
 | UIUC: MH-Reihe (`mh*.dat`, Teil der Zeile darüber) | 52 | 51 | 51 | 51 | 48 |
 
-Abgelehnte Dateien mit **Centripetal (recommended)**:
+Abgelehnte Dateien mit **Zentripetal (empfohlen)**:
 
 | Dateien | Testmenge | Fehlermeldung |
 | --- | --- | --- |
-| `naca0009.txt`, `naca63a008.txt`, `naca64a010.txt` | aerodesign.de | `Upper or lower surface has fewer than 3 points; the point order is probably not Selig or Lednicer.` |
-| `clarky.txt` | aerodesign.de | `The outline crosses itself (3 crossing(s)).` Außerdem berühren sich Ober- und Unterseite bei x = 0,0 % der Profiltiefe, und die Endleiste ist gekreuzt (Spalt −3,380 % der Profiltiefe). |
-| `s3021.dat`, `sd7080.dat` | aerodesign.de und UIUC | `The outline crosses itself (1 crossing(s)).` Endleistenmuster unten. |
-| `mh150.dat` | UIUC | `The outline crosses itself (1 crossing(s)).` Ober- und Unterseite berühren sich bei x = 98,6 % der Profiltiefe. |
-| 17 weitere `.dat`-Dateien | UIUC | `The outline crosses itself (1 crossing(s)).` Endleistenmuster unten. |
+| `naca0009.txt`, `naca63a008.txt`, `naca64a010.txt` | aerodesign.de | `Ober- oder Unterseite hat weniger als 3 Punkte; die Punktreihenfolge ist vermutlich nicht Selig oder Lednicer.` |
+| `clarky.txt` | aerodesign.de | `Die Kontur überschneidet sich selbst (3 Kreuzungen).` Außerdem berühren sich Ober- und Unterseite bei x = 0,0 % der Profiltiefe, und die Endleiste ist gekreuzt (Endleistendicke −3,380 % der Profiltiefe). |
+| `s3021.dat`, `sd7080.dat` | aerodesign.de und UIUC | `Die Kontur überschneidet sich selbst (1 Kreuzung).` Endleistenmuster unten. |
+| `mh150.dat` | UIUC | `Die Kontur überschneidet sich selbst (1 Kreuzung).` Ober- und Unterseite berühren sich bei x = 98,6 % der Profiltiefe. |
+| 17 weitere `.dat`-Dateien | UIUC | `Die Kontur überschneidet sich selbst (1 Kreuzung).` Endleistenmuster unten. |
 | 13 weitere `.dat`-Dateien | UIUC | Kontur kreuzt sich an anderer Stelle (9 Dateien), Endleiste gekreuzt (3), nur 1 Seite (1) |
-| `goe451.dat` | UIUC | Stufe 2: `The NURBS curve through the points crosses itself near x = 2.6 % chord; the file has too few points there. …` |
-| `30p-30n-main.dat`, `30p-30n-slat.dat`, `cap21c.dat`, `rc0864c.dat` | UIUC | Stufe 2: `The surface runs back in x by … % chord near x = … % chord; …` (0,046 %, 15,924 %, 0,113 %, 0,040 % der Profiltiefe) |
+| `goe451.dat` | UIUC | Stufe 2: `Die NURBS-Kurve durch die Punkte überschneidet sich selbst nahe x = 2,6 % der Profiltiefe; die Datei hat dort zu wenige Punkte. …` |
+| `30p-30n-main.dat`, `30p-30n-slat.dat`, `cap21c.dat`, `rc0864c.dat` | UIUC | Stufe 2: `Die Profilseite läuft in x um … % der Profiltiefe zurück, nahe x = … % der Profiltiefe; …` (0,046 %, 15,924 %, 0,113 %, 0,040 % der Profiltiefe) |
 
-Stufe 2 mit **Chord length** lehnt 17 Dateien ab (5 Kreuzungen, 12 Rückläufe in x). Stufe 2 mit **Uniform** lehnt 84 Dateien ab (2 Kreuzungen, 82 Rückläufe in x).
+Stufe 2 mit **Sehnenlänge** lehnt 17 Dateien ab (5 Kreuzungen, 12 Rückläufe in x). Stufe 2 mit **Gleichabständig** lehnt 84 Dateien ab (2 Kreuzungen, 82 Rückläufe in x).
 
 Endleistenmuster:
 
@@ -97,17 +97,18 @@ Endleistenmuster:
 
 ## Quellenangabe
 
-Die Profilvorschau (**Upload**, eingefügter Text, **NACA generator**, **Library**) hat das Feld **Source / attribution** (Quellenangabe).
+Die Profilvorschau hat das Feld **Quelle / Urheber** (Source / attribution). Die Vorschau öffnet sich bei **Hochladen** (Upload), bei eingefügtem Text, bei **NACA-Generator** (NACA generator) und bei **Bibliothek** (Library).
 
 - Hochgeladene Datei, eingefügter Text, NACA-Profil: Die App füllt das Feld aus dem Profilnamen vor. NACA-Namen ergeben ein leeres Feld.
 - Mitgelieferte Bibliotheksdatei: Die App füllt `source.author` aus `index.json` vor.
+- Autor, Lizenzkennung und Quelladressen einer Bibliotheksdatei sind Daten: Sie lauten in der deutschen und in der englischen Oberfläche gleich, ebenso `NOTICE.md`. Kategorie und Verwendung jedes Bibliothekseintrags erscheinen in der Sprache der Oberfläche.
 
 | Eingabe | Profilname |
 | --- | --- |
 | XML-Datei | Element `<name>`. Leer oder fehlend: Dateiname ohne Endung. |
 | HTML-Seite | Element `<title>`. Leer oder fehlend: erste nicht numerische Zeile vor der ersten Koordinatenzeile. Keine solche Zeile: Dateiname ohne Endung. |
 | Selig, Lednicer, Tabelle | Erste nicht numerische Zeile vor der ersten Koordinatenzeile. Keine solche Zeile: Dateiname ohne Endung. |
-| Eingefügter Text ohne Namenszeile | `pasted` |
+| Eingefügter Text ohne Namenszeile | „Eingefügtes Profil“ (englische Oberfläche: `pasted`) |
 
 Beispiel: `HS-1.dat` ohne Namenszeile erhält den Namen `HS-1` und die HS-Vorbelegung.
 
@@ -125,17 +126,17 @@ Jedes Profil im Projekt trägt ein Objekt `source`:
 
 | Herkunft | Felder von `source` |
 | --- | --- |
-| **NACA generator** oder Vorlage aus **Library** | `kind: "naca"`, `license`, `url` (NACA Report 824 auf ntrs.nasa.gov), `code`, `closedTE`; `attribution`, wenn das Feld nicht leer ist |
+| **NACA-Generator** oder Vorlage aus **Bibliothek** | `kind: "naca"`, `license`, `url` (NACA Report 824 auf ntrs.nasa.gov), `code`, `closedTE`; `attribution`, wenn das Feld nicht leer ist |
 | Assistent | `kind: "naca"`, `license`, `url`, `code`, `closedTE` |
-| Beispielflügel „Sport wing 1500“ (geladen, wenn der lokale Speicher kein gültiges gespeichertes Projekt enthält) | `kind: "naca"`, `note` |
+| Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 1500“; geladen, wenn der Browserspeicher kein gültiges gespeichertes Projekt enthält) | `kind: "naca"`, `note` |
 | Mitgelieferte Bibliotheksdatei | `kind: "library"`, `id`, `attribution` (vorbelegt mit `source.author` aus `index.json`), `license`, `url`, `terms` |
 | Hochgeladene Datei | `kind: "upload"`, `file` (Dateiname), `attribution` (leere Zeichenkette, wenn kein Text) |
 | Eingefügter Text | `kind: "upload"`; `attribution`, wenn das Feld nicht leer ist |
 
 | Ort | Quellenangabe enthalten |
 | --- | --- |
-| Liste der Projektprofile (Registerkarte **Airfoils**) | Ja, nach der Punktanzahl. NACA-Profile ohne Quellenangabe zeigen `NACA equations`. |
-| Projektdatei, JSON (JavaScript Object Notation): **Save** oder **Export** > Project JSON | Ja |
+| Liste der Projektprofile (Registerkarte **Profile** (Airfoils)) | Ja, nach der Punktanzahl. NACA-Profile ohne Quellenangabe zeigen „NACA-Gleichungen“ (englische Oberfläche: `NACA equations`). |
+| Projektdatei, JSON (JavaScript Object Notation): **Speichern** (Save) oder **Exportieren** (Export) > **Projekt-JSON** (Project JSON) | Ja |
 | Automatische Sicherung im Browserspeicher (Schlüssel `wingdesigner.project.v1`) | Ja |
 | `.dat`-Download eines Projektprofils | Nein: nur Namenszeile und Punkte |
 | STEP (Standard for the Exchange of Product model data), STL (Stereolithografie), 3MF (3D Manufacturing Format) | Nein |
@@ -147,11 +148,11 @@ Die App sendet keine Profildaten an einen Server. Ihre einzigen Netzwerkanfragen
 - Die Vorbelegung wertet nur den Profilnamen aus. Eine Datei von aerodesign.de oder mh-aerotools.de mit anderem Namen erhält ein leeres Feld. Gemessene Anzahl:
   - MH: 1 von 55 XML-Dateien (`mh55_geo.xml`, Name `concord`), 0 von 56 HTML-Seiten.
   - aerodesign.de: 0 von 43 HS-Dateien (`hs*.dat`, `hs*.txt`).
-- Hochgeladene Datei und Bibliothekseintrag: Wird ein vorbelegtes Feld **Source / attribution** geleert, bleibt der vorbelegte Text gespeichert. Zum Ersetzen anderen Text eingeben.
+- Hochgeladene Datei und Bibliothekseintrag: Wird ein vorbelegtes Feld **Quelle / Urheber** geleert, bleibt der vorbelegte Text gespeichert. Zum Ersetzen anderen Text eingeben.
 - Eingefügter Text: Wird das Feld geleert, wird keine Quellenangabe gespeichert.
-- Nach **Add to project** ist die Quellenangabe in der App schreibgeschützt. **View** (Anzeigen) zeigt sie in einem deaktivierten Feld. Änderungen nur in der Projektdatei (JSON).
-- Ohne gespeicherte Quellenangabe zeigt **View** die aus dem Namen abgeleitete Vorbelegung (HS/MH-Regel). Dieser Text ist nicht gespeichert.
-- Gleicher Name und identische Punkte wie ein Projektprofil, oder erzeugtes NACA-Profil mit demselben `code` und `closedTE` wie ein Projektprofil (Name beliebig): **Add to project** behält den vorhandenen Eintrag und dessen `source`. Die neue Quellenangabe wird verworfen. Die Meldung `Added airfoil "<name>".` erscheint trotzdem. Quellenangabe ändern: Profil entfernen (**×** nur verfügbar, solange kein Schnitt es verwendet) und neu hinzufügen, oder die Projektdatei (JSON) bearbeiten.
+- Nach **Zum Projekt hinzufügen** (Add to project) ist die Quellenangabe in der App schreibgeschützt. **Anzeigen** (View) zeigt sie in einem deaktivierten Feld. Änderungen nur in der Projektdatei (JSON).
+- Ohne gespeicherte Quellenangabe zeigt **Anzeigen** die aus dem Namen abgeleitete Vorbelegung (HS/MH-Regel). Dieser Text ist nicht gespeichert.
+- Gleicher Name und identische Punkte wie ein Projektprofil, oder erzeugtes NACA-Profil mit demselben `code` und `closedTE` wie ein Projektprofil (Name beliebig): **Zum Projekt hinzufügen** behält den vorhandenen Eintrag und dessen `source`. Die neue Quellenangabe wird verworfen. Die Meldung lautet dann `Das Projekt enthält dieses Profil bereits als „<name>“.` statt `Profil „<name>“ hinzugefügt.` Quellenangabe ändern: Profil entfernen (**×** nur verfügbar, solange kein Schnitt es verwendet) und neu hinzufügen, oder die Projektdatei (JSON) bearbeiten.
 - Exportierte STEP-, STL-, 3MF- und `.dat`-Dateien enthalten keine Quellenangabe. Die HS-Bedingungen verlangen Namen und Quelle bei jeder Nutzung. CC BY 4.0 (S9104) verlangt eine Quellenangabe bei der Weitergabe; wer eine solche mit S9104 erstellte Datei weitergibt, fügt den Text der Quellenangabe aus `public/airfoils/NOTICE.md` hinzu.
 
 ## aerodesign.de (Hartmut Siegmann)
@@ -227,7 +228,7 @@ Gründe, warum die MH-Profile nicht mitgeliefert werden:
 | --- | --- |
 | Betreuer | UIUC Applied Aerodynamics Group (Michael Selig) |
 | Koordinatenseite | <https://m-selig.ae.illinois.edu/ads/coord_database.html> |
-| Inhalt | Etwa 1650 Profile (Version 2.0) vieler Konstrukteure, Selig-`.dat`. Anzahl laut Koordinatenseite; der Hinweis in der App nennt „About 1,600“. |
+| Inhalt | Etwa 1650 Profile (Version 2.0) vieler Konstrukteure, Selig-`.dat`. Anzahl laut Koordinatenseite; der Hinweis in der App nennt „Etwa 1.600“ (englische Oberfläche: „About 1,600“). |
 | Lizenz auf der Koordinatenseite | Keine. Die Fußzeile enthält nur `© 1994 - 2026 UIUC Applied Aerodynamics Group`. |
 | GNU General Public License (GPL) | Die Seite der Niedriggeschwindigkeits-Profilmessungen (Windkanal-Leistungsdaten) verlinkt einen GPL-Text für die „airfoil/aircraft data“. Die Koordinatenseite erwähnt die GPL nicht. Ob die GPL die Koordinatendateien abdeckt: nicht angegeben. |
 | Bedingungen der Konstrukteure | Gelten für deren Dateien, z. B. die MH-Bedingungen oben. |
@@ -249,9 +250,9 @@ Kategorie und Verwendung je Datei: [[Benutzerhandbuch|Benutzerhandbuch]], Abschn
 - Status der 5 gemeinfreien Dateien außerhalb der Vereinigten Staaten: nicht geklärt.
 - `source.url` der 5 gemeinfreien Dateien verweist auf den Eintrag im NASA Technical Reports Server (NTRS).
 - RAF 34: Der Scan der Tabelle ist ein 1-Bit-Bild. 7 Werte sind unsicher, um bis zu 0,20 % der Profiltiefe (Unterseite bei 60 % der Profiltiefe). NOTICE.md führt die 7 Werte und ihre andere mögliche Lesart auf.
-- Clark Y und USA 35B behalten die veröffentlichte Basislinie: Die Profilnase liegt 3,50 % bzw. 2,76 % der Profiltiefe über der x-Achse. Die Vorschau zeigt die Warnung `The line from the leading edge to the trailing edge is inclined by -1.97 degrees; …` (USA 35B: -1.51).
+- Clark Y und USA 35B behalten die veröffentlichte Basislinie: Die Profilnase liegt 3,50 % bzw. 2,76 % der Profiltiefe über der x-Achse. Die Vorschau zeigt die Warnung `Die Linie von der Profilnase zur Endleiste ist um -1,97 Grad geneigt; …` (USA 35B: -1,51).
 - Keine mitgelieferte Datei ist eine Kopie einer Datei aus der UIUC Airfoil Coordinates Database.
-- Test am 29.09.2026: Alle 6 Dateien bestehen Stufe 1 und 2 des [Einlesetests](#einlesetest) mit jeder der 3 Einstellungen von **Profile parametrization**.
+- Test am 29.09.2026: Alle 6 Dateien bestehen Stufe 1 und 2 des [Einlesetests](#einlesetest) mit jeder der 3 Optionen von **Parametrisierung der Profile** (Profile parametrization).
 
 Nicht mitgeliefert (Entscheidungen des Eigentümers mit Begründung in [RECORD.md](https://github.com/subtilitas/Wingdesigner/blob/main/RECORD.md)):
 
@@ -276,10 +277,10 @@ Anforderungen an eine Datei in `public/airfoils/`:
 | `public/airfoils/NOTICE.md` existiert (Index mit mindestens 1 Eintrag) und enthält den `name` des Eintrags. | Ja |
 | Die Datei liegt unter `public/airfoils/<file>`. | Ja |
 | Die Datei lässt sich einlesen und besteht die Plausibilitätsprüfung ohne Fehler. Warnungen sind zulässig. | Ja |
-| Die NURBS-Interpolation durch die Punkte gelingt. Die Kurve kreuzt sich nicht selbst (Kreuzungsschleifen mit einer mittleren Breite, Fläche / Diagonale des Hüllrechtecks, bis 0,0005 der Profiltiefe werden ignoriert) und läuft nicht um mehr als 0,0001 der Profiltiefe in x zurück. Geprüft in der **Preview** (Vorschau) der App mit der **Profile parametrization** des Projekts. | Nein |
+| Die NURBS-Interpolation durch die Punkte gelingt. Die Kurve kreuzt sich nicht selbst (Kreuzungsschleifen mit einer mittleren Breite, Fläche / Diagonale des Hüllrechtecks, bis 0,0005 der Profiltiefe werden ignoriert) und läuft nicht um mehr als 0,0001 der Profiltiefe in x zurück. Geprüft in der **Vorschau** (Preview) der App mit der **Parametrisierung der Profile** (Profile parametrization) des Projekts. | Nein |
 | Jede Datei unter `public/airfoils/` einschließlich Unterordnern, außer `public/airfoils/index.json` und `public/airfoils/NOTICE.md`, hat einen Eintrag. | Ja |
 | Die Lizenzkennung entspricht den Bedingungen unter `source.terms`. | Nein (manuelle Prüfung) |
-| `use` (optional): Text in **Library**, durchsucht von **Filter library** | Nein |
+| `use` (optional): Text in **Bibliothek** (Library), durchsucht von **Bibliothek filtern** (Filter library) | Nein |
 
 - Nicht zulässig: Bedingungen für persönlichen Gebrauch, nicht kommerzielle Nutzung, keine Bearbeitungen (no-derivatives), Weitergabe unter gleichen Bedingungen (share-alike) und „erst fragen“ sowie Einzelgenehmigungen.
 - CC: Creative Commons. BSD: Berkeley Software Distribution.
@@ -304,4 +305,4 @@ Anforderungen an eine Datei in `public/airfoils/`:
 - Ausgabe mit den 6 mitgelieferten Dateien: `6 bundled airfoils (free licenses only) and 17 NACA presets pass.`
 - Bei Fehlern: eine Zeile je Problem, Exit-Code 1.
 - CI (Continuous Integration): Workflow `ci.yml`, Job „Lint, unit tests, coverage“, Schritt „Bundled airfoil library“.
-- In der App erscheint ein mitgelieferter Eintrag in **Library** mit Kategorie, Verwendung, Autor und Lizenz. **Preview** (Vorschau) lädt die Datei von `airfoils/<file>`.
+- In der App erscheint ein mitgelieferter Eintrag in **Bibliothek** mit Kategorie, Verwendung, Autor und Lizenz. **Vorschau** lädt die Datei von `airfoils/<file>`.

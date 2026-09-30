@@ -1,19 +1,28 @@
-// Regenerates the documentation screenshots in docs/wiki/images/ from the production build.
+// Regenerates the documentation screenshots from the production build, each one twice: the English
+// interface (browser locale en-US) into docs/wiki/images/<name>.png and the German interface
+// (browser locale de-DE, so the app starts in German) into docs/wiki/images/de/<name>.png.
+// Both languages run the same steps. The steps name every control by its English label; the German
+// run looks that label up in the German catalog (src/i18n/de/).
 // Usage: npm run screenshots   (PW_CHROMIUM=/path/to/chrome selects a local Chromium binary)
 import { mkdirSync } from 'node:fs';
 import { build, preview } from 'vite';
 import { chromium, devices } from '@playwright/test';
+import { DE } from '../src/i18n/de/index.js';
 
 const OUT = 'docs/wiki/images';
 const PORT = 4175;
-mkdirSync(OUT, { recursive: true });
+const LANGUAGES = [
+  { code: 'en', locale: 'en-US', dir: OUT },
+  { code: 'de', locale: 'de-DE', dir: `${OUT}/de` },
+];
+for (const { dir } of LANGUAGES) mkdirSync(dir, { recursive: true });
 
 await build({ logLevel: 'warn' });
 const server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'warn' });
 const url = `http://localhost:${PORT}/`;
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 
-// A synthetic airfoil (NACA 4412 at 13 stations) written as an "X Yo Yu" percent table with decimal
+// A synthetic airfoil (NACA 4412 at 14 x positions) written as an "X Yo Yu" percent table with decimal
 // commas, to show format detection and warnings in the upload preview.
 function sampleTable() {
   const xs = [0, 1.25, 2.5, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
@@ -30,96 +39,115 @@ function sampleTable() {
   return ['Sample 4412 table', '', '  X      Yo       Yu', ...rows, ''].join('\r\n');
 }
 
-async function createDesign(page, preset) {
-  await page.goto(url);
-  const wizard = page.locator('dialog[open]');
-  await wizard.getByRole('radio', { name: new RegExp(preset) }).click();
-  await page.waitForTimeout(300);
-  return wizard;
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// One run of all steps in one language; the screenshots go into lang.dir.
+async function run(lang) {
+  // A control's label in this language: the English label, or its German catalog entry.
+  const t = (english) => {
+    if (lang.code === 'en') return english;
+    if (typeof DE[english] !== 'string') throw new Error(`No German text for "${english}"`);
+    return DE[english];
+  };
+
+  async function newPage(contextOptions) {
+    const ctx = await browser.newContext({ ...contextOptions, colorScheme: 'light', locale: lang.locale });
+    return { ctx, page: await ctx.newPage() };
+  }
+
+  async function createDesign(page, preset) {
+    await page.goto(url);
+    // The app starts in the language of the browser locale; an image in the other language is an error.
+    const started = await page.evaluate(() => document.documentElement.lang);
+    if (started !== lang.code) throw new Error(`The app started in "${started}", expected "${lang.code}"`);
+    const wizard = page.locator('dialog[open]');
+    await wizard.getByRole('radio', { name: new RegExp(escapeRegExp(t(preset))) }).click();
+    await page.waitForTimeout(300);
+    return wizard;
+  }
+
+  async function shoot(target, name) {
+    await target.screenshot({ path: `${lang.dir}/${name}.png` });
+    console.log(`${lang.dir}/${name}.png`);
+  }
+
+  // Desktop.
+  {
+    const { ctx, page } = await newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+    const wizard = await createDesign(page, 'Glider');
+    await shoot(wizard, 'wizard');
+    await wizard.getByRole('button', { name: t('Create design') }).click();
+    await page.waitForTimeout(600);
+    await page.locator('.toast').evaluate((el) => el.classList.remove('show'));
+    await page.waitForTimeout(300);
+    await shoot(page, 'main-desktop');
+
+    await page.getByRole('tab', { name: t('Planform') }).click();
+    await page.waitForTimeout(400);
+    await shoot(page.locator('.panel'), 'planform');
+
+    await page.getByRole('tab', { name: t('Checks') }).click();
+    await page.waitForTimeout(200);
+    await shoot(page.locator('.panel'), 'checks');
+
+    await page.getByRole('tab', { name: t('Settings') }).click();
+    await page.waitForTimeout(200);
+    await shoot(page.locator('.panel'), 'settings');
+
+    await page.getByRole('tab', { name: t('Airfoils') }).click();
+    await page.waitForTimeout(400);
+    await shoot(page.locator('.panel'), 'airfoils');
+
+    await page.locator('.dropzone input[type=file]').setInputFiles({ name: 'sample4412.txt', mimeType: 'text/plain', buffer: Buffer.from(sampleTable(), 'latin1') });
+    const preview = page.locator('dialog[open]');
+    await preview.getByRole('heading').waitFor();
+    await page.waitForTimeout(400);
+    await shoot(preview, 'upload-preview');
+    await preview.getByRole('button', { name: t('Cancel') }).click();
+
+    await page.getByRole('button', { name: t('Export') }).click();
+    await page.waitForTimeout(200);
+    await shoot(page.locator('dialog[open]'), 'export-dialog');
+    await page.locator('dialog[open]').getByRole('button', { name: t('Cancel') }).click();
+
+    await page.getByRole('tab', { name: t('Sections') }).click();
+    await page.waitForTimeout(200);
+    await shoot(page.locator('.panel'), 'sections');
+    await ctx.close();
+  }
+
+  // Swept flying wing with the NURBS control net.
+  {
+    const { ctx, page } = await newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+    const wizard = await createDesign(page, 'Swept flying wing');
+    await wizard.getByRole('button', { name: t('Create design') }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('tab', { name: t('Settings') }).click();
+    await page.getByLabel(t('Show NURBS control net')).check();
+    await page.locator('.toast').evaluate((el) => el.classList.remove('show'));
+    await page.waitForTimeout(500);
+    await shoot(page.locator('.view-wrap'), 'flying-wing-control-net');
+    await ctx.close();
+  }
+
+  // Phone.
+  {
+    const { ctx, page } = await newPage({ ...devices['Pixel 7'] });
+    const wizard = await createDesign(page, 'Sport');
+    await wizard.getByRole('button', { name: t('Create design') }).click();
+    await page.waitForTimeout(600);
+    await page.locator('.toast').evaluate((el) => el.classList.remove('show'));
+    await shoot(page, 'mobile-main');
+    await page.getByRole('tab', { name: t('Planform') }).click();
+    await page.getByRole('group', { name: t('End line (trailing edge)') }).getByLabel(t('Use guide curve')).check();
+    await page.waitForTimeout(400);
+    await page.locator('.planform-canvas').scrollIntoViewIfNeeded();
+    await shoot(page, 'mobile-planform');
+    await ctx.close();
+  }
 }
 
-async function shoot(target, name) {
-  await target.screenshot({ path: `${OUT}/${name}.png` });
-  console.log(`${OUT}/${name}.png`);
-}
-
-// Desktop.
-{
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, colorScheme: 'light', locale: 'en-US' });
-  const page = await ctx.newPage();
-  const wizard = await createDesign(page, 'Glider');
-  await shoot(wizard, 'wizard');
-  await wizard.getByRole('button', { name: 'Create design' }).click();
-  await page.waitForTimeout(600);
-  await page.locator('.toast').evaluate((el) => el.classList.remove('show'));
-  await page.waitForTimeout(300);
-  await shoot(page, 'main-desktop');
-
-  await page.getByRole('tab', { name: 'Planform' }).click();
-  await page.waitForTimeout(400);
-  await shoot(page.locator('.panel'), 'planform');
-
-  await page.getByRole('tab', { name: 'Checks' }).click();
-  await page.waitForTimeout(200);
-  await shoot(page.locator('.panel'), 'checks');
-
-  await page.getByRole('tab', { name: 'Settings' }).click();
-  await page.waitForTimeout(200);
-  await shoot(page.locator('.panel'), 'settings');
-
-  await page.getByRole('tab', { name: 'Airfoils' }).click();
-  await page.waitForTimeout(400);
-  await shoot(page.locator('.panel'), 'airfoils');
-
-  await page.locator('.dropzone input[type=file]').setInputFiles({ name: 'sample4412.txt', mimeType: 'text/plain', buffer: Buffer.from(sampleTable(), 'latin1') });
-  const preview = page.locator('dialog[open]');
-  await preview.getByRole('heading').waitFor();
-  await page.waitForTimeout(400);
-  await shoot(preview, 'upload-preview');
-  await preview.getByRole('button', { name: 'Cancel' }).click();
-
-  await page.getByRole('button', { name: 'Export' }).click();
-  await page.waitForTimeout(200);
-  await shoot(page.locator('dialog[open]'), 'export-dialog');
-  await page.locator('dialog[open]').getByRole('button', { name: 'Cancel' }).click();
-
-  await page.getByRole('tab', { name: 'Sections' }).click();
-  await page.waitForTimeout(200);
-  await shoot(page.locator('.panel'), 'sections');
-  await ctx.close();
-}
-
-// Swept flying wing with the NURBS control net.
-{
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, colorScheme: 'light', locale: 'en-US' });
-  const page = await ctx.newPage();
-  const wizard = await createDesign(page, 'Swept flying wing');
-  await wizard.getByRole('button', { name: 'Create design' }).click();
-  await page.waitForTimeout(400);
-  await page.getByRole('tab', { name: 'Settings' }).click();
-  await page.getByLabel('Show NURBS control net').check();
-  await page.locator('.toast').evaluate((el) => el.classList.remove('show'));
-  await page.waitForTimeout(500);
-  await shoot(page.locator('.view-wrap'), 'flying-wing-control-net');
-  await ctx.close();
-}
-
-// Phone.
-{
-  const ctx = await browser.newContext({ ...devices['Pixel 7'], colorScheme: 'light', locale: 'en-US' });
-  const page = await ctx.newPage();
-  const wizard = await createDesign(page, 'Sport');
-  await wizard.getByRole('button', { name: 'Create design' }).click();
-  await page.waitForTimeout(600);
-  await page.locator('.toast').evaluate((el) => el.classList.remove('show'));
-  await shoot(page, 'mobile-main');
-  await page.getByRole('tab', { name: 'Planform' }).click();
-  await page.getByRole('group', { name: /End line/ }).getByLabel('Use guide curve').check();
-  await page.waitForTimeout(400);
-  await page.locator('.planform-canvas').scrollIntoViewIfNeeded();
-  await shoot(page, 'mobile-planform');
-  await ctx.close();
-}
+for (const lang of LANGUAGES) await run(lang);
 
 await browser.close();
 await new Promise((resolve) => server.httpServer.close(resolve));

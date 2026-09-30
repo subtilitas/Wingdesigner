@@ -101,13 +101,14 @@ The airfoil preview (**Upload**, pasted text, **NACA generator**, **Library**) h
 
 - Uploaded file, pasted text, NACA airfoil: the app pre-fills the field from the airfoil name. NACA names give an empty field.
 - Bundled library file: the app pre-fills `source.author` from `index.json`.
+- The author, the license identifier and the source addresses of a library file are data: they read the same in the English and the German interface, as does `NOTICE.md`. The category and the use text of each library entry are shown in the language of the interface.
 
 | Input | Airfoil name |
 | --- | --- |
 | XML file | `<name>` element. If empty or missing: file name without extension. |
 | HTML page | `<title>` element. If empty or missing: first non-numeric line before the first coordinate row. If none: file name without extension. |
 | Selig, Lednicer, table | First non-numeric line before the first coordinate row. If none: file name without extension. |
-| Pasted text without a name line | `pasted` |
+| Pasted text without a name line | `pasted` in the English interface, `Eingefügtes Profil` in the German interface |
 
 Example: `HS-1.dat` without a name line gets the name `HS-1` and the HS pre-fill.
 
@@ -127,14 +128,14 @@ Each airfoil in the project carries a `source` object:
 | --- | --- |
 | **NACA generator** or **Library** preset | `kind: "naca"`, `license`, `url` (NACA Report 824 at ntrs.nasa.gov), `code`, `closedTE`; `attribution` if the field is not empty |
 | Wizard | `kind: "naca"`, `license`, `url`, `code`, `closedTE` |
-| Sample wing "Sport wing 1500" (loaded when local storage holds no valid saved project) | `kind: "naca"`, `note` |
+| Sample wing "Sport wing 1500" (German interface: "Sportflügel 1500"; loaded when local storage holds no valid saved project) | `kind: "naca"`, `note` |
 | Bundled library file | `kind: "library"`, `id`, `attribution` (pre-filled with `source.author` from `index.json`), `license`, `url`, `terms` |
 | File upload | `kind: "upload"`, `file` (file name), `attribution` (empty string if no text) |
 | Pasted text | `kind: "upload"`; `attribution` if the field is not empty |
 
 | Place | Attribution included |
 | --- | --- |
-| Project airfoil list (tab **Airfoils**) | Yes, after the point count. NACA airfoils without attribution show `NACA equations`. |
+| Project airfoil list (tab **Airfoils**) | Yes, after the point count. NACA airfoils without attribution show `NACA equations` (German interface: `NACA-Gleichungen`). |
 | Project file, JSON (JavaScript Object Notation): **Save** or **Export** > Project JSON | Yes |
 | Autosave in browser local storage (key `wingdesigner.project.v1`) | Yes |
 | `.dat` download of a project airfoil | No: name line and points only |
@@ -151,7 +152,7 @@ The app sends no airfoil data to a server. Its only network requests for airfoil
 - Pasted text: clearing the field stores no attribution.
 - After **Add to project**, the attribution is read-only in the app. **View** shows it in a disabled field. Change it in the project JSON file.
 - For an airfoil without a stored attribution, **View** shows the pre-fill derived from the name (HS/MH rule). This text is not stored.
-- **Add to project** keeps the existing entry and its `source` when a project airfoil has the same name and identical points, or is a generated NACA section with the same `code` and `closedTE` (any name). The new **Source / attribution** text is discarded. The message `Added airfoil "<name>".` still appears. To change the attribution: remove the airfoil (**×** is available only while no section uses it) and add it again, or edit the project JSON file.
+- **Add to project** keeps the existing entry and its `source` when a project airfoil has the same name and identical points, or is a generated NACA section with the same `code` and `closedTE` (any name). The new **Source / attribution** text is discarded. The notice then reads `The project already holds this airfoil as "<name>".` instead of `Added airfoil "<name>".` To change the attribution: remove the airfoil (**×** is available only while no section uses it) and add it again, or edit the project JSON file.
 - Exported STEP, STL, 3MF and `.dat` files carry no attribution. The HS terms require name and source with each use. CC BY 4.0 (S9104) requires attribution when the material is shared; whoever shares such a file made with S9104 adds the attribution text from `public/airfoils/NOTICE.md`.
 
 ## aerodesign.de (Hartmut Siegmann)
@@ -239,7 +240,7 @@ Reasons the MH airfoils are not bundled:
 | --- | --- |
 | Maintainer | UIUC Applied Aerodynamics Group (Michael Selig) |
 | Coordinates page | <https://m-selig.ae.illinois.edu/ads/coord_database.html> |
-| Content | Approximately 1,650 airfoils (Version 2.0) of many designers, Selig `.dat`. Count as stated on the coordinates page; the note in the app says "About 1,600". |
+| Content | Approximately 1,650 airfoils (Version 2.0) of many designers, Selig `.dat`. Count as stated on the coordinates page; the note in the app says "About 1,600" (German interface: "Etwa 1.600"). |
 | License on the coordinates page | None. The footer carries only `© 1994 - 2026 UIUC Applied Aerodynamics Group`. |
 | GNU General Public License (GPL) | The low-speed airfoil test page (wind-tunnel performance data) links a GPL text for the "airfoil/aircraft data". The coordinates page does not mention the GPL. Whether the GPL covers the coordinate files: not stated. |
 | Designers' terms | Apply to their files, e.g. the MH terms above. |

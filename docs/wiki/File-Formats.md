@@ -26,17 +26,26 @@ Deutsch: [[Dateiformate|Dateiformate]]
 | LE, TE | leading edge, trailing edge |
 | UTC | Coordinated Universal Time |
 
+The interface speaks English or German ([[User Guide|User-Guide]], section Language). Messages quoted on this page are the English texts; the German interface writes them in German ([[Dateiformate]]). Codes such as `too-large` name the checks in this documentation; the app does not show them. File contents do not depend on the language: numbers have a decimal point, and keys and fixed names are English. Only a name that the app creates, such as the default project name, is written in the language that is set when the name is created.
+
 ## Export file names
 
 1. Take the project name. For an airfoil `.dat`, take the airfoil name. Empty name: `wing`.
-2. Remove accents.
-3. Replace each run of characters outside `A–Z a–z 0–9 . _ -` with one `_`.
-4. Remove leading and trailing `_`.
-5. Cut to 120 characters.
-6. Empty result: `wing`.
-7. Add the extension.
+2. Write German umlauts out: ä → ae, ö → oe, ü → ue, Ä → Ae, Ö → Oe, Ü → Ue, ß → ss. A letter written as a base letter plus a combining diaeresis counts as the umlaut.
+3. Remove other accents (é → e, ñ → n).
+4. Replace each run of characters outside `A–Z a–z 0–9 . _ -` with one `_`.
+5. Remove leading and trailing `_`.
+6. Cut to 120 characters.
+7. Empty result: `wing`.
+8. Add the extension.
 
-Example: `Sport wing 1500` → `Sport_wing_1500.step`.
+The rule is the same in the English and the German interface.
+
+| Name | File name |
+| --- | --- |
+| `Sport wing 1500` | `Sport_wing_1500.step` |
+| `Sportflügel 1500` | `Sportfluegel_1500.step` |
+| `Größe ÄÖÜ Café` | `Groesse_AeOeUe_Cafe.json` |
 
 Name inside STEP, STL and 3MF files, written `<name>` below: project name; empty name: `wing`.
 
@@ -62,7 +71,7 @@ Name inside STEP, STL and 3MF files, written `<name>` below: project name; empty
 | Separators | space, tab, comma, semicolon |
 | Decimal comma | `0,125  1,250` is read as `0.125  1.250`. Conditions: at least 2 values. Separators: spaces, tabs or semicolons. Every value is a decimal-comma number or an integer, either with an optional exponent (`e`, `E`, `d` or `D`), e.g. `1,25e-1`. At least 1 value has a comma. A line with 1 field, e.g. `0,5`, is split at the comma: values `0` and `5`. |
 | Number syntax | optional sign, decimal point, exponent with `e`, `E`, `d` or `D` (`1.0D-3`). XML `<x>` and `<y>` values follow the same syntax and the decimal-comma rule; other text, e.g. `0x1`, is not a number (error `non-finite`). |
-| Name | First non-numeric line before the first numeric line. The name line keeps a `#` comment: `NACA 0012 # from UIUC` → name `NACA 0012 # from UIUC`. HTML: the `<title>` when not empty. XML: the first `<name>` element. None found: the file name without extension; pasted text: `pasted` (German interface: „Eingefügtes Profil“). A name longer than 10,000 characters is cut to the first 10,000 (info `long-name`). |
+| Name | First non-numeric line before the first numeric line. The name line keeps a `#` comment: `NACA 0012 # from UIUC` → name `NACA 0012 # from UIUC`. HTML: the `<title>` when not empty. XML: the first `<name>` element. None found: the file name without extension; pasted text: `pasted` in the English interface, `Eingefügtes Profil` in the German interface. The name is stored as text: a later change of the language does not rename the airfoil. A name longer than 10,000 characters is cut to the first 10,000 (info `long-name`). |
 | Column header lines | 2 or 3 words that start with `x`, `y` or `z`, separated by spaces, tabs, commas or semicolons (`x y`, `x;y`, `X Yo Yu`, `x/c y/c`, `X Y_upper Y_lower`). After the name line: skipped without a message. As the first non-numeric line before the first numeric line: taken as the name (e.g. `X Yo Yu`), no info `no-name`. |
 | Other non-numeric lines | Skipped, warning `ignored-lines` |
 
@@ -248,7 +257,7 @@ The checks run:
 | `version` | integer `1` | always | required, must be 1 |
 | `generator` | `{ "name": "Wingdesigner", "version": "<app version>" }` | always | ignored |
 | `exportedAt` | ISO 8601 time, UTC | always | ignored |
-| `name` | string | always | not a string: `Imported wing`; at most 10,000 characters |
+| `name` | string | always | not a string: `Imported wing` (German interface: `Importierter Flügel`); at most 10,000 characters |
 | `units` | `"mm"` | always | optional; any other value is rejected |
 | `coordinateSystem` | text, axes as above | always | ignored |
 | `airfoils` | array | always | required, 1 to 10,000 entries; at most 1,000,000 points in all |
@@ -271,7 +280,7 @@ The checks run:
 Ids made by the app:
 
 1. Take the name in lower case.
-2. Remove accents.
+2. Remove accents (ü → u; the umlaut rule of the file names does not apply).
 3. Replace each run of characters outside `a–z 0–9` with `-`.
 4. Remove leading and trailing `-`.
 5. Cut to 40 characters.
@@ -328,7 +337,7 @@ Ids made by the app:
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Trailing edge** |
 | `trailingEdge.thickness` | ≥ 0 mm; used with `"thickness"`; limited to 5 % of the local chord | `0.4` | **Trailing-edge thickness (mm)** |
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Wing tip** |
-| `tip.ratio` | `0.001`–`0.01` (tip profile 1/1000 to 1/100 of the previous section chord); tip chord at least 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N** |
+| `tip.ratio` | `0.001`–`0.01` (tip profile 1/1000 to 1/100 of the previous section chord); tip chord at least 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N of the previous section chord** |
 | `chordSamples` | integer `16`–`200` | `60` | **Chordwise stations per surface** |
 | `panelStations` | integer `3`–`40`; the build uses fewer only when the loft grid would exceed 5,000,000 points ([[Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides or smooth mode** |
 | `parametrization` | `"uniform"`, `"chord"`, `"centripetal"` | `"centripetal"` | **Profile parametrization** |

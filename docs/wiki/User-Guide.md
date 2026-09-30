@@ -13,6 +13,8 @@ Deutsch: [[Benutzerhandbuch|Benutzerhandbuch]]
 | Panel | span interval between two neighbouring sections |
 | Station | one placed airfoil outline at span position y; every section is a station |
 
+The interface speaks English or German (section [Language](#language)). This page names the controls by their English labels. The German user guide ([[Benutzerhandbuch]]) names them by their German labels.
+
 ## Screen layout
 
 ![Desktop window: top bar, 3D view, Sections tab, status bar](images/main-desktop.png)
@@ -32,7 +34,7 @@ Deutsch: [[Benutzerhandbuch|Benutzerhandbuch]]
 | **Save** | Downloads the project JSON. Same file as **Export** > Project JSON. When the derived NURBS data would take the file above 100 MB, the file leaves it out (section [Export](#export)). A failure shows the red notice `Save failed: <reason>.` |
 | **Export** | Opens the export dialog (section [Export](#export)). |
 | **Undo** / **Redo** | Steps through the edit history, kept in memory only: at most 100 steps and at most 64,000,000 characters of serialized project (undo and redo together); a project above 640,000 characters keeps fewer steps, at least 1. **New** and **Open** are undoable. |
-| **Help** | App version, workflow, controls, links to this wiki, to the source code and to `LICENSES.txt` (**Licenses of this app and its libraries**: the MIT license of the app and the license texts of three.js and fflate). |
+| **Help** | App version, workflow, controls, links to this wiki, to the source code and to `LICENSES.txt` (**Licenses of this app and its libraries**: the MIT license of the app and the license texts of three.js and fflate). The link **Documentation (wiki)** opens the start page of this wiki in the English interface and the page Benutzerhandbuch in the German interface. |
 
 ### Narrow screens
 
@@ -44,7 +46,8 @@ At a window width of 860 px or less:
 - **Enlarge** appears in the 3D view. It hides the side panel and gives the 3D view the full height; a second tap restores the side panel.
 - The section table turns into one card per section (3 columns, label above each value).
 - The planform canvas is 260 px high.
-- At a window width of 420 px or less, the 7 top-bar buttons of the English interface stay in 1 row. The row scrolls sideways when it is wider than the window. The German interface has longer labels: its top bar wraps to a second row, its status bar takes at most 2 lines (**Checks** shows the whole text), and the buttons of a project airfoil move below its name.
+- German interface: the status bar takes at most 2 lines (**Checks** shows the whole text). The top bar takes 2 rows at a window width of 563 px or less (measured in Chromium 141: 2 rows at 563 px, 1 row at 564 px).
+- At a window width of 420 px or less, the 7 top-bar buttons of the English interface stay in 1 row. The row scrolls sideways when it is wider than the window. The German top bar wraps instead, and the buttons of a project airfoil move below its name.
 
 ![Phone layout of the planform editor with the end line on](images/mobile-planform.png)
 
@@ -56,12 +59,94 @@ On touch screens (coarse pointer), buttons and input fields are at least 40 px h
 - Only projects that pass the **Open** validation are saved. Otherwise the last valid project stays stored.
 - A stored project that fails to load is kept under `wingdesigner.project.v1.rejected`. An error notice shows, and the wizard opens as on a first visit. Without room for that copy, the project stays under `wingdesigner.project.v1` and autosave stays off for the session; the status bar shows `Autosave off: use Save` from the start.
 - The active tab is stored under `wingdesigner.tab`.
-- The language is stored under `wingdesigner.language` (`en` or `de`) as soon as the user chooses one in **Settings**. Without it, the app starts in German when the first language of the browser is German (`de`, `de-AT`, …), otherwise in English.
+- The language is stored under `wingdesigner.language` (`en` or `de`) as soon as the user chooses one in **Settings** (section [Language](#language)).
 - Without a stored project (first visit), the wizard opens. Nothing is stored while this first-run wizard is open; a reload shows the wizard again.
 - With blocked storage (private window), the project exists only in the open browser tab. Use **Save** to keep it.
 - When the browser refuses the project (browsers keep about 5,000,000 characters per site), the red notice `Autosave is off: browser storage refused the project (… characters; browsers keep about 5,000,000 per site). Use Save to keep it.` shows once. The status bar shows `Autosave off: use Save` until an autosave succeeds again; then the notice `Autosave works again.` shows.
 - While autosave fails, the key `wingdesigner.project.v1.stale` holds the time of the first failure. The next visit restores the last stored project and shows `This is the project as last saved; autosave stopped at … because browser storage was full, and later edits were not saved.` When the restored project brings the `Large project` warning, both texts show in one notice in the error colour.
 - The undo history is not stored.
+
+## Language
+
+The interface speaks English or German.
+
+| Item | Behaviour |
+| --- | --- |
+| List | **Language / Sprache** in the first group of the **Settings** tab, with the values **English** and **Deutsch**. The group and the list carry the same label in both languages, so the list can be found in either. |
+| Start | The choice stored in the browser. Without a stored choice: German when the first language of the browser is German, otherwise English. |
+| German browser | The first entry of the browser language list is `de` or starts with `de-`, in any letter case (`de`, `de-AT`, `DE-ch`). Later entries do not count: the list `en-US`, `de` gives English. |
+| Stored value | Only `en` and `de` count. Any other stored value is ignored, and the browser language decides. |
+| Storage | Key `wingdesigner.language` in `localStorage`, written when the user chooses. With blocked storage the choice lasts until the page closes. Project files, autosave and exports carry no language setting. |
+| First visit | The wizard opens in the start language. It is modal, so the list is reachable after **Create design** or **Skip (open sample wing)**. |
+| Page | The `lang` attribute of the page is `en` or `de`. The page title `Wingdesigner` does not change. The `<noscript>` line, shown when JavaScript is off, names both languages. |
+
+### Switching
+
+A choice applies at once, without reloading the page.
+
+Changes at once:
+
+- the top bar, the tabs, the view buttons, the status bar, every tooltip and accessible label (`aria-label`) and the `description` of the page;
+- the content of every tab, **Checks** among them: build errors, build warnings, airfoil messages and the `Large project` warning;
+- the numbers (section [Numbers](#numbers));
+- the wizard, **Export**, **Help** and airfoil preview dialogs the next time they open. Each is modal, so the list cannot be used while one is open.
+
+Stays:
+
+- the project, the selected section, the undo and redo history and the active tab;
+- the keyboard shortcuts. The tooltips name the keys in the current language: `Undo (Ctrl+Z)`, in German `Rückgängig (Strg+Z)`.
+
+The build after the switch:
+
+- With an error or a warning other than the `Large project` warning in **Checks**, the wing is built again, because these messages come out of the build. The build takes as long as after a change (section [Project size](#project-size)).
+- Otherwise the wing stays, and the `Large project` warning is written again.
+
+Notices:
+
+- A notice without red background that is showing disappears at the switch, and its text with it.
+- An error notice (red background) stays visible in the language it was written in until its display time ends: 4 s, or 60 ms per character above 66 characters. At that time its text is removed if the language differs from the one it was written in.
+
+### Numbers
+
+| Number | English | German |
+| --- | --- | --- |
+| Decimal separator | point: `23.04 dm²` | comma: `23,04 dm²` |
+| Counts, limits and computed values with 4 or more digits | grouped with a comma in some texts (`20,000`), not grouped in others (`1200 mm`) | grouped with a dot: `20.000`, `1.200 mm` |
+| Values echoed from a field (positions, angles, parameters) | `y = 1000 mm`, `0.25` | not grouped: `y = 1000 mm`, `0,25` |
+
+Example, status bar of the **Sport** preset:
+
+| Language | Status bar |
+| --- | --- |
+| English | `Span 1200 mm · area 23.04 dm² · AR 6.25 · MAC 196.0 mm` |
+| German | `Spannweite 1.200 mm · Fläche 23,04 dm² · AR 6,25 · MAC 196,0 mm` |
+
+Number fields:
+
+- The value of a number field is written with a decimal point (`0.6`) in both languages.
+- The browser decides how a number field shows and accepts numbers. Checked only in Chromium 141 (headless, locales `en-US` and `de-DE`): the field shows `0.6`. A typed comma is dropped, so `0,7` reads `07` and commits 7; **Twist pivot** then takes its maximum 1. The app shows no message. Type a decimal point. Other browsers, and Chromium with a German interface language: not tested.
+
+### What stays as it is
+
+- File contents: STEP (Standard for the Exchange of Product model data), STL (stereolithography), 3MF (3D Manufacturing Format), project JSON and `.dat` files. Numbers in them always have a decimal point. The 3MF object names `Wing right`, `Wing left` and `Wing` do not change.
+- Names and attributions: the project name, airfoil names, every text the user types, attribution texts, license identifiers, source addresses, the names of the external sources, `LICENSES.txt` and `NOTICE.md`.
+- Texts that the browser writes: its file dialogs, the name of a browser error such as `NotReadableError`, and the reason the browser gives when it runs out of memory or reaches a size limit of its own (after `Save failed:` or `Export failed:`).
+- The reason inside `The NURBS interpolation through the points failed (…).` and the text after `Internal error:` come from the geometry code and stay English.
+- The descriptions of the library entries and of the external sources are translated.
+
+Names that the app writes itself are made in the language that is set when the name is created and stored as text. A later switch does not rename them:
+
+| Name | English | German |
+| --- | --- | --- |
+| Project name from the wizard | preset name, e.g. `Sport` | preset name, e.g. `Sportmodell` |
+| Project name from the wizard, name field empty | `<span> mm wing` | `Flügel <span> mm` |
+| Sample wing (**Skip (open sample wing)**) | `Sport wing 1500` | `Sportflügel 1500` |
+| Project file whose `name` is not a string | `Imported wing` | `Importierter Flügel` |
+| Pasted coordinates without a name line | `pasted` | `Eingefügtes Profil` |
+
+### File names
+
+File names of downloads (**Save**, **Export**, airfoil `.dat`) write German umlauts out, in both languages: ä → ae, ö → oe, ü → ue, Ä → Ae, Ö → Oe, Ü → Ue, ß → ss. Other accents are dropped (é → e, ñ → n). `Sportflügel 1500` gives `Sportfluegel_1500.step`. The full rule: [[File Formats|File-Formats]], section Export file names.
 
 ## Controls
 
@@ -111,7 +196,7 @@ The wizard builds a complete project from 12 inputs (table below). It generates 
 
 | Field | Range | Effect |
 | --- | --- | --- |
-| Project name | text | Default: preset name. Empty: `<span> mm wing` |
+| Project name | text | Default: preset name. Empty: `<span> mm wing`. Both are made in the current language (section [Language](#language)). |
 | Span (both halves) | 100 to 20,000 mm | Tip-to-tip span |
 | Root chord | 10 to 3000 mm | Chord at y = 0 |
 | Taper (tip / root chord) | 0.1 to 1.5 | Tip chord divided by root chord. Elliptic planform with flat tip: below 1. Elliptic planform with pointed tip: not used. |
@@ -167,7 +252,7 @@ The line turns red, lists the problems, and **Create design** is disabled when:
 | --- | --- |
 | **Create design** | Replaces the current project. **Undo** restores the previous one. |
 | **Cancel** | Keeps the current project. |
-| **Skip (open sample wing)** | First visit only, in place of **Cancel**. Keeps the sample wing "Sport wing 1500": 3 sections, 1500 mm span, NACA 2412 / 2410, trailing edge fixed at 0.5 mm. |
+| **Skip (open sample wing)** | First visit only, in place of **Cancel**. Keeps the sample wing "Sport wing 1500" (German interface: "Sportflügel 1500"): 3 sections, 1500 mm span, NACA 2412 / 2410, trailing edge fixed at 0.5 mm. |
 
 ## Sections
 
@@ -190,7 +275,7 @@ Computation: [[Geometry|Geometry]].
 | x | mm | 1 | −1,000,000 to 1,000,000 | Leading-edge position; positive = aft (sweep back) |
 | z | mm | 1 | −1,000,000 to 1,000,000 | Leading-edge height (dihedral) |
 | Chord | mm | 1 | 1 to 100,000 | Chord length (airfoil scale) |
-| Twist | ° | 0.1 | −360 to 360 | Rotation about the pivot; positive = leading edge up. The UI labels the unit `deg`. |
+| Twist | ° | 0.1 | −360 to 360 | Rotation about the pivot; positive = leading edge up. The English interface labels the unit `deg`; the German interface writes `°`. |
 
 | Button | Effect |
 | --- | --- |
@@ -336,7 +421,7 @@ Limits of the project airfoils (section [Project size](#project-size)):
 | Preview element | Content |
 | --- | --- |
 | Plot | Line: NURBS interpolation; with a sanity-check error, straight segments through the file points. Dots: file points (**Show data points**, default on). Red circles: location of a reported problem. Pan and zoom as in the planform editor. |
-| **Name** | From the name line of the file, otherwise the file name. Editable. |
+| **Name** | From the name line of the file, otherwise the file name; pasted text without a name line: `pasted` (German interface: `Eingefügtes Profil`). Editable. |
 | **Source / attribution** | Stored in the project file. Pre-filled for names starting with `HS` plus space or hyphen (`HS 3.4`, `HS-1.4`): `Hartmut Siegmann, www.aerodesign.de`. Pre-filled for names starting with `MH`, an optional space or hyphen and a digit (`MH45`, `MH 60`): `Martin Hepperle, www.mh-aerotools.de`. Both matches are case-insensitive. Pre-filled for a bundled library file with its author from `index.json`. |
 | Format line | Detected format and point count |
 | Messages | **Error**: blocks adding. **Warning**: adding allowed. **Info**: facts, e.g. thickness, camber and trailing-edge gap in % chord, or the number of removed points that lie closer than 1e-9 chord to the previous point. Above 5,000 points: warning `… points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take ….` A surface that runs back in x at more than 50 points: error `The upper surface runs back in x at … points; the limit is 50.` (`lower` likewise). After the sanity checks pass, the preview also rejects a NURBS curve that crosses itself or runs back in x, and points on which the NURBS interpolation fails (`The NURBS interpolation through the points failed (…).`). All three are error `curve-shape` ([[File Formats]]). |
@@ -364,6 +449,7 @@ Limits of the project airfoils (section [Project size](#project-size)):
 - **Filter library** matches the name, category and use text.
 - The library holds 17 generated NACA sections and 6 bundled coordinate files (`public/airfoils/index.json`, compiled into the app, so the library needs no network access). The list shows the NACA sections first, then the files in index order.
 - Text under each name: NACA section: category, use, `generated`. Bundled file: category, use text, author, license identifier.
+- The German interface shows the category, the use text and `generated` (`erzeugt`) in German. **Filter library** matches the category and use text in the language shown. Name, author and license identifier are the same in both languages. The tables below give the English texts.
 - Each entry: **Preview** opens the preview dialog. NACA entries follow the **Closed trailing edge** checkbox of the NACA generator. A bundled file loads from `airfoils/<file>` on the app's own address.
 - **Add to project** on a bundled file stores the **Source / attribution** field (pre-filled with the author), the license identifier, the source address and the terms address in the project airfoil (`source` object, [[File Formats|File-Formats]]).
 
@@ -425,7 +511,7 @@ The box **More airfoils (external, not bundled)** links to 3 collections. The ap
 
 | Group | Setting | Values | Default | Effect |
 | --- | --- | --- | --- | --- |
-| Language | **Language / Sprache** | English, Deutsch | German when the first language of the browser is German, otherwise English | Switches every text without a reload: menus, labels, tooltips, notices, **Checks**, build errors and warnings, airfoil check messages. The project, the selection and the undo history stay. Numbers follow the language (German `1.234,5`); values in input fields keep the plain number. Data is not translated: file contents, airfoil names, attributions and file names. A notice that is showing disappears when the language changes, except an error notice, which stays until its timer ends. Stored in the browser under `wingdesigner.language`. |
+| Language / Sprache | **Language / Sprache** | **English**, **Deutsch** | German when the first language of the browser is German, otherwise English | Language of every text of the interface. Section [Language](#language). |
 | Geometry | **Project name** | text | preset name | Name in the project file; base of the file names of **Save** and **Export**. `.dat` downloads use the airfoil name. A name above 200 characters adds `a name of … characters (warning above 200)` to the `Large project` warning as soon as the name is committed; a shorter name removes it. |
 | Geometry | **Spanwise interpolation** | **Linear between sections (straight panels)**, **Smooth (natural cubic spline through sections)** | Linear | Blending of section values along the span. See the list below. |
 | Geometry | **Twist pivot (fraction of chord)** | 0 to 1, step 0.05 | 0.25 | Chord point the twist rotates about |
@@ -679,7 +765,7 @@ For STEP, the note gives the surface control points in the file and the file siz
 - STEP has no merged body: **Full wing** writes 2 solids.
 - Project JSON holds the full project. Without wing errors it also holds the derived NURBS data: airfoil curves, guide curves, spanwise stations and the wing surface.
 - When the derived NURBS data would take the file above 100 MB, the largest file **Open** reads, **Save** and Project JSON leave it out and show the notice `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`
-- File name: project name with accents removed; each run of characters outside `A–Z a–z 0–9 . _ -` becomes one `_`; leading and trailing `_` are removed; the first 120 characters are kept. Extension `.step`, `.stl`, `.3mf` or `.json`. Empty name: `wing`.
+- File name: project name with German umlauts written out (ä → ae, ö → oe, ü → ue, Ä → Ae, Ö → Oe, Ü → Ue, ß → ss) and other accents removed; each run of characters outside `A–Z a–z 0–9 . _ -` becomes one `_`; leading and trailing `_` are removed; the first 120 characters are kept. Extension `.step`, `.stl`, `.3mf` or `.json`. Empty name: `wing`.
 - Units: mm in every format. Axes as in the app.
 - If the browser runs out of memory or reaches a size limit of its own, the export stops with the red notice `Export failed: <reason>.`, followed for STL and 3MF by `Use Normal mesh density or fewer chord samples and panel stations.` and for STEP by `Use one half, or fewer chord samples and panel stations.`
 - STL and 3MF store 32-bit coordinates. When the rounding collapses or turns over a triangle that is visible at that resolution, the export writes no file and shows the red notice `STL stores 32-bit coordinates: at … mm their spacing is … mm, and … of … triangles collapse or turn over. Move the wing towards the origin, or export STEP.` (3MF: `3MF readers store 32-bit coordinates: …`). `at … mm` gives the largest coordinate of the damaged triangles.
