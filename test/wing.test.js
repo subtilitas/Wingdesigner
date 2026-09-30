@@ -1319,6 +1319,29 @@ describe('mitred section planes', () => {
     expect(mitredPlaneProblem(broken)).toBeNull();
   });
 
+  it('stops where the planes of a Linear panel turn faster than its airfoils allow, whatever the stations per panel', () => {
+    // NACA 0018 at 217 mm chord, rolls 0° and 46.9° over a 21.7 mm panel: at the root a point 30.4 mm
+    // up its plane moves across it at cos φ + tan δ · sin φ − t · dφ/dy = 1 − 30.4 · 0.0377 < 0. The end
+    // planes meet 46 mm up the root plane, beyond the airfoil, and neighbouring stations need not cross.
+    const turning = (K, scale = 1) =>
+      createProject({
+        airfoils: [naca('0018', 'c')],
+        sections: [[0, 0, 217], [21.7, 25.8, 237], [125, 124.6, 417]].map(([y, z, chord]) => ({ airfoil: 'c', x: 0, y: y * scale, z: z * scale, chord: chord * scale, twist: 0 })),
+        settings: { sectionPlanes: 'mitred', panelStations: K },
+      });
+    const message = 'Sections 1 and 2: at y = 0.0 mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical.';
+    for (const K of [3, 4, 8]) for (const scale of [1, 7]) expect(buildWing(turning(K, scale)).errors, `K ${K}, scale ${scale}`).toEqual([message]);
+    // Straight panels are ruled between the sections: the check of the two end planes decides.
+    const straight = turning(3);
+    straight.settings.spanwise = 'straight';
+    expect(buildWing(straight).errors).toEqual([]);
+    // A panel twice as long turns half as fast and builds.
+    const longer = turning(3);
+    longer.sections[1].y = 43.4;
+    longer.sections[1].z = 51.6;
+    expect(buildWing(longer).errors).toEqual([]);
+  });
+
   it('builds Smooth spanwise interpolation with vertical section planes and says so in the info lines', () => {
     const b = buildWing(gull({ spanwise: 'smooth' }));
     expect([b.errors, b.sectionPlanes, b.rolls, b.infos]).toEqual([[], 'vertical', [0, 0, 0], ['Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels.']]);

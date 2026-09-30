@@ -176,7 +176,7 @@ The report lists every value that the import changes, converts or leaves out. Er
 | **Wing tip** | **Flat (cut at the tip section)** |
 | **Show mirrored half (y < 0)** | on |
 | Guide curves | off, points at the section edges |
-| Other settings | Defaults: 60 **Chordwise stations per surface**, 8 **Spanwise stations per panel with guides or smooth mode**, **Centripetal (recommended)** |
+| Other settings | Defaults: 60 **Chordwise stations per surface**, 8 **Spanwise stations per panel with guides, smooth mode or mitred linear panels**, **Centripetal (recommended)** |
 
 - The **Sections** tab opens, and the 3D view and the planform editor fit the new wing. Autosave stores the project (section [Storage](#storage)).
 - **Undo** restores the previous project, **Redo** the import.
@@ -693,7 +693,7 @@ The box **More airfoils (external, not bundled)** links to 3 collections. The ap
 | Geometry | **Tip profile scale 1 : N of the previous section chord** | N = 100 to 1000, step 50 | 200 | Shown only with **Pointed** |
 | Geometry | **Trailing-edge thickness (mm)** | ≥ 0, step 0.1 | wizard: 0.2 % of the root chord, at least 0.3; sample wing: 0.5; project file without the value: 0.4 | Shown only with **Fixed thickness in mm** |
 | Resolution | **Chordwise stations per surface** | 16 to 200, step 4 | 60 | Airfoil resampling: N stations give 2 · N + 1 points per outline (60 → 121) |
-| Resolution | **Spanwise stations per panel with guides or smooth mode** | 3 to 40 | 8 | Intervals per panel, cosine spacing; used only with a guide curve on, with Smooth, and in a **Linear** panel between mitred planes of different roll. Fewer intervals only above 5,000,000 loft grid points (section [Guide curves](#guide-curves)). |
+| Resolution | **Spanwise stations per panel with guides, smooth mode or mitred linear panels** | 3 to 40 | 8 | Intervals per panel, cosine spacing; used only with a guide curve on, with Smooth, and in a **Linear** panel between mitred planes of different roll. Fewer intervals only above 5,000,000 loft grid points (section [Guide curves](#guide-curves)). |
 | Resolution | **Profile parametrization** | **Centripetal (recommended)**, **Chord length**, **Uniform** | Centripetal | Parameter spacing of the airfoil NURBS interpolation, in the wing build and in the airfoil preview |
 | Display | **Show mirrored half (y < 0)** | on, off | on | Display only (3D view). Checks, status bar and wizard always report both halves. Stored in the project. |
 | Display | **Show NURBS control net** | on, off | off | 3D view only; not stored. Above 100,000 net segments the view draws every k-th control line in each direction, first and last included. When the first and last lines alone exceed 100,000 segments (e.g. 33 × 151,000 control points), each drawn line also runs through every k-th control point only, first and last included. |
@@ -817,6 +817,7 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 | The trailing edge is closed on some stations and open on others; … station(s) were opened to 0.01 mm. | warning | not every station closed, and at least one station with a trailing-edge gap below 0.01 mm |
 | The tilt angle of …° of the XFLR5 import is folded into the section values, which is exact for vertical section planes only: with mitred planes the part lies up to about … mm off XFLR5's (0.75 · chord · sin(tilt angle) · sin(roll)). Settings > Section planes Vertical keeps the import exact. | warning | a tilted part of an XFLR5 import set to **Mitred**, with a section plane that is not vertical ([[File Formats]], section XFLR5 import) |
 | Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels. | info | **Smooth** with **Mitred** on a wing with dihedral |
+| Sections … and …: at y = … mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical. | error | **Mitred**, **Linear**: along a panel the planes turn with the roll; at y a point of the airfoil moves backwards across the plane of its station, e.g. a thick airfoil on a short panel between large dihedral changes |
 | The loft deviates up to … mm from the intended surface at y = … mm after … added station(s); raise the spanwise stations per panel. | warning | deviation from the intended profile (leading edge, upper trailing-edge point, every k-th chord station per surface, k = **Chordwise stations per surface** / 6, rounded down: 5 at 60) above 0.5 mm (or 10 % of the local chord, if smaller) at a checked span position remains after the added stations (at most 32 in 6 rounds, 1 round above 60,000 loft grid points). The message gives the fit that the build keeps (the smallest largest deviation relative to the tolerance) and its added stations ([Guide curves](#guide-curves)). |
 
 - Checked span positions: section [Guide curves](#guide-curves).
@@ -897,7 +898,7 @@ Measured per chord edit in the browser: Chromium 141 headless, software renderin
 
 ## Export
 
-![Export dialog: format, wing halves, mesh density](images/export-dialog.png)
+![Export dialog: format, wing halves, mesh density, up axis](images/export-dialog.png)
 
 | Format | Meaning | Content |
 | --- | --- | --- |
@@ -917,6 +918,16 @@ Measured per chord edit in the browser: Chromium 141 headless, software renderin
 | Wing halves | **Right half only** | – |
 | Mesh density (STL, 3MF) | **Normal** | selected |
 | Mesh density (STL, 3MF) | **Fine (4x triangles)**: doubles the subdivision in both surface directions | – |
+| Up axis (STEP, STL, 3MF) | **Z up**: the axes of the app | selected, unless the last STEP, STL or 3MF export used **Y up** |
+| Up axis (STEP, STL, 3MF) | **Y up (Fusion 360 set to Y up, SolidWorks)**: the part turned by −90° about x | – |
+
+Up axis:
+
+- The app computes with x chordwise towards the trailing edge, y spanwise towards the right tip and z up. A CAD program with Y as the up axis reads such a file with the span pointing up and the upper surface facing its front. Example: Fusion 360 with **Preferences** > **General** > **Design** > **Default modeling orientation** set to **Y up** shows the side of the wing in its top view.
+- **Y up** writes every point as (x, z, −y): the upper surface faces +Y, the chord stays along X, the right half lies at Z ≤ 0 and the left half at Z ≥ 0. The note under the options names the axes of the file: `Units: millimetres. Axes: x chordwise towards the trailing edge, y up, z spanwise towards the left tip.`
+- The choice applies to STEP, STL and 3MF. The project JSON keeps the axes of the app.
+- The dialog starts with the up axis of the last STEP, STL or 3MF export, stored in the browser under `wingdesigner.upAxis`. Without browser storage it starts with **Z up**.
+- Other ways in Fusion 360: set **Default modeling orientation** to **Z up** before opening a **Z up** file, or turn the body by −90° about the X axis (**Modify** > **Move/Copy**).
 
 For STL and 3MF, a note under the mesh density gives the triangles and the file size of the chosen format, wing halves and density, e.g. Glider preset, STL, both halves, **Normal**: `0.02 million triangles, file about 1.2 MB.` Project JSON shows no note.
 

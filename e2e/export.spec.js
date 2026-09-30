@@ -10,6 +10,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import {
   FORMAT_LABEL,
   STORAGE_KEY,
+  UP_LABEL,
   VALID_RE,
   collectErrors,
   commit,
@@ -223,6 +224,39 @@ test.describe('export dialog', () => {
     const ys = objectsOf.merged[0].vertices.map((v) => v[1]);
     expect(within(Math.max(...ys), SPORT_TIP)).toBe(true);
     expect(Math.min(...ys)).toBeCloseTo(-Math.max(...ys), 3);
+  });
+
+  test('Y up writes the part turned for CAD programs with Y as the up axis, and the dialog keeps the choice', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const dlg = await openExport(page);
+    const axes = dlg.getByText(/^Units: millimetres\. Axes:/);
+    await expect(dlg.getByLabel(UP_LABEL.z)).toBeChecked();
+    await expect(axes).toHaveText('Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.');
+    await dlg.getByLabel(UP_LABEL.y).check();
+    await expect(axes).toHaveText('Units: millimetres. Axes: x chordwise towards the trailing edge, y up, z spanwise towards the left tip.');
+    // The project JSON keeps the axes of the app.
+    await dlg.getByLabel(FORMAT_LABEL.json).check();
+    await expect(axes).toHaveText('Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.');
+    await dlg.getByRole('button', { name: 'Cancel' }).click();
+
+    // Every vertex of the Y-up STL is the Z-up vertex (x, y, z) turned to (x, z, −y), exact in float32.
+    const zUp = parseStl((await exportFile(page, 'stl', { half: 'right', up: 'z' })).bytes).tris;
+    const yUp = parseStl((await exportFile(page, 'stl', { half: 'right', up: 'y' })).bytes).tris;
+    expect(yUp).toHaveLength(zUp.length);
+    const turned = zUp.map((t) => t.map(({ p: [x, y, z] }) => [x, z, -y]));
+    expect(yUp.map((t) => t.map(({ p }) => p))).toEqual(turned);
+    expectClosed(stlShell(yUp), 'Y-up right half');
+    expect(signedVolume(yUp)).toBeCloseTo(signedVolume(zUp), 1);
+
+    // The next export and a reload start with the last choice; Z up brings the app axes back.
+    await expect((await openExport(page)).getByLabel(UP_LABEL.y)).toBeChecked();
+    await dialogOf(page).getByRole('button', { name: 'Cancel' }).click();
+    await page.reload();
+    await expect(status(page)).toHaveText(SPORT_STATUS);
+    await expect((await openExport(page)).getByLabel(UP_LABEL.y)).toBeChecked();
+    await dialogOf(page).getByRole('button', { name: 'Cancel' }).click();
+    const back = parseStl((await exportFile(page, 'stl', { half: 'right', up: 'z' })).bytes).tris;
+    expect(back.map((t) => t.map(({ p }) => p))).toEqual(zUp.map((t) => t.map(({ p }) => p)));
   });
 
   test('pointed tip exports closed solids that end in the scaled tip profile', async ({ page }) => {

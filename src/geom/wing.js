@@ -281,7 +281,9 @@ export function surfaceRowCrossing(surface, v, tolerance, roll = 0) {
  * angle } for a section whose plane lies beyond MAX_STRETCH from its panel, { kind: 'fold', i, distance }
  * for neighbours i and i + 1 whose planes fold the surface between them; indices in the order of y.
  * null when the planes build, and when an airfoil fails its check (the build reports that). The XFLR5
- * import chooses its section planes by it, also where the dialog does not build.
+ * import chooses its section planes by it, also where the dialog does not build. The fold inside a
+ * Linear panel, where the planes turn between the sections, is left to the build: the import sets
+ * Straight panels.
  */
 export function mitredPlaneProblem(project) {
   const settings = resolveSettings(project.settings);
@@ -717,9 +719,16 @@ export function buildWing(project) {
   };
   let nonFiniteY = null;
   let farPlacement = null;
+  // Planes that turn along a Linear panel (roll blended linearly in y, dφ/dy per panel in rad/mm): a
+  // point at height t in the plane of its station moves across that plane at the rate
+  // cos φ + tan δ · sin φ − t · dφ/dy per mm of span. At 0 or below the surface folds, also where the
+  // planes of the stations around it do not cross. Straight panels are ruled between the sections,
+  // whose planes the section check above covers.
+  const rollRate = planesOn && !straight ? ys.slice(0, -1).map((y, i) => ((R[i + 1] - R[i]) * Math.PI) / 180 / (ys[i + 1] - y)) : null;
+  let turnFold = null;
   for (const y of [...checkYs].sort((a, b) => a - b)) {
     if (!(y >= y0 && y <= y1)) continue;
-    const { chord, raw, xLE, z, twist } = placement(y);
+    const { chord, raw, xLE, z, twist, roll, stretch } = placement(y);
     // Placement values whose coordinates overflow (e.g. a twist of 1e308 degrees) stop the build.
     if (![xLE, chord, z, Math.cos((twist * Math.PI) / 180)].every(Number.isFinite)) {
       nonFiniteY = y;
@@ -740,6 +749,16 @@ export function buildWing(project) {
     // again after the trailing-edge setting, whose linear taper can pull the surfaces through each
     // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendCompat(y);
+    if (rollRate && !turnFold) {
+      const i = panelOf(y);
+      const rate = rollRate[i];
+      if (rate !== 0) {
+        const [low, high] = upExtent(shape, { chord, twist, stretch }, pivot);
+        const phi = (roll * Math.PI) / 180;
+        const dihedral = (planes.dihedrals[i] * Math.PI) / 180;
+        if (!(Math.cos(phi) + Math.tan(dihedral) * Math.sin(phi) - (rate > 0 ? high : low) * rate > 0)) turnFold = { y, i };
+      }
+    }
     if (smooth) {
       for (const q of overshootChecks) record(q.name, q.unit, raw[q.k], q.range, y);
       for (let k = 1; k < 2 * N; k++) record(profileNames[k], 'chord', shape[k][1], profileRanges[k], y);
@@ -779,6 +798,16 @@ export function buildWing(project) {
         extent: whole(LIMITS.maxExtent),
         maxChord: whole(LIMITS.maxChord),
       })} ${tr('Check the guide curves, or use linear interpolation.')}`,
+    );
+    return result;
+  }
+  if (turnFold) {
+    errors.push(
+      tr('Sections {a} and {b}: at y = {y} mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical.', {
+        a: plain(turnFold.i + 1),
+        b: plain(turnFold.i + 2),
+        y: fixed(turnFold.y, 1),
+      }),
     );
     return result;
   }

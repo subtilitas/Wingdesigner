@@ -46,6 +46,8 @@ export function stepCases() {
     settings: { spanwise: 'straight', sectionPlanes: 'mitred' },
   });
   cases.push({ name: 'mitred-vtail-35', project: vtail, mirror: true });
+  // The same V-tail written with Y as the up axis, as for Fusion 360 set to Y up (src/export/axes.js).
+  cases.push({ name: 'mitred-vtail-35-y-up', project: vtail, mirror: true, up: 'y' });
   const gull = sampleProject({ settings: { sectionPlanes: 'mitred' } });
   gull.sections[1].z = 300 * Math.tan(15 * DEG);
   gull.sections[2].z = gull.sections[1].z - 300 * Math.tan(5 * DEG);

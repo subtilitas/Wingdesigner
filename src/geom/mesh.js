@@ -1,6 +1,7 @@
 // Tessellation of the wing surface into a closed, outward-oriented triangle mesh, mirroring,
 // and mesh measures (volume, area, edge manifold check).
 
+import { meshToUpAxis } from '../export/axes.js';
 import { surfacePointGrid } from './nurbs.js';
 import { stripTriangulate } from './triangulate.js';
 
@@ -215,20 +216,24 @@ export function exportTriangles(build, mode = 'halves', { uRefine = 1, vRefine }
  * mode 'right': the right half as one closed shell.
  * mode 'halves': right and left halves as two closed shells (root caps included).
  * mode 'merged': one closed shell for the full wing when the root lies exactly on y = 0, otherwise like 'halves'.
+ * up: the up axis of the file (src/export/axes.js); the meshes are turned after mirroring and merging.
  * @returns {{name: string, mesh: {positions: Float64Array, indices: Uint32Array}}[]}
  */
-export function exportMeshes(build, mode = 'halves', { uRefine = 1, vRefine } = {}) {
+export function exportMeshes(build, mode = 'halves', { uRefine = 1, vRefine, up = 'z' } = {}) {
   const half = tessellateHalf(build, { uRefine, vRefine });
   const right = halfWingMesh(half);
-  if (mode === 'right') return [{ name: 'Wing right', mesh: right }];
-  if (mode === 'merged' && build.rootY === 0) {
+  let meshes;
+  if (mode === 'right') meshes = [{ name: 'Wing right', mesh: right }];
+  else if (mode === 'merged' && build.rootY === 0) {
     const full = fullWingMesh(half, build.rootY);
-    return [{ name: 'Wing', mesh: { positions: full.positions, indices: full.indices } }];
+    meshes = [{ name: 'Wing', mesh: { positions: full.positions, indices: full.indices } }];
+  } else {
+    meshes = [
+      { name: 'Wing right', mesh: right },
+      { name: 'Wing left', mesh: mirrorMesh(right) },
+    ];
   }
-  return [
-    { name: 'Wing right', mesh: right },
-    { name: 'Wing left', mesh: mirrorMesh(right) },
-  ];
+  return meshes.map((m) => ({ ...m, mesh: meshToUpAxis(m.mesh, up) }));
 }
 
 /** Concatenate meshes into one vertex/index buffer (shells stay separate). */

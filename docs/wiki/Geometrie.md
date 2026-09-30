@@ -21,7 +21,7 @@ English: [[Geometry|Geometry]]
 | --- | --- |
 | LE, TE | Nasenleiste (leading edge), Endleiste (trailing edge); als Index: x_LE, x_TE |
 | N | Anzahl der Tiefenintervalle je Profilseite (N + 1 Stationen je Profilseite, Nase und Endleiste eingeschlossen): **Einstellungen** (Settings) > **Stationen je Profilseite** (Chordwise stations per surface), Vorgabe 60, Bereich 16 bis 200 |
-| K | Stationen je Feld in Spannweitenrichtung: **Einstellungen** > **Stationen je Feld mit Leitkurve oder glatter Interpolation** (Spanwise stations per panel with guides or smooth mode), Vorgabe 8, Bereich 3 bis 40; die Gittergrenze aus Abschnitt 3.2 kann K verringern |
+| K | Stationen je Feld in Spannweitenrichtung: **Einstellungen** > **Stationen je Feld mit Leitkurve, glatter Interpolation oder linearen Feldern auf Gehrung** (Spanwise stations per panel with guides, smooth mode or mitred linear panels), Vorgabe 8, Bereich 3 bis 40; die Gittergrenze aus Abschnitt 3.2 kann K verringern |
 | c | Profiltiefe in mm |
 | f_pivot | Drehpunkt der Schränkung als Anteil der Profiltiefe: **Einstellungen** > **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)), Vorgabe 0,25, Bereich 0 bis 1 |
 | δ | V-Form eines Feldes: atan2(z_(i+1) − z_i, y_(i+1) − y_i) seiner beiden Schnittpositionen, in Grad |
@@ -479,6 +479,7 @@ Prüfungen in der Reihenfolge des Codes. Jede Zeile ist ein Fehler; es wird kein
 | Schnittebenen, Faltung | Schnittebenen **Auf Gehrung**: Die Ebenen zweier benachbarter Schnitte verschiedener Neigung schneiden sich in einer Geraden parallel zu x. Die Fläche zwischen ihnen faltet sich, wenn diese Gerade durch eines der beiden platzierten Profile geht (seine Ausdehnung entlang der Aufwärtsrichtung seiner Ebene, mit Profiltiefe, Schränkung und Dickenstreckung), wenn die beiden Profile auf verschiedenen Seiten der Geraden liegen oder wenn das innere Profil weiter außen liegt als die Ebene des äußeren (`planeFold` in `src/geom/planes.js`). Meldung: „Schnitte a und b: Ihre Gehrungsebenen schneiden sich … mm von der Position (y, z) von Schnitt a entfernt, innerhalb der Profile, daher faltet sich die Fläche zwischen ihnen. Das Feld verlängern, die Änderung der V-Form verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.“ Beispiel: Felder mit 0°, 40° (10 mm lang) und 80°, NACA 0012 bei 300 mm Profiltiefe: Die um 20° und 60° geneigten Ebenen schneiden sich 14,6 mm von Schnitt 2 entfernt, innerhalb seiner ±19,2 mm; bei 150 mm Profiltiefe (±9,6 mm) wird die Fläche gebaut. |
 | Schnittwerte | x_LE, c, z oder cos(Schränkung) einer Prüfposition ist keine endliche Zahl. Meldung: „Die Schnittwerte ergeben bei y = … mm nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen.“ |
 | Ausdehnung der Geometrie | an einer Prüfposition: x_LE, x_LE + c (Endleiste) oder z außerhalb von ±1 200 000 mm (`LIMITS.maxExtent`) oder c über 100 000 mm. Ursachen: Überschwingen bei **Glatt**; eine Leitkurve nahe ±1 200 000 mm, bei der die hinzugerechnete oder abgezogene Profiltiefe die Ausdehnung verlässt; Nasenlinie und Endlinie mehr als 100 000 mm voneinander entfernt. Meldung: „Bei y = … mm verlässt der Flügel die Projektgrenzen (x der Profilnase … mm, z … mm, Profiltiefe … mm; Grenzen ±1.200.000 mm und 100.000 mm Profiltiefe). Die Leitkurven prüfen oder lineare Interpolation verwenden.“ |
+| Schnittebenen, Drehung | Schnittebenen **Auf Gehrung**, **Linear**: An einer Prüfposition in einem Feld, dessen zwei Ebenen verschieden sind, ändert sich die Neigung φ entlang y um dφ/dy = (φ_(i+1) − φ_i) / (y_(i+1) − y_i). Ein Punkt in der Höhe t in der Ebene seiner Station (entlang der Aufwärtsrichtung, mit Profiltiefe, Schränkung und Dickenstreckung) wandert mit der Rate cos φ + tan δ · sin φ − t · dφ/dy je mm Spannweite durch diese Ebene; t ist der höchste Punkt des Profils bei dφ/dy > 0, der tiefste bei dφ/dy < 0. Bei 0 oder darunter faltet sich die Fläche, auch wo sich die Ebenen der Stationen um die Position nicht schneiden. Meldung: „Schnitte a und b: Bei y = … mm drehen sich die Gehrungsebenen zwischen ihnen schneller, als die Profile es zulassen, daher faltet sich die Fläche. Das Feld verlängern, die Änderung der V-Form verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.“ Beispiel: NACA 0018 mit 217 mm Profiltiefe, Neigungen 0° und 46,9° über ein 21,7 mm langes Feld: an der Wurzel 1 − 30,4 mm · 0,0377/mm < 0; die Ebenen der Feldenden schneiden sich 46 mm oberhalb in der Wurzelebene, außerhalb des Profils. **Gerade Felder** sind zwischen den Schnitten Regelflächen; für sie gilt die Prüfung „Schnittebenen, Faltung“. |
 | Überschwingen bei **Glatt** | Nur **Glatt**. An einer Prüfposition liegt ein interpolierter Wert um mehr als 2 × (max − min) seiner Schnittwerte außerhalb von [min, max] (`OVERSHOOT_LIMIT` = 2). Werte: x_LE (keine Leitkurve eingeschaltet), Profiltiefe (nicht beide Leitkurven eingeschaltet), z, Schränkung und die Höhe z_unit jedes Konturpunkts k = 1 … 2N − 1. Die Meldung nennt den Wert mit dem größten Überschwingen (`x der Profilnase`, `Profiltiefe`, `z`, `Schränkung`, `Höhe der Oberseite bei x = … % der Profiltiefe` oder `Höhe der Unterseite bei x = … % der Profiltiefe`), sein y, den Bereich der Schnittwerte und den kleinsten Abstand zwischen 2 Schnitten. Abhilfe laut Meldung: **Linear**, gleichmäßiger verteilte Schnitte oder weniger dicht liegende Schnitte. |
 | Interpolierte Dicke | min t_k < −1e-9 an einer Prüfposition. **Glatt**: Überschwingen (Abschnitt 3.1); Abhilfe laut Meldung: **Linear** oder mehr Schnitte. **Linear**: Ober- und Unterseite eines Profils kreuzen sich an dieser Tiefenstation; Abhilfe laut Meldung: Profile prüfen oder **Stationen je Profilseite** (Chordwise stations per surface) erhöhen. Die Meldung nennt y und x. |
 | Dicke nach der Einstellung **Endleiste** (Trailing edge) | min t_k < −1e-9 nach der Änderung der Endleistendicke aus Abschnitt 3.7. Geprüft an Positionen mit c ≥ 1 mm. **Feste Dicke in mm** (Fixed thickness in mm): Endleistendicke auf 5 % der Profiltiefe begrenzt. Ursache: Das Profil ist innen dünner als die eingestellte Endleistendicke. |
@@ -595,7 +596,7 @@ Ablauf:
 2. Jede Spalte der erhaltenen Kontrollpunkte entlang v interpolieren (Band-LU, Abschnitt 1.2).
 3. y der Kontrollpunkte bei v = 0 auf y_root setzen und die Kontrollpunkte bei v = 1 auf die Randebene
    projizieren (y = y_tip bei φ = 0). Das entfernt Rundungsfehler des Lösers: Die Zeilen an Wurzel und
-   Rand liegen in ihren Ebenen (10 STEP-Fälle: innerhalb von 2e-13 mm, Abschnitt 6).
+   Rand liegen in ihren Ebenen (11 STEP-Fälle: innerhalb von 2e-13 mm, Abschnitt 6).
 
 Eigenschaften:
 
@@ -715,8 +716,13 @@ Orientierungsflags:
 | Normale der Ebene | Wurzel −y, Rand (0, cos φ_tip, sin φ_tip) | als Vektoren gespiegelt: Wurzel +y, Rand (0, −cos φ_tip, sin φ_tip) (nach außen) |
 
 Prüfung: `scripts/validate_step.py` liest die von `scripts/export-step-cases.mjs` geschriebenen Dateien
-mit OpenCascade. Fälle: die 10 Fälle aus `test/step-cases.js`, 2 davon mit Schnittebenen **Auf Gehrung**
-(ein 35°-V-Leitwerk mit **Gerade Felder** und ein Möwenflügel mit 15°/−5° mit **Linear**).
+mit OpenCascade. Fälle: die 11 Fälle aus `test/step-cases.js`, 3 davon mit Schnittebenen **Auf Gehrung**
+(ein 35°-V-Leitwerk mit **Gerade Felder**, einmal mit **Z nach oben** und einmal mit **Y nach oben**
+geschrieben, und ein Möwenflügel mit 15°/−5° mit **Linear**).
+
+**Hochachse** des Exports (Dateiformate, Abschnitt „Körper je Datei“): Mit **Y nach oben** wird jeder
+Punkt und jede Richtung des Teils als (x, z, −y) geschrieben. Die Drehung ist eine Rotation, daher
+bleiben die Orientierungsflags.
 
 Bestehenskriterien je Datei:
 

@@ -136,7 +136,7 @@ export default {
   'Trailing-edge thickness (mm)': 'Endleistendicke (mm)',
   'Resolution': 'Auflösung',
   'Chordwise stations per surface ({min}-{max})': 'Stationen je Profilseite ({min} bis {max})',
-  'Spanwise stations per panel with guides or smooth mode ({min}-{max})': 'Stationen je Feld mit Leitkurve oder glatter Interpolation ({min} bis {max})',
+  'Spanwise stations per panel with guides, smooth mode or mitred linear panels ({min}-{max})': 'Stationen je Feld mit Leitkurve, glatter Interpolation oder linearen Feldern auf Gehrung ({min} bis {max})',
   'Profile parametrization': 'Parametrisierung der Profile',
   'Centripetal (recommended)': 'Zentripetal (empfohlen)',
   'Chord length': 'Sehnenlänge',

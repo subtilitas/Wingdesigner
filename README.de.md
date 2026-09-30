@@ -92,9 +92,9 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 
 | Format | Datei | Inhalt | Prüfung |
 | --- | --- | --- | --- |
-| STEP, Application Protocol 214 (AP214), Textformat nach ISO (International Organization for Standardization) 10303-21 | `.step` | Ein geschlossener B-rep-Volumenkörper (Boundary Representation) je Hälfte. Flächen: Ober- und Unterseite als B-Spline-Fläche (die exakte NURBS-Fläche des Flügels), Regelfläche an der Endleiste (nur bei offener Endleiste), ebene Abschlussflächen an Wurzel und Rand. | CI: `scripts/validate_step.py` liest 10 Testflügel mit OpenCascade (cadquery-ocp 8.0.1). Bestanden: Formen gültig, Hüllen geschlossen und orientiert, Volumen innerhalb 0,05 % des Volumens des Dreiecksnetzes, Kanten der Abschlussflächen innerhalb 1e-6 mm von ihren Ebenen. |
+| STEP, Application Protocol 214 (AP214), Textformat nach ISO (International Organization for Standardization) 10303-21 | `.step` | Ein geschlossener B-rep-Volumenkörper (Boundary Representation) je Hälfte. Flächen: Ober- und Unterseite als B-Spline-Fläche (die exakte NURBS-Fläche des Flügels), Regelfläche an der Endleiste (nur bei offener Endleiste), ebene Abschlussflächen an Wurzel und Rand. | CI: `scripts/validate_step.py` liest 11 Testflügel mit OpenCascade (cadquery-ocp 8.0.1). Bestanden: Formen gültig, Hüllen geschlossen und orientiert, Volumen innerhalb 0,05 % des Volumens des Dreiecksnetzes, Kanten der Abschlussflächen innerhalb 1e-6 mm von ihren Ebenen. |
 | STL, binär | `.stl` | Geschlossenes Dreiecksnetz; eine Hülle je Körper. | Unit-Tests: Jede gerichtete Kante kommt einmal vor, ihre Umkehrung einmal; Volumen aus der gelesenen float32-Datei innerhalb 0,0005 % des Volumens des Dreiecksnetzes. |
-| 3MF | `.3mf` | Dieselben Dreiecksnetze; ein Objekt je Hülle; Einheit Millimeter. | Unit-Tests: 3 Paketteile, Einheit Millimeter, 1 Objekt und 1 Build-Eintrag je Hülle, Anzahl der Eckpunkte. CI: `scripts/validate_3mf.py` liest die 10 Testflügel mit lib3mf 2.5.0 im strikten Modus. Bestanden: keine Warnungen beim Einlesen, Anzahl der Dreiecke je Objekt wie geschrieben, jedes Objekt mannigfaltig und orientiert. Slicer-Software: nicht getestet. |
+| 3MF | `.3mf` | Dieselben Dreiecksnetze; ein Objekt je Hülle; Einheit Millimeter. | Unit-Tests: 3 Paketteile, Einheit Millimeter, 1 Objekt und 1 Build-Eintrag je Hülle, Anzahl der Eckpunkte. CI: `scripts/validate_3mf.py` liest die 11 Testflügel mit lib3mf 2.5.0 im strikten Modus. Bestanden: keine Warnungen beim Einlesen, Anzahl der Dreiecke je Objekt wie geschrieben, jedes Objekt mannigfaltig und orientiert. Slicer-Software: nicht getestet. |
 | Projekt-JSON | `.json` | Profilkoordinaten, Schnitte, Leitkurven, Einstellungen. Abgeleitete NURBS-Daten nur, wenn der Flügel ohne Fehler berechnet wird. Würde die Datei mit den abgeleiteten Daten 100 MB übersteigen, lassen **Speichern** (Save) und der JSON-Export sie weg und zeigen `Die Datei lässt die abgeleiteten NURBS-Daten weg: Mit ihnen wäre sie größer als die 100 MB, die „Öffnen“ höchstens liest. „Öffnen“ berechnet sie neu; der STEP-Export schreibt die exakten Flächen.` Abgeleitete Daten: die Kurve jedes Profils, das ein Schnitt verwendet, jede aktive Leitkurve (null, wenn aus), Stationen in Spannweitenrichtung, NURBS-Fläche (Grad, Knotenvektoren, Kontrollpunkte). Der Import ignoriert die abgeleiteten Daten und berechnet sie neu. | Unit-Tests: Schreiben, erneutes Einlesen und Neuberechnen ergibt dieselben Schnitte, Leitkurven, Profilpunkte und Kontrollpunkte der Fläche; Prüfung jedes Felds. |
 
 | Exportoption | Werte | Wirkung |
@@ -103,6 +103,7 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 | | **Ganzer Flügel als ein Körper** (Full wing as one body) | STL und 3MF: 1 Hülle, nur wenn der Wurzelschnitt bei y = 0 liegt, sonst 2 Körper. STEP: 2 Volumenkörper. |
 | | **Nur rechte Hälfte** (Right half only) | 1 Körper |
 | **Netzdichte** (Mesh density) | **Normal** (Vorgabe), **Fein (4-fache Dreiecksanzahl)** (Fine (4x triangles)) | Nur STL und 3MF. Ein Hinweis unter den Optionen nennt Anzahl der Dreiecke und Dateigröße für das gewählte Format, die Flügelhälften und die Netzdichte: `… Millionen Dreiecke, Datei etwa … MB.` Über 2 000 000 Dreiecken fügt er `Der Export dauert … und belegt … Arbeitsspeicher.` hinzu. Über 10 000 000 Dreiecken ist **Herunterladen** (Download) gesperrt; der Hinweis nennt die Grenze und die Abhilfe: Netzdichte **Normal**, eine Hälfte, weniger Stationen je Profilseite oder je Feld. |
+| **Hochachse** (Up axis) (STEP, STL, 3MF) | **Z nach oben** (Vorgabe), **Y nach oben (Fusion 360 mit Y nach oben, SolidWorks)** | **Y nach oben** schreibt jeden Punkt (x, y, z) als (x, z, −y): Die Oberseite zeigt nach +Y, die Profiltiefe bleibt entlang X, die Spannweite verläuft entlang Z. Für CAD-Programme mit Y als Hochachse, die eine Datei mit Z nach oben auf der Seite liegend zeigen. Der Dialog beginnt mit der Wahl des letzten Exports (Browserspeicher). Die Projekt-JSON behält die Achsen der App. |
 | **Format** STEP | – | Ein Hinweis nennt Kontrollpunkte und Dateigröße für die gewählten Hälften: `… Kontrollpunkte, Datei etwa … MB.` Über 1 000 000 Kontrollpunkten fügt er Zeit und Arbeitsspeicher hinzu; über 3 000 000 ist **Herunterladen** gesperrt, und der Hinweis nennt die Grenze und die Abhilfe: eine Hälfte, weniger Stationen je Profilseite oder je Feld. |
 
 ## Profildaten und Lizenzen
@@ -191,7 +192,7 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
    Liegt keine Spannweitenposition zwischen der Zeile und dem nächsten Schnitt, zeigt **+** eine Meldung und fügt nichts ein. **×** löscht die Zeile (gesperrt bei 2 Schnitten).
 4. **Grundriss** (Planform): **Leitkurve verwenden** (Use guide curve) für Nasenlinie oder Endlinie ankreuzen. Punkte ziehen.
 5. **Prüfungen** (Checks): Fehler, Warnungen und Grundrisswerte lesen.
-6. **Exportieren** (Export): Format, Flügelhälften und Netzdichte wählen, dann **Herunterladen** (Download) klicken.
+6. **Exportieren** (Export): Format, Flügelhälften, Netzdichte und Hochachse wählen, dann **Herunterladen** (Download) klicken.
    Ein Hinweis nennt die Anzahl der Dreiecke (STL, 3MF) oder der Kontrollpunkte (STEP) und die Dateigröße; über 10 000 000 Dreiecken oder 3 000 000 Kontrollpunkten ist **Herunterladen** gesperrt.
 
 ## Ohne Internet
@@ -213,16 +214,16 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 536 Unit-Tests (Vitest)
+npm test                 # 538 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern
-npm run e2e              # Produktions-Build, dann 176 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (352 Läufe)
+npm run e2e              # Produktions-Build, dann 177 Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (354 Läufe)
 npm run coverage         # Unit-Tests mit Abdeckungsbericht in coverage/
 npm run coverage:readme  # Abdeckungstabellen in README.md und README.de.md schreiben
 npm run coverage:check   # Exit-Code 1, wenn eine README-Abdeckungstabelle von coverage/ abweicht
 npm run airfoils:check   # mitgelieferte Profilbibliothek und NACA-Vorlagen prüfen
-npm run step:cases       # 10 STEP-Dateien, 10 3MF-Dateien und cases.json nach step-check/ schreiben
+npm run step:cases       # 11 STEP-Dateien, 11 3MF-Dateien und cases.json nach step-check/ schreiben
 npm run screenshots      # Build erzeugen und docs/wiki/images/ neu aufnehmen
 npm run docs:check       # Seitenpaare, Wiki-Links, Bilder und Abdeckungsmarker prüfen
 npm run counts:check     # Testanzahlen in README, RECORD und Wiki mit den Testsuiten vergleichen

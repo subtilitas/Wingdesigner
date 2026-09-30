@@ -345,7 +345,7 @@ Ids made by the app:
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Wing tip** |
 | `tip.ratio` | `0.001`–`0.01` (tip profile 1/1000 to 1/100 of the previous section chord); tip chord at least 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N of the previous section chord** |
 | `chordSamples` | integer `16`–`200` | `60` | **Chordwise stations per surface** |
-| `panelStations` | integer `3`–`40`; the build uses fewer only when the loft grid would exceed 5,000,000 points ([[Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides or smooth mode** |
+| `panelStations` | integer `3`–`40`; the build uses fewer only when the loft grid would exceed 5,000,000 points ([[Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides, smooth mode or mitred linear panels** |
 | `parametrization` | `"uniform"`, `"chord"`, `"centripetal"` | `"centripetal"` | **Profile parametrization** |
 | `mirror` | `true`, `false`; 3D view only, no effect on exports | `true` | **Show mirrored half (y < 0)** |
 
@@ -408,6 +408,7 @@ Checked only when the wing is built, in this order:
 - `sectionPlanes` `"mitred"` (not with `"smooth"`): a section plane more than 60° from a panel next to it (thickness stretch above 2), or the planes of 2 neighbouring sections meet within the airfoils ([[Geometry]], section 3.6);
 - interpolated section values are finite numbers (leading-edge x, chord, z, cosine of the twist);
 - interpolated leading-edge x, trailing-edge x and z within ±1,200,000 mm, chord at most 100,000 mm;
+- `sectionPlanes` `"mitred"` with `spanwise` `"linear"`: along a panel the section planes turn faster than its airfoils allow, so the surface folds ([[Geometry]], section 3.6);
 - `spanwise` `"smooth"`: an interpolated value (leading-edge x, chord, z, twist or a profile point height) lies more than 2 × the range of its section values outside that range;
 - blended profile thickness below 0 (`spanwise` `"smooth"`: overshoot; `"linear"`: upper and lower surface of a section airfoil cross);
 - thickness after the trailing-edge setting below 0;
@@ -927,10 +928,11 @@ Fixture B (tilt angle 1°, position 50, 0, 10 mm; Clark Y at sections 1 and 2): 
 | **Right half only** | 1 solid | 1 closed shell | 1 object: `Wing right` |
 
 - **Full wing** needs the root section at exactly y = 0 mm. Otherwise STL and 3MF contain 2 shells, as with **Both halves**.
+- **Up axis (STEP, STL, 3MF)**: **Z up** writes the axes of the app (x chordwise towards the TE, y spanwise towards the right tip, z up). **Y up** writes every point as (x, z, −y) and every direction the same way (`src/export/axes.js`): the upper surface faces +Y, the chord runs along X, `right` lies at Z ≤ 0 and `left` at Z ≥ 0. The turn is a rotation: orientations, closed shells and volumes stay. The STEP world placement (`AXIS2_PLACEMENT_3D` at the origin with z and x directions) stays. The project JSON always holds the axes of the app. Why and when: [[User Guide|User-Guide]], section Export.
 - **Mesh density (STL, 3MF)**: **Normal** or **Fine (4x triangles)**. **Fine** splits every u interval (chordwise) and every v interval (spanwise) of the **Normal** mesh into 2. Measured triangle count: 3.0 to 3.9 times **Normal** (table "File sizes").
 - Mesh construction and triangle counts: [[Geometry|Geometry]], section 5 "Meshes".
 
-![Export dialog: format, wing halves, mesh density](images/export-dialog.png)
+![Export dialog: format, wing halves, mesh density, up axis](images/export-dialog.png)
 
 ## STEP
 
@@ -947,7 +949,8 @@ Fixture B (tilt angle 1°, position 50, 0, 10 mm; Clark Y at sections 1 and 2): 
 | Units | millimetre, radian, steradian |
 | Uncertainty | 1e-7 mm (`distance_accuracy_value`) |
 | Solids | 1 `MANIFOLD_SOLID_BREP` (boundary representation solid) per half |
-| Solid names | `<name> right` (y ≥ 0), `<name> left` (mirrored, y ≤ 0) |
+| Solid names | `<name> right` (y ≥ 0; **Y up**: Z ≤ 0), `<name> left` (mirrored, y ≤ 0; **Y up**: Z ≥ 0) |
+| Axes | **Z up**: as the app; **Y up**: (x, z, −y) (section "Bodies per file") |
 | Shape representation | 1 `ADVANCED_BREP_SHAPE_REPRESENTATION` named `<name>` holds all solids |
 | Surfaces | `B_SPLINE_SURFACE_WITH_KNOTS`, non-rational: upper surface, lower surface, open TE. `PLANE`: root and tip. |
 | Edge curves | `B_SPLINE_CURVE_WITH_KNOTS` |
@@ -966,6 +969,7 @@ Faces, edges, orientation flags and the OpenCascade validation: [[Geometry|Geome
 | Per triangle | 50 bytes: normal (3 × `float32`), 3 vertices (9 × `float32`), attribute `uint16` = 0 |
 | File size | 84 + 50 × triangle count bytes |
 | Units | mm. STL has no unit field. |
+| Axes | **Z up**: as the app; **Y up**: (x, z, −y) (section "Bodies per file") |
 | Normals | unit length, computed from the vertices; vertices counterclockwise seen from outside, normals point outward |
 
 ## 3MF
@@ -975,6 +979,7 @@ Faces, edges, orientation flags and the OpenCascade validation: [[Geometry|Geome
 | Package | zip, deflate level 6: `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` |
 | Namespace | `http://schemas.microsoft.com/3dmanufacturing/core/2015/02` (3MF Core) |
 | `<model>` | `unit="millimeter"`, `xml:lang="en-US"` |
+| Axes | **Z up**: as the app; **Y up**: (x, z, −y) (section "Bodies per file") |
 | Metadata | `Title` = `<name>` (section "Export file names"), `Application` = `Wingdesigner` |
 | Objects | 1 `<object type="model">` per shell, 1 `<build><item>` per object; names: table "Bodies per file" |
 | Vertices | 9 significant digits (enough for every 32-bit float), shortest form without trailing zeros, e.g. `1000000.12`, `0.123456789`, `12`; magnitudes below 1e-6 mm in exponent notation, e.g. `-1e-7`; zero as `0` |

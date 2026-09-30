@@ -53,6 +53,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/airfoil/naca.js` | NACA 4- and 5-digit generator; `leadingNacaCode` finds the code that starts a name (`NACA0014_Flap`) |
 | `src/airfoil/library.js` | 17 NACA presets, bundled library, external sources; `librarySource` (source record of a bundled entry) |
 | `src/export/step.js` | STEP writer; file format International Organization for Standardization (ISO) 10303-21 |
+| `src/export/axes.js` | Up axis of the exported files: `UP_AXES`, `upAxisMap` (identity for Z up, (x, z, −y) for Y up), `meshToUpAxis` |
 | `src/export/stl.js` | Binary stereolithography (STL) writer |
 | `src/export/threemf.js` | 3MF writer |
 | `src/import/errors.js` | `XflrError`: file-level error of the XFLR5 readers, with a `code` and, for an `.xfl` project, the byte `offset` |
@@ -374,14 +375,14 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 536 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 538 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit code 1 when a README table differs from `coverage/coverage-summary.json`; exit code 2 when that file or a marker is missing |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 10 STEP files, 10 3MF files and `cases.json` in `step-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 11 STEP files, 11 3MF files and `cases.json` in `step-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 26 Portable Network Graphics (PNG) files: 13 in `docs/wiki/images/` (English) and 13 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
@@ -419,7 +420,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-176 tests in 12 spec files, 352 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+177 tests in 12 spec files, 354 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 
@@ -489,6 +490,7 @@ x and z: position of the leading edge.
 | `pointed-elliptic-closed` | Pointed tip, ratio 0.005 (1/200); nose line and end line meet at x = 115 mm, y = 600 mm; closed trailing edge | 2 |
 | `symmetric-0009` | NACA 0009 at every section | 2 |
 | `mitred-vtail-35` | Not the base wing: 2 sections of NACA 0009, chords 120 and 70 mm, the tip 320 mm along a 35° panel, x 40 mm; **Straight panels**, **Mitred** section planes (tip cap rolled 35°) | 2 |
+| `mitred-vtail-35-y-up` | As `mitred-vtail-35`, written with **Y up**: every point as (x, z, −y) | 2 |
 | `mitred-gull-15-5` | z 80.3848 mm at section 2 and 54.1382 mm at the tip (panels of 15° and −5°); **Mitred** section planes (rolls 0°, 5°, −5°), linear blending with 8 stations per panel | 2 |
 
 ## Documentation
@@ -535,7 +537,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `planform.png` | **Planform** tab, **Glider**, nose line and end line on | 600 x 730 | 600 x 730 |
 | `airfoils.png` | **Airfoils** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `upload-preview.png` | Upload preview of a synthetic X/Yo/Yu percent table with decimal commas, opened over the **Glider** | 640 x 646 | 640 x 710 |
-| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 506 | 640 x 552 |
+| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 588 | 640 x 634 |
 | `settings.png` | **Settings** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `checks.png` | **Checks** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 | 680 x 730 |

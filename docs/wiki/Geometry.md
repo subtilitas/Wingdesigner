@@ -20,7 +20,7 @@ Deutsch: [[Geometrie|Geometrie]]
 | --- | --- |
 | LE, TE | leading edge, trailing edge (used as subscripts: x_LE, x_TE) |
 | N | number of chord intervals per surface (N + 1 stations per surface, LE and TE included): **Settings** > **Chordwise stations per surface**, default 60, range 16 to 200 |
-| K | spanwise stations per panel: **Settings** > **Spanwise stations per panel with guides or smooth mode**, default 8, range 3 to 40; the grid limit of section 3.2 can reduce it |
+| K | spanwise stations per panel: **Settings** > **Spanwise stations per panel with guides, smooth mode or mitred linear panels**, default 8, range 3 to 40; the grid limit of section 3.2 can reduce it |
 | c | chord in mm |
 | f_pivot | twist pivot as a fraction of the chord: **Settings** > **Twist pivot (fraction of chord)**, default 0.25, range 0 to 1 |
 | δ | dihedral of a panel: atan2(z_(i+1) − z_i, y_(i+1) − y_i) of its two section positions, in degrees |
@@ -457,6 +457,7 @@ Checks in code order. Every row is an error; no surface is built.
 | Section planes, fold | **Mitred** section planes: the planes of two neighbouring sections of different roll meet in a line parallel to x. The surface between them folds when that line passes through either placed airfoil (its extent along the up direction of its plane, with chord, twist and stretch), when the two airfoils lie on opposite sides of the line, or when the inner airfoil lies outboard of the plane of the outer one (`planeFold` in `src/geom/planes.js`). Message: "Sections a and b: their mitred planes meet … mm from the position (y, z) of section a, within the airfoils, so the surface between them folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." Example: panels of 0°, 40° (10 mm long) and 80°, NACA 0012 at 300 mm chord: the planes rolled 20° and 60° meet 14.6 mm from section 2, inside its ±19.2 mm; at 150 mm chord (±9.6 mm) the surface builds. |
 | Section values | x_LE, c, z or cos(twist) of a check position is not a finite number. Message: "Section values give non-finite coordinates at y = … mm; check the positions, chords and twists of the sections." |
 | Geometry extent | at a check position: x_LE, x_LE + c (trailing edge) or z beyond ±1,200,000 mm (`LIMITS.maxExtent`), or c above 100,000 mm. Causes: **Smooth** overshoot; a guide curve close to ±1,200,000 mm, where the chord added to it or taken from it leaves the extent; nose line and end line more than 100,000 mm apart. Message: "At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves, or use linear interpolation." |
+| Section planes, turning | **Mitred** section planes, **Linear**: at a check position in a panel whose two planes differ, the roll φ changes along y by dφ/dy = (φ_(i+1) − φ_i) / (y_(i+1) − y_i). A point at height t in the plane of its station (along the up direction, with chord, twist and stretch) moves across that plane at the rate cos φ + tan δ · sin φ − t · dφ/dy per mm of span; t is the highest point of the airfoil where dφ/dy > 0, the lowest where dφ/dy < 0. At 0 or below the surface folds, also where the planes of the stations around the position do not cross. Message: "Sections a and b: at y = … mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." Example: NACA 0018 at 217 mm chord, rolls 0° and 46.9° over a 21.7 mm panel: at the root 1 − 30.4 mm · 0.0377/mm < 0; the end planes meet 46 mm up the root plane, beyond the airfoil. **Straight panels** are ruled between the sections; the check "Section planes, fold" covers them. |
 | **Smooth** overshoot | **Smooth** only. At a check position an interpolated value lies more than 2 × (max − min) of its section values outside [min, max] (`OVERSHOOT_LIMIT` = 2). Values: x_LE (no guide curve on), chord (not both guide curves on), z, twist, and the height z_unit of every profile point k = 1 … 2N − 1. The message names the value with the largest overshoot (`leading-edge x`, `chord`, `z`, `twist`, `upper surface height at x = … % chord` or `lower surface height at x = … % chord`), its y, the section range and the smallest gap between 2 sections. Remedy in the message: **Linear**, more evenly spaced sections, or fewer closely spaced sections. |
 | Blended thickness | min t_k < −1e-9 at a check position. **Smooth**: overshoot (section 3.1); remedy in the message: **Linear** or more sections. **Linear**: upper and lower surface of a section airfoil cross at that chord station; remedy in the message: check the airfoils or raise **Chordwise stations per surface**. The message gives y and x. |
 | Thickness after the **Trailing edge** setting | min t_k < −1e-9 after the gap change of section 3.7. Checked at positions with c ≥ 1 mm. **Fixed thickness in mm**: gap limited to 5 % of the chord. Cause: the airfoil is thinner inside than the set TE gap. |
@@ -570,7 +571,7 @@ Procedure:
 2. Interpolate each column of the resulting control points along v (band LU, section 1.2).
 3. Set y of the control points at v = 0 to y_root, and project the control points at v = 1 onto the
    tip plane (y = y_tip for φ = 0). This removes solver round-off: the root and tip rows lie in their
-   planes (10 STEP cases: within 2e-13 mm, section 6).
+   planes (11 STEP cases: within 2e-13 mm, section 6).
 
 Properties:
 
@@ -685,8 +686,12 @@ Orientation flags:
 | Plane normal | root −y, tip (0, cos φ_tip, sin φ_tip) | mirrored as vectors: root +y, tip (0, −cos φ_tip, sin φ_tip) (outward) |
 
 Validation: `scripts/validate_step.py` reads the files written by `scripts/export-step-cases.mjs`
-with OpenCascade. Cases: the 10 cases of `test/step-cases.js`, 2 of them with **Mitred** section
-planes (a 35° V-tail with **Straight panels** and a 15°/−5° gull with **Linear**).
+with OpenCascade. Cases: the 11 cases of `test/step-cases.js`, 3 of them with **Mitred** section
+planes (a 35° V-tail with **Straight panels**, written once with **Z up** and once with **Y up**, and a
+15°/−5° gull with **Linear**).
+
+**Up axis** of the export (File Formats, section "Bodies per file"): with **Y up** every point and
+direction of the part is written as (x, z, −y). The turn is a rotation, so the orientation flags stay.
 
 Pass criteria per file:
 

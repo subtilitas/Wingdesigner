@@ -176,7 +176,7 @@ Der Bericht listet jeden Wert, den der Import ändert, umrechnet oder weglässt.
 | **Flügelende** (Wing tip) | **Flach (am Randschnitt abgeschnitten)** (Flat (cut at the tip section)) |
 | **Gespiegelte Hälfte zeigen (y < 0)** (Show mirrored half (y < 0)) | an |
 | Leitkurven | aus, Punkte an den Schnittkanten |
-| Übrige Einstellungen | Vorgaben: 60 **Stationen je Profilseite** (Chordwise stations per surface), 8 **Stationen je Feld mit Leitkurve oder glatter Interpolation** (Spanwise stations per panel with guides or smooth mode), **Zentripetal (empfohlen)** (Centripetal (recommended)) |
+| Übrige Einstellungen | Vorgaben: 60 **Stationen je Profilseite** (Chordwise stations per surface), 8 **Stationen je Feld mit Leitkurve, glatter Interpolation oder linearen Feldern auf Gehrung** (Spanwise stations per panel with guides, smooth mode or mitred linear panels), **Zentripetal (empfohlen)** (Centripetal (recommended)) |
 
 - Die Registerkarte **Schnitte** (Sections) öffnet sich, und die 3D-Ansicht und der Grundriss-Editor passen sich dem neuen Flügel an. Die automatische Sicherung speichert das Projekt (Abschnitt [Speicherung](#speicherung)).
 - **Rückgängig** (Undo) stellt das vorherige Projekt wieder her, **Wiederholen** (Redo) den Import.
@@ -697,7 +697,7 @@ Die Registerkarte **Einstellungen** (Settings) hat die Gruppen **Language / Spra
 | **Geometrie** | **Maßstab des Randprofils 1 : N der Tiefe des vorherigen Schnitts** (Tip profile scale 1 : N of the previous section chord) | N = 100 bis 1000, Schritt 50 | 200 | Nur sichtbar mit **Spitz** |
 | **Geometrie** | **Endleistendicke (mm)** (Trailing-edge thickness (mm)) | ≥ 0, Schritt 0,1 | Assistent: 0,2 % der Wurzeltiefe, mindestens 0,3; Beispielflügel: 0,5; Projektdatei ohne den Wert: 0,4 | Nur sichtbar mit **Feste Dicke in mm** |
 | **Auflösung** | **Stationen je Profilseite** (Chordwise stations per surface) | 16 bis 200, Schritt 4 | 60 | Neuabtastung der Profile: N Stationen ergeben 2 · N + 1 Punkte je Kontur (60 → 121) |
-| **Auflösung** | **Stationen je Feld mit Leitkurve oder glatter Interpolation** (Spanwise stations per panel with guides or smooth mode) | 3 bis 40 | 8 | Intervalle je Feld, Kosinusverteilung; nur wirksam mit eingeschalteter Leitkurve, mit **Glatt** und in einem Feld mit **Linear** zwischen Gehrungsebenen verschiedener Neigung. Weniger Intervalle erst über 5 000 000 Punkten im Flächengitter (Abschnitt [Leitkurven](#leitkurven)). |
+| **Auflösung** | **Stationen je Feld mit Leitkurve, glatter Interpolation oder linearen Feldern auf Gehrung** (Spanwise stations per panel with guides, smooth mode or mitred linear panels) | 3 bis 40 | 8 | Intervalle je Feld, Kosinusverteilung; nur wirksam mit eingeschalteter Leitkurve, mit **Glatt** und in einem Feld mit **Linear** zwischen Gehrungsebenen verschiedener Neigung. Weniger Intervalle erst über 5 000 000 Punkten im Flächengitter (Abschnitt [Leitkurven](#leitkurven)). |
 | **Auflösung** | **Parametrisierung der Profile** (Profile parametrization) | **Zentripetal (empfohlen)** (Centripetal (recommended)), **Sehnenlänge** (Chord length), **Gleichabständig** (Uniform) | Zentripetal | Parameterverteilung der NURBS-Interpolation der Profile, im Flügelaufbau und in der Profilvorschau |
 | **Anzeige** | **Gespiegelte Hälfte zeigen (y < 0)** (Show mirrored half (y < 0)) | an, aus | an | Nur 3D-Ansicht. Die Registerkarte **Prüfungen** (Checks), die Statusleiste und der Assistent nennen immer beide Hälften. Wird im Projekt gespeichert. |
 | **Anzeige** | **NURBS-Kontrollnetz zeigen** (Show NURBS control net) | an, aus | aus | Nur 3D-Ansicht; wird nicht gespeichert. Über 100 000 Netzsegmenten zeichnet die Ansicht jede k-te Kontrolllinie in jeder Richtung, erste und letzte eingeschlossen. Überschreiten schon die erste und letzte Linie 100 000 Segmente (z. B. 33 × 151 000 Kontrollpunkte), verläuft jede gezeichnete Linie zudem nur durch jeden k-ten Kontrollpunkt, erster und letzter eingeschlossen. |
@@ -823,6 +823,7 @@ Die Registerkarte **Prüfungen** (Checks) trägt die Überschrift **Geometriepr�
 | `Die Endleiste ist an manchen Stationen geschlossen und an anderen offen; … Stationen wurden auf 0,01 mm geöffnet.` | Warnung | nicht jede Station geschlossen, und mindestens eine Station mit einer Endleistendicke unter 0,01 mm |
 | `Der Einstellwinkel von …° des XFLR5-Imports ist in die Schnittwerte eingerechnet, was nur für senkrechte Schnittebenen genau ist: Mit Schnittebenen auf Gehrung liegt das Teil bis zu etwa … mm neben dem von XFLR5 (0,75 · Profiltiefe · sin(Einstellwinkel) · sin(Neigung)). Einstellungen > Schnittebenen „Senkrecht“ hält den Import genau.` | Warnung | ein Teil mit Einstellwinkel aus einem XFLR5-Import, auf **Auf Gehrung** gestellt, mit einer Schnittebene, die nicht senkrecht ist ([[Dateiformate]], Abschnitt XFLR5-Import) |
 | `Glatte Interpolation in Spannweitenrichtung baut senkrechte Schnittebenen; Schnittebenen auf Gehrung brauchen „Linear“ oder „Gerade Felder“.` | Info | **Glatt** mit **Auf Gehrung** an einem Flügel mit V-Form |
+| `Schnitte … und …: Bei y = … mm drehen sich die Gehrungsebenen zwischen ihnen schneller, als die Profile es zulassen, daher faltet sich die Fläche. Das Feld verlängern, die Änderung der V-Form verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.` | Fehler | **Auf Gehrung**, **Linear**: Entlang eines Feldes drehen sich die Ebenen mit der Neigung; bei y wandert ein Punkt des Profils rückwärts durch die Ebene seiner Station, z. B. ein dickes Profil auf einem kurzen Feld zwischen großen Änderungen der V-Form |
 | `Die Fläche weicht nach … hinzugefügten Stationen bei y = … mm um bis zu … mm von der vorgesehenen Fläche ab; die Stationen je Feld erhöhen.` | Warnung | Abweichung vom vorgesehenen Profil (Profilnase, oberer Endleistenpunkt, jede k-te Tiefenstation je Profilseite, k = **Stationen je Profilseite** / 6, abgerundet: 5 bei 60) über 0,5 mm (oder 10 % der örtlichen Profiltiefe, wenn kleiner) an einer geprüften Spannweitenposition bleibt nach den hinzugefügten Stationen (höchstens 32 in 6 Durchläufen, 1 Durchlauf über 60 000 Punkten im Flächengitter). Die Meldung nennt die Anpassung, die der Aufbau behält (die kleinste größte Abweichung im Verhältnis zur Toleranz), und deren hinzugefügte Stationen ([Leitkurven](#leitkurven)). |
 
 - Geprüfte Spannweitenpositionen: Abschnitt [Leitkurven](#leitkurven).
@@ -902,7 +903,7 @@ Gemessen je Änderung einer Profiltiefe im Browser: Chromium 141 headless, Softw
 
 ## Export
 
-![Exportdialog: Format, Flügelhälften, Netzdichte](images/de/export-dialog.png)
+![Exportdialog: Format, Flügelhälften, Netzdichte, Hochachse](images/de/export-dialog.png)
 
 Der Exportdialog trägt den Titel **Exportieren** (Export).
 
@@ -924,6 +925,16 @@ Der Exportdialog trägt den Titel **Exportieren** (Export).
 | **Flügelhälften** | **Nur rechte Hälfte** (Right half only) | – |
 | **Netzdichte (STL, 3MF)** (Mesh density (STL, 3MF)) | **Normal** | ausgewählt |
 | **Netzdichte (STL, 3MF)** | **Fein (4-fache Dreiecksanzahl)** (Fine (4x triangles)): verdoppelt die Unterteilung in beiden Flächenrichtungen | – |
+| **Hochachse (STEP, STL, 3MF)** (Up axis (STEP, STL, 3MF)) | **Z nach oben** (Z up): die Achsen der App | ausgewählt, außer der letzte Export als STEP, STL oder 3MF nutzte **Y nach oben** |
+| **Hochachse (STEP, STL, 3MF)** | **Y nach oben (Fusion 360 mit Y nach oben, SolidWorks)** (Y up (Fusion 360 set to Y up, SolidWorks)): das Teil um −90° um x gedreht | – |
+
+Hochachse:
+
+- Die App rechnet mit x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende und z nach oben. Ein CAD-Programm mit Y als Hochachse liest eine solche Datei mit der Spannweite nach oben und der Oberseite nach vorn. Beispiel: Fusion 360 mit **Preferences** > **General** > **Design** > **Default modeling orientation** „Y up“ (Bezeichnungen der englischen Oberfläche von Fusion 360) zeigt in seiner Draufsicht die Seite des Flügels.
+- **Y nach oben** schreibt jeden Punkt als (x, z, −y): Die Oberseite zeigt nach +Y, die Profiltiefe bleibt entlang X, die rechte Hälfte liegt bei Z ≤ 0 und die linke bei Z ≥ 0. Der Hinweis unter den Optionen nennt die Achsen der Datei: `Einheiten: Millimeter. Achsen: x in Profiltiefenrichtung zur Endleiste, y nach oben, z in Spannweitenrichtung zum linken Flügelende.`
+- Die Wahl gilt für STEP, STL und 3MF. Die Projekt-JSON behält die Achsen der App.
+- Der Dialog beginnt mit der Hochachse des letzten Exports als STEP, STL oder 3MF, im Browser unter `wingdesigner.upAxis` gespeichert. Ohne Browserspeicher beginnt er mit **Z nach oben**.
+- Andere Wege in Fusion 360: vor dem Öffnen einer Datei mit **Z nach oben** die **Default modeling orientation** auf „Z up“ stellen, oder den Körper um −90° um die X-Achse drehen (**Modify** > **Move/Copy**).
 
 Für STL und 3MF nennt ein Hinweis unter der Netzdichte die Dreiecke und die Dateigröße für Format, Flügelhälften und Netzdichte der Auswahl, z. B. Entwurfstyp **Segelflugmodell** (Glider), STL, beide Hälften, **Normal**: `0,02 Millionen Dreiecke, Datei etwa 1,2 MB.` Projekt-JSON zeigt keinen Hinweis.
 

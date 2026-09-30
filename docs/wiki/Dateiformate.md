@@ -345,7 +345,7 @@ Von der App erzeugte IDs:
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Flügelende** (Wing tip) |
 | `tip.ratio` | `0.001`–`0.01` (Randprofil 1/1000 bis 1/100 der Profiltiefe des vorherigen Schnitts); Randtiefe mindestens 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Maßstab des Randprofils 1 : N der Tiefe des vorherigen Schnitts** (Tip profile scale 1 : N of the previous section chord) |
 | `chordSamples` | ganze Zahl `16`–`200` | `60` | **Stationen je Profilseite** (Chordwise stations per surface) |
-| `panelStations` | ganze Zahl `3`–`40`; der Flügelaufbau verwendet nur dann weniger, wenn das Flächengitter 5 000 000 Punkte überschreiten würde ([[Geometrie]], Abschnitt 3.2) | `8` | **Stationen je Feld mit Leitkurve oder glatter Interpolation** (Spanwise stations per panel with guides or smooth mode) |
+| `panelStations` | ganze Zahl `3`–`40`; der Flügelaufbau verwendet nur dann weniger, wenn das Flächengitter 5 000 000 Punkte überschreiten würde ([[Geometrie]], Abschnitt 3.2) | `8` | **Stationen je Feld mit Leitkurve, glatter Interpolation oder linearen Feldern auf Gehrung** (Spanwise stations per panel with guides, smooth mode or mitred linear panels) |
 | `parametrization` | `"uniform"`, `"chord"`, `"centripetal"` | `"centripetal"` | **Parametrisierung der Profile** (Profile parametrization) |
 | `mirror` | `true`, `false`; nur 3D-Ansicht, ohne Wirkung auf Exporte | `true` | **Gespiegelte Hälfte zeigen (y < 0)** (Show mirrored half (y < 0)) |
 
@@ -408,6 +408,7 @@ Erst beim Flügelaufbau geprüft, in dieser Reihenfolge:
 - `sectionPlanes` `"mitred"` (nicht mit `"smooth"`): eine Schnittebene mehr als 60° schräg zu einem benachbarten Feld (Dickenstreckung über 2), oder die Ebenen zweier benachbarter Schnitte schneiden sich innerhalb der Profile ([[Geometrie]], Abschnitt 3.6);
 - interpolierte Schnittwerte sind endliche Zahlen (x der Profilnase, Profiltiefe, z, Kosinus der Schränkung);
 - interpoliertes x der Profilnase, x der Endleiste und z innerhalb von ±1 200 000 mm, Profiltiefe höchstens 100 000 mm;
+- `sectionPlanes` `"mitred"` mit `spanwise` `"linear"`: Entlang eines Feldes drehen sich die Schnittebenen schneller, als seine Profile es zulassen, daher faltet sich die Fläche ([[Geometrie]], Abschnitt 3.6);
 - `spanwise` `"smooth"`: ein interpolierter Wert (x der Profilnase, Profiltiefe, z, Schränkung oder Höhe eines Konturpunkts) liegt um mehr als das 2-Fache des Bereichs seiner Schnittwerte außerhalb dieses Bereichs;
 - Dicke des interpolierten Profils unter 0 (`spanwise` `"smooth"`: Überschwingen; `"linear"`: Ober- und Unterseite eines Profils kreuzen sich);
 - Dicke nach der Endleisteneinstellung unter 0;
@@ -930,10 +931,11 @@ Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1
 | **Nur rechte Hälfte** (Right half only) | 1 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing right` |
 
 - **Ganzer Flügel als ein Körper** (Full wing as one body) setzt den Wurzelschnitt bei genau y = 0 mm voraus. Sonst enthalten STL und 3MF 2 Hüllen, wie bei **Beide Hälften als getrennte Körper**.
+- **Hochachse (STEP, STL, 3MF)** (Up axis (STEP, STL, 3MF)): **Z nach oben** schreibt die Achsen der App (x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende, z nach oben). **Y nach oben** schreibt jeden Punkt als (x, z, −y) und jede Richtung ebenso (`src/export/axes.js`): Die Oberseite zeigt nach +Y, die Profiltiefe verläuft entlang X, `right` liegt bei Z ≤ 0 und `left` bei Z ≥ 0. Die Drehung ist eine Rotation: Orientierungen, geschlossene Hüllen und Volumen bleiben. Die Weltlage der STEP-Datei (`AXIS2_PLACEMENT_3D` im Ursprung mit z- und x-Richtung) bleibt. Die Projekt-JSON enthält immer die Achsen der App. Warum und wann: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Export.
 - **Netzdichte (STL, 3MF)** (Mesh density (STL, 3MF)): **Normal** oder **Fein (4-fache Dreiecksanzahl)** (Fine (4x triangles)). **Fein** (Fine) teilt jedes u-Intervall (Profiltiefenrichtung) und jedes v-Intervall (Spannweitenrichtung) des **Normal**-Netzes in 2. Gemessene Dreieckszahl: 3,0- bis 3,9-fach gegenüber **Normal** (Tabelle „Dateigrößen“).
 - Aufbau der Dreiecksnetze und Dreieckszahlen: [[Geometrie|Geometrie]], Abschnitt 5 „Dreiecksnetze“.
 
-![Exportdialog: Format, Flügelhälften, Netzdichte](images/de/export-dialog.png)
+![Exportdialog: Format, Flügelhälften, Netzdichte, Hochachse](images/de/export-dialog.png)
 
 ## STEP
 
@@ -950,7 +952,8 @@ Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1
 | Einheiten | Millimeter, Radiant, Steradiant |
 | Toleranz | 1e-7 mm (`distance_accuracy_value`) |
 | Volumenkörper | 1 `MANIFOLD_SOLID_BREP` (Volumenkörper in Randdarstellung, boundary representation) je Hälfte |
-| Namen der Volumenkörper | `<name> right` (y ≥ 0), `<name> left` (gespiegelt, y ≤ 0) |
+| Namen der Volumenkörper | `<name> right` (y ≥ 0; **Y nach oben**: Z ≤ 0), `<name> left` (gespiegelt, y ≤ 0; **Y nach oben**: Z ≥ 0) |
+| Achsen | **Z nach oben**: wie in der App; **Y nach oben**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Formdarstellung | 1 `ADVANCED_BREP_SHAPE_REPRESENTATION` mit dem Namen `<name>` enthält alle Volumenkörper |
 | Flächen | `B_SPLINE_SURFACE_WITH_KNOTS`, nicht-rational: Oberseite, Unterseite, offene Endleiste. `PLANE`: Wurzel und Rand. |
 | Kantenkurven | `B_SPLINE_CURVE_WITH_KNOTS` |
@@ -970,6 +973,7 @@ Abschnitt 6 „STEP-Topologie“.
 | Je Dreieck | 50 Byte: Normale (3 × `float32`), 3 Eckpunkte (9 × `float32`), Attribut `uint16` = 0 |
 | Dateigröße | 84 + 50 × Dreieckszahl Byte |
 | Einheiten | mm. STL hat kein Einheitenfeld. |
+| Achsen | **Z nach oben**: wie in der App; **Y nach oben**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Normalen | Länge 1, aus den Eckpunkten berechnet; Eckpunkte von außen gesehen gegen den Uhrzeigersinn, Normalen zeigen nach außen |
 
 ## 3MF
@@ -979,6 +983,7 @@ Abschnitt 6 „STEP-Topologie“.
 | Paket | Zip, Deflate-Stufe 6: `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` |
 | Namensraum | `http://schemas.microsoft.com/3dmanufacturing/core/2015/02` (3MF Core) |
 | `<model>` | `unit="millimeter"`, `xml:lang="en-US"` |
+| Achsen | **Z nach oben**: wie in der App; **Y nach oben**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Metadaten | `Title` = `<name>` (Abschnitt „Dateinamen beim Export“), `Application` = `Wingdesigner` |
 | Objekte | 1 `<object type="model">` je Hülle, 1 `<build><item>` je Objekt; Namen: Tabelle „Körper je Datei“ |
 | Eckpunkte | 9 signifikante Stellen (genug für jede 32-Bit-Gleitkommazahl), kürzeste Form ohne Nullen am Ende, z. B. `1000000.12`, `0.123456789`, `12`; Beträge unter 1e-6 mm in Exponentenschreibweise, z. B. `-1e-7`; null als `0` |

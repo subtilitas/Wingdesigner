@@ -117,6 +117,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   names the section planes and the reason. A tilted part set to **Mitred** later gets a warning with
   the estimated distance from XFLR5's part.
 - Info lines in the Checks tab, after errors and warnings.
+- Export option **Up axis** (STEP, STL, 3MF): **Z up**, the axes of the app, or **Y up (Fusion 360 set
+  to Y up, SolidWorks)**, which writes every point (x, y, z) as (x, z, −y). CAD programs with Y as the
+  up axis show a Z-up file on its side: Fusion 360 set to Y up showed the side of the wing in its top
+  view. The dialog starts with the choice of the last export (browser storage, key
+  `wingdesigner.upAxis`); the project JSON keeps the axes of the app. `test/step-cases.js` adds the
+  35° V-tail written with Y up (11 cases).
+- Build error for mitred planes that turn faster along a **Linear** panel than its airfoils allow:
+  where a point moves backwards across the plane of its station the surface folds, also between
+  stations whose planes do not cross. Without this check such a fold built without an error at 3
+  stations per panel, and the right half crossed y = 0 by up to 0.7 mm.
 - `scripts/validate_step.py` checks that the edges of every planar face (the end caps) lie in the
   plane within 1e-6 mm; `test/step-cases.js` adds a mitred 35° V-tail and a mitred 15°/−5° gull
   (10 cases).

@@ -49,7 +49,7 @@ User Guide (Settings, Checks).
 | R3 | Twist about the normal of the section plane; the stretch scales the thickness before the twist |
 | R4 | **Linear** panels between planes of different roll get K stations and a cubic loft; panels of 2 stations are straight segments raised to that degree |
 | R5 | Untilted imports mitred; tilted imports vertical with `foldedTilt`; fold or stretch fallback to vertical with an info line |
-| R6 | Stretch limit 2 (60°) as a build error; fold test between neighbouring sections before the loft and between neighbouring stations after the fit |
+| R6 | Stretch limit 2 (60°) as a build error; fold test between neighbouring sections before the loft, at every check position of a Linear panel whose planes turn, and between neighbouring stations after the fit |
 | Smooth | Vertical planes and an info line (owner decision (b)) |
 | Folded tilt with **Mitred** | Warning in Checks with the estimate 0.75 · c · sin(tilt) · sin(roll) (owner decision) |
 | Imports of pull request #5 | Documented on the File Formats page, not converted (owner decision) |

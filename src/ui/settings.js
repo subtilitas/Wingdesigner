@@ -183,7 +183,7 @@ export class SettingsPanel {
         h(
           'label',
           { class: 'field' },
-          tr('Spanwise stations per panel with guides or smooth mode ({min}-{max})', { min: plain(LIMITS.panelStations[0]), max: plain(LIMITS.panelStations[1]) }),
+          tr('Spanwise stations per panel with guides, smooth mode or mitred linear panels ({min}-{max})', { min: plain(LIMITS.panelStations[0]), max: plain(LIMITS.panelStations[1]) }),
           numberInput({
             focusKey: 'set:panel',
             value: s.panelStations,

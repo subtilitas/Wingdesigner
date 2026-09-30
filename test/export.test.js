@@ -282,6 +282,38 @@ describe('STEP', () => {
     expect(half.match(/MANIFOLD_SOLID_BREP/g).length).toBe(1);
   });
 
+  it('writes a copy with Y as the up axis: (x, y, z) becomes (x, z, −y), orientation and volume kept', () => {
+    const b = buildWing(stepCases().find((c) => c.name === 'mitred-vtail-35').project);
+    const turn = ([x, y, z]) => [x, z, -y];
+    const numbers = (txt, entity) => [...txt.matchAll(new RegExp(`${entity}\\('',\\(([^)]*)\\)\\)`, 'g'))].map((m) => m[1].split(',').map(Number));
+    const zUp = wingToStep(b, { mirror: true, timestamp: 'T' });
+    const yUp = wingToStep(b, { mirror: true, timestamp: 'T', up: 'y' });
+    // The same entities in the same order; every point and direction turned.
+    expect(yUp.replace(/\(([-\d.E+]+,){2}[-\d.E+]+\)/g, '()')).toBe(zUp.replace(/\(([-\d.E+]+,){2}[-\d.E+]+\)/g, '()'));
+    // The world placement of the representation (origin, z and x directions) stays; the part turns.
+    for (const entity of ['CARTESIAN_POINT', 'DIRECTION']) {
+      const [a, c] = [numbers(zUp, entity), numbers(yUp, entity)];
+      expect(c).toHaveLength(a.length);
+      const world = entity === 'DIRECTION' ? 2 : 1;
+      expect(c.slice(0, world)).toEqual(a.slice(0, world));
+      for (let i = world; i < a.length; i++) expect(dist3(turn(a[i]), c[i]), `${entity} ${i}`).toBeLessThan(1e-12);
+    }
+    // Meshes: turned positions, the same triangles, closed and of the same volume.
+    for (const mode of ['right', 'halves', 'merged']) {
+      const [plain, turned] = [exportMeshes(b, mode), exportMeshes(b, mode, { up: 'y' })];
+      turned.forEach(({ mesh }, k) => {
+        const m = plain[k].mesh;
+        expect(mesh.indices).toEqual(m.indices);
+        for (let i = 0; i < m.positions.length; i += 3) expect(dist3(turn([m.positions[i], m.positions[i + 1], m.positions[i + 2]]), [mesh.positions[i], mesh.positions[i + 1], mesh.positions[i + 2]])).toBe(0);
+        expect(edgeCheck(mesh).closed).toBe(true);
+        expect(meshVolume(mesh)).toBeCloseTo(meshVolume(m), 6);
+      });
+    }
+    // The upper surface faces +Y: the tip of the 35° V-tail is the highest point.
+    const ys = exportMeshes(b, 'right', { up: 'y' })[0].mesh.positions.filter((_, i) => i % 3 === 1);
+    expect(Math.max(...ys)).toBeCloseTo(Math.max(...b.stations.at(-1).points.map((P) => P[2])), 6);
+  });
+
   it('writes the end caps in the planes of the end sections', () => {
     const b = buildWing(stepCases().find((c) => c.name === 'mitred-vtail-35').project);
     const directions = (txt) => [...txt.matchAll(/DIRECTION\('',\(([^)]*)\)\)/g)].map((m) => m[1].split(',').map(Number));
@@ -307,6 +339,9 @@ describe('STEP', () => {
     expect(() => wingToStep({ surface: null })).toThrow();
   });
 });
+
+/** Distance of two 3D points. */
+const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 describe('project JSON', () => {
   const project = sampleProject();
