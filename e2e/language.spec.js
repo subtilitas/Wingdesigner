@@ -138,8 +138,7 @@ test.describe('English browser', () => {
     const name = settingsPane(page).getByRole('textbox', { name: TEXT.en.projectName });
     await name.fill('Alpha');
     await name.press('Enter');
-    await frames(page);
-    expect((await savedProject(page)).name).toBe('Alpha');
+    await expect.poll(async () => (await savedProject(page))?.name).toBe('Alpha');
     // A marker of this page load: a reload would lose it.
     await page.evaluate(() => {
       window.__sameLoad = true;
@@ -599,12 +598,13 @@ test.describe('German browser', () => {
     await create.click();
     await expect(dialogOf(page)).toHaveCount(0);
     await expect(statusOf(page)).toHaveText(/^Spannweite 1\.500 mm · /);
-    // Tip chord 240 mm × 0,55.
-    const saved = await savedProject(page);
-    expect(saved.sections.map((q) => [q.y, q.chord])).toEqual([
-      [0, 240],
-      [750, 132],
-    ]);
+    // Tip chord 240 mm × 0,55; autosave writes the project after the next frame.
+    await expect
+      .poll(async () => (await savedProject(page))?.sections?.map((q) => [q.y, q.chord]))
+      .toEqual([
+        [0, 240],
+        [750, 132],
+      ]);
   });
 });
 
