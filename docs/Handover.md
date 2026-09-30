@@ -10,7 +10,7 @@ how the owner works with contributors, and what the repository does not hold.
 | Item | State on 2026-09-30 |
 | --- | --- |
 | Version | `package.json` holds 0.3.0 (pull request #10). Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c, each with `wingdesigner-v<version>-site.zip` built by `release.yml`. |
-| Next release | Tag `v0.3.0` on the merge commit of pull request #10. `release.yml` takes the release notes from the 0.3.0 section of `CHANGELOG.md` (Changed, Fixed). |
+| Next release | Tag `v0.3.0` on the merge commit of pull request #10. `release.yml` takes the release notes from the 0.3.0 section of `CHANGELOG.md` (Added, Changed, Fixed). |
 | `main` | dd72ec5, the merge of pull request #9: wizard dihedral −60 to 60°, exact airfoil frames of the XFLR5 import, the attribution of the differences from XFLR5. |
 | Unit tests | 543 in 18 files (Vitest). |
 | Browser tests | 179 in 12 spec files, 358 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
@@ -41,11 +41,12 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
    2.87 mm for that reason (File Formats, section Differences from XFLR5; the tilts:
    `docs/Flow5upgrade.md`, section 2).
    - Project format: step 1 shipped in 0.2.0 as project format version 2, so step 2 raises it to
-     version 3. An app of 0.2.0 or 0.3.0 refuses a version 3 file (`validateProject`); files of
-     version 1 and 2 open with a part tilt of 0°.
-   - Migration: the upgrade undoes the fold of a project with `foldedTilt` about the stored pivot. A
-     project with an enabled or edited guide curve keeps its fold. Imports of project format
-     version 1 hold no `foldedTilt` and stay folded (`docs/Flow5upgrade.md`, section 2).
+     version 3. An app of 0.2.0 or 0.3.0 refuses a version 3 file (`validateProject`).
+   - Migration (`docs/Flow5upgrade.md`, section 2): a version 2 project with `foldedTilt` keeps its
+     tilt. The upgrade undoes the fold about the stored pivot and applies the stored angle as the
+     rigid part tilt; a project with an enabled or edited guide curve keeps its fold and the stored
+     angle. Version 1 files and version 2 files without `foldedTilt` open with a part tilt of 0°;
+     imports of project format version 1 hold no `foldedTilt` and stay folded.
    - Not decided: whether the statistics of a tilted part use the plane axes or the part axes.
    - The estimate of 2 to 4 h is a guess: size, user interface and exports of step 2 are not
      analysed.
@@ -132,8 +133,12 @@ curl -fsSL https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz | tar
 export PATH="$SCRATCH/node-v24.21.0-linux-x64/bin:$PATH"
 export PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome
 npm ci
-python3 -m venv "$SCRATCH/venv" && "$SCRATCH/venv/bin/pip" install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0
+python3 -m venv "$SCRATCH/venv"
+export PATH="$SCRATCH/venv/bin:$PATH"   # python and pip of the virtual environment first
+pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0
 ```
+
+The `export` lines hold for the shell they run in; a new shell needs them again.
 
 - Node.js on the default `PATH`: 22.22.2. The project needs Node.js 24 (`.nvmrc`).
 - Chromium 141 at the `PW_CHROMIUM` path above.
