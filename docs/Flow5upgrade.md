@@ -188,8 +188,13 @@ whole part (flow5's `rx`) is the same kind of transform; see F4.
 
 Migration of a folded tilt: step 2 first undoes the fold of a project with a stored tilt. It turns
 each quarter-chord point back about the stored pivot by the stored angle and subtracts the angle from
-every twist. It then applies the same angle as a rigid part tilt about the same pivot. A test opens
-such a version 2 project and checks that the geometry is unchanged by the upgrade.
+every twist. It then applies the same angle as a rigid part tilt about the same pivot.
+
+A project with an enabled nose or end guide keeps its folded sections. The guides hold x only, as a
+function of y, and `buildWing` in `src/geom/wing.js` takes the leading edge and the chord from them;
+turning them back would need z along each guide. The upgrade leaves such a project unchanged, keeps
+the stored angle and reports that its tilt stays folded. A test opens a version 2 project of each
+kind, with and without guides, and checks that the geometry is unchanged by the upgrade.
 
 A part tilt is a new project value. An app with step 1 only would drop it without a message
 (`resolveSettings` and the loader in `src/model/io.js` keep only known keys). Format rule:
