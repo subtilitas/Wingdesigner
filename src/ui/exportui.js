@@ -83,7 +83,7 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
     h('label', { class: 'check' }, h('input', { type: 'radio', name: group, value, checked, disabled }), label);
   const sizeNote = h('p', { class: 'small', 'aria-live': 'polite' });
   const downloadBtn = h('button', { value: 'ok', class: 'primary' }, tr('Download'));
-  const choice = (form) => ({ fmt: form.fmt.value, half: form.half.value, dens: Number(form.dens.value), up: form.up.value });
+  const choice = (form) => ({ fmt: form.fmt.value, half: form.half.value, dens: Number(form.dens.value), up: form.fusion.checked ? 'y' : 'z' });
   const up = storedUpAxis();
   const axesNote = h('p', { class: 'small muted' });
   const refresh = () => {
@@ -123,13 +123,8 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         radio('half', 'right', tr('Right half only'), false),
       ),
       h('fieldset', {}, h('legend', {}, tr('Mesh density (STL, 3MF)')), radio('dens', '1', tr('Normal'), true), radio('dens', '2', tr('Fine (4x triangles)'), false)),
-      h(
-        'fieldset',
-        {},
-        h('legend', {}, tr('Up axis (STEP, STL, 3MF)')),
-        radio('up', 'z', tr('Z up'), up === 'z'),
-        radio('up', 'y', tr('Y up (Fusion 360 set to Y up, SolidWorks)'), up === 'y'),
-      ),
+      // The Fusion 360 fix: Y as the up axis (src/export/axes.js) for STEP, STL and 3MF.
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'fusion', checked: up === 'y' }), tr('Fusion 360 fix: Y up (also SolidWorks)')),
       sizeNote,
       axesNote,
       h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close('cancel') }, tr('Cancel')), downloadBtn),
@@ -145,7 +140,7 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
     const fmt = data.get('fmt');
     const half = data.get('half');
     const dens = Number(data.get('dens'));
-    const upAxis = data.get('up');
+    const upAxis = data.get('fusion') === 'on' ? 'y' : 'z';
     if (fmt !== 'json') {
       try {
         localStorage.setItem(UP_AXIS_KEY, upAxis);

@@ -898,7 +898,7 @@ Measured per chord edit in the browser: Chromium 141 headless, software renderin
 
 ## Export
 
-![Export dialog: format, wing halves, mesh density, up axis](images/export-dialog.png)
+![Export dialog: format, wing halves, mesh density, Fusion 360 fix](images/export-dialog.png)
 
 | Format | Meaning | Content |
 | --- | --- | --- |
@@ -918,16 +918,15 @@ Measured per chord edit in the browser: Chromium 141 headless, software renderin
 | Wing halves | **Right half only** | – |
 | Mesh density (STL, 3MF) | **Normal** | selected |
 | Mesh density (STL, 3MF) | **Fine (4x triangles)**: doubles the subdivision in both surface directions | – |
-| Up axis (STEP, STL, 3MF) | **Z up**: the axes of the app | selected, unless the last STEP, STL or 3MF export used **Y up** |
-| Up axis (STEP, STL, 3MF) | **Y up (Fusion 360 set to Y up, SolidWorks)**: the part turned by −90° about x | – |
+| Checkbox | **Fusion 360 fix: Y up (also SolidWorks)**: STEP, STL and 3MF with Y as the up axis, the part turned by −90° about x | off, unless it was on at the last STEP, STL or 3MF export |
 
-Up axis:
+Fusion 360 fix:
 
 - The app computes with x chordwise towards the trailing edge, y spanwise towards the right tip and z up. A CAD program with Y as the up axis reads such a file with the span pointing up and the upper surface facing its front. Example: Fusion 360 with **Preferences** > **General** > **Design** > **Default modeling orientation** set to **Y up** shows the side of the wing in its top view.
-- **Y up** writes every point as (x, z, −y): the upper surface faces +Y, the chord stays along X, the right half lies at Z ≤ 0 and the left half at Z ≥ 0. The note under the options names the axes of the file: `Units: millimetres. Axes: x chordwise towards the trailing edge, y up, z spanwise towards the left tip.`
-- The choice applies to STEP, STL and 3MF. The project JSON keeps the axes of the app.
-- The dialog starts with the up axis of the last STEP, STL or 3MF export, stored in the browser under `wingdesigner.upAxis`. Without browser storage it starts with **Z up**.
-- Other ways in Fusion 360: set **Default modeling orientation** to **Z up** before opening a **Z up** file, or turn the body by −90° about the X axis (**Modify** > **Move/Copy**).
+- With the checkbox on, the export writes every point as (x, z, −y): the upper surface faces +Y, the chord stays along X, the right half lies at Z ≤ 0 and the left half at Z ≥ 0. The note under the options names the axes of the file: `Units: millimetres. Axes: x chordwise towards the trailing edge, y up, z spanwise towards the left tip.`
+- The fix applies to STEP, STL and 3MF. The project JSON keeps the axes of the app.
+- The checkbox starts as it was at the last STEP, STL or 3MF export, stored in the browser under `wingdesigner.upAxis` (`y` for on, `z` for off). Without browser storage it starts off.
+- Other ways in Fusion 360: set **Default modeling orientation** to **Z up** before opening a file written without the fix, or turn the body by −90° about the X axis (**Modify** > **Move/Copy**).
 
 For STL and 3MF, a note under the mesh density gives the triangles and the file size of the chosen format, wing halves and density, e.g. Glider preset, STL, both halves, **Normal**: `0.02 million triangles, file about 1.2 MB.` Project JSON shows no note.
 

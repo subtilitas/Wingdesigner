@@ -126,9 +126,7 @@ export default {
   'Fine (4x triangles)': 'Fein (4-fache Dreiecksanzahl)',
   'Units: millimetres. Axes: x chordwise towards the trailing edge, y up, z spanwise towards the left tip.':
     'Einheiten: Millimeter. Achsen: x in Profiltiefenrichtung zur Endleiste, y nach oben, z in Spannweitenrichtung zum linken Flügelende.',
-  'Up axis (STEP, STL, 3MF)': 'Hochachse (STEP, STL, 3MF)',
-  'Z up': 'Z nach oben',
-  'Y up (Fusion 360 set to Y up, SolidWorks)': 'Y nach oben (Fusion 360 mit Y nach oben, SolidWorks)',
+  'Fusion 360 fix: Y up (also SolidWorks)': 'Fusion-360-Korrektur: Y nach oben (auch SolidWorks)',
   'Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.': 'Einheiten: Millimeter. Achsen: x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung, z nach oben.',
   '{n} control points, file {size}': '{n} Kontrollpunkte, Datei {size}',
   '{n} million control points, file {size}': '{n} Millionen Kontrollpunkte, Datei {size}',

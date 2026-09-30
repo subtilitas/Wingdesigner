@@ -53,7 +53,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/airfoil/naca.js` | NACA 4- and 5-digit generator; `leadingNacaCode` finds the code that starts a name (`NACA0014_Flap`) |
 | `src/airfoil/library.js` | 17 NACA presets, bundled library, external sources; `librarySource` (source record of a bundled entry) |
 | `src/export/step.js` | STEP writer; file format International Organization for Standardization (ISO) 10303-21 |
-| `src/export/axes.js` | Up axis of the exported files: `UP_AXES`, `upAxisMap` (identity for Z up, (x, z, −y) for Y up), `meshToUpAxis` |
+| `src/export/axes.js` | Up axis of the exported files (the Fusion 360 fix of the export dialog): `UP_AXES`, `upAxisMap` (identity for Z up, (x, z, −y) for Y up), `meshToUpAxis` |
 | `src/export/stl.js` | Binary stereolithography (STL) writer |
 | `src/export/threemf.js` | 3MF writer |
 | `src/import/errors.js` | `XflrError`: file-level error of the XFLR5 readers, with a `code` and, for an `.xfl` project, the byte `offset` |
@@ -490,7 +490,7 @@ x and z: position of the leading edge.
 | `pointed-elliptic-closed` | Pointed tip, ratio 0.005 (1/200); nose line and end line meet at x = 115 mm, y = 600 mm; closed trailing edge | 2 |
 | `symmetric-0009` | NACA 0009 at every section | 2 |
 | `mitred-vtail-35` | Not the base wing: 2 sections of NACA 0009, chords 120 and 70 mm, the tip 320 mm along a 35° panel, x 40 mm; **Straight panels**, **Mitred** section planes (tip cap rolled 35°) | 2 |
-| `mitred-vtail-35-y-up` | As `mitred-vtail-35`, written with **Y up**: every point as (x, z, −y) | 2 |
+| `mitred-vtail-35-y-up` | As `mitred-vtail-35`, written with the **Fusion 360 fix** (Y up): every point as (x, z, −y) | 2 |
 | `mitred-gull-15-5` | z 80.3848 mm at section 2 and 54.1382 mm at the tip (panels of 15° and −5°); **Mitred** section planes (rolls 0°, 5°, −5°), linear blending with 8 stations per panel | 2 |
 
 ## Documentation
@@ -537,7 +537,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `planform.png` | **Planform** tab, **Glider**, nose line and end line on | 600 x 730 | 600 x 730 |
 | `airfoils.png` | **Airfoils** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `upload-preview.png` | Upload preview of a synthetic X/Yo/Yu percent table with decimal commas, opened over the **Glider** | 640 x 646 | 640 x 710 |
-| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 588 | 640 x 634 |
+| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 548 | 640 x 594 |
 | `settings.png` | **Settings** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `checks.png` | **Checks** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 | 680 x 730 |

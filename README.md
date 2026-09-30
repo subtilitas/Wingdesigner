@@ -103,7 +103,7 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 | | **Full wing as one body** | STL and 3MF: 1 shell, only when the root section lies at y = 0, otherwise 2 bodies. STEP: 2 solids. |
 | | **Right half only** | 1 body |
 | **Mesh density** | **Normal** (default), **Fine (4x triangles)** | STL and 3MF only. A note below the options gives the triangle count and file size of the chosen format, halves and density: `… million triangles, file about … MB.` Above 2,000,000 triangles it adds `The export takes … and … of browser memory.` Above 10,000,000 triangles **Download** is disabled; the note names the limit and the remedies: Normal density, one half, fewer stations per surface or per panel. |
-| **Up axis** (STEP, STL, 3MF) | **Z up** (default), **Y up (Fusion 360 set to Y up, SolidWorks)** | **Y up** writes every point (x, y, z) as (x, z, −y): the upper surface faces +Y, the chord stays along X, the span runs along Z. For CAD programs with Y as the up axis, which show a Z-up file on its side. The dialog starts with the choice of the last export (browser storage). The project JSON keeps the axes of the app. |
+| **Fusion 360 fix: Y up (also SolidWorks)** (STEP, STL, 3MF) | off (default), on | On writes every point (x, y, z) as (x, z, −y): the upper surface faces +Y, the chord stays along X, the span runs along Z. For CAD programs with Y as the up axis, which show a Z-up file on its side. The checkbox starts as it was at the last export (browser storage). The project JSON keeps the axes of the app. |
 | **Format** STEP | – | A note gives the control points and file size of the chosen halves: `… control points, file about … MB.` Above 1,000,000 control points it adds the time and browser memory; above 3,000,000 **Download** is disabled and the note names the limit and the remedies: one half, fewer stations per surface or per panel. |
 
 ## Airfoil data and licenses
@@ -192,7 +192,7 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
    When no span position lies between the row and the next section, **+** shows a message and inserts nothing. **×** deletes the row (disabled at 2 sections).
 4. **Planform**: tick **Use guide curve** for the nose line or the end line. Drag the points.
 5. **Checks**: read errors, warnings and planform figures.
-6. **Export**: choose format, wing halves, mesh density and up axis, then click **Download**.
+6. **Export**: choose format, wing halves and mesh density (for Fusion 360 set to Y up: **Fusion 360 fix**), then click **Download**.
    A note gives the triangle count (STL, 3MF) or control point count (STEP) and the file size; above 10,000,000 triangles or 3,000,000 control points **Download** is disabled.
 
 ## Offline use

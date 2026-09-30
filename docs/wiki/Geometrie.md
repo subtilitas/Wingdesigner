@@ -717,11 +717,11 @@ Orientierungsflags:
 
 Prüfung: `scripts/validate_step.py` liest die von `scripts/export-step-cases.mjs` geschriebenen Dateien
 mit OpenCascade. Fälle: die 11 Fälle aus `test/step-cases.js`, 3 davon mit Schnittebenen **Auf Gehrung**
-(ein 35°-V-Leitwerk mit **Gerade Felder**, einmal mit **Z nach oben** und einmal mit **Y nach oben**
-geschrieben, und ein Möwenflügel mit 15°/−5° mit **Linear**).
+(ein 35°-V-Leitwerk mit **Gerade Felder**, einmal ohne und einmal mit **Fusion-360-Korrektur** (Y nach
+oben) geschrieben, und ein Möwenflügel mit 15°/−5° mit **Linear**).
 
-**Hochachse** des Exports (Dateiformate, Abschnitt „Körper je Datei“): Mit **Y nach oben** wird jeder
-Punkt und jede Richtung des Teils als (x, z, −y) geschrieben. Die Drehung ist eine Rotation, daher
+**Fusion-360-Korrektur** des Exports (Dateiformate, Abschnitt „Körper je Datei“): Jeder Punkt und jede
+Richtung des Teils wird als (x, z, −y) geschrieben. Die Drehung ist eine Rotation, daher
 bleiben die Orientierungsflags.
 
 Bestehenskriterien je Datei:

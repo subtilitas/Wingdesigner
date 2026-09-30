@@ -53,7 +53,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/airfoil/naca.js` | Generator für 4- und 5-stellige NACA-Profile; `leadingNacaCode` findet den Code, mit dem ein Name beginnt (`NACA0014_Flap`) |
 | `src/airfoil/library.js` | 17 NACA-Vorlagen, mitgelieferte Bibliothek, externe Quellen; `librarySource` (Quellenangabe eines mitgelieferten Eintrags) |
 | `src/export/step.js` | STEP-Export; Dateiformat nach International Organization for Standardization (ISO) 10303-21 |
-| `src/export/axes.js` | Hochachse der exportierten Dateien: `UP_AXES`, `upAxisMap` (unverändert für Z nach oben, (x, z, −y) für Y nach oben), `meshToUpAxis` |
+| `src/export/axes.js` | Hochachse der exportierten Dateien (die Fusion-360-Korrektur des Exportdialogs): `UP_AXES`, `upAxisMap` (unverändert für Z nach oben, (x, z, −y) für Y nach oben), `meshToUpAxis` |
 | `src/export/stl.js` | Export als binäres STL (Stereolithografie) |
 | `src/export/threemf.js` | 3MF-Export |
 | `src/import/errors.js` | `XflrError`: Fehler auf Dateiebene der XFLR5-Leser, mit einem `code` und, bei einem `.xfl`-Projekt, dem Byte-`offset` |
@@ -490,7 +490,7 @@ x und z: Lage der Profilnase.
 | `pointed-elliptic-closed` | Spitzer Rand, Verhältnis 0,005 (1/200); Nasenlinie und Endlinie treffen sich bei x = 115 mm, y = 600 mm; geschlossene Endleiste | 2 |
 | `symmetric-0009` | NACA 0009 an jedem Schnitt | 2 |
 | `mitred-vtail-35` | Nicht der Basisflügel: 2 Schnitte mit NACA 0009, Profiltiefen 120 und 70 mm, der Rand 320 mm entlang eines Feldes mit 35°, x 40 mm; **Gerade Felder** (Straight panels), Schnittebenen **Auf Gehrung** (Mitred) (Randfläche um 35° geneigt) | 2 |
-| `mitred-vtail-35-y-up` | Wie `mitred-vtail-35`, mit **Y nach oben** geschrieben: jeder Punkt als (x, z, −y) | 2 |
+| `mitred-vtail-35-y-up` | Wie `mitred-vtail-35`, mit **Fusion-360-Korrektur** (Y nach oben) geschrieben: jeder Punkt als (x, z, −y) | 2 |
 | `mitred-gull-15-5` | z 80,3848 mm an Schnitt 2 und 54,1382 mm am Rand (Felder mit 15° und −5°); Schnittebenen **Auf Gehrung** (Neigungen 0°, 5°, −5°), lineare Interpolation mit 8 Stationen je Feld | 2 |
 
 ## Dokumentation
@@ -537,7 +537,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | `planform.png` | Registerkarte **Grundriss** (Planform), **Segelflugmodell**, Nasenlinie und Endlinie eingeschaltet | 600 x 730 | 600 x 730 |
 | `airfoils.png` | Registerkarte **Profile** (Airfoils), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `upload-preview.png` | Vorschau beim Hochladen einer synthetischen X/Yo/Yu-Prozenttabelle mit Dezimalkomma, geöffnet über dem Entwurfstyp **Segelflugmodell** | 640 x 646 | 640 x 710 |
-| `export-dialog.png` | Dialog **Exportieren** (Export), **Segelflugmodell** | 640 x 588 | 640 x 634 |
+| `export-dialog.png` | Dialog **Exportieren** (Export), **Segelflugmodell** | 640 x 548 | 640 x 594 |
 | `settings.png` | Registerkarte **Einstellungen** (Settings), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `checks.png` | Registerkarte **Prüfungen** (Checks), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `flying-wing-control-net.png` | 3D-Ansicht, **Pfeilnurflügel** (Swept flying wing), **NURBS-Kontrollnetz zeigen** (Show NURBS control net) an | 680 x 730 | 680 x 730 |

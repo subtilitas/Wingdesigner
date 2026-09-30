@@ -103,7 +103,7 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 | | **Ganzer Flügel als ein Körper** (Full wing as one body) | STL und 3MF: 1 Hülle, nur wenn der Wurzelschnitt bei y = 0 liegt, sonst 2 Körper. STEP: 2 Volumenkörper. |
 | | **Nur rechte Hälfte** (Right half only) | 1 Körper |
 | **Netzdichte** (Mesh density) | **Normal** (Vorgabe), **Fein (4-fache Dreiecksanzahl)** (Fine (4x triangles)) | Nur STL und 3MF. Ein Hinweis unter den Optionen nennt Anzahl der Dreiecke und Dateigröße für das gewählte Format, die Flügelhälften und die Netzdichte: `… Millionen Dreiecke, Datei etwa … MB.` Über 2 000 000 Dreiecken fügt er `Der Export dauert … und belegt … Arbeitsspeicher.` hinzu. Über 10 000 000 Dreiecken ist **Herunterladen** (Download) gesperrt; der Hinweis nennt die Grenze und die Abhilfe: Netzdichte **Normal**, eine Hälfte, weniger Stationen je Profilseite oder je Feld. |
-| **Hochachse** (Up axis) (STEP, STL, 3MF) | **Z nach oben** (Vorgabe), **Y nach oben (Fusion 360 mit Y nach oben, SolidWorks)** | **Y nach oben** schreibt jeden Punkt (x, y, z) als (x, z, −y): Die Oberseite zeigt nach +Y, die Profiltiefe bleibt entlang X, die Spannweite verläuft entlang Z. Für CAD-Programme mit Y als Hochachse, die eine Datei mit Z nach oben auf der Seite liegend zeigen. Der Dialog beginnt mit der Wahl des letzten Exports (Browserspeicher). Die Projekt-JSON behält die Achsen der App. |
+| **Fusion-360-Korrektur: Y nach oben (auch SolidWorks)** (Fusion 360 fix: Y up (also SolidWorks)) (STEP, STL, 3MF) | aus (Vorgabe), an | Eingeschaltet schreibt der Export jeden Punkt (x, y, z) als (x, z, −y): Die Oberseite zeigt nach +Y, die Profiltiefe bleibt entlang X, die Spannweite verläuft entlang Z. Für CAD-Programme mit Y als Hochachse, die eine Datei mit Z nach oben auf der Seite liegend zeigen. Das Kontrollkästchen beginnt so, wie es beim letzten Export war (Browserspeicher). Die Projekt-JSON behält die Achsen der App. |
 | **Format** STEP | – | Ein Hinweis nennt Kontrollpunkte und Dateigröße für die gewählten Hälften: `… Kontrollpunkte, Datei etwa … MB.` Über 1 000 000 Kontrollpunkten fügt er Zeit und Arbeitsspeicher hinzu; über 3 000 000 ist **Herunterladen** gesperrt, und der Hinweis nennt die Grenze und die Abhilfe: eine Hälfte, weniger Stationen je Profilseite oder je Feld. |
 
 ## Profildaten und Lizenzen
@@ -192,7 +192,7 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
    Liegt keine Spannweitenposition zwischen der Zeile und dem nächsten Schnitt, zeigt **+** eine Meldung und fügt nichts ein. **×** löscht die Zeile (gesperrt bei 2 Schnitten).
 4. **Grundriss** (Planform): **Leitkurve verwenden** (Use guide curve) für Nasenlinie oder Endlinie ankreuzen. Punkte ziehen.
 5. **Prüfungen** (Checks): Fehler, Warnungen und Grundrisswerte lesen.
-6. **Exportieren** (Export): Format, Flügelhälften, Netzdichte und Hochachse wählen, dann **Herunterladen** (Download) klicken.
+6. **Exportieren** (Export): Format, Flügelhälften und Netzdichte wählen (für Fusion 360 mit Y nach oben: **Fusion-360-Korrektur**), dann **Herunterladen** (Download) klicken.
    Ein Hinweis nennt die Anzahl der Dreiecke (STL, 3MF) oder der Kontrollpunkte (STEP) und die Dateigröße; über 10 000 000 Dreiecken oder 3 000 000 Kontrollpunkten ist **Herunterladen** gesperrt.
 
 ## Ohne Internet

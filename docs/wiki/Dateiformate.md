@@ -931,11 +931,11 @@ Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1
 | **Nur rechte Hälfte** (Right half only) | 1 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing right` |
 
 - **Ganzer Flügel als ein Körper** (Full wing as one body) setzt den Wurzelschnitt bei genau y = 0 mm voraus. Sonst enthalten STL und 3MF 2 Hüllen, wie bei **Beide Hälften als getrennte Körper**.
-- **Hochachse (STEP, STL, 3MF)** (Up axis (STEP, STL, 3MF)): **Z nach oben** schreibt die Achsen der App (x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende, z nach oben). **Y nach oben** schreibt jeden Punkt als (x, z, −y) und jede Richtung ebenso (`src/export/axes.js`): Die Oberseite zeigt nach +Y, die Profiltiefe verläuft entlang X, `right` liegt bei Z ≤ 0 und `left` bei Z ≥ 0. Die Drehung ist eine Rotation: Orientierungen, geschlossene Hüllen und Volumen bleiben. Die Weltlage der STEP-Datei (`AXIS2_PLACEMENT_3D` im Ursprung mit z- und x-Richtung) bleibt. Die Projekt-JSON enthält immer die Achsen der App. Warum und wann: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Export.
+- **Fusion-360-Korrektur: Y nach oben (auch SolidWorks)** (Fusion 360 fix: Y up (also SolidWorks)) (STEP, STL, 3MF): Ausgeschaltet schreibt der Export die Achsen der App (x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende, z nach oben). Eingeschaltet schreibt er jeden Punkt als (x, z, −y) und jede Richtung ebenso (`src/export/axes.js`): Die Oberseite zeigt nach +Y, die Profiltiefe verläuft entlang X, `right` liegt bei Z ≤ 0 und `left` bei Z ≥ 0. Die Drehung ist eine Rotation: Orientierungen, geschlossene Hüllen und Volumen bleiben. Die Weltlage der STEP-Datei (`AXIS2_PLACEMENT_3D` im Ursprung mit z- und x-Richtung) bleibt. Die Projekt-JSON enthält immer die Achsen der App. Warum und wann: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Export.
 - **Netzdichte (STL, 3MF)** (Mesh density (STL, 3MF)): **Normal** oder **Fein (4-fache Dreiecksanzahl)** (Fine (4x triangles)). **Fein** (Fine) teilt jedes u-Intervall (Profiltiefenrichtung) und jedes v-Intervall (Spannweitenrichtung) des **Normal**-Netzes in 2. Gemessene Dreieckszahl: 3,0- bis 3,9-fach gegenüber **Normal** (Tabelle „Dateigrößen“).
 - Aufbau der Dreiecksnetze und Dreieckszahlen: [[Geometrie|Geometrie]], Abschnitt 5 „Dreiecksnetze“.
 
-![Exportdialog: Format, Flügelhälften, Netzdichte, Hochachse](images/de/export-dialog.png)
+![Exportdialog: Format, Flügelhälften, Netzdichte, Fusion-360-Korrektur](images/de/export-dialog.png)
 
 ## STEP
 
@@ -952,8 +952,8 @@ Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1
 | Einheiten | Millimeter, Radiant, Steradiant |
 | Toleranz | 1e-7 mm (`distance_accuracy_value`) |
 | Volumenkörper | 1 `MANIFOLD_SOLID_BREP` (Volumenkörper in Randdarstellung, boundary representation) je Hälfte |
-| Namen der Volumenkörper | `<name> right` (y ≥ 0; **Y nach oben**: Z ≤ 0), `<name> left` (gespiegelt, y ≤ 0; **Y nach oben**: Z ≥ 0) |
-| Achsen | **Z nach oben**: wie in der App; **Y nach oben**: (x, z, −y) (Abschnitt „Körper je Datei“) |
+| Namen der Volumenkörper | `<name> right` (y ≥ 0; mit **Fusion-360-Korrektur**: Z ≤ 0), `<name> left` (gespiegelt, y ≤ 0; mit **Fusion-360-Korrektur**: Z ≥ 0) |
+| Achsen | wie in der App; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Formdarstellung | 1 `ADVANCED_BREP_SHAPE_REPRESENTATION` mit dem Namen `<name>` enthält alle Volumenkörper |
 | Flächen | `B_SPLINE_SURFACE_WITH_KNOTS`, nicht-rational: Oberseite, Unterseite, offene Endleiste. `PLANE`: Wurzel und Rand. |
 | Kantenkurven | `B_SPLINE_CURVE_WITH_KNOTS` |
@@ -973,7 +973,7 @@ Abschnitt 6 „STEP-Topologie“.
 | Je Dreieck | 50 Byte: Normale (3 × `float32`), 3 Eckpunkte (9 × `float32`), Attribut `uint16` = 0 |
 | Dateigröße | 84 + 50 × Dreieckszahl Byte |
 | Einheiten | mm. STL hat kein Einheitenfeld. |
-| Achsen | **Z nach oben**: wie in der App; **Y nach oben**: (x, z, −y) (Abschnitt „Körper je Datei“) |
+| Achsen | wie in der App; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Normalen | Länge 1, aus den Eckpunkten berechnet; Eckpunkte von außen gesehen gegen den Uhrzeigersinn, Normalen zeigen nach außen |
 
 ## 3MF
@@ -983,7 +983,7 @@ Abschnitt 6 „STEP-Topologie“.
 | Paket | Zip, Deflate-Stufe 6: `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` |
 | Namensraum | `http://schemas.microsoft.com/3dmanufacturing/core/2015/02` (3MF Core) |
 | `<model>` | `unit="millimeter"`, `xml:lang="en-US"` |
-| Achsen | **Z nach oben**: wie in der App; **Y nach oben**: (x, z, −y) (Abschnitt „Körper je Datei“) |
+| Achsen | wie in der App; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Metadaten | `Title` = `<name>` (Abschnitt „Dateinamen beim Export“), `Application` = `Wingdesigner` |
 | Objekte | 1 `<object type="model">` je Hülle, 1 `<build><item>` je Objekt; Namen: Tabelle „Körper je Datei“ |
 | Eckpunkte | 9 signifikante Stellen (genug für jede 32-Bit-Gleitkommazahl), kürzeste Form ohne Nullen am Ende, z. B. `1000000.12`, `0.123456789`, `12`; Beträge unter 1e-6 mm in Exponentenschreibweise, z. B. `-1e-7`; null als `0` |

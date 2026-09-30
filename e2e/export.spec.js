@@ -10,7 +10,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import {
   FORMAT_LABEL,
   STORAGE_KEY,
-  UP_LABEL,
+  FUSION_FIX,
   VALID_RE,
   collectErrors,
   commit,
@@ -226,13 +226,13 @@ test.describe('export dialog', () => {
     expect(Math.min(...ys)).toBeCloseTo(-Math.max(...ys), 3);
   });
 
-  test('Y up writes the part turned for CAD programs with Y as the up axis, and the dialog keeps the choice', async ({ page }) => {
+  test('the Fusion 360 fix writes the part with Y up, and the dialog keeps the choice', async ({ page }) => {
     await createDesign(page, 'Sport');
     const dlg = await openExport(page);
     const axes = dlg.getByText(/^Units: millimetres\. Axes:/);
-    await expect(dlg.getByLabel(UP_LABEL.z)).toBeChecked();
+    await expect(dlg.getByLabel(FUSION_FIX)).not.toBeChecked();
     await expect(axes).toHaveText('Units: millimetres. Axes: x chordwise towards the trailing edge, y spanwise, z up.');
-    await dlg.getByLabel(UP_LABEL.y).check();
+    await dlg.getByLabel(FUSION_FIX).check();
     await expect(axes).toHaveText('Units: millimetres. Axes: x chordwise towards the trailing edge, y up, z spanwise towards the left tip.');
     // The project JSON keeps the axes of the app.
     await dlg.getByLabel(FORMAT_LABEL.json).check();
@@ -249,11 +249,11 @@ test.describe('export dialog', () => {
     expect(signedVolume(yUp)).toBeCloseTo(signedVolume(zUp), 1);
 
     // The next export and a reload start with the last choice; Z up brings the app axes back.
-    await expect((await openExport(page)).getByLabel(UP_LABEL.y)).toBeChecked();
+    await expect((await openExport(page)).getByLabel(FUSION_FIX)).toBeChecked();
     await dialogOf(page).getByRole('button', { name: 'Cancel' }).click();
     await page.reload();
     await expect(status(page)).toHaveText(SPORT_STATUS);
-    await expect((await openExport(page)).getByLabel(UP_LABEL.y)).toBeChecked();
+    await expect((await openExport(page)).getByLabel(FUSION_FIX)).toBeChecked();
     await dialogOf(page).getByRole('button', { name: 'Cancel' }).click();
     const back = parseStl((await exportFile(page, 'stl', { half: 'right', up: 'z' })).bytes).tris;
     expect(back.map((t) => t.map(({ p }) => p))).toEqual(zUp.map((t) => t.map(({ p }) => p)));

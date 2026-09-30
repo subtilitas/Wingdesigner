@@ -687,11 +687,11 @@ Orientation flags:
 
 Validation: `scripts/validate_step.py` reads the files written by `scripts/export-step-cases.mjs`
 with OpenCascade. Cases: the 11 cases of `test/step-cases.js`, 3 of them with **Mitred** section
-planes (a 35° V-tail with **Straight panels**, written once with **Z up** and once with **Y up**, and a
-15°/−5° gull with **Linear**).
+planes (a 35° V-tail with **Straight panels**, written once without and once with the **Fusion 360
+fix** (Y up), and a 15°/−5° gull with **Linear**).
 
-**Up axis** of the export (File Formats, section "Bodies per file"): with **Y up** every point and
-direction of the part is written as (x, z, −y). The turn is a rotation, so the orientation flags stay.
+**Fusion 360 fix** of the export (File Formats, section "Bodies per file"): every point and direction
+of the part is written as (x, z, −y). The turn is a rotation, so the orientation flags stay.
 
 Pass criteria per file:
 

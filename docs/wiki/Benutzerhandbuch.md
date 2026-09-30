@@ -903,7 +903,7 @@ Gemessen je Änderung einer Profiltiefe im Browser: Chromium 141 headless, Softw
 
 ## Export
 
-![Exportdialog: Format, Flügelhälften, Netzdichte, Hochachse](images/de/export-dialog.png)
+![Exportdialog: Format, Flügelhälften, Netzdichte, Fusion-360-Korrektur](images/de/export-dialog.png)
 
 Der Exportdialog trägt den Titel **Exportieren** (Export).
 
@@ -925,16 +925,15 @@ Der Exportdialog trägt den Titel **Exportieren** (Export).
 | **Flügelhälften** | **Nur rechte Hälfte** (Right half only) | – |
 | **Netzdichte (STL, 3MF)** (Mesh density (STL, 3MF)) | **Normal** | ausgewählt |
 | **Netzdichte (STL, 3MF)** | **Fein (4-fache Dreiecksanzahl)** (Fine (4x triangles)): verdoppelt die Unterteilung in beiden Flächenrichtungen | – |
-| **Hochachse (STEP, STL, 3MF)** (Up axis (STEP, STL, 3MF)) | **Z nach oben** (Z up): die Achsen der App | ausgewählt, außer der letzte Export als STEP, STL oder 3MF nutzte **Y nach oben** |
-| **Hochachse (STEP, STL, 3MF)** | **Y nach oben (Fusion 360 mit Y nach oben, SolidWorks)** (Y up (Fusion 360 set to Y up, SolidWorks)): das Teil um −90° um x gedreht | – |
+| Kontrollkästchen | **Fusion-360-Korrektur: Y nach oben (auch SolidWorks)** (Fusion 360 fix: Y up (also SolidWorks)): STEP, STL und 3MF mit Y als Hochachse, das Teil um −90° um x gedreht | aus, außer es war beim letzten Export als STEP, STL oder 3MF an |
 
-Hochachse:
+Fusion-360-Korrektur:
 
 - Die App rechnet mit x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende und z nach oben. Ein CAD-Programm mit Y als Hochachse liest eine solche Datei mit der Spannweite nach oben und der Oberseite nach vorn. Beispiel: Fusion 360 mit **Preferences** > **General** > **Design** > **Default modeling orientation** „Y up“ (Bezeichnungen der englischen Oberfläche von Fusion 360) zeigt in seiner Draufsicht die Seite des Flügels.
-- **Y nach oben** schreibt jeden Punkt als (x, z, −y): Die Oberseite zeigt nach +Y, die Profiltiefe bleibt entlang X, die rechte Hälfte liegt bei Z ≤ 0 und die linke bei Z ≥ 0. Der Hinweis unter den Optionen nennt die Achsen der Datei: `Einheiten: Millimeter. Achsen: x in Profiltiefenrichtung zur Endleiste, y nach oben, z in Spannweitenrichtung zum linken Flügelende.`
-- Die Wahl gilt für STEP, STL und 3MF. Die Projekt-JSON behält die Achsen der App.
-- Der Dialog beginnt mit der Hochachse des letzten Exports als STEP, STL oder 3MF, im Browser unter `wingdesigner.upAxis` gespeichert. Ohne Browserspeicher beginnt er mit **Z nach oben**.
-- Andere Wege in Fusion 360: vor dem Öffnen einer Datei mit **Z nach oben** die **Default modeling orientation** auf „Z up“ stellen, oder den Körper um −90° um die X-Achse drehen (**Modify** > **Move/Copy**).
+- Mit eingeschaltetem Kontrollkästchen schreibt der Export jeden Punkt als (x, z, −y): Die Oberseite zeigt nach +Y, die Profiltiefe bleibt entlang X, die rechte Hälfte liegt bei Z ≤ 0 und die linke bei Z ≥ 0. Der Hinweis unter den Optionen nennt die Achsen der Datei: `Einheiten: Millimeter. Achsen: x in Profiltiefenrichtung zur Endleiste, y nach oben, z in Spannweitenrichtung zum linken Flügelende.`
+- Die Korrektur gilt für STEP, STL und 3MF. Die Projekt-JSON behält die Achsen der App.
+- Das Kontrollkästchen beginnt so, wie es beim letzten Export als STEP, STL oder 3MF war, im Browser unter `wingdesigner.upAxis` gespeichert (`y` für an, `z` für aus). Ohne Browserspeicher beginnt es ausgeschaltet.
+- Andere Wege in Fusion 360: vor dem Öffnen einer Datei ohne Korrektur die **Default modeling orientation** auf „Z up“ stellen, oder den Körper um −90° um die X-Achse drehen (**Modify** > **Move/Copy**).
 
 Für STL und 3MF nennt ein Hinweis unter der Netzdichte die Dreiecke und die Dateigröße für Format, Flügelhälften und Netzdichte der Auswahl, z. B. Entwurfstyp **Segelflugmodell** (Glider), STL, beide Hälften, **Normal**: `0,02 Millionen Dreiecke, Datei etwa 1,2 MB.` Projekt-JSON zeigt keinen Hinweis.
 
