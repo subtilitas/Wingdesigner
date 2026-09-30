@@ -27,6 +27,7 @@ The bundled airfoil library needs no network request: plugin `airfoilLibrary` in
 | `scripts/` | See [Scripts](#scripts) |
 | `test/` | Vitest unit tests (`*.test.js`), `helpers.js` (NACA sample project), `step-cases.js` (validation cases for Standard for the Exchange of Product model data (STEP) files and 3MF files), `xflr5-writer.js` (writer of XFLR5 project files), `fixtures/xflr5/` (XFLR5 test files, see [XFLR5 test files and tests](#xflr5-test-files-and-tests)) |
 | `e2e/` | Playwright end-to-end (E2E) browser tests (`*.spec.js`), `helpers.js` |
+| `docs/Flow5upgrade.md` | Plan and owner decisions for mitred section planes, a rigid tilt of the whole part and the flow5 import (English only) |
 | `docs/wiki/` | Wiki pages in English and German, `_Sidebar.md`, `images/` (English screenshots), `images/de/` (German screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
 
