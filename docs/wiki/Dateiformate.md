@@ -336,7 +336,7 @@ Von der App erzeugte IDs:
 
 | Schlüssel | Werte | Vorgabe | Bedienelement in **Einstellungen** (Settings) |
 | --- | --- | --- | --- |
-| `spanwise` | `"linear"`, `"smooth"` | `"linear"` | **Interpolation in Spannweitenrichtung** (Spanwise interpolation) |
+| `spanwise` | `"linear"`, `"straight"`, `"smooth"` | `"linear"` | **Interpolation in Spannweitenrichtung** (Spanwise interpolation). `"straight"`: **Gerade Felder (gerade Linien zwischen den Schnitten, wie XFLR5)** (Straight panels (straight lines between sections, as XFLR5)); eine App, die nur `"linear"` und `"smooth"` kennt, lehnt die Datei ab (`settings.spanwise muss "linear" oder "smooth" sein.`). |
 | `twistPivot` | `0`–`1`, Anteil der Profiltiefe | `0.25` | **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)) |
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Endleiste** (Trailing edge) |
 | `trailingEdge.thickness` | ≥ 0 mm; wirkt bei `"thickness"`; begrenzt auf 5 % der örtlichen Profiltiefe | `0.4` | **Endleistendicke (mm)** (Trailing-edge thickness (mm)) |
@@ -356,7 +356,7 @@ Unbekannte Schlüssel in `settings` entfallen bei **Öffnen**. **Speichern** sch
 | `profiles[]` | ein Eintrag je Profil, das ein Schnitt verwendet: `airfoil` (ID), `name`, `curve`, `leadingEdgeParameter` (Kurvenparameter an der Profilnase) |
 | `guides.nose`, `guides.end` | Leitkurve, Kontrollpunkte `[x, y]` in mm; `null` bei ausgeschalteter Leitkurve |
 | `stations[]` | jede Station in Spannweitenrichtung: `y` (mm), `v` (Spannweitenanteil 0–1), `xLE`, `z`, `chord` (mm), `twist` (°) |
-| `surface` | Fläche des rechten Halbflügels: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` ohne Leitkurven; `"linear"` mit eingeschalteter Leitkurve: 3, oder 2 bzw. 1, wenn die Grenze des Flächengitters die Stationen je Feld auf 2 oder 1 senkt; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
+| `surface` | Fläche des rechten Halbflügels: `degreeU` (3), `degreeV` (1: `spanwise` `"linear"` ohne Leitkurven, und `"straight"`; `"linear"` mit eingeschalteter Leitkurve: 3, oder 2 bzw. 1, wenn die Grenze des Flächengitters die Stationen je Feld auf 2 oder 1 senkt; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
 
 - Kurvenobjekt: `degree`, `knots` (Knotenvektor), `controlPoints`. Alle Kurven und die Fläche sind nicht-rational; ein Schlüssel `weights` wird nicht geschrieben.
 - `profiles[].curve.controlPoints`: `[x, y]` in normierten Profilkoordinaten (Profiltiefe 1).
@@ -401,6 +401,7 @@ Erst beim Flügelaufbau geprüft, in dieser Reihenfolge:
 - die Plausibilitätsprüfungen der Profile;
 - `curve-shape`: Die NURBS-Profilkurve kreuzt sich selbst (Schleifengröße, mittlere Breite, über 0,05 % der Profiltiefe) oder läuft in x zurück (über 0,01 % der Profiltiefe);
 - Leitkurven: y streng steigend; die Kurve läuft in Spannweitenrichtung nicht zurück; x jedes Kontrollpunkts der Kurve innerhalb von ±1 200 000 mm;
+- `spanwise` `"straight"` mit eingeschalteter Leitkurve;
 - interpolierte Schnittwerte sind endliche Zahlen (x der Profilnase, Profiltiefe, z, Kosinus der Schränkung);
 - interpoliertes x der Profilnase, x der Endleiste und z innerhalb von ±1 200 000 mm, Profiltiefe höchstens 100 000 mm;
 - `spanwise` `"smooth"`: ein interpolierter Wert (x der Profilnase, Profiltiefe, z, Schränkung oder Höhe eines Konturpunkts) liegt um mehr als das 2-Fache des Bereichs seiner Schnittwerte außerhalb dieses Bereichs;
@@ -683,15 +684,21 @@ chord' = c·cT            y und Schränkung unverändert
 
 ### Unterschiede zu XFLR5
 
-Die Schritte 1 bis 3 ergeben die Schnittwerte der Flügeltabelle von XFLR5 mit angewendetem Einstellwinkel und angewendeter Position; Schritt 4 verschiebt sie dorthin, wo XFLR5 die Profile zeichnet. Der gebaute Flügel weicht in drei Punkten von der eigenen Fläche von XFLR5 ab.
+Die Schritte 1 bis 3 ergeben die Schnittwerte der Flügeltabelle von XFLR5 mit angewendetem Einstellwinkel und angewendeter Position; Schritt 4 verschiebt sie dorthin, wo XFLR5 die Profile zeichnet. Mit **Gerade Felder** (Straight panels), die der Import setzt, verbindet der gebaute Flügel die Schnitte wie XFLR5 (Abschnitt „Ergebnis des Imports“). Er weicht in den folgenden Punkten von der eigenen Fläche von XFLR5 ab.
+
+Gemessen an den STL-Dateien, die der Code von XFLR5 6.62 über einen lokalen Treiber geschrieben hat (100 × 10 Felder je Fläche), für 93 Flächen aus 15 echten Projekten: Der größte Abstand eines XFLR5-Eckpunkts von der gebauten Fläche beträgt bei 75 Flächen höchstens 0,6 mm. Die übrigen 18 sind die 9 V-Leitwerke, 8 Flügel mit der 0,5°-Klappe und 1 Flügel mit einem Clark YS aus 33 Punkten (Zeilen unten).
 
 | Unterschied | Größe |
 | --- | --- |
-| XFLR5 schränkt einen Schnitt um eine Achse entlang seiner Felder: an einem V-Form-Knick um die Winkelhalbierende der beiden Felder, und es schneidet den Schnitt in der Gehrungsebene; am Rand um die Achse des äußeren Feldes. Wingdesigner schränkt um die y-Achse und hält den Schnitt in einer Ebene mit konstantem y. | Mitten der Endleiste des importierten Rechenbeispiels gegenüber den STL-Dateien, die der Code von XFLR5 6.62 über einen lokalen Treiber für seine Flügel schrieb: Tragfläche 0,0001 mm an der Wurzel, 0,24 mm am V-Form-Knick (Schnitt 2), 0,51 mm am Rand; Elevator 0,0001 mm; Fixture B 0,006, 0,057, 0,091 und 0,16 mm an den Schnitten 1 bis 4. Punkte der Profilnase: höchstens 0,56 mm. |
-| Die Dicke quer zu einem Feld mit der V-Form δ ist cos δ mal die von XFLR5. | 99,9 % bei 3°, 98,5 % bei 10°, 82 % bei 35° (ein V-Leitwerk, in XFLR5 als Elevator mit großer V-Form modelliert). Der Bericht warnt über 10°. |
+| XFLR5 schränkt einen Schnitt um eine Achse entlang seiner Felder: an einem V-Form-Knick um die Winkelhalbierende der beiden Felder, und es schneidet den Schnitt in der Gehrungsebene; am Rand um die Achse des äußeren Feldes, mit einer Randfläche senkrecht zu diesem Feld. Wingdesigner schränkt um die y-Achse und hält den Schnitt in einer Ebene mit konstantem y. | Mitten der Endleiste des importierten Rechenbeispiels: Tragfläche 0,0001 mm an der Wurzel, 0,24 mm am V-Form-Knick (Schnitt 2), 0,51 mm am Rand; Höhenleitwerk 0,0001 mm; Fixture B 0,006, 0,057, 0,091 und 0,16 mm an den Schnitten 1 bis 4. Randfläche echter Flügel mit 4° und 10° am äußeren Feld: 0,40 und 0,42 mm von den Eckpunkten von XFLR5, bis zu 1,4 mm von der Fläche von XFLR5. |
+| Die Dicke quer zu einem Feld mit der V-Form δ ist cos δ mal die von XFLR5. | 99,9 % bei 3°, 98,5 % bei 10°, 82 % bei 35° (ein V-Leitwerk, in XFLR5 als Elevator mit großer V-Form modelliert). Der Bericht warnt über 10°. Die acht 35°-V-Leitwerke von `initialAerodynamicSym.xfl` liegen 2,87 mm daneben, das 40°-V-Leitwerk von `mini_talon.xfl` 2,31 mm. |
 | XFLR5 schert das Profil eines geschränkten Schnitts: Die Dicke bleibt entlang der Normalen des ungeschränkten Feldes. Den Einstellwinkel des Flügels wendet auch XFLR5 als starre Drehung an; nur die Schränkung der Datei schert. Wingdesigner dreht das Profil als starre Form. | 0,37 mm bei 2° Schränkung der Datei und 300 mm Profiltiefe (Wurzel von Fixture B; 3° nach dem Einstellwinkel von 1°). 0,29 bis 0,60 mm an 10 Flächen echter Projekte (0,60 mm: MH 112, 400 mm Profiltiefe, 2°). |
+| XFLR5 verbindet die Profilpunkte mit geraden Strecken; Wingdesigner legt einen kubischen B-Spline durch sie. | Median 0,15 mm über die 93 Flächen; 1,01 mm bei einem Clark YS aus 33 Punkten und 400 mm Profiltiefe, 0,53 mm beim Rascal-Profil bei 406 mm Profiltiefe. |
+| XFLR5 zeichnet eine Klappe mit Ausschlag; der Import baut die Grundform (Abschnitt „Profile“, Klappen). | 2,5 bis 2,7 mm hinter dem Drehpunkt bei der 0,5°-Klappe von `Wing Design and Analysis.xfl`. |
 
 Die STL-Dateien liegen nicht im Repository. In diesem Vergleich würden ein falsches Vorzeichen von Schränkung oder Einstellwinkel, eine kumulative V-Form oder ein projiziertes y Punkte um jeweils 3 bis 20 mm verschieben.
+
+Mit **Interpolation in Spannweitenrichtung** (Spanwise interpolation) auf **Linear** statt **Gerade Felder** biegt sich ein Feld, dessen Profiltiefe sich zusammen mit dem Profil oder der Schränkung ändert, von dem von XFLR5 weg: 4,17 mm am Randfeld von `UltraStick120.xfl` (NACA 0014 bei 406,4 mm bis zu einer Profiltiefe von 12,7 mm), 2,00 mm bei `UltraStick25e.xfl`, 1,60 und 1,25 mm bei zwei Flugzeugen von `initialAerodynamicSym.xfl` (Profiltiefe und Schränkung). Mit **Gerade Felder** liegen diese vier Flächen innerhalb von 0,04, 0,03, 0,39 und 0,09 mm.
 
 Die Kennzahlen (Registerkarte **Prüfungen** (Checks), Statusleiste, die Zeile unter der Grundrissvorschau des Importdialogs) geben Spannweite und Fläche projiziert auf die x-y-Ebene an. XFLR5 gibt sie entlang der Felder an. Bei einem Flügel mit V-Form unterscheiden sie sich: Die 35°-V-Leitwerke der echten Beispiele zeigen 17,5 % weniger Spannweite und 18,1 % weniger Fläche als **Wing span** und **Area** von XFLR5, das 40°-V-Leitwerk 19,8 % und 23,4 %. Die Geometrie ist dieselbe.
 
@@ -798,7 +805,7 @@ Zeit mit 10 000 Profilen zu je 99 Punkten: Die erste Abbildung, die jedes Profil
 | --- | --- |
 | Projektname | `<plane name> <wing name>` oder der Flügelname einer Flügeldatei; Teile gekürzt, leere Teile weggelassen. Beide leer: „Importierter Flügel“ (englische Oberfläche: `Imported wing`). Höchstens 10 000 Zeichen. Das Feld **Projektname** (Project name) des Dialogs ändert ihn; ein geleertes Feld folgt wieder dem Flugzeug und der Fläche. |
 | Schnitte | IDs `s1`, `s2` …; Werte wie im Abschnitt „Abbildung auf Schnitte“ |
-| `settings` | `twistPivot` 0,25, `spanwise` `"linear"`, `mirror` `true`, `tip.mode` `"flat"`, `trailingEdge.mode` `"asis"`. Die übrigen Schlüssel haben ihre Vorgaben. |
+| `settings` | `twistPivot` 0,25, `spanwise` `"straight"`, `mirror` `true`, `tip.mode` `"flat"`, `trailingEdge.mode` `"asis"`. Die übrigen Schlüssel haben ihre Vorgaben. |
 | `guides` | Vorgaben: aus den Schnittkanten erzeugt, ausgeschaltet |
 | Profile | ein Eintrag je verwendeter Quelle. Zeilen, die dieselbe Quelle verwenden, oder Quellen mit gleichem Namen und gleichen Punkten teilen einen Eintrag. IDs folgen den Regeln des Abschnitts „Projekt-JSON“ (`clark-y`, `naca-0009`, `clark-y-2` für denselben Namen mit anderen Punkten). Die Punkte: die geprüften Punkte (Profilnase bei (0, 0), Profiltiefe 1) für ein Profil der Datei, einen Upload und ein Bibliotheksprofil; die erzeugten Punkte für einen NACA-Schnitt (Herkunft `naca`); die gespeicherten Punkte für ein Profil des aktuellen Projekts. |
 | Meldung nach dem Import | `Tragfläche „Main Wing“ von „Fixture A“ aus fixtures_v662.xfl importiert: 3 Schnitte, 2 Profile.` Bei einem Höhenleitwerk: `Höhenleitwerk „Elevator“ von „Fixture A“ aus fixtures_v662.xfl importiert: 2 Schnitte, 1 Profil.` Ohne Flugzeugnamen: `Tragfläche „Main Wing“ aus wing.xml importiert: 3 Schnitte, 2 Profile.` Danach die erste Warnung und `(<n> weitere Warnungen im Importbericht.)`. Die Warnungen des XML-Lesers bleiben im Bericht. |

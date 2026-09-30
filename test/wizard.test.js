@@ -670,7 +670,7 @@ describe('project validation in German', () => {
       'Duplicate airfoil id "root".',
       'Section 2: unknown airfoil "nope".',
       'Section 3: twist must be a finite number.',
-      'settings.spanwise must be "linear" or "smooth".',
+      'settings.spanwise must be "linear", "straight" or "smooth".',
       'settings.tip.ratio must be within 0.001..0.01 (1/1000 to 1/100).',
       'settings.chordSamples must be an integer within 16..200.',
     ]);
@@ -679,7 +679,7 @@ describe('project validation in German', () => {
       'Doppelte Profil-ID „root“.',
       'Schnitt 2: unbekanntes Profil „nope“.',
       'Schnitt 3: Schränkung muss eine endliche Zahl sein.',
-      'settings.spanwise muss "linear" oder "smooth" sein.',
+      'settings.spanwise muss "linear", "straight" oder "smooth" sein.',
       'settings.tip.ratio muss innerhalb von 0,001..0,01 liegen (1/1000 bis 1/100).',
       'settings.chordSamples muss eine ganze Zahl innerhalb von 16..200 sein.',
     ]);

@@ -53,6 +53,8 @@ export default {
   'At y = {y} mm the wing leaves the project limits (leading-edge x {x} mm, z {z} mm, chord {chord} mm; limits ±{extent} mm and {maxChord} mm chord).':
     'Bei y = {y} mm verlässt der Flügel die Projektgrenzen (x der Profilnase {x} mm, z {z} mm, Profiltiefe {chord} mm; Grenzen ±{extent} mm und {maxChord} mm Profiltiefe).',
   'Check the guide curves, or use linear interpolation.': 'Die Leitkurven prüfen oder lineare Interpolation verwenden.',
+  'Straight panels do not follow guide curves: switch the guide curves off in the Planform tab, or set Settings > Spanwise interpolation to Linear or Smooth.':
+    'Gerade Felder folgen keinen Leitkurven: die Leitkurven in der Registerkarte Grundriss ausschalten oder Einstellungen > Interpolation in Spannweitenrichtung auf „Linear“ oder „Glatt“ setzen.',
   'Smooth spanwise interpolation overshoots at y = {y} mm: {name} is {value} {unit}, while the sections range from {lo} to {hi} {unit}.':
     'Die glatte Interpolation in Spannweitenrichtung schwingt bei y = {y} mm über: {name} {value} {unit}, während die Schnitte nur von {lo} bis {hi} {unit} reichen.',
   'The sections are unevenly spaced (smallest gap {gap} mm).': 'Die Schnitte sind ungleichmäßig verteilt (kleinster Abstand {gap} mm).',

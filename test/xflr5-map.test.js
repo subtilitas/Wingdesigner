@@ -1277,7 +1277,7 @@ describe('XFLR5 mapping: project and report', () => {
     const p = r.project;
     expect(p.name).toBe('Fixture A Main Wing');
     expect(validateProject(p)).toEqual({ ok: true, errors: [] });
-    expect(p.settings).toMatchObject({ twistPivot: 0.25, spanwise: 'linear', mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } });
+    expect(p.settings).toMatchObject({ twistPivot: 0.25, spanwise: 'straight', mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } });
     expect(p.guides.nose.enabled).toBe(false);
     expect(p.guides.end.enabled).toBe(false);
     expect(p.guides.nose.points).toEqual(p.sections.map((s) => [s.x, s.y]));

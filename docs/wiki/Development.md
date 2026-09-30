@@ -177,7 +177,7 @@ Large projects in the browser:
 | Change | 1 chord edit in the **Sections** table |
 | Values | JavaScript time of the change; JavaScript heap after the rebuild |
 
-**Linear** and **Smooth** stand for the options **Linear between sections (straight panels)** and **Smooth (natural cubic spline through sections)** of the list **Spanwise interpolation**.
+**Linear** and **Smooth** stand for the options **Linear between sections** and **Smooth (natural cubic spline through sections)** of the list **Spanwise interpolation**.
 
 | Case | JavaScript time per change | Heap |
 | --- | ---: | ---: |
@@ -373,7 +373,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 521 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 524 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |

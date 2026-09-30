@@ -566,6 +566,11 @@ test.describe('Settings tab', () => {
     await openTab(page, 'Settings');
     const spanwise = page.locator('#pane-settings').getByRole('combobox', { name: 'Spanwise interpolation' });
     await spanwise.focus();
+    // Linear, then Straight panels, then Smooth.
+    await spanwise.press('ArrowDown');
+    await expect.poll(async () => (await savedProject(page)).settings.spanwise).toBe('straight');
+    await frames(page);
+    await expect(spanwise).toBeFocused();
     await spanwise.press('ArrowDown');
     await expect.poll(async () => (await savedProject(page)).settings.spanwise).toBe('smooth');
     await frames(page);

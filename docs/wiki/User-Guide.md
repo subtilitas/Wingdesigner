@@ -170,7 +170,7 @@ The report lists every value that the import changes, converts or leaves out. Er
 | Sections | One per XFLR5 section, root to tip; of two identical sections at one y only the outer one (ids `s1`, `s2`, … in the project file). Values rounded to 4 decimals (0.0001 mm, 0.0001°). |
 | Airfoils | Every airfoil in use. Equal airfoils of several rows merge. An airfoil of an `.xfl` project shows `XFLR5: <file name>` under its name in the Airfoils tab, or its attribution, and the project file keeps a note with the origin, e.g. `Airfoil "Clark Y" from XFLR5 plane "Fixture A"; base shape without flap deflection.` Uploaded, library, NACA and current-project airfoils keep their own source. |
 | **Twist pivot (fraction of chord)** | 0.25, the point about which XFLR5 twists a section |
-| **Spanwise interpolation** | **Linear between sections (straight panels)** |
+| **Spanwise interpolation** | **Straight panels (straight lines between sections, as XFLR5)** |
 | **Trailing edge** | **As in the airfoil files** |
 | **Wing tip** | **Flat (cut at the tip section)** |
 | **Show mirrored half (y < 0)** | on |
@@ -509,6 +509,8 @@ A guide curve is a 2D NURBS curve in the planform plane (x, y). The **nose line*
 | off | on | end line − chord | section chord, interpolated |
 | on | on | nose line | end line − nose line |
 
+Guide curves work with **Linear** and **Smooth**. With **Straight panels** a guide curve on stops the build (section [Settings](#settings)).
+
 Constraints and errors:
 
 - The y range of a guide curve is stretched linearly onto the root-to-tip span. Root and tip points follow the root and tip sections.
@@ -682,7 +684,7 @@ The box **More airfoils (external, not bundled)** links to 3 collections. The ap
 | --- | --- | --- | --- | --- |
 | Language / Sprache | **Language / Sprache** | **English**, **Deutsch** | German when the first language of the browser is German, otherwise English | Language of every text of the interface. Section [Language](#language). |
 | Geometry | **Project name** | text | preset name | Name in the project file; base of the file names of **Save** and **Export**. `.dat` downloads use the airfoil name. A name above 200 characters adds `a name of … characters (warning above 200)` to the `Large project` warning as soon as the name is committed; a shorter name removes it. |
-| Geometry | **Spanwise interpolation** | **Linear between sections (straight panels)**, **Smooth (natural cubic spline through sections)** | Linear | Blending of section values along the span. See the list below. |
+| Geometry | **Spanwise interpolation** | **Linear between sections**, **Straight panels (straight lines between sections, as XFLR5)**, **Smooth (natural cubic spline through sections)** | Linear; XFLR5 import: Straight panels | Blending of section values along the span. See the list below. |
 | Geometry | **Twist pivot (fraction of chord)** | 0 to 1, step 0.05 | 0.25 | Chord point the twist rotates about |
 | Geometry | **Trailing edge** | **As in the airfoil files**, **Closed (sharp)**, **Fixed thickness in mm** | Fixed thickness (wizard, sample wing); As in the airfoil files for project files without this setting | Trailing-edge gap of every station |
 | Geometry | **Wing tip** | **Flat (cut at the tip section)**, **Pointed (tip profile scaled down)** | Flat; wizard: its **Tip** field | Flat: the wing ends at the tip section. Pointed: see the list below. |
@@ -702,7 +704,8 @@ Below **Spanwise stations per panel** a note gives the loft grid points of the c
 
 Spanwise interpolation:
 
-- **Linear** without guide curves: stations at the sections plus added stations (section [Guide curves](#guide-curves)); straight lines between stations (spanwise degree 1).
+- **Linear** without guide curves: stations at the sections plus added stations (section [Guide curves](#guide-curves)); straight lines between stations (spanwise degree 1). Between two sections the airfoil, the chord and the twist blend apart; where the chord changes together with the airfoil or the twist, the panel bends and the added stations follow the bend.
+- **Straight panels**: stations at the sections only, no added stations; every point of one section joins the point of the same chord fraction of the next section in a straight line (spanwise degree 1). XFLR5 builds its panels this way; the XFLR5 import sets this option. Example: NACA 0014 at 400 mm chord to NACA 0008 at 100 mm chord: halfway 32.0 mm thick with **Straight panels**, 27.5 mm with **Linear**. A guide curve on stops the build with `Straight panels do not follow guide curves: switch the guide curves off in the Planform tab, or set Settings > Spanwise interpolation to Linear or Smooth.`
 - **Linear** with a guide curve on: **Spanwise stations per panel** intervals per panel; degree 3 within each panel, with a kink allowed at each section. When the loft grid limit lowers the intervals per panel to 2 or 1, the degree is 2 or 1 (e.g. 4,200 sections with 200 **Chordwise stations per surface**: 2 intervals, degree 2).
 - **Smooth**: section values follow one natural cubic spline through all sections; **Spanwise stations per panel** intervals per panel (default 8); spanwise degree 3.
 - **Smooth** error: an interpolated value lies more than 2 × the range of its section values outside that range. Checked values: leading-edge x (no guide curve on), chord (not both guide curves on), z, twist, and the height of every resampled profile point except the 2 trailing-edge points. Checked at the checked span positions ([Guide curves](#guide-curves)). Typical cause: unevenly spaced sections.

@@ -92,9 +92,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   Playwright writes a JSON report to `playwright-report/results.json`. It also checks the unit tests
   of one file where a page states them: a table row with the path of a test file and a count or
   `<n> of <m>`, and the path followed by `(<n>)`.
+- Spanwise interpolation **Straight panels (straight lines between sections, as XFLR5)**
+  (`settings.spanwise` `"straight"`): every point of a section joins the point of the same chord
+  fraction of the next section in a straight line, as XFLR5 builds its panels. Stations lie at the
+  sections only, and no stations are added. A guide curve on stops the build with a message. On the
+  tip panel of `UltraStick120.xfl` (NACA 0014 at 406.4 mm to a 12.7 mm chord) the STL that the code of
+  XFLR5 6.62 writes lies within 0.04 mm of the surface; with **Linear** it lies up to 4.17 mm off.
 
 ### Changed
 
+- XFLR5 import: the project gets **Straight panels** instead of **Linear**. A panel whose chord changes
+  together with the airfoil or the twist gets XFLR5's shape.
+- Settings: the option **Linear between sections (straight panels)** reads **Linear between
+  sections**; linear panels bend where the chord changes together with the airfoil or the twist.
 - File names of **Save**, **Export** and `.dat` downloads write German umlauts out, in both languages
   (`Sportflügel` becomes `Sportfluegel`; `ü` became `u` before); other accents are dropped as before.
 - Minimum chord (profile depth) 1 mm instead of 0.01 mm, for every section, span position and pointed

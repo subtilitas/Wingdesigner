@@ -83,7 +83,7 @@ export default {
   'Duplicate section id "{id}".': 'Doppelte Schnitt-ID „{id}“.',
   'Section span positions y must be distinct.': 'Die Spannweitenpositionen y der Schnitte müssen verschieden sein.',
   'settings.{key} must be an object.': 'settings.{key} muss ein Objekt sein.',
-  'settings.spanwise must be "linear" or "smooth".': 'settings.spanwise muss "linear" oder "smooth" sein.',
+  'settings.spanwise must be "linear", "straight" or "smooth".': 'settings.spanwise muss "linear", "straight" oder "smooth" sein.',
   'settings.trailingEdge.mode must be "asis", "closed" or "thickness".': 'settings.trailingEdge.mode muss "asis", "closed" oder "thickness" sein.',
   'settings.trailingEdge.thickness must be >= 0.': 'settings.trailingEdge.thickness muss >= 0 sein.',
   'settings.tip.mode must be "flat" or "pointed".': 'settings.tip.mode muss "flat" oder "pointed" sein.',

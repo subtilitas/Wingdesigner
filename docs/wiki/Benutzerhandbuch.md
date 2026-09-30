@@ -170,7 +170,7 @@ Der Bericht listet jeden Wert, den der Import ändert, umrechnet oder weglässt.
 | Schnitte | Einer je XFLR5-Schnitt, von der Wurzel zum Rand; von zwei gleichen Schnitten bei einem y nur der äußere (Kennungen `s1`, `s2`, … in der Projektdatei). Werte auf 4 Nachkommastellen gerundet (0,0001 mm, 0,0001°). |
 | Profile | Jedes verwendete Profil. Gleiche Profile mehrerer Zeilen werden zusammengelegt. Ein Profil eines `.xfl`-Projekts zeigt in der Registerkarte **Profile** unter seinem Namen `XFLR5: <Dateiname>` oder seine Quellenangabe, und die Projektdatei behält einen Vermerk zur Herkunft, z. B. `Profil „Clark Y“ aus dem XFLR5-Flugzeug „Fixture A“; Grundform ohne Klappenausschlag.` Hochgeladene Profile, Bibliotheksprofile, NACA-Profile und Profile des aktuellen Projekts behalten ihre eigene Quelle. |
 | **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)) | 0,25, der Punkt, um den XFLR5 einen Schnitt schränkt |
-| **Interpolation in Spannweitenrichtung** (Spanwise interpolation) | **Linear zwischen den Schnitten (gerade Felder)** (Linear between sections (straight panels)) |
+| **Interpolation in Spannweitenrichtung** (Spanwise interpolation) | **Gerade Felder (gerade Linien zwischen den Schnitten, wie XFLR5)** (Straight panels (straight lines between sections, as XFLR5)) |
 | **Endleiste** (Trailing edge) | **Wie in den Profildateien** (As in the airfoil files) |
 | **Flügelende** (Wing tip) | **Flach (am Randschnitt abgeschnitten)** (Flat (cut at the tip section)) |
 | **Gespiegelte Hälfte zeigen (y < 0)** (Show mirrored half (y < 0)) | an |
@@ -509,6 +509,8 @@ Eine Leitkurve ist eine ebene NURBS-Kurve in der Grundrissebene (x, y). Die Nase
 | aus | an | Endlinie − Profiltiefe | Profiltiefe der Schnitte, interpoliert |
 | an | an | Nasenlinie | Endlinie − Nasenlinie |
 
+Leitkurven wirken mit **Linear** und **Glatt**. Mit **Gerade Felder** (Straight panels) stoppt eine eingeschaltete Leitkurve den Aufbau (Abschnitt [Einstellungen](#einstellungen)).
+
 Einschränkungen und Fehler:
 
 - Der y-Bereich einer Leitkurve wird linear auf die Spannweite von Wurzel bis Rand gestreckt. Wurzel- und Randpunkt folgen Wurzel- und Randschnitt.
@@ -686,7 +688,7 @@ Die Registerkarte **Einstellungen** (Settings) hat die Gruppen **Language / Spra
 | --- | --- | --- | --- | --- |
 | **Language / Sprache** | Auswahlliste | **English**, **Deutsch** | Deutsch, wenn die erste Sprache des Browsers Deutsch ist, sonst Englisch | Sprache aller Texte der Oberfläche. Abschnitt [Sprache](#sprache). |
 | **Geometrie** | **Projektname** (Project name) | Text | Name des Entwurfstyps | Name in der Projektdatei; Grundlage der Dateinamen von **Speichern** (Save) und **Exportieren** (Export). `.dat`-Downloads verwenden den Profilnamen. Ein Name über 200 Zeichen ergänzt `ein Name mit … Zeichen (Warnung über 200)` in der Warnung `Großes Projekt`, sobald der Name übernommen ist; ein kürzerer Name entfernt es. |
-| **Geometrie** | **Interpolation in Spannweitenrichtung** (Spanwise interpolation) | **Linear zwischen den Schnitten (gerade Felder)** (Linear between sections (straight panels)), **Glatt (natürlicher kubischer Spline durch die Schnitte)** (Smooth (natural cubic spline through sections)) | Linear | Übergang der Schnittwerte entlang der Spannweite. Siehe Liste unten. |
+| **Geometrie** | **Interpolation in Spannweitenrichtung** (Spanwise interpolation) | **Linear zwischen den Schnitten** (Linear between sections), **Gerade Felder (gerade Linien zwischen den Schnitten, wie XFLR5)** (Straight panels (straight lines between sections, as XFLR5)), **Glatt (natürlicher kubischer Spline durch die Schnitte)** (Smooth (natural cubic spline through sections)) | Linear; XFLR5-Import: Gerade Felder | Übergang der Schnittwerte entlang der Spannweite. Siehe Liste unten. |
 | **Geometrie** | **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)) | 0 bis 1, Schritt 0,05 | 0,25 | Punkt auf der Profilsehne, um den die Schränkung dreht |
 | **Geometrie** | **Endleiste** (Trailing edge) | **Wie in den Profildateien** (As in the airfoil files), **Geschlossen (scharf)** (Closed (sharp)), **Feste Dicke in mm** (Fixed thickness in mm) | Feste Dicke (Assistent, Beispielflügel); Wie in den Profildateien für Projektdateien ohne diese Einstellung | Endleistendicke jeder Station |
 | **Geometrie** | **Flügelende** (Wing tip) | **Flach (am Randschnitt abgeschnitten)** (Flat (cut at the tip section)), **Spitz (Randprofil verkleinert)** (Pointed (tip profile scaled down)) | Flach; Assistent: dessen Eingabefeld **Flügelende** (Tip) | Flach: Der Flügel endet am Randschnitt. Spitz: siehe Liste unten. |
@@ -706,7 +708,8 @@ Unter **Stationen je Feld** nennt ein Hinweis die Punkte im Flächengitter bei d
 
 Interpolation in Spannweitenrichtung:
 
-- **Linear** ohne Leitkurve: Stationen an den Schnitten und hinzugefügte Stationen (Abschnitt [Leitkurven](#leitkurven)); gerade Linien zwischen den Stationen (Grad 1 in Spannweitenrichtung).
+- **Linear** ohne Leitkurve: Stationen an den Schnitten und hinzugefügte Stationen (Abschnitt [Leitkurven](#leitkurven)); gerade Linien zwischen den Stationen (Grad 1 in Spannweitenrichtung). Zwischen zwei Schnitten gehen Profil, Profiltiefe und Schränkung getrennt ineinander über; ändert sich die Profiltiefe zusammen mit dem Profil oder der Schränkung, biegt sich das Feld, und die hinzugefügten Stationen folgen der Biegung.
+- **Gerade Felder**: Stationen nur an den Schnitten, keine hinzugefügten Stationen; jeder Punkt eines Schnitts ist mit dem Punkt desselben Profiltiefenanteils des nächsten Schnitts durch eine gerade Linie verbunden (Grad 1 in Spannweitenrichtung). So baut XFLR5 seine Felder; der XFLR5-Import setzt diese Option. Beispiel: NACA 0014 bei 400 mm Profiltiefe bis NACA 0008 bei 100 mm Profiltiefe: in der Mitte 32,0 mm dick mit **Gerade Felder**, 27,5 mm mit **Linear**. Eine eingeschaltete Leitkurve stoppt den Aufbau mit `Gerade Felder folgen keinen Leitkurven: die Leitkurven in der Registerkarte Grundriss ausschalten oder Einstellungen > Interpolation in Spannweitenrichtung auf „Linear“ oder „Glatt“ setzen.`
 - **Linear** mit eingeschalteter Leitkurve: **Stationen je Feld** Intervalle je Feld; Grad 3 innerhalb jedes Felds, Knick an jedem Schnitt möglich. Senkt die Grenze des Flächengitters die Intervalle je Feld auf 2 oder 1, ist der Grad 2 oder 1 (z. B. 4200 Schnitte mit 200 **Stationen je Profilseite**: 2 Intervalle, Grad 2).
 - **Glatt**: Die Schnittwerte folgen einem natürlichen kubischen Spline durch alle Schnitte; **Stationen je Feld** Intervalle je Feld (Vorgabe 8); Grad 3 in Spannweitenrichtung.
 - Fehler bei **Glatt**: Ein interpolierter Wert liegt um mehr als das 2-Fache des Bereichs seiner Schnittwerte außerhalb dieses Bereichs. Geprüfte Werte: x der Profilnase (keine Leitkurve an), Profiltiefe (nicht beide Leitkurven an), z, Schränkung und die Höhe jedes neu abgetasteten Konturpunkts außer den 2 Endleistenpunkten. Geprüft an den geprüften Spannweitenpositionen ([Leitkurven](#leitkurven)). Typische Ursache: ungleichmäßig verteilte Schnitte.

@@ -107,6 +107,10 @@ panel the loft is XFLR5's ruled surface, not the R4 surface: the R4 surface diff
 grid (`loftGrid` in `src/model/budget.js`), the size warnings, the STEP and mesh sizes, the label
 "Spanwise stations per panel with guides or smooth mode" and the File Formats row of `degreeV` follow.
 
+Straight panels (`spanwise` `"straight"`, 2026-09-30) are the ruled surface between the placed
+sections, XFLR5's construction. With rolled planes a straight panel is therefore XFLR5's surface; R4
+describes **Linear**. The XFLR5 import sets **Straight panels**.
+
 A manual roll column (option (e), about 2 to 3 h as a later step) is not decided.
 
 Options not taken:
@@ -165,9 +169,8 @@ Options not taken:
   the projects to convert.
 - Version 1 files and browser copies written by the XFLR5 import of pull request #5 (deployed
   2026-09-30) hold a folded tilt without the stored values. They open vertical; a switch to mitred
-  gives the error of the folded tilt without a warning, and step 2 leaves them folded. Not decided:
-  document this on the File Formats page, or store the tilt angle and pivot in a version 1 update
-  before step 1 (an app before that update drops them without a message).
+  gives the error of the folded tilt without a warning, and step 2 leaves them folded. Owner decision
+  (2026-09-30): the File Formats page documents this; no version 1 update.
 - Untilted imports with a fold: when the mitre planes of an untilted import fail the fold check
   (R6), for example at the 0.5 mm panel of the equal-y move, the part imports with vertical section
   planes and an info line that names the sections. A test covers a 10° break with the 0.5 mm move.
@@ -199,9 +202,9 @@ Options not taken:
   from the straight panels. Until that construction is built, measured and covered by the fold check
   at every station, smooth mode is not built with a rolled section plane. Under R2 this touches the
   first-load sample wing and 4 of the 6 wizard presets (Trainer, Sport, Glider, Plank), which have
-  dihedral. Not decided: (a) a build error in Checks that names both settings; (b) smooth mode builds
-  with vertical section planes and an info line in Checks, as the import fallback does; (c) a choice
-  of Smooth sets Section planes to vertical in the same undo step, with a message. A wing whose section
+  dihedral. Owner decision (2026-09-30): (b) smooth mode builds with vertical section planes and an
+  info line in Checks, as the import fallback does. Not taken: (a) a build error that names both
+  settings; (c) a choice of Smooth that sets Section planes to vertical. A wing whose section
   planes are all vertical (no dihedral) builds in smooth mode as today. The refusal is never a
   validation error: autosave stores only projects that pass `validateProject`, and Open would refuse
   the file.
@@ -214,11 +217,11 @@ Options not taken:
 - Not tested: a rolled STEP file in a computer-aided design (CAD) program.
 - Float32 precision of STL and 3MF (3D Manufacturing Format) with rolled caps is not tested.
 - Not tested: the real 35° and 40° V-tail samples with the prototype.
-- Two differences from XFLR5 remain and need their own decisions: 0.93 mm at mid-panel where a panel
-  changes airfoil and chord together, and 0.43 to 0.60 mm from XFLR5's linear airfoil interpolation
-  (Clark Y).
-- A switch to mitred of a project with a stored folded tilt, before step 2 exists: a warning with
-  the estimated error, or a blocked switch. Not decided.
+- The difference at mid-panel where a panel changes airfoil and chord together (0.93 mm on Fixture A)
+  is gone with **Straight panels**. XFLR5's linear airfoil interpolation remains: median 0.15 mm over
+  93 real surfaces, 1.01 mm for a 33-point Clark YS.
+- A switch to mitred of a project with a stored folded tilt, before step 2 exists: owner decision
+  (2026-09-30): a warning in Checks with the estimated error, not a blocked switch.
 - With the prototype, 16 of 348 browser test runs fail on 84d4e5e; the independent check does not
   rerun the full browser suite.
 

@@ -69,7 +69,8 @@ export class SettingsPanel {
           select(
             s.spanwise,
             [
-              ['linear', tr('Linear between sections (straight panels)')],
+              ['linear', tr('Linear between sections')],
+              ['straight', tr('Straight panels (straight lines between sections, as XFLR5)')],
               ['smooth', tr('Smooth (natural cubic spline through sections)')],
             ],
             (v) => set((q) => (q.spanwise = v)),

@@ -12,6 +12,14 @@ import { count, plain, tr, whole } from '../i18n/index.js';
 export const FORMAT = 'wingdesigner-project';
 export const VERSION = 1;
 
+/**
+ * Spanwise interpolation: 'linear' blends every section value (leading edge, chord, z, twist, airfoil
+ * shape) linearly and fits the loft to it; 'straight' joins the points of equal chord fraction of two
+ * neighbouring sections with straight lines (a ruled surface, as XFLR5 builds its panels); 'smooth'
+ * blends with a natural cubic spline through all sections.
+ */
+export const SPANWISE = Object.freeze(['linear', 'straight', 'smooth']);
+
 export const DEFAULT_SETTINGS = Object.freeze({
   spanwise: 'linear',
   twistPivot: 0.25,
@@ -240,7 +248,7 @@ export function validateProject(p) {
     }
   }
   const st = resolveSettings(p.settings);
-  if (!['linear', 'smooth'].includes(st.spanwise)) errors.push(tr('settings.spanwise must be "linear" or "smooth".'));
+  if (!SPANWISE.includes(st.spanwise)) errors.push(tr('settings.spanwise must be "linear", "straight" or "smooth".'));
   if (!['asis', 'closed', 'thickness'].includes(st.trailingEdge.mode)) errors.push(tr('settings.trailingEdge.mode must be "asis", "closed" or "thickness".'));
   if (!isNum(st.trailingEdge.thickness) || st.trailingEdge.thickness < 0) errors.push(tr('settings.trailingEdge.thickness must be >= 0.'));
   if (!['flat', 'pointed'].includes(st.tip.mode)) errors.push(tr('settings.tip.mode must be "flat" or "pointed".'));

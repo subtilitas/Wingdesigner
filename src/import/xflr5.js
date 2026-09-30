@@ -1198,7 +1198,7 @@ function assemble(name, mapped, rows, add) {
     name,
     airfoils,
     sections: placed.map((s, i) => ({ id: `s${i + 1}`, airfoil: ids.get(s.foil), x: r4(s.x), y: r4(s.y), z: r4(s.z), chord: Math.max(r4(s.chord), LIMITS.minChord), twist: r4(s.twist) })),
-    settings: { twistPivot: 0.25, spanwise: 'linear', mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } },
+    settings: { twistPivot: 0.25, spanwise: 'straight', mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } },
   });
 }
 

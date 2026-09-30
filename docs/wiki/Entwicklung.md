@@ -177,7 +177,7 @@ Große Projekte im Browser:
 | Änderung | 1 Änderung einer Profiltiefe in der Tabelle **Schnitte** |
 | Werte | JavaScript-Zeit der Änderung; JavaScript-Heap nach dem Neuaufbau |
 
-**Linear** und **Glatt** (Smooth) stehen für die Optionen **Linear zwischen den Schnitten (gerade Felder)** (Linear between sections (straight panels)) und **Glatt (natürlicher kubischer Spline durch die Schnitte)** (Smooth (natural cubic spline through sections)) der Liste **Interpolation in Spannweitenrichtung** (Spanwise interpolation).
+**Linear** und **Glatt** (Smooth) stehen für die Optionen **Linear zwischen den Schnitten** (Linear between sections) und **Glatt (natürlicher kubischer Spline durch die Schnitte)** (Smooth (natural cubic spline through sections)) der Liste **Interpolation in Spannweitenrichtung** (Spanwise interpolation).
 
 | Fall | JavaScript-Zeit je Änderung | Heap |
 | --- | ---: | ---: |
@@ -373,7 +373,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 521 Tests in 18 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 524 Tests in 18 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |

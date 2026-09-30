@@ -1,5 +1,7 @@
 // Half-wing construction: NURBS profiles -> compatible sections -> spanwise stations
 // (sections, spanwise interpolation, optional guide curves) -> tensor-product NURBS surface.
+// Straight panels (spanwise 'straight') have stations at the sections only: the degree-1 loft joins
+// the points of equal chord fraction of two sections with straight lines, as XFLR5 does.
 //
 // Surface parametrization: u runs around the profile from the upper trailing edge (u = 0) over the
 // leading edge (u = uLE) to the lower trailing edge (u = 1); v is the span fraction (0 root, 1 tip).
@@ -390,6 +392,12 @@ export function buildWing(project) {
     guideOn[key] = true;
   }
   if (errors.length) return result;
+  // Straight panels join the sections with straight lines; a guide curve would bend them.
+  const straight = settings.spanwise === 'straight';
+  if (straight && (guideOn.nose || guideOn.end)) {
+    errors.push(tr('Straight panels do not follow guide curves: switch the guide curves off in the Planform tab, or set Settings > Spanwise interpolation to Linear or Smooth.'));
+    return result;
+  }
 
   const ys = sections.map((s) => s.y);
   const y0 = ys[0];
@@ -752,9 +760,12 @@ export function buildWing(project) {
       const intended = placeSection([...pos.map((j) => shape[j]), [1, 0]], { ...pl, y }, pivot);
       const axis = intended[idx.length];
       const fitted = idx.map((i) => surfacePoint(surface, paramsU[i], v));
-      let d = 0;
-      for (let q = 0; q < idx.length; q++) d = Math.max(d, d3(fitted[q], intended[q]));
-      devs.push([y, d, deviationTolerance(pl.chord)]);
+      // Straight panels are the intended surface: no deviation, no added stations.
+      if (!straight) {
+        let d = 0;
+        for (let q = 0; q < idx.length; q++) d = Math.max(d, d3(fitted[q], intended[q]));
+        devs.push([y, d, deviationTolerance(pl.chord)]);
+      }
       const le = intended[0];
       const dir = [axis[0] - le[0], axis[2] - le[2]];
       const len = Math.hypot(dir[0], dir[1]) || 1;

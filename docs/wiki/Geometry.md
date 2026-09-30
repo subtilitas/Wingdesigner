@@ -202,10 +202,32 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 
 | **Spanwise interpolation** | Weights w_i(y) | Condition |
 | --- | --- | --- |
-| **Linear between sections (straight panels)** | hat functions: linear between the two neighbouring sections | any section count |
+| **Linear between sections** | hat functions: linear between the two neighbouring sections | any section count |
+| **Straight panels (straight lines between sections, as XFLR5)** | hat functions, as **Linear**, for the check positions of section 3.6; the surface itself joins the placed sections with straight lines (below) | any section count; no guide curve on |
 | **Smooth (natural cubic spline through sections)** | cardinal functions of a natural cubic spline through the section positions y_i (second derivative 0 at root and tip) | 3 or more sections; with 2 sections the hat functions apply |
 
 - y outside [y_root, y_tip] is clamped to the range.
+- **Linear** blends the normalized airfoil, the chord and the twist apart: halfway between two sections
+  the station is the blended airfoil, scaled by the blended chord and turned by the blended twist.
+  Where the chord changes together with the airfoil or the twist, the product bends the panel, and the
+  added stations of section 3.2 make the loft follow the bend.
+- **Straight panels** join the points of equal chord fraction of two neighbouring sections with
+  straight lines, as XFLR5 builds its panels:
+
+  ```
+  S(u_j, v) = (1 − t) P_j(y_i) + t P_j(y_(i+1))          t = (y − y_i) / (y_(i+1) − y_i)
+  ```
+
+  P_j(y_i) is point j of section i placed in 3D (section 3.8). Example: NACA 0014 at 400 mm chord and
+  NACA 0008 at 100 mm chord, 100 mm apart. Halfway, **Straight panels** give a thickness of 32.0 mm
+  (the mean of 56 mm and 8 mm), **Linear** 27.5 mm (11 % of 250 mm), and the **Linear** loft lies up to
+  2.3 mm off the straight lines (3.1 mm with a tip twist of −3°). Measured against the STL that the code of XFLR5 6.62
+  writes: the tip panel of `UltraStick120.xfl` (NACA 0014 at 406.4 mm to a 12.7 mm chord, 101.6 mm
+  long): every XFLR5 vertex lies within 0.04 mm of the surface built with **Straight panels** (100.03 %
+  of XFLR5's thickness halfway), and up to 4.17 mm off the one built with **Linear** (69.75 %).
+- **Straight panels** with a guide curve on stop the build: "Straight panels do not follow guide
+  curves: switch the guide curves off in the Planform tab, or set Settings > Spanwise interpolation to
+  Linear or Smooth."
 - **Smooth**: the build evaluates the spline of every blended value directly. One tridiagonal
   system of size sections − 2 (Thomas algorithm, no pivoting; the system is diagonally dominant)
   gives the second derivatives of all values at the sections, one right-hand side per value.
@@ -223,11 +245,12 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | Condition | Stations per panel | Spacing inside a panel | Surface degree along v |
 | --- | --- | --- | --- |
 | **Linear**, no guide curve enabled | 1 (the section) | – | 1 |
+| **Straight panels** (no guide curve) | 1 (the section) | – | 1 |
 | **Linear**, a guide curve enabled | K (the section and K − 1 intermediate stations) | cosine | min(3, K): 3 for K ≥ 3; 2 or 1 when the loft grid limit lowers K to 2 or 1 |
 | **Smooth** | K (the section and K − 1 intermediate stations) | cosine | 3 (stations − 1 below 4 stations) |
 
 The tip section is the last station. Station count with K per panel: (sections − 1) · K + 1, plus the
-added stations below (in every mode).
+added stations below (**Linear** and **Smooth**; **Straight panels** add none).
 Example: **Glider** preset, 3 sections, K = 8: 17 stations.
 
 ```
@@ -240,7 +263,8 @@ intermediate station that is not distinct from the previous kept station or from
 through-point guide curves apply the same rule to the normalized y of their points.
 
 Loft grid (`loftGrid` in `src/model/budget.js`): stations times profile points before stations are
-added, ((sections − 1) · K + 1) · (2N + 1) points. **Linear** without a guide curve uses K_set = 1.
+added, ((sections − 1) · K + 1) · (2N + 1) points. **Linear** without a guide curve and **Straight
+panels** use K_set = 1.
 The limits apply in every mode.
 
 | Item | Value |
@@ -255,8 +279,10 @@ The limits apply in every mode.
 | Example | 4,200 sections, K_set = 8, N = 200, **Linear** with a guide curve: K = 2, 8,399 stations, 3,367,999 grid points; surface degree along v 2 |
 | Example | 20,000 sections, N = 200, any mode: K = 1, 8,020,000 grid points: error |
 
-Added stations: the surface passes through the stations only. Between stations it can deviate from
-the intended surface, also through twist. After the surface fit (section 4), the builder compares
+Added stations (**Linear** and **Smooth**): the surface passes through the stations only. Between
+stations it can deviate from the intended surface, also through twist. **Straight panels** skip the
+comparison: the straight lines between the sections are the intended surface, and no station is
+added. After the surface fit (section 4), the builder compares
 surface points with the points of a station placed at y (sections 3.4, 3.7, 3.8), in 3D (`probe` in
 `src/geom/wing.js`).
 
@@ -410,6 +436,7 @@ Checks in code order. Every row is an error; no surface is built.
 | Airfoil reference | a section uses an airfoil id missing in the project |
 | Airfoil | sanity-check error, failed NURBS interpolation, self-crossing NURBS curve (section 1.4) or x reversal (section 1.5). With **Chord length** or **Uniform** parametrization the message ends with 'Settings > Profile parametrization "centripetal" follows the points more closely.' |
 | Guide curves | a condition of section 3.3 violated |
+| Straight panels | **Straight panels** with a guide curve on (section 3.1) |
 | Loft grid | more than 5,000,000 grid points with the stations per panel used (section 3.2) |
 | Section values | x_LE, c, z or cos(twist) of a check position is not a finite number. Message: "Section values give non-finite coordinates at y = … mm; check the positions, chords and twists of the sections." |
 | Geometry extent | at a check position: x_LE, x_LE + c (trailing edge) or z beyond ±1,200,000 mm (`LIMITS.maxExtent`), or c above 100,000 mm. Causes: **Smooth** overshoot; a guide curve close to ±1,200,000 mm, where the chord added to it or taken from it leaves the extent; nose line and end line more than 100,000 mm apart. Message: "At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves, or use linear interpolation." |
@@ -478,7 +505,7 @@ Y = y
 Z = z + c r_z
 ```
 
-**Sections written by an XFLR5 import.** XFLR5 is a program for the analysis of airfoils and wings. The import sets **Twist pivot (fraction of chord)** (f_pivot) to 0.25, the point about which XFLR5 twists a section, and **Spanwise interpolation** to **Linear**, the straight panels of XFLR5 (section 3.1). It also applies a frame rule. XFLR5 draws the coordinates of an airfoil as they are; the build puts the leading edge of the airfoil curve (section 1.3) at the section origin and scales the airfoil to chord 1 (section 2). Where the coordinates that XFLR5 used are known (an airfoil of the `.xfl` file, an uploaded `.dat` file, a NACA section), the import moves and scales the section by the difference, so that the airfoil lies where XFLR5 draws it; a difference up to 0.1 % of the chord counts as none. Sections with a library airfoil or another airfoil of the current project keep the values of the file. How the import sets the sections, the pivot and the interpolation, with the rules and formulas: [[File Formats|File-Formats]], section XFLR5 import, subsection Mapping to sections.
+**Sections written by an XFLR5 import.** XFLR5 is a program for the analysis of airfoils and wings. The import sets **Twist pivot (fraction of chord)** (f_pivot) to 0.25, the point about which XFLR5 twists a section, and **Spanwise interpolation** to **Straight panels**, the construction of XFLR5's panels (section 3.1). It also applies a frame rule. XFLR5 draws the coordinates of an airfoil as they are; the build puts the leading edge of the airfoil curve (section 1.3) at the section origin and scales the airfoil to chord 1 (section 2). Where the coordinates that XFLR5 used are known (an airfoil of the `.xfl` file, an uploaded `.dat` file, a NACA section), the import moves and scales the section by the difference, so that the airfoil lies where XFLR5 draws it; a difference up to 0.1 % of the chord counts as none. Sections with a library airfoil or another airfoil of the current project keep the values of the file. How the import sets the sections, the pivot and the interpolation, with the rules and formulas: [[File Formats|File-Formats]], section XFLR5 import, subsection Mapping to sections.
 
 ## 4. Surface
 
@@ -487,7 +514,7 @@ Tensor-product B-spline surface S(u, v) through the station grid Q (2N + 1 point
 | Direction | Parameters | Degree | Knot vector |
 | --- | --- | --- | --- |
 | u (around the profile) | mean of the per-station parametrizations; u_0 = 0, u_2N = 1 | 3 | clamped, by averaging |
-| v (span), **Linear** | v = (y − y_root) / (y_tip − y_root) | 1 without guides; with a guide min(3, K) (2 or 1 when the loft grid limit lowers K, section 3.2) | one interpolation per panel; panels joined at the sections with interior knot multiplicity p (C0: position-continuous, kinks at sections) |
+| v (span), **Linear**, **Straight panels** | v = (y − y_root) / (y_tip − y_root) | 1 without guides; with a guide min(3, K) (2 or 1 when the loft grid limit lowers K, section 3.2) | one interpolation per panel; panels joined at the sections with interior knot multiplicity p (C0: position-continuous, kinks at sections) |
 | v (span), **Smooth** | same | 3 (stations − 1 below 4 stations) | one interpolation over all stations, averaging (C2: continuous up to the second derivative) |
 
 Procedure:

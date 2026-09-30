@@ -1123,6 +1123,72 @@ describe('added stations', () => {
   });
 });
 
+describe('straight panels', () => {
+  // A tapered panel whose airfoil changes too: NACA 0014 at 400 mm to NACA 0008 at 100 mm chord.
+  const airfoil = (code) => ({ id: code, name: `NACA ${code}`, points: nacaAirfoil(code, { closedTE: true }).points });
+  const panel = (spanwise, tipTwist = 0) =>
+    createProject({
+      airfoils: [airfoil('0014'), airfoil('0008')],
+      sections: [
+        { airfoil: '0014', x: 0, y: 0, z: 0, chord: 400, twist: 0 },
+        { airfoil: '0008', x: 150, y: 100, z: 20, chord: 100, twist: tipTwist },
+      ],
+      settings: { spanwise },
+    });
+  /** Largest distance at v of the surface from the straight lines between the section points, and the largest thickness there. */
+  const atV = (b, v) => {
+    const { surface, paramsU, leIndex: N } = b;
+    const A = b.stations[0].points;
+    const B = b.stations.at(-1).points;
+    let fromLines = 0;
+    let thickness = 0;
+    for (let j = 0; j <= 2 * N; j++) {
+      const P = surfacePoint(surface, paramsU[j], v);
+      fromLines = Math.max(fromLines, Math.hypot(...[0, 1, 2].map((c) => P[c] - ((1 - v) * A[j][c] + v * B[j][c]))));
+      if (j > 0 && j < N) thickness = Math.max(thickness, P[2] - surfacePoint(surface, paramsU[2 * N - j], v)[2]);
+    }
+    return { fromLines, thickness };
+  };
+
+  it('joins the points of equal chord fraction with straight lines, with no added stations', () => {
+    for (const twist of [0, -3]) {
+      const b = buildWing(panel('straight', twist));
+      expect(b.errors).toEqual([]);
+      expect(b.warnings).toEqual([]);
+      expect([b.stations.length, b.extraStations, b.planformDeviation, b.surface.degreeV]).toEqual([2, 0, 0, 1]);
+      for (const v of [0.25, 0.5, 0.75]) expect(atV(b, v).fromLines).toBeLessThan(1e-9);
+    }
+    // The thickness halfway is the mean of 56 mm (14 % of 400 mm) and 8 mm (8 % of 100 mm).
+    expect(atV(buildWing(panel('straight')), 0.5).thickness).toBeCloseTo(32, 2);
+  });
+
+  it('differs from linear panels where chord and airfoil or twist change together', () => {
+    for (const twist of [0, -3]) {
+      const b = buildWing(panel('linear', twist));
+      expect(b.errors).toEqual([]);
+      // Linear blends the normalized airfoil and the chord apart: 11 % of 250 mm halfway, 2.3 mm (3.1 mm
+      // with 3° twist) off the straight lines; added stations make the loft follow that.
+      expect(b.extraStations).toBeGreaterThan(0);
+      const mid = atV(b, 0.5);
+      expect(mid.thickness).toBeCloseTo(27.5, 1);
+      expect(mid.fromLines).toBeGreaterThan(twist ? 3 : 2.2);
+    }
+  });
+
+  it('stops the build when a guide curve is on', () => {
+    for (const key of ['nose', 'end']) {
+      const p = panel('straight');
+      p.guides[key].enabled = true;
+      expect(buildWing(p).errors).toEqual([
+        'Straight panels do not follow guide curves: switch the guide curves off in the Planform tab, or set Settings > Spanwise interpolation to Linear or Smooth.',
+      ]);
+    }
+    expect(validateProject(panel('straight')).ok).toBe(true);
+    expect(validateProject(panel('ruled')).errors).toEqual(['settings.spanwise must be "linear", "straight" or "smooth".']);
+    expect(loftGrid(2, panel('straight').settings)).toMatchObject({ Kset: 1, K: 1 });
+  });
+});
+
 describe('German build messages', () => {
   afterEach(() => setLanguage('en'));
   const german = (project) => {
@@ -1158,6 +1224,11 @@ describe('German build messages', () => {
     back.guides.end.enabled = true;
     back.guides.end.points = [[200, 0]];
     expect(german(back).errors).toEqual(['Endlinie: Eine Leitkurve braucht mindestens 2 Punkte.']);
+    const straight = sampleProject({ settings: { spanwise: 'straight' } });
+    straight.guides.nose.enabled = true;
+    expect(german(straight).errors).toEqual([
+      'Gerade Felder folgen keinen Leitkurven: die Leitkurven in der Registerkarte Grundriss ausschalten oder Einstellungen > Interpolation in Spannweitenrichtung auf „Linear“ oder „Glatt“ setzen.',
+    ]);
     setLanguage('en');
     expect(guideProblems({ points: [[0, 0], [1, 1], [2, Infinity]] })).toEqual(['Guide points must be finite [x, y] pairs.']);
     setLanguage('de');

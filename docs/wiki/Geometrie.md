@@ -211,10 +211,35 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 
 | **Interpolation in Spannweitenrichtung** (Spanwise interpolation) | Gewichte w_i(y) | Bedingung |
 | --- | --- | --- |
-| **Linear zwischen den Schnitten (gerade Felder)** (Linear between sections (straight panels)) | Hutfunktionen: linear zwischen den beiden benachbarten Schnitten | jede Anzahl von Schnitten |
+| **Linear zwischen den Schnitten** (Linear between sections) | Hutfunktionen: linear zwischen den beiden benachbarten Schnitten | jede Anzahl von Schnitten |
+| **Gerade Felder (gerade Linien zwischen den Schnitten, wie XFLR5)** (Straight panels (straight lines between sections, as XFLR5)) | Hutfunktionen, wie **Linear**, für die Prüfstellen aus Abschnitt 3.6; die Fläche selbst verbindet die platzierten Schnitte mit geraden Linien (unten) | jede Anzahl von Schnitten; keine Leitkurve eingeschaltet |
 | **Glatt (natürlicher kubischer Spline durch die Schnitte)** (Smooth (natural cubic spline through sections)) | Kardinalfunktionen eines natürlichen kubischen Splines durch die Schnittpositionen y_i (zweite Ableitung 0 an Wurzel und Rand) | 3 oder mehr Schnitte; bei 2 Schnitten gelten die Hutfunktionen |
 
 - y außerhalb von [y_root, y_tip] wird auf den Bereich begrenzt.
+- **Linear** überblendet das normierte Profil, die Profiltiefe und die Schränkung getrennt: In der Mitte
+  zwischen zwei Schnitten ist die Station das überblendete Profil, skaliert mit der überblendeten
+  Profiltiefe und gedreht um die überblendete Schränkung. Ändert sich die Profiltiefe zusammen mit dem
+  Profil oder der Schränkung, biegt das Produkt das Feld, und die zusätzlichen Stationen aus Abschnitt 3.2
+  lassen die Fläche der Biegung folgen.
+- **Gerade Felder** (Straight panels) verbinden die Punkte gleichen Profiltiefenanteils zweier
+  benachbarter Schnitte mit geraden Linien, wie XFLR5 seine Felder baut:
+
+  ```
+  S(u_j, v) = (1 − t) P_j(y_i) + t P_j(y_(i+1))          t = (y − y_i) / (y_(i+1) − y_i)
+  ```
+
+  P_j(y_i) ist Punkt j des Schnitts i, im Raum platziert (Abschnitt 3.8). Beispiel: NACA 0014 bei 400 mm
+  Profiltiefe und NACA 0008 bei 100 mm Profiltiefe, 100 mm voneinander entfernt. In der Mitte ergeben
+  **Gerade Felder** eine Dicke von 32,0 mm (der Mittelwert von 56 mm und 8 mm), **Linear** 27,5 mm
+  (11 % von 250 mm), und die Fläche bei **Linear** liegt bis zu 2,3 mm neben den geraden Linien (3,1 mm
+  bei einer Schränkung von −3° am Rand). Gemessen an der STL-Datei, die der Code von XFLR5 6.62 schreibt: Das
+  Randfeld von `UltraStick120.xfl` (NACA 0014 bei 406,4 mm bis zu einer Profiltiefe von 12,7 mm,
+  101,6 mm lang): Jeder Eckpunkt von XFLR5 liegt innerhalb von 0,04 mm der mit **Gerade Felder** gebauten
+  Fläche (in der Mitte 100,03 % der Dicke von XFLR5) und bis zu 4,17 mm neben der mit **Linear** gebauten
+  (69,75 %).
+- **Gerade Felder** mit eingeschalteter Leitkurve stoppen den Aufbau: „Gerade Felder folgen keinen
+  Leitkurven: die Leitkurven in der Registerkarte Grundriss ausschalten oder Einstellungen >
+  Interpolation in Spannweitenrichtung auf „Linear“ oder „Glatt“ setzen.“
 - **Glatt** (Smooth): Die Berechnung wertet den Spline jedes überblendeten Werts direkt aus. Ein
   Tridiagonalsystem der Größe Schnitte − 2 (Thomas-Algorithmus, ohne Pivotsuche; das System
   ist diagonaldominant) liefert die zweiten Ableitungen aller Werte an den Schnitten, eine
@@ -234,11 +259,12 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | Bedingung | Stationen je Feld | Verteilung im Feld | Grad der Fläche entlang v |
 | --- | --- | --- | --- |
 | **Linear**, keine Leitkurve eingeschaltet | 1 (der Schnitt) | – | 1 |
+| **Gerade Felder** (keine Leitkurve) | 1 (der Schnitt) | – | 1 |
 | **Linear**, eine Leitkurve eingeschaltet | K (der Schnitt und K − 1 Zwischenstationen) | kosinusförmig | min(3, K): 3 bei K ≥ 3; 2 oder 1, wenn die Grenze des Flächengitters K auf 2 oder 1 senkt |
 | **Glatt** | K (der Schnitt und K − 1 Zwischenstationen) | kosinusförmig | 3 (Stationen − 1 bei weniger als 4 Stationen) |
 
 Der Randschnitt ist die letzte Station. Anzahl der Stationen bei K je Feld: (Schnitte − 1) · K + 1,
-dazu die zusätzlichen Stationen unten (in jedem Modus).
+dazu die zusätzlichen Stationen unten (**Linear** und **Glatt**; **Gerade Felder** fügen keine hinzu).
 Beispiel: Entwurfstyp **Segelflugmodell** (Glider), 3 Schnitte, K = 8: 17 Stationen.
 
 ```
@@ -251,8 +277,8 @@ eine Zwischenstation, die von der letzten behaltenen Station oder vom Rand nicht
 Leitkurven im Modus „Durch Punkte“ wenden dieselbe Regel auf das normierte y ihrer Punkte an.
 
 Flächengitter (`loftGrid` in `src/model/budget.js`): Stationen mal Konturpunkte vor dem Einfügen
-zusätzlicher Stationen, ((Schnitte − 1) · K + 1) · (2N + 1) Punkte. **Linear** ohne Leitkurve
-verwendet K_set = 1. Die Grenzen gelten in jedem Modus.
+zusätzlicher Stationen, ((Schnitte − 1) · K + 1) · (2N + 1) Punkte. **Linear** ohne Leitkurve und
+**Gerade Felder** verwenden K_set = 1. Die Grenzen gelten in jedem Modus.
 
 | Größe | Wert |
 | --- | --- |
@@ -266,8 +292,10 @@ verwendet K_set = 1. Die Grenzen gelten in jedem Modus.
 | Beispiel | 4200 Schnitte, K_set = 8, N = 200, **Linear** mit einer Leitkurve: K = 2, 8399 Stationen, 3 367 999 Gitterpunkte; Grad der Fläche entlang v 2 |
 | Beispiel | 20 000 Schnitte, N = 200, jeder Modus: K = 1, 8 020 000 Gitterpunkte: Fehler |
 
-Zusätzliche Stationen: Die Fläche verläuft nur durch die Stationen. Zwischen den Stationen kann sie
-von der vorgesehenen Fläche abweichen, auch durch Schränkung. Nach der Flächenanpassung (Abschnitt 4)
+Zusätzliche Stationen (**Linear** und **Glatt**): Die Fläche verläuft nur durch die Stationen. Zwischen
+den Stationen kann sie von der vorgesehenen Fläche abweichen, auch durch Schränkung. **Gerade Felder**
+überspringen den Vergleich: Die geraden Linien zwischen den Schnitten sind die vorgesehene Fläche, und
+es wird keine Station hinzugefügt. Nach der Flächenanpassung (Abschnitt 4)
 vergleicht der Aufbau Flächenpunkte mit den Punkten einer bei y platzierten Station (Abschnitte 3.4,
 3.7, 3.8), im Raum (`probe` in `src/geom/wing.js`).
 
@@ -427,6 +455,7 @@ Prüfungen in der Reihenfolge des Codes. Jede Zeile ist ein Fehler; es wird kein
 | Profilverweis | ein Schnitt verweist auf eine Profil-ID, die im Projekt fehlt |
 | Profil | Fehler der Plausibilitätsprüfungen, fehlgeschlagene NURBS-Interpolation, sich selbst überschneidende NURBS-Kurve (Abschnitt 1.4) oder Rücklauf in x (Abschnitt 1.5). Bei Parametrisierung **Sehnenlänge** (Chord length) oder **Gleichabständig** (Uniform) endet die Meldung mit „Die Einstellung ‚Zentripetal‘ unter Einstellungen > Parametrisierung der Profile folgt den Punkten genauer.“ |
 | Leitkurven | eine Bedingung aus Abschnitt 3.3 verletzt |
+| Gerade Felder | **Gerade Felder** mit eingeschalteter Leitkurve (Abschnitt 3.1) |
 | Flächengitter | mehr als 5 000 000 Gitterpunkte mit den verwendeten Stationen je Feld (Abschnitt 3.2) |
 | Schnittwerte | x_LE, c, z oder cos(Schränkung) einer Prüfposition ist keine endliche Zahl. Meldung: „Die Schnittwerte ergeben bei y = … mm nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen.“ |
 | Ausdehnung der Geometrie | an einer Prüfposition: x_LE, x_LE + c (Endleiste) oder z außerhalb von ±1 200 000 mm (`LIMITS.maxExtent`) oder c über 100 000 mm. Ursachen: Überschwingen bei **Glatt**; eine Leitkurve nahe ±1 200 000 mm, bei der die hinzugerechnete oder abgezogene Profiltiefe die Ausdehnung verlässt; Nasenlinie und Endlinie mehr als 100 000 mm voneinander entfernt. Meldung: „Bei y = … mm verlässt der Flügel die Projektgrenzen (x der Profilnase … mm, z … mm, Profiltiefe … mm; Grenzen ±1.200.000 mm und 100.000 mm Profiltiefe). Die Leitkurven prüfen oder lineare Interpolation verwenden.“ |
@@ -497,7 +526,7 @@ Y = y
 Z = z + c r_z
 ```
 
-**Schnitte aus einem XFLR5-Import.** XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln. Der Import setzt **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (f_pivot) auf 0,25, den Punkt, um den XFLR5 einen Schnitt schränkt, und **Interpolation in Spannweitenrichtung** auf **Linear**, die geraden Felder von XFLR5 (Abschnitt 3.1). Außerdem wendet er eine Regel der Profillage an. XFLR5 zeichnet die Koordinaten eines Profils, wie sie sind; der Aufbau legt die Profilnase der Kurve (Abschnitt 1.3) auf den Schnittursprung und skaliert das Profil auf die Profiltiefe 1 (Abschnitt 2). Sind die Koordinaten bekannt, die XFLR5 verwendet hat (ein Profil der `.xfl`-Datei, eine hochgeladene `.dat`-Datei, ein NACA-Schnitt), verschiebt und skaliert der Import den Schnitt um den Unterschied, sodass das Profil dort liegt, wo XFLR5 es zeichnet; ein Unterschied bis 0,1 % der Profiltiefe gilt als keiner. Schnitte mit einem Bibliotheksprofil oder einem anderen Profil des aktuellen Projekts behalten die Werte der Datei. Wie der Import die Schnitte, den Drehpunkt und die Interpolation setzt, mit Regeln und Formeln: [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import, Unterabschnitt Abbildung auf Schnitte.
+**Schnitte aus einem XFLR5-Import.** XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln. Der Import setzt **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (f_pivot) auf 0,25, den Punkt, um den XFLR5 einen Schnitt schränkt, und **Interpolation in Spannweitenrichtung** auf **Gerade Felder**, die Bauweise der Felder von XFLR5 (Abschnitt 3.1). Außerdem wendet er eine Regel der Profillage an. XFLR5 zeichnet die Koordinaten eines Profils, wie sie sind; der Aufbau legt die Profilnase der Kurve (Abschnitt 1.3) auf den Schnittursprung und skaliert das Profil auf die Profiltiefe 1 (Abschnitt 2). Sind die Koordinaten bekannt, die XFLR5 verwendet hat (ein Profil der `.xfl`-Datei, eine hochgeladene `.dat`-Datei, ein NACA-Schnitt), verschiebt und skaliert der Import den Schnitt um den Unterschied, sodass das Profil dort liegt, wo XFLR5 es zeichnet; ein Unterschied bis 0,1 % der Profiltiefe gilt als keiner. Schnitte mit einem Bibliotheksprofil oder einem anderen Profil des aktuellen Projekts behalten die Werte der Datei. Wie der Import die Schnitte, den Drehpunkt und die Interpolation setzt, mit Regeln und Formeln: [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import, Unterabschnitt Abbildung auf Schnitte.
 
 ## 4. Fläche
 
@@ -506,7 +535,7 @@ Tensorprodukt-B-Spline-Fläche S(u, v) durch das Stationsgitter Q (2N + 1 Punkte
 | Richtung | Parameter | Grad | Knotenvektor |
 | --- | --- | --- | --- |
 | u (um das Profil) | Mittel der Parametrisierungen aller Stationen; u_0 = 0, u_2N = 1 | 3 | geklemmt, durch Mittelwertbildung |
-| v (Spannweite), **Linear** | v = (y − y_root) / (y_tip − y_root) | 1 ohne Leitkurven; mit einer Leitkurve min(3, K) (2 oder 1, wenn die Grenze des Flächengitters K senkt, Abschnitt 3.2) | eine Interpolation je Feld; Felder an den Schnitten mit innerer Knotenvielfachheit p verbunden (C0: stetig in der Lage, Knicke an den Schnitten) |
+| v (Spannweite), **Linear**, **Gerade Felder** | v = (y − y_root) / (y_tip − y_root) | 1 ohne Leitkurven; mit einer Leitkurve min(3, K) (2 oder 1, wenn die Grenze des Flächengitters K senkt, Abschnitt 3.2) | eine Interpolation je Feld; Felder an den Schnitten mit innerer Knotenvielfachheit p verbunden (C0: stetig in der Lage, Knicke an den Schnitten) |
 | v (Spannweite), **Glatt** (Smooth) | ebenso | 3 (Stationen − 1 bei weniger als 4 Stationen) | eine Interpolation über alle Stationen, Mittelwertbildung (C2: stetig bis zur zweiten Ableitung) |
 
 Ablauf:
