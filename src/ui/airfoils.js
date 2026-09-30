@@ -4,9 +4,10 @@
 import { MAX_FILE_BYTES, MAX_INPUT, decodeText, toSeligDat } from '../airfoil/parse.js';
 import { importAirfoilText, checkAirfoil } from '../airfoil/sanity.js';
 import { parseNacaCode } from '../airfoil/naca.js';
-import { EXTERNAL_SOURCES, NACA_PRESETS, nacaEntry, suggestAttribution } from '../airfoil/library.js';
+import { EXTERNAL_SOURCES, NACA_PRESETS, librarySource, nacaEntry, suggestAttribution } from '../airfoil/library.js';
 import { bundledLibrary } from '../airfoil/bundled.js';
-import { profileCurve, profileProblem } from '../geom/profile.js';
+import { startsLikeXfl } from '../import/xfl.js';
+import { fitProfile } from '../geom/profile.js';
 import { curvePoint } from '../geom/nurbs.js';
 import { addAirfoil, pruneAirfoils } from '../model/edit.js';
 import { LIMITS, airfoilPoints } from '../model/project.js';
@@ -15,7 +16,8 @@ import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, download, h, slugFile } from './dom.js';
 import { count, fixed, language, tr, whole } from '../i18n/index.js';
 
-const severityLabel = (severity) => (severity === 'error' ? tr('Error') : severity === 'warning' ? tr('Warning') : tr('Info'));
+/** "Error", "Warning" or "Info" for a report line. */
+export const severityLabel = (severity) => (severity === 'error' ? tr('Error') : severity === 'warning' ? tr('Warning') : tr('Info'));
 
 /**
  * A descriptive text of the library data (NACA_PRESETS and EXTERNAL_SOURCES of library.js, the entries of
@@ -140,23 +142,15 @@ export function previewAirfoil(candidate, { title = tr('Airfoil preview'), allow
     let ok = !issues.some((i) => i.severity === 'error') && check.ok;
     let curve = null;
     if (ok) {
-      let prof = null;
-      try {
-        prof = profileCurve(check.points, { parametrization });
-        curve = prof.curve;
-      } catch (e) {
-        curve = null;
-        issues.push({ severity: 'error', code: 'curve-shape', message: tr('The NURBS interpolation through the points failed ({message}).', { message: e.message }) });
-        ok = false;
-      }
-      const problem = prof && profileProblem(prof);
-      if (problem) {
-        issues.push({ severity: 'error', code: 'curve-shape', message: problem.charAt(0).toUpperCase() + problem.slice(1) });
+      const fit = fitProfile(check.points, parametrization);
+      curve = fit.prof?.curve ?? null;
+      if (fit.issue) {
+        issues.push(fit.issue);
         ok = false;
       }
     }
     const pts = check.points ?? candidate.points;
-    const canvas = h('canvas', { class: 'preview-canvas', 'aria-label': tr('Airfoil preview') });
+    const canvas = h('canvas', { class: 'preview-canvas', role: 'img', 'aria-label': tr('Airfoil preview') });
     const nameInput = h('input', { type: 'text', value: candidate.name, 'aria-label': tr('Airfoil name'), maxLength: LIMITS.maxName, disabled: !allowEdit });
     const attrInput = h('input', {
       type: 'text',
@@ -272,6 +266,47 @@ export function previewAirfoil(candidate, { title = tr('Airfoil preview'), allow
   });
 }
 
+/**
+ * True for an XFLR5 project (.xfl) or an XFLR5 plane or wing XML file: Open imports a wing from those,
+ * and read as an airfoil they would only give misleading errors.
+ */
+export function isXflr5File(bytes, text) {
+  return startsLikeXfl(bytes) || /<explane[\s>/]/.test(text);
+}
+
+/** File types of the airfoil upload (the Airfoils tab, the XFLR5 import). */
+export const AIRFOIL_ACCEPT = '.dat,.txt,.cor,.xml,.htm,.html,.csv,text/plain';
+
+/**
+ * Read an airfoil file chosen for upload (the Airfoils tab, the XFLR5 import): its bytes and decoded
+ * text, or `problem`, a sentence naming the file, when it is too large, cannot be read or is an XFLR5
+ * file. An XFLR5 project is recognized by its first 4 bytes before the size check: projects with
+ * analysis results are larger than an airfoil file may be, and they get the hint to use Open too.
+ * @returns {Promise<{bytes: ArrayBuffer, text: string}|{problem: string}>}
+ */
+export async function readAirfoilFile(file) {
+  const xflr5 = () => ({ problem: tr('{file} is an XFLR5 file, not an airfoil. Use Open to import a wing from it.', { file: file.name }) });
+  if (file.size > MAX_FILE_BYTES) {
+    let head = null;
+    try {
+      head = await file.slice(0, 4).arrayBuffer();
+    } catch {
+      // Unreadable: the size is the reason given.
+    }
+    if (head && startsLikeXfl(head)) return xflr5();
+    return { problem: tr('{file}: {size} MB; airfoil files are limited to {limit} characters.', { file: file.name, size: fixed(file.size / 1e6, 1), limit: count(MAX_INPUT) }) };
+  }
+  let bytes;
+  try {
+    bytes = await file.arrayBuffer();
+  } catch (err) {
+    return { problem: tr('{file}: the browser could not read the file ({error}).', { file: file.name, error: err?.name ?? 'Error' }) };
+  }
+  const text = decodeText(bytes);
+  if (isXflr5File(bytes, text)) return xflr5();
+  return { bytes, text };
+}
+
 /** The reason an airfoil with `points` points cannot be added to the project, or null. */
 export function airfoilRefusal(project, points) {
   if (project.airfoils.length >= LIMITS.maxAirfoils) return tr('The project holds {n} airfoils, the limit; "Remove unused" frees places.', { n: count(LIMITS.maxAirfoils) });
@@ -333,18 +368,12 @@ export class AirfoilsPanel {
 
   async uploadFiles(files) {
     for (const file of files) {
-      if (file.size > MAX_FILE_BYTES) {
-        this.onMessage(tr('{file}: {size} MB; airfoil files are limited to {limit} characters.', { file: file.name, size: fixed(file.size / 1e6, 1), limit: count(MAX_INPUT) }), true);
+      const read = await readAirfoilFile(file);
+      if (read.problem) {
+        this.onMessage(read.problem, true);
         continue;
       }
-      let bytes;
-      try {
-        bytes = await file.arrayBuffer();
-      } catch (err) {
-        this.onMessage(tr('{file}: the browser could not read the file ({error}).', { file: file.name, error: err?.name ?? 'Error' }), true);
-        continue;
-      }
-      const r = importAirfoilText(decodeText(bytes), file.name);
+      const r = importAirfoilText(read.text, file.name);
       await this.addCandidate(
         {
           name: r.name,
@@ -373,7 +402,8 @@ export class AirfoilsPanel {
         const kept = this.entries.get(a);
         if (kept?.inUse === inUse && kept.lang === lang) return kept.li;
         const c = airfoilThumb(a.points);
-        const attribution = a.source?.attribution ?? (a.source?.kind === 'naca' ? tr('NACA equations') : '');
+        const attribution =
+          a.source?.attribution ?? (a.source?.kind === 'naca' ? tr('NACA equations') : a.source?.kind === 'xflr5' ? tr('XFLR5: {file}', { file: displayName(a.source.file ?? '') }) : '');
         const li = h(
           'li',
           {},
@@ -428,7 +458,7 @@ export class AirfoilsPanel {
     const fileInput = h('input', {
       type: 'file',
       multiple: true,
-      accept: '.dat,.txt,.cor,.xml,.htm,.html,.csv,text/plain',
+      accept: AIRFOIL_ACCEPT,
       onchange: (e) => {
         this.uploadFiles([...e.target.files]);
         e.target.value = '';
@@ -565,7 +595,7 @@ export class AirfoilsPanel {
                 format: r.format,
                 issues: r.issues,
                 checked: { ok: r.ok, points: r.points, issues: [] },
-                source: { kind: 'library', id: a.id, attribution: a.source?.author, license: a.source?.license, url: a.source?.url, terms: a.source?.terms },
+                source: librarySource(a),
               },
               a.name,
             );

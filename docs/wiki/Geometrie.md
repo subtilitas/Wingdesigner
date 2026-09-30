@@ -497,6 +497,8 @@ Y = y
 Z = z + c r_z
 ```
 
+**Schnitte aus einem XFLR5-Import.** XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln. Der Import setzt **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (f_pivot) auf 0,25, den Punkt, um den XFLR5 einen Schnitt schränkt, und **Interpolation in Spannweitenrichtung** auf **Linear**, die geraden Felder von XFLR5 (Abschnitt 3.1). Außerdem wendet er eine Regel der Profillage an. XFLR5 zeichnet die Koordinaten eines Profils, wie sie sind; der Aufbau legt die Profilnase der Kurve (Abschnitt 1.3) auf den Schnittursprung und skaliert das Profil auf die Profiltiefe 1 (Abschnitt 2). Sind die Koordinaten bekannt, die XFLR5 verwendet hat (ein Profil der `.xfl`-Datei, eine hochgeladene `.dat`-Datei, ein NACA-Schnitt), verschiebt und skaliert der Import den Schnitt um den Unterschied, sodass das Profil dort liegt, wo XFLR5 es zeichnet; ein Unterschied bis 0,1 % der Profiltiefe gilt als keiner. Schnitte mit einem Bibliotheksprofil oder einem anderen Profil des aktuellen Projekts behalten die Werte der Datei. Wie der Import die Schnitte, den Drehpunkt und die Interpolation setzt, mit Regeln und Formeln: [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import, Unterabschnitt Abbildung auf Schnitte.
+
 ## 4. Fläche
 
 Tensorprodukt-B-Spline-Fläche S(u, v) durch das Stationsgitter Q (2N + 1 Punkte je Station).

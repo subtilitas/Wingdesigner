@@ -235,6 +235,8 @@ input.num {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;
+  /* As wide as its text up to 90 % of the view: a shrink-to-fit box at left 50 % stops at half. */
+  width: max-content;
   max-width: 90%;
 }
 
@@ -358,6 +360,16 @@ legend {
 
 .muted {
   color: var(--muted);
+}
+
+/* Text for screen readers only (a header of a column of buttons, a live announcement). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .small {
@@ -617,6 +629,90 @@ dialog::backdrop {
   width: 100%;
 }
 
+/* XFLR5 import dialog: the surface choice as two cards (a missing surface stays visible with its reason),
+   the airfoil table and the report. Names from the file can be long and have no spaces. */
+.xflr5-source {
+  overflow-wrap: anywhere;
+}
+
+.xflr5-surfaces {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  min-width: 0;
+  margin: 8px 0 4px;
+  padding: 0;
+  border: none;
+}
+
+.xflr5-surfaces legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.xflr5-surface {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.xflr5-surface > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.xflr5-surface input {
+  flex: none;
+  margin: 3px 0 0;
+}
+
+.xflr5-surface:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--wing-fill);
+}
+
+.xflr5-surface:has(input:disabled) {
+  cursor: default;
+}
+
+/* A missing surface: the radio and the title are dimmed, the reason keeps its contrast. */
+.xflr5-surface:has(input:disabled) input,
+.xflr5-surface:has(input:disabled) strong {
+  opacity: 0.6;
+}
+
+.xflr5-airfoils .xflr5-name {
+  font-weight: normal;
+  overflow-wrap: anywhere;
+}
+
+.xflr5-airfoils select {
+  width: 100%;
+  min-width: 14em;
+}
+
+.xflr5-airfoils .xflr5-actions {
+  white-space: nowrap;
+}
+
+.xflr5-airfoils .xflr5-actions button + button {
+  margin-left: 4px;
+}
+
+dialog.xflr5 .issues {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 860px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
@@ -794,5 +890,42 @@ dialog::backdrop {
 
   html[lang='de'] .airfoil-list li .grow {
     flex-basis: calc(100% - 118px);
+  }
+}
+
+/* Phones and narrow tablets: each airfoil row of the XFLR5 import becomes a card (name and source, then the
+   choice, then the buttons), so that the choice gets the full width. Four columns need about 800 px. */
+@media (max-width: 800px) {
+  .xflr5-airfoils thead {
+    display: none;
+  }
+
+  .xflr5-airfoils,
+  .xflr5-airfoils tbody {
+    display: block;
+  }
+
+  .xflr5-airfoils tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .xflr5-airfoils th,
+  .xflr5-airfoils td {
+    padding: 0;
+    border: none;
+  }
+
+  .xflr5-airfoils .xflr5-use,
+  .xflr5-airfoils .xflr5-actions {
+    grid-column: 1 / -1;
+  }
+
+  /* The card gives the choice the full width; the table's minimum would overflow a phone. */
+  .xflr5-airfoils select {
+    min-width: 0;
   }
 }

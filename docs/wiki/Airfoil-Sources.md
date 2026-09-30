@@ -16,9 +16,11 @@ Summary of published terms of use, not legal advice. Quotes checked against the 
 | aerodesign.de, airfoils of other designers | Use needs the permission of each original author. | No | Via the aerodesign.de link (HS catalog page); download there, then upload |
 | mh-aerotools.de, MH airfoils (Martin Hepperle) | Personal use. Publications cite the source. A recompilation must not be sold above production cost. | No | Link in the app; download there, then upload |
 | UIUC (University of Illinois Urbana-Champaign) Airfoil Coordinates Database | No license stated for the coordinate files. The terms of each designer apply. | No | Link in the app; download there, then upload |
+| Airfoils in an XFLR5 file | An XFLR5 project (`.xfl`; XFLR5 is a program for the analysis of airfoils and wings) holds airfoil coordinates without author or license; an XFLR5 file in XML (Extensible Markup Language) format holds airfoil names only. The terms of the designer of each airfoil apply. The app does not check them. Whoever imports the file is responsible for the rights to the airfoils in it. | No | **Open** (XFLR5 import); airfoils of an `.xfl` project are stored with `source.kind` `xflr5`, the others keep their own `source` |
 
 - Bundled coordinate files: 6, in `public/airfoils/` ([Bundled files](#bundled-files)).
 - NACA preset list and generator rules: [[User Guide|User-Guide]], sections Library and NACA generator.
+- Import of XFLR5 files and the airfoil sources of the import dialog: [[File Formats|File-Formats]], section XFLR5 import; dialog: [[User Guide|User-Guide]], section Import from XFLR5.
 
 ## Links in the app
 
@@ -40,7 +42,7 @@ Tab **Airfoils**, box **More airfoils (external, not bundled)**:
 | aerodesign.de | `clarky.txt`: 2 coordinate tables (1928 and 1927 data) in 1 file | No. Both tables are read as 1 outline, which crosses itself. Delete the 1927 table in a text editor; the 1928 table then loads. |
 | aerodesign.de | "Original" coordinates of HS-0003 and HS-0004 as JPG (Joint Photographic Experts Group) images | No (image). The `.dat` file of the same airfoil loads. |
 | mh-aerotools.de | HTML (HyperText Markup Language) page per airfoil, e.g. `mh45koo.htm`. 8 of 56 tables are in percent of chord. | Yes: save the page as `.htm`, then upload it |
-| mh-aerotools.de | XML (Extensible Markup Language) file per airfoil, e.g. `geo_xml/mh45_geo.xml`. 55 of 56 airfoils; none for MH 57. | Yes |
+| mh-aerotools.de | XML file per airfoil, e.g. `geo_xml/mh45_geo.xml`. 55 of 56 airfoils; none for MH 57. | Yes |
 | UIUC | Selig `.dat` | Yes. Exceptions: 38 of 1,665 files ([Parser test](#parser-test)). |
 
 - The column "Loads in Wingdesigner" holds for the default **Profile parametrization**, **Centripetal (recommended)**. **Chord length** and **Uniform** reject more files ([Parser test](#parser-test)).
@@ -100,6 +102,7 @@ Trailing-edge pattern:
 The airfoil preview (**Upload**, pasted text, **NACA generator**, **Library**) has a **Source / attribution** field.
 
 - Uploaded file, pasted text, NACA airfoil: the app pre-fills the field from the airfoil name. NACA names give an empty field.
+- Airfoil of an XFLR5 project (`.xfl`): the import stores an attribution from the airfoil name with the same rule. **View** in the import dialog shows the field **Source / attribution** read-only.
 - Bundled library file: the app pre-fills `source.author` from `index.json`.
 - The author, the license identifier and the source addresses of a library file are data: they read the same in the English and the German interface, as does `NOTICE.md`. The category and the use text of each library entry are shown in the language of the interface.
 
@@ -132,10 +135,13 @@ Each airfoil in the project carries a `source` object:
 | Bundled library file | `kind: "library"`, `id`, `attribution` (pre-filled with `source.author` from `index.json`), `license`, `url`, `terms` |
 | File upload | `kind: "upload"`, `file` (file name), `attribution` (empty string if no text) |
 | Pasted text | `kind: "upload"`; `attribution` if the field is not empty |
+| Airfoil of an XFLR5 project (`.xfl`), imported with **Open** | `kind: "xflr5"`, `file` (name of the `.xfl` file), `note` (`Airfoil "<name>" from XFLR5 plane "<plane>"; base shape without flap deflection.`, in the interface language at the time of the import), `attribution` only when the name rule gives one |
+
+In the XFLR5 import, an uploaded `.dat` file, a library airfoil, a NACA section and an airfoil of the current project keep their own `source`.
 
 | Place | Attribution included |
 | --- | --- |
-| Project airfoil list (tab **Airfoils**) | Yes, after the point count. NACA airfoils without attribution show `NACA equations` (German interface: `NACA-Gleichungen`). |
+| Project airfoil list (tab **Airfoils**) | Yes, after the point count. NACA airfoils without attribution show `NACA equations` (German interface: `NACA-Gleichungen`); airfoils of an XFLR5 project without attribution show `XFLR5: <file>`. |
 | Project file, JSON (JavaScript Object Notation): **Save** or **Export** > Project JSON | Yes |
 | Autosave in browser local storage (key `wingdesigner.project.v1`) | Yes |
 | `.dat` download of a project airfoil | No: name line and points only |
@@ -153,6 +159,7 @@ The app sends no airfoil data to a server. Its only network requests for airfoil
 - After **Add to project**, the attribution is read-only in the app. **View** shows it in a disabled field. Change it in the project JSON file.
 - For an airfoil without a stored attribution, **View** shows the pre-fill derived from the name (HS/MH rule). This text is not stored.
 - **Add to project** keeps the existing entry and its `source` when a project airfoil has the same name and identical points, or is a generated NACA section with the same `code` and `closedTE` (any name). The new **Source / attribution** text is discarded. The notice then reads `The project already holds this airfoil as "<name>".` instead of `Added airfoil "<name>".` To change the attribution: remove the airfoil (**×** is available only while no section uses it) and add it again, or edit the project JSON file.
+- Airfoils imported from an XFLR5 file: the file states no author or license, and the app does not check the rights to the coordinates. An airfoil gets an attribution only when its name starts with `HS` or `MH` as in the table above. Whoever imports the file is responsible for the rights to the airfoils in it and for the attribution that their terms require. After the import the attribution is read-only in the app; change it in the project JSON file.
 - Exported STEP, STL, 3MF and `.dat` files carry no attribution. The HS terms require name and source with each use. CC BY 4.0 (S9104) requires attribution when the material is shared; whoever shares such a file made with S9104 adds the attribution text from `public/airfoils/NOTICE.md`.
 
 ## aerodesign.de (Hartmut Siegmann)

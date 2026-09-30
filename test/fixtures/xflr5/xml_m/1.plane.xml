@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE explane>
+<explane version="1.0">
+    <Units>
+        <length_unit_to_meter>1</length_unit_to_meter>
+        <mass_unit_to_kg>1</mass_unit_to_kg>
+    </Units>
+    <Plane>
+        <Name>Fixture B</Name>
+        <Description>Synthetic Wingdesigner test plane</Description>
+        <Inertia/>
+        <has_body>false</has_body>
+        <wing>
+            <Name>Flying Wing</Name>
+            <Type>MAINWING</Type>
+            <Color>
+                <red>120</red>
+                <green>140</green>
+                <blue>160</blue>
+                <alpha>255</alpha>
+            </Color>
+            <Description></Description>
+            <Position>       0.05,           0,        0.01</Position>
+            <Tilt_angle>  1.000</Tilt_angle>
+            <Symetric>true</Symetric>
+            <isFin>false</isFin>
+            <isDoubleFin>false</isDoubleFin>
+            <isSymFin>false</isSymFin>
+            <Inertia>
+                <Volume_Mass>  0.000</Volume_Mass>
+            </Inertia>
+            <Sections>
+                <Section>
+                    <y_position>  0.000</y_position>
+                    <Chord>  0.300</Chord>
+                    <xOffset>  0.000</xOffset>
+                    <Dihedral>  0.000</Dihedral>
+                    <Twist>  2.000</Twist>
+                    <x_number_of_panels>13</x_number_of_panels>
+                    <x_panel_distribution>COSINE</x_panel_distribution>
+                    <y_number_of_panels>5</y_number_of_panels>
+                    <y_panel_distribution>UNIFORM</y_panel_distribution>
+                    <Left_Side_FoilName>Clark Y</Left_Side_FoilName>
+                    <Right_Side_FoilName>Clark Y</Right_Side_FoilName>
+                </Section>
+                <Section>
+                    <y_position>  0.250</y_position>
+                    <Chord>  0.260</Chord>
+                    <xOffset>  0.060</xOffset>
+                    <Dihedral>  2.000</Dihedral>
+                    <Twist>  1.000</Twist>
+                    <x_number_of_panels>13</x_number_of_panels>
+                    <x_panel_distribution>COSINE</x_panel_distribution>
+                    <y_number_of_panels>5</y_number_of_panels>
+                    <y_panel_distribution>UNIFORM</y_panel_distribution>
+                    <Left_Side_FoilName>Clark Y</Left_Side_FoilName>
+                    <Right_Side_FoilName>Clark Y</Right_Side_FoilName>
+                </Section>
+                <Section>
+                    <y_position>  0.600</y_position>
+                    <Chord>  0.200</Chord>
+                    <xOffset>  0.160</xOffset>
+                    <Dihedral>  2.000</Dihedral>
+                    <Twist> -1.000</Twist>
+                    <x_number_of_panels>13</x_number_of_panels>
+                    <x_panel_distribution>COSINE</x_panel_distribution>
+                    <y_number_of_panels>5</y_number_of_panels>
+                    <y_panel_distribution>UNIFORM</y_panel_distribution>
+                    <Left_Side_FoilName>NACA 0009</Left_Side_FoilName>
+                    <Right_Side_FoilName>NACA 0009</Right_Side_FoilName>
+                </Section>
+                <Section>
+                    <y_position>  0.750</y_position>
+                    <Chord>  0.120</Chord>
+                    <xOffset>  0.240</xOffset>
+                    <Dihedral> 30.000</Dihedral>
+                    <Twist> -3.000</Twist>
+                    <x_number_of_panels>13</x_number_of_panels>
+                    <x_panel_distribution>COSINE</x_panel_distribution>
+                    <y_number_of_panels>5</y_number_of_panels>
+                    <y_panel_distribution>UNIFORM</y_panel_distribution>
+                    <Left_Side_FoilName>NACA 0009</Left_Side_FoilName>
+                    <Right_Side_FoilName>NACA 0009</Right_Side_FoilName>
+                </Section>
+            </Sections>
+        </wing>
+    </Plane>
+</explane>

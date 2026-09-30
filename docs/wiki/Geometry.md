@@ -478,6 +478,8 @@ Y = y
 Z = z + c r_z
 ```
 
+**Sections written by an XFLR5 import.** XFLR5 is a program for the analysis of airfoils and wings. The import sets **Twist pivot (fraction of chord)** (f_pivot) to 0.25, the point about which XFLR5 twists a section, and **Spanwise interpolation** to **Linear**, the straight panels of XFLR5 (section 3.1). It also applies a frame rule. XFLR5 draws the coordinates of an airfoil as they are; the build puts the leading edge of the airfoil curve (section 1.3) at the section origin and scales the airfoil to chord 1 (section 2). Where the coordinates that XFLR5 used are known (an airfoil of the `.xfl` file, an uploaded `.dat` file, a NACA section), the import moves and scales the section by the difference, so that the airfoil lies where XFLR5 draws it; a difference up to 0.1 % of the chord counts as none. Sections with a library airfoil or another airfoil of the current project keep the values of the file. How the import sets the sections, the pivot and the interpolation, with the rules and formulas: [[File Formats|File-Formats]], section XFLR5 import, subsection Mapping to sections.
+
 ## 4. Surface
 
 Tensor-product B-spline surface S(u, v) through the station grid Q (2N + 1 points per station).

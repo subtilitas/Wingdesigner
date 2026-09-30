@@ -30,7 +30,7 @@ The interface speaks English or German (section [Language](#language)). This pag
 | Top bar button | Effect |
 | --- | --- |
 | **New** | Opens the wizard (section [Wizard](#wizard)). |
-| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Rejects files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` A file the browser cannot read (removed drive, revoked permission) shows `Cannot open <file>: the browser could not read the file (NotReadableError).` and keeps the current design. Rejects invalid files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. |
+| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Opens the import dialog for an XFLR5 file (extension `.xfl` or `.xml`; XML: Extensible Markup Language; section [Import from XFLR5](#import-from-xflr5)). The file chooser lists `.json`, `.xfl`, `.xml`, `.wpa` and `.fl5` files. Rejects JSON and XML files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` A file the browser cannot read (removed drive, revoked permission) shows `Cannot open <file>: the browser could not read the file (NotReadableError).` and keeps the current design. Rejects invalid JSON files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. |
 | **Save** | Downloads the project JSON. Same file as **Export** > Project JSON. When the derived NURBS data would take the file above 100 MB, the file leaves it out (section [Export](#export)). A failure shows the red notice `Save failed: <reason>.` |
 | **Export** | Opens the export dialog (section [Export](#export)). |
 | **Undo** / **Redo** | Steps through the edit history, kept in memory only: at most 100 steps and at most 64,000,000 characters of serialized project (undo and redo together); a project above 640,000 characters keeps fewer steps, at least 1. **New** and **Open** are undoable. |
@@ -52,6 +52,153 @@ At a window width of 860 px or less:
 ![Phone layout of the planform editor with the end line on](images/mobile-planform.png)
 
 On touch screens (coarse pointer), buttons and input fields are at least 40 px high.
+
+## Import from XFLR5
+
+![Import dialog for the file fixtures_v662.xfl: plane, surface, airfoil table, planform preview, report](images/xflr5-import.png)
+
+**Open** reads files of XFLR5 as well as project files. The import takes one surface from one plane of the file, the main wing or the horizontal stabilizer (XFLR5 calls it the elevator), and replaces the current project with it. It reads files of XFLR5 6.10.01 to 6.62. Version 6.62 (2026-03-24) is the last release of XFLR5.
+
+### Files
+
+- **Open** accepts `.xfl` (XFLR5 project) and `.xml` (XFLR5 plane or wing file) besides `.json`. The filter of the file chooser lists `.json`, `.xfl` and `.xml` files, and `.wpa` and `.fl5` files, which Open refuses with the reason (next item). Whether the file choosers of Android and iOS list `.xfl` files with this filter is untested.
+- An `.xfl` project holds the planes with airfoil coordinates. An XML file holds the wing geometry in the length unit set in XFLR5 and the airfoil names only. Project formats 200001 (XFLR5 6.10.01 to 6.43) and 200002 (6.44 to 6.62) and XML files of XFLR5 6.11 to 6.62 are read.
+- Projects of XFLR5 6.09 and older (`.wpa`) and files of flow5 (`.fl5` and XML) are not read: red notice with the reason.
+- A file that cannot be imported gives the red notice `Cannot open <file>: <reason>`, e.g. `The file is damaged or cut off at byte 902 (in a wing).` The current design stays and the undo history gets no step.
+- A `.xfl` file damaged after its planes still gives its planes. The airfoils are then missing, and the report holds the warning `The airfoils could not be read. The file is damaged or cut off at byte … (in the list of airfoils). Pick or upload them.`
+- How **Open** picks the reader (extension, first bytes, text), the reasons for refusal and the limits (`.xfl` up to 2,000 MB, other files 100 MB): [[File Formats|File-Formats]], section XFLR5 import.
+
+### Dialog
+
+The dialog is modal. It opens at once. **Import** stays off while the app checks the airfoils of the wing. The report shows `Checking the airfoils …`, for many airfoils `Checking the airfoils … 236 of 1,000`. The checks run in slices of 50 ms, so **Cancel**, Escape and scrolling work meanwhile. Until they end, the airfoil table, the planform preview and the line below it are empty, and so is the project name unless one was typed. A change of plane or surface checks the airfoils of the new wing in the same way, and nothing of the previous wing stays; checks that end within 50 ms, such as those of airfoils checked before, show no progress line and empty nothing.
+
+| Element | Content and effect |
+| --- | --- |
+| Title and source line | Title **Import from XFLR5**. The line below gives the file name and the kind of file: `XFLR5 project, format 200002 (XFLR5 6.44 or later)`, `XFLR5 project, format 200001 (XFLR5 6.10 to 6.43)`, `XFLR5 plane file (XML), lengths in millimetres`, `XFLR5 wing file (XML), lengths in inches`. Length units: millimetres, centimetres, decimetres, metres, inches, feet. Another unit reads `lengths in units of 25 mm`. |
+| **Plane** | Only when the file holds more than one plane. Lists the plane names (`Plane 2` for a plane without a name). The first plane is preselected. A change of plane keeps the chosen surface when the new plane has it, otherwise the preselection of that plane (the main wing, or the stabilizer when it is the only surface). |
+| **Surface to import** | Two cards with radio buttons: **Main wing** and **Horizontal stabilizer (XFLR5: Elevator)**. A card shows the XFLR5 name of the wing, the number of sections, the span (2 × y of the tip section, in mm) and the root chord (mm): `"Main Wing": 3 sections, span 1794 mm, root chord 240 mm`. A surface that the plane does not have is disabled and gives its reason: `This plane has no elevator.` In a wing file the reason is `The wing in this file is a horizontal stabilizer (type ELEVATOR).` (main wing card) or `The wing in this file is not a horizontal stabilizer (type ELEVATOR).` Preselected: the main wing, or the stabilizer when it is the only surface. The fin and the second wing (biplane) are never offered. |
+| **Airfoils** | The airfoil table (section [Airfoil table](#airfoil-table)). |
+| Planform preview | Both halves of the wing. While an airfoil is missing, it draws the straight panels between the sections; otherwise the outline of the built wing. Below it: `Span … mm · area … dm² · AR … · MAC … mm` (AR and MAC as in section [Screen layout](#screen-layout)), when the wing builds. The preview fits after every choice. A double-click fits it, a drag pans, Ctrl+wheel zooms. A wheel turn without Ctrl scrolls the dialog. |
+| **Project name** | Default: plane name and wing name, e.g. `Fixture A Main Wing`. A wing file has no plane name. Without any name: `Imported wing` (German interface: `Importierter Flügel`). At most 10,000 characters. The field follows the plane and the surface until a name is typed. An emptied field follows them again: the next choice fills in the default name, and **Import** with an empty field uses it. |
+| **Report** | Every value that the import changes, converts or leaves out (section [Report](#report)). |
+| **Cancel** | Closes the dialog. Nothing changes. |
+| **Import** | Imports the surface as shown. Disabled while the report holds an error. The label is `Import` when every airfoil name has a usable airfoil, else `Import (1 airfoil missing)` or `Import (2 airfoils missing)`: the number of airfoil names without a usable airfoil. |
+
+- Keyboard focus starts on **Plane**, or on the checked surface when the file holds one plane, not in **Project name**. Enter on a surface does not import. Enter in **Project name** imports while **Import** is on. Escape cancels.
+- Every choice recomputes the wing: the airfoil table, the preview, the name, the report and **Import** follow it.
+- A wing beyond the size warnings of section [Project size](#project-size) is not built in the dialog. The preview draws straight panels, and the report holds the `Large project` warning.
+
+### Airfoil table
+
+The table has one row per distinct airfoil name of the right side of the chosen wing, in the order of the sections.
+
+| Column | Content |
+| --- | --- |
+| **XFLR5 airfoil** | The name as written in the file. It is matched with its leading, trailing and doubled spaces; the browser does not show these spaces. An empty name reads `(no name)`. Below it the sections that use it: `section 3` or `sections 1–2, 5` (1 = root). |
+| **Found** | The source that the app found for the name (table below), or after a choice **Picked** or **Not usable** (red: the chosen airfoil fails the checks). |
+| **Airfoil used** | A list. The first entry is the automatic choice, `Automatic: From the file: Clark Y`, or `Pick an airfoil` when nothing was found. Then follow the NACA (National Advisory Committee for Aeronautics) generator entries of the names in the table, the airfoils of the file, the uploaded files, the airfoils of the current project, the library airfoils and the NACA generator presets of section [Library](#library). A name that starts with a NACA designation, such as `NACA0014_Flap`, is not matched automatically; its list offers `NACA generator: NACA 0014` first. Above 20,000 entries (rows × airfoils), a list holds only its chosen entry until it is focused or pressed. |
+| **Upload .dat** | Opens a file chooser (section below). |
+| **View** | Opens the preview of the airfoil in use: name and attribution are read-only, the only button is **Close**. Disabled while no airfoil was found or picked for the row. With **Not usable**, the preview shows the picked file with its error; a refused file has no points. |
+
+The column of the two buttons has the header **Actions**, visible to screen readers only.
+
+The automatic choice is the first source in this order whose airfoil passes the checks:
+
+| Order | **Found** | Source |
+| --- | --- | --- |
+| 1 | From the file | The airfoil of the `.xfl` file with exactly this name (a later airfoil of the same name replaces an earlier one). An empty name finds none. XML files hold no airfoils. |
+| 2 | Uploaded file | A file uploaded in this dialog whose name line equals the name, or whose file name without extension does. Equal, then equal without the spaces at both ends. |
+| 3 | Current project | An airfoil of the current project with this name (equal, then without the spaces at both ends). |
+| 4 | Library | A library airfoil with this name (equal, then without the spaces at both ends). |
+| 5 | NACA equations | The name is a NACA designation of the generator, e.g. `NACA 0009`, `NACA0009`, `0009` (valid codes: section [NACA generator](#naca-generator)). |
+| 6 | Similar name | A name that equals the name of an uploaded, current-project or library airfoil once upper and lower case, spaces, `-` and `_` are ignored. The cell shows the warning colour and the report holds a warning. |
+| – | Missing | No source passes. The cell is red and **Import** is off. |
+
+- The checks are those of the preview in the Airfoils tab (section [Upload](#upload)), plus a test that the NURBS curve through the points neither crosses itself nor runs back in x. A source that fails is passed over. When no source passes, the error names the first one that failed and its problem.
+- An airfoil of an `.xfl` file is its base shape without flap deflection. The report names a flap of the airfoil (section [Report](#report)).
+- Above 200 airfoil names the table shows 200 rows, the rows without a usable airfoil and the picked rows first. Below it: `… more airfoil names are not listed; uploaded .dat files are matched to them by name.` Above 10,000 names, or when the airfoils of the file for the names without a pick hold more than 1,000,000 points, no name is resolved and the report holds the error `The airfoils of this wing exceed the limits of a project (10,000 airfoils, 1,000,000 points together).` Above 10,000 names the table is also empty.
+
+**Upload .dat**:
+
+- The file chooser takes the file types of the Airfoils upload (`.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`). A file above 20 MB is refused as in section [Upload](#upload).
+- The file is read and checked as in the Airfoils tab. It becomes the choice of its row. The other rows find it by name (table above). It enters the project only when a section uses it.
+- An unusable file shows **Not usable** in its row when a row uses it, otherwise an info line in the report.
+- Each uploaded file stays in the list of every row as `Uploaded: <file>` until the dialog closes.
+- A status line, visible to screen readers only, announces the result: `test12.dat is used for "TEST 12".` or `test12.dat is not usable: <reason>`. Screen readers are untested.
+
+### Airfoil position
+
+XFLR5 draws the coordinates of an airfoil as they are: the x axis of the file lies on the chord line of the section. Wingdesigner puts the leading edge of an airfoil at the section point and scales the airfoil to a chord of 1. The import compensates when the coordinates that XFLR5 used are known:
+
+| Airfoil | Sections |
+| --- | --- |
+| Airfoil of the `.xfl` file, uploaded `.dat` file, NACA section of the generator, airfoil of the current project generated from the NACA equations (sections of the NACA generator or the NACA presets of the **Airfoils** tab, of the wizard and of the sample wing; it gets the frame of the generated section of its NACA code) | Moved and scaled so that every airfoil point lies where XFLR5 draws it |
+| Other airfoil of the current project, library airfoil | Keep the values of the file: their coordinates in XFLR5 are unknown |
+
+- Example: `fixtures_v662.xfl`, plane Fixture A. The Clark Y of the file has its leading edge 3.55 % of the chord above the x axis. The root section (chord 240 mm) moves 8.53 mm along its normal. The Sections table then differs from the wing table of XFLR5 by this offset.
+- Offsets up to 0.1 % of the chord count as none (0.25 mm at 250 mm chord).
+- The report names each airfoil that moves sections: info, and a warning above 2 % of the chord.
+- A library airfoil whose leading edge lies, in its own coordinates, more than 2 % of the chord from 0 in x or y, or whose chord differs from 1 by more than 2 %, gets an info line: bundled Clark Y 3.55 %, USA 35B 2.87 %. So does an airfoil of the current project taken from the library. Uploading the `.dat` file that XFLR5 used places the sections as XFLR5 does.
+- An airfoil of the current project from an XFLR5 import or an upload is stored scaled to a chord of 1; its own coordinates are lost. It gets an info line: `Airfoil "Clark Y" (sections 1–2) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. …` Example: the XML file of a plane opened while the project of its `.xfl` import is open.
+- Coordinates that are not in chord units (x or y of the leading edge more than 10 % of the chord from 0, a chord below 0.5 or above 2, or a file read as percent of chord with a chord outside 98 to 102; e.g. a file in millimetres): an airfoil of an `.xfl` file fails the check (`The coordinates are not in chord units (leading edge at x = …, y = …; trailing edge at x = …).`), and the other sources of the table in section [Airfoil table](#airfoil-table) are tried. A source that passes is used, with the warning `Airfoil "<name>" from the file fails the check: … "<match>" is used instead.` Without one the row is missing: `Airfoil "<name>" (…) from the file fails the check: The coordinates are not in chord units (…). Upload a .dat file or pick an airfoil.` An uploaded file is used without a move, scaled to a chord of 1, with a warning.
+
+### Report
+
+The report lists every value that the import changes, converts or leaves out. Errors come first, then warnings, then info. Each line starts with its severity (**Error**, **Warning**, **Info**). Lines about sections name them by number (`section 3`, `sections 1–2, 5`; 1 = root).
+
+- Lines of one kind about sections or panels show at most 5; one more line gives the count of the others (`Further sections moved apart: 3.`). The report shows at most 200 lines (`Further report lines not shown: 12.`).
+- An error blocks **Import**. Warnings and info do not.
+- Errors and warnings of the build of the wing (as in the **Checks** tab) appear as warnings: `The wing does not build yet: …`. They do not block **Import**, as with **Open**.
+
+| Severity | Lines | Example |
+| --- | --- | --- |
+| Error | An airfoil name without a usable airfoil. A wing that cannot be mapped: fewer than 2 sections, `y_position` decreasing, chord 0 or below, a value that is no number, values beyond the limits of a project. More airfoils than a project holds. | `Airfoil "E423" (sections 1–2) is missing: upload a .dat file or pick an airfoil.` |
+| Warning | A warning of the airfoil checks, once per airfoil in use. An airfoil found by a similar name. An airfoil that moves its sections by more than 2 % of the chord. A flap of an airfoil not at 0° (imported undeflected). A panel with more than 10° dihedral. Sections at one y, moved apart. A chord raised to 1 mm. Different airfoils left and right. An airfoil of the file that fails the check when another source is used. Airfoils of an `.xfl` that could not be read. Build warnings of the wing. Warnings of the XML reader. | `Airfoil "Clark Y" (sections 1–2) has its leading edge at x = 0 %, y = 3.55 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.` |
+| Info | What is converted or applied: dihedral, tilt angle, position, a root gap, whole turns of twist, length units. An airfoil that moves its sections by at most 2 % of the chord. A flap at 0°. A library airfoil whose coordinates lie off (0, 0), also as an airfoil of the current project. An airfoil of the current project from an XFLR5 import or an upload. An unusable uploaded file that no row has picked. An inclined chord line. Surfaces that are not imported. Data that is not used. The trailing edge. | `Tilt angle 2° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.` |
+
+- With two sections at one y XFLR5 changes the airfoil abruptly. Wingdesigner needs strictly increasing y: the inner section moves min(0.5 mm, ¼ of the inner panel) inwards, with the warning `Sections 3 and 4 share y = 250 mm; section 3 was moved 0.5 mm inwards.`
+- A panel with a dihedral above 10° gets `The panel from section 2 to 3 has 35° dihedral: the vertical sections are 82 % as thick across the panel as in XFLR5.` XFLR5 builds the sections across the panel, Wingdesigner vertically: the thickness across the panel is cos(dihedral) of XFLR5's.
+- Every line with its condition, and the mapping of the values: [[File Formats|File-Formats]], section XFLR5 import.
+- The last info lines of every report: `Not used: VLM panel counts and distributions, colours, masses, the body and the analyses.` (VLM: vortex lattice method, one of the analysis methods of XFLR5) and `The trailing edge is built as in the airfoils; Settings > Trailing edge can close it or give it a thickness.`
+
+### Import, Cancel and Undo
+
+**Import** replaces the current project, as **New** does: name, airfoils, sections, guide curves and settings. It is one undo step.
+
+| Item | Result |
+| --- | --- |
+| Sections | One per XFLR5 section, root to tip; of two identical sections at one y only the outer one (ids `s1`, `s2`, … in the project file). Values rounded to 4 decimals (0.0001 mm, 0.0001°). |
+| Airfoils | Every airfoil in use. Equal airfoils of several rows merge. An airfoil of an `.xfl` project shows `XFLR5: <file name>` under its name in the Airfoils tab, or its attribution, and the project file keeps a note with the origin, e.g. `Airfoil "Clark Y" from XFLR5 plane "Fixture A"; base shape without flap deflection.` Uploaded, library, NACA and current-project airfoils keep their own source. |
+| **Twist pivot (fraction of chord)** | 0.25, the point about which XFLR5 twists a section |
+| **Spanwise interpolation** | **Linear between sections (straight panels)** |
+| **Trailing edge** | **As in the airfoil files** |
+| **Wing tip** | **Flat (cut at the tip section)** |
+| **Show mirrored half (y < 0)** | on |
+| Guide curves | off, points at the section edges |
+| Other settings | Defaults: 60 **Chordwise stations per surface**, 8 **Spanwise stations per panel with guides or smooth mode**, **Centripetal (recommended)** |
+
+- The **Sections** tab opens, and the 3D view and the planform editor fit the new wing. Autosave stores the project (section [Storage](#storage)).
+- **Undo** restores the previous project, **Redo** the import.
+- The notice reads `Imported the main wing "Main Wing" of "Fixture A" from fixtures_v662.xfl: 3 sections, 2 airfoils.` For the stabilizer: `Imported the horizontal stabilizer "Elevator" of …`. A plane without a name gives `Imported the main wing "Main Wing" from <file>: …`. The first warning of the report follows in the same notice, and for more warnings `(2 more warnings in the import report.)`. The warnings of the XML reader stay in the report. The notice is longer than 66 characters, so it stays 60 ms per character (section [Screen layout](#screen-layout), row Messages).
+- **Cancel** and Escape change nothing and add no undo step.
+
+### Dialog on narrow screens
+
+The dialog is at most as high as the window minus 16 px, and its content scrolls inside it.
+
+- Up to a window width of 860 px, the planform preview lies above the project name and the report (1 column).
+- Up to a window width of 800 px, each row of the airfoil table becomes a card without a header row: name, sections and **Found** in the first line, the list of **Airfoil used** over the full width below, then the buttons **Upload .dat** and **View**. The 4 columns need about 800 px.
+- The two surface cards sit side by side when the dialog holds two cards of at least 220 px, otherwise one below the other.
+- Tested in Chromium with the phone emulation of the Pixel 7 at a window of 360 × 780 px: the dialog and the page have no horizontal scroll, every control lies inside the dialog, **Import** can be tapped after scrolling, and the notice after the import lies inside the 3D view. Not tested on a phone.
+
+### XFLR5 files in the Airfoils upload
+
+The **Airfoils** tab refuses XFLR5 files as airfoils, with the red notice `<file> is an XFLR5 file, not an airfoil. Use Open to import a wing from it.`
+
+- The refusal applies to `.xfl` projects of any size (the first 4 bytes are project format 200001 or 200002) and to any file up to 20 MB whose text contains the element `<explane` (XFLR5 plane and wing XML files). Any other file above 20 MB is refused for its size (section [Upload](#upload)).
+- Files chosen with **Choose files** or dropped are checked one by one. A refused file opens no preview; the other files of the same choice still do.
+- Pasted text is not checked for this.
+- **Upload .dat** in the import dialog refuses the same files. The refused file becomes the choice of its row: the row shows **Not usable**, the report holds the error `Airfoil "<name>" (<sections>): the chosen airfoil fails the check: <file> is an XFLR5 file, not an airfoil. Use Open to import a wing from it.`, and **Import** stays off until the row gets another choice. The status line for screen readers reads the refusal. After another choice the refusal stays as an info line.
 
 ## Storage
 
@@ -212,7 +359,7 @@ The wizard builds a complete project from 12 inputs (table below). It generates 
 
 - Opens on the first visit (title "Start a new wing design") and with **New** (title "New wing design").
 - Preselected preset: **Sport**. A click on a preset card loads its values.
-- Airfoils are NACA (National Advisory Committee for Aeronautics) 4-digit or 5-digit sections. Valid codes: section [NACA generator](#naca-generator).
+- Airfoils are NACA 4-digit or 5-digit sections. Valid codes: section [NACA generator](#naca-generator).
 - The number fields read a typed number as in section [Numbers](#numbers) and check it while it is typed. Leaving a field shows the number as read, e.g. `1500` for `1.500` typed in German. The Up and Down arrow keys step as in the panels; in a field that is empty or holds no number they step from the value of the selected preset.
 
 | Field | Range | Effect |
@@ -432,10 +579,11 @@ Limits of the project airfoils (section [Project size](#project-size)):
 
 | Input | Rule |
 | --- | --- |
-| Files | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Drop them on the drop zone or use **Choose files**. Several files open one preview each, in order. A file above 20 MB is not read: red notice `<file>: … MB; airfoil files are limited to 5,000,000 characters.` A file the browser cannot read: red notice `<file>: the browser could not read the file (NotReadableError).` |
+| Files | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Drop them on the drop zone or use **Choose files**. Several files open one preview each, in order. A file above 20 MB is not read: red notice `<file>: … MB; airfoil files are limited to 5,000,000 characters.` An XFLR5 project gets the hint to use **Open** above 20 MB as well (section [XFLR5 files in the Airfoils upload](#xflr5-files-in-the-airfoils-upload)). A file the browser cannot read: red notice `<file>: the browser could not read the file (NotReadableError).` |
 | Pasted text | Paste coordinates into the text area, then **Check pasted text**. |
+| XFLR5 files | Refused: section [XFLR5 files in the Airfoils upload](#xflr5-files-in-the-airfoils-upload). |
 | Text encoding | UTF-8 (Unicode Transformation Format, 8-bit); a file that is not valid UTF-8 is read as Windows-1252. |
-| Layouts and checks | Selig, Lednicer, x/upper/lower table, XML (Extensible Markup Language), HTML (HyperText Markup Language): see [[File Formats]] |
+| Layouts and checks | Selig, Lednicer, x/upper/lower table, XML, HTML (HyperText Markup Language): see [[File Formats]] |
 
 ![Upload preview of a percent table with decimal commas: file points, NURBS curve, check messages](images/upload-preview.png)
 

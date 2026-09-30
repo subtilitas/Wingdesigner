@@ -64,11 +64,15 @@ export function parseNumbers(line) {
 }
 
 /**
- * Decode file bytes: UTF-8 when valid, otherwise Windows-1252 (Latin-1 superset).
+ * Decode file bytes: UTF-16 after its byte order mark (Windows editors save "Unicode" text so), UTF-8
+ * when valid, otherwise Windows-1252 (Latin-1 superset).
  * @param {Uint8Array|ArrayBuffer} bytes
  */
 export function decodeText(bytes) {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  // Bytes FF FE and FE FF start no UTF-8 text.
+  if (u8[0] === 0xff && u8[1] === 0xfe) return new TextDecoder('utf-16le').decode(u8.subarray(2));
+  if (u8[0] === 0xfe && u8[1] === 0xff) return new TextDecoder('utf-16be').decode(u8.subarray(2));
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(u8).replace(/^\uFEFF/, '');
   } catch {
@@ -423,6 +427,15 @@ function finish(nameIn, format, pointsIn, issuesIn) {
     issues.push(issue('warning', 'reversed', tr('Points run clockwise (lower surface first); order reversed to Selig order.')));
   }
   return { name, format, points, issues };
+}
+
+/**
+ * Clean up a point list read from another format (the airfoils of an XFLR5 project) with the rules
+ * of a parsed file: name length, finite values, point limit, duplicates, closing point, percent
+ * coordinates and point order. Returns the result of parseDat with format 'points'.
+ */
+export function cleanPoints(name, points) {
+  return finish(String(name ?? ''), 'points', points, []);
 }
 
 // Equal parsed values only: an absolute tolerance merged the distinct points of tiny outlines. The

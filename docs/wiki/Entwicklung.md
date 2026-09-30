@@ -14,18 +14,18 @@ English: [[Development|Development]]
 | Browsertests | Playwright `^1.63.0` |
 | App-Version | `version` aus `package.json`, von `vite.config.js` als `__APP_VERSION__` einkompiliert. Erscheint im Dialog **Hilfe** (Help). Steht in `generator.version` der Projektdatei (JavaScript Object Notation, JSON). |
 
-Der Code in `src/geom/`, `src/airfoil/`, `src/export/` und `src/model/` nutzt die Programmierschnittstelle (API, Application Programming Interface) des Document Object Model (DOM) nicht.
+Der Code in `src/geom/`, `src/airfoil/`, `src/export/`, `src/import/` und `src/model/` nutzt die Programmierschnittstelle (API, Application Programming Interface) des Document Object Model (DOM) nicht.
 Unit-Tests und Skripte importieren ihn in Node.js.
 Die mitgelieferte Profilbibliothek braucht keine Netzanfrage: Das Plugin `airfoilLibrary` in `vite.config.js` übersetzt `public/airfoils/index.json` und seine Dateien in das Modul `virtual:airfoil-library`, das `src/airfoil/bundled.js` liest. Vite kopiert `public/airfoils/` außerdem nach `dist/airfoils/`.
 
 | Pfad | Inhalt |
 | --- | --- |
 | `index.html` | Seitengerüst; lädt `src/main.js` |
-| `src/main.js` | Einstieg: Store, Planung der Neuberechnung, Kopfleiste, Statusleiste, Registerkarte **Prüfungen** (Checks), Dialog **Hilfe**, automatisches Speichern |
-| `src/geom/`, `src/airfoil/`, `src/export/`, `src/model/`, `src/ui/` | Siehe [Module](#module) |
+| `src/main.js` | Einstieg: Store, Planung der Neuberechnung, Kopfleiste (**Öffnen** (Open) wählt den Leser für eine Projektdatei oder eine XFLR5-Datei), Statusleiste, Registerkarte **Prüfungen** (Checks), Dialog **Hilfe**, automatisches Speichern |
+| `src/geom/`, `src/airfoil/`, `src/export/`, `src/import/`, `src/model/`, `src/ui/` | Siehe [Module](#module) |
 | `public/airfoils/` | 6 Koordinatendateien (`.dat`, Selig-Format), `index.json` mit 6 Einträgen, `NOTICE.md` (Quelle, Rechtsgrundlage, Bedingungen und Quellenangabe je Datei). Ein Eintrag braucht eine freie Lizenz und eine Zeile in `NOTICE.md` (siehe [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek)). Die 17 Vorlagen nach National Advisory Committee for Aeronautics (NACA) werden zur Laufzeit berechnet, nicht gespeichert. |
 | `scripts/` | Siehe [Skripte](#skripte) |
-| `test/` | Vitest-Unit-Tests (`*.test.js`), `helpers.js` (NACA-Beispielprojekt), `step-cases.js` (Testfälle für die Validierung von Dateien im Standard for the Exchange of Product model data (STEP) und von 3MF-Dateien) |
+| `test/` | Vitest-Unit-Tests (`*.test.js`), `helpers.js` (NACA-Beispielprojekt), `step-cases.js` (Testfälle für die Validierung von Dateien im Standard for the Exchange of Product model data (STEP) und von 3MF-Dateien), `xflr5-writer.js` (Schreiber für XFLR5-Projektdateien), `fixtures/xflr5/` (XFLR5-Testdateien, siehe [XFLR5-Testdateien und Tests](#xflr5-testdateien-und-tests)) |
 | `e2e/` | Playwright-End-to-End-Tests (E2E) im Browser (`*.spec.js`), `helpers.js` |
 | `docs/wiki/` | Wiki-Seiten auf Englisch und Deutsch, `_Sidebar.md`, `images/` (englische Screenshots), `images/de/` (deutsche Screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
@@ -38,21 +38,25 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | --- | --- |
 | `src/geom/nurbs.js` | Grundfunktionen für Non-Uniform Rational B-Splines (NURBS, nicht-uniforme rationale B-Splines) |
 | `src/geom/linalg.js` | Band-LU-Zerlegung (Lower-Upper, untere und obere Dreiecksmatrix) ohne Pivotsuche (B-Spline-Interpolation, verwendet von `src/geom/nurbs.js`); LU-Zerlegung dichter Matrizen mit Spaltenpivotsuche (nur Unit-Tests) |
-| `src/geom/profile.js` | Profil als NURBS-Kurve; Neuabtastung in Profiltiefenrichtung |
+| `src/geom/profile.js` | Profil als NURBS-Kurve; Neuabtastung in Profiltiefenrichtung; `fitProfile` (Kurvenanpassung und Formprüfung eines Profils, verwendet von der Profilvorschau und vom XFLR5-Import) |
 | `src/geom/spanwise.js` | Interpolation der Schnittwerte in Spannweitenrichtung (`linear`, `smooth`) |
 | `src/geom/guide.js` | Leitkurven (Nasenlinie, Endlinie) |
 | `src/geom/wing.js` | Flügel-Loft: `buildWing`; Profil-Cache |
 | `src/geom/mesh.js` | Dreiecksnetz, Spiegelung, Volumen, Fläche und Kantenprüfung des Netzes |
 | `src/geom/triangulate.js` | Triangulierung der Abschlussflächen: Streifen aus Punktpaaren von Ober- und Unterseite (lineare Laufzeit); Ear Clipping als Rückfallverfahren |
 | `src/geom/stats.js` | Grundrisskennwerte |
-| `src/airfoil/parse.js` | Parser für Profildateien |
+| `src/airfoil/parse.js` | Parser für Profildateien; `cleanPoints` bereinigt eine Punktliste aus einem anderen Format (die Profile eines XFLR5-Projekts) nach den Regeln einer eingelesenen Datei |
 | `src/airfoil/geometry.js` | Polyliniengeometrie |
 | `src/airfoil/sanity.js` | Plausibilitätsprüfung, `importAirfoilText` |
-| `src/airfoil/naca.js` | Generator für 4- und 5-stellige NACA-Profile |
-| `src/airfoil/library.js` | 17 NACA-Vorlagen, mitgelieferte Bibliothek, externe Quellen |
+| `src/airfoil/naca.js` | Generator für 4- und 5-stellige NACA-Profile; `leadingNacaCode` findet den Code, mit dem ein Name beginnt (`NACA0014_Flap`) |
+| `src/airfoil/library.js` | 17 NACA-Vorlagen, mitgelieferte Bibliothek, externe Quellen; `librarySource` (Quellenangabe eines mitgelieferten Eintrags) |
 | `src/export/step.js` | STEP-Export; Dateiformat nach International Organization for Standardization (ISO) 10303-21 |
 | `src/export/stl.js` | Export als binäres STL (Stereolithografie) |
 | `src/export/threemf.js` | 3MF-Export |
+| `src/import/errors.js` | `XflrError`: Fehler auf Dateiebene der XFLR5-Leser, mit einem `code` und, bei einem `.xfl`-Projekt, dem Byte-`offset` |
+| `src/import/xfl.js` | Leser für XFLR5-Projekte (`.xfl`): `readXfl` (Fenster von 4 194 304 Byte), `readXflBytes` (Bytes im Speicher), `startsLikeXfl`, `sniffXflr5` |
+| `src/import/xflxml.js` | Leser für XFLR5-Flugzeug- und -Flügeldateien in der Extensible Markup Language (XML): `readXflr5Xml` |
+| `src/import/xflr5.js` | Abbildung eines XFLR5-Flügels auf ein Projekt: Flächen eines Flugzeugs (`planeSurfaces`), Schnitte (`mapSections`), Profiltabelle, Bericht und Projekt (`mapXflr5`), Profilprüfungen in Schritten (`checkSteps`), hochgeladene Profile (`readAirfoilUpload`) |
 | `src/model/project.js` | Projektmodell, Vorgaben, Grenzen, Validierung |
 | `src/model/budget.js` | Warnschwellen, Flächengitter, Schätzung von Rechenzeit und Speicher |
 | `src/model/io.js` | Import und Export der Projekt-JSON |
@@ -64,14 +68,15 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/panzoom.js` | 2D-Canvas mit Verschieben und Zoom |
 | `src/ui/sections.js` | Registerkarte **Schnitte** (Sections) |
 | `src/ui/planform.js` | Registerkarte **Grundriss** (Planform) |
-| `src/ui/airfoils.js` | Registerkarte **Profile** (Airfoils), Vorschau beim Hochladen |
+| `src/ui/airfoils.js` | Registerkarte **Profile** (Airfoils), Vorschau beim Hochladen; `readAirfoilFile` (liest eine hochgeladene Datei und lehnt XFLR5-Dateien ab) |
 | `src/ui/settings.js` | Registerkarte **Einstellungen** (Settings) |
-| `src/ui/wizard.js` | Dialog des Assistenten |
+| `src/ui/wizard.js` | Dialog des Assistenten; `drawPlanform` (zeichnet den Grundriss auch im Importdialog) |
+| `src/ui/xflr5.js` | Importdialog für XFLR5-Dateien: `openXflr5Dialog` |
 | `src/ui/exportui.js` | Dialog **Exportieren** (Export) |
 | `src/ui/dom.js` | DOM-Hilfsfunktionen |
 | `src/ui/styles.css` | Stile |
 | `src/i18n/index.js` | Sprache (`language`, `setLanguage`, `initialLanguage`), `tr()` und die Zahlenformate `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`; `index.js` fasst sie zusammen |
+| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`; `index.js` fasst sie zusammen |
 
 ### Skripte
 
@@ -110,6 +115,37 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `wingdesigner.project.v1.stale` | Zeitpunkt der ersten fehlgeschlagenen automatischen Sicherung; entfällt beim nächsten Start und wenn eine automatische Sicherung gelingt |
 | `wingdesigner.tab` | Aktive Registerkarte |
 | `wingdesigner.language` | Gewählte Sprache, `en` oder `de` (Abschnitt [Übersetzungen](#übersetzungen)) |
+
+### XFLR5-Import
+
+Der Import liest eine XFLR5-Datei und baut aus einem Flügel eines Flugzeugs darin ein Projekt. XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln; 6.62 ist seine letzte Version. Die Leser und die Abbildung in `src/import/` nutzen keine DOM-API und laufen in Node.js. Der Dialog (`src/ui/xflr5.js`) und **Öffnen** (`src/main.js`) nutzen das DOM. Die Regeln für die Dateien und die Formeln der Abbildung stehen auf der Seite [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import; den Dialog beschreibt das [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Import aus XFLR5.
+
+1. Der Änderungs-Handler der Dateiauswahl von **Öffnen** in `src/main.js` wählt den Leser. Endung `.xfl`, `.wpa` oder `.fl5`: der `.xfl`-Leser. `.xml`: der XML-Leser. Jede andere Endung außer `.json`, oder keine: zuerst die ersten 4 Byte (`sniffXflr5`, und eine UTF-16-Bytereihenfolgemarke für den XML-Leser), dann Text, der mit `<?xml`, `<!` oder `<explane` beginnt (XML-Leser); sonst Projekt-JSON. `importXflr5` ruft den Leser auf und öffnet den Dialog.
+2. Ein Leser löst `XflrError` aus, wenn er eine Datei nicht importieren kann. `code` ist `not-xflr5`, `flow5`, `wpa`, `damaged`, `not-plane-xml`, `no-plane`, `fin` oder `too-large`; `offset` ist das Byte der Beschädigung in einem `.xfl`-Projekt, sonst `null`. **Öffnen** zeigt `<file> kann nicht geöffnet werden: <message>` und lässt den Entwurf und den Rückgängig-Verlauf unverändert. Jede andere Ausnahme des Imports erscheint als `<file> kann nicht geöffnet werden: Interner Fehler: <message>`.
+3. `readXfl(file)` und `readXflr5Xml(text)` liefern dasselbe Objekt, `XflrFile`: `kind` (`xfl` oder `xml`), `format`, `lengthUnit` (Millimeter je Längeneinheit der Datei; 1000 bei `.xfl`), `unitName`, `wingOnly`, `planes`, `foils`, `foilError` und `warnings`. Ein Flugzeug hat einen `name` und `wings`, die 4 Flügelplätze von XFLR5: Tragfläche, zweiter Flügel, Höhenleitwerk (Elevator) und Seitenleitwerk; ein Platz, den das Flugzeug nicht hat, ist `null`. `foils` (nur `.xfl`) ordnet einem Profilnamen seine Basiskoordinaten und seine Klappeneinstellungen zu. Die Flügelschnitte behalten die Werte der Datei: die Längeneinheit der Datei und Grad.
+4. `readXfl` liest ein Projekt durch Fenster von 4 194 304 Byte (`WINDOW_SIZE`, `Blob.slice`). Die Leser der Datensätze sind Generatorfunktionen. Ein Leser gibt ab (`yield`), wenn sein nächster Lesezugriff außerhalb des Fensters liegt; `readXfl` lädt das Fenster, das dort beginnt, und setzt ihn fort. Ein Überspringen verschiebt nur den Offset. Die Analysen und die Analyseergebnisse, die den größten Teil eines Projekts von 96,7 MB ausmachen, werden anhand ihrer Anzahlen übersprungen. Das Lesen endet nach den Profilen. `readXflBytes` liest eine Datei im Speicher als ein Fenster. Eine Datei, die nach den Flugzeugen beschädigt ist, liefert ihre Flugzeuge ohne Profile (`foilError` und eine Warnung).
+5. `readXflr5Xml` ist ein Pull-Tokenizer ohne Baum, linear in der Länge des Textes. Eine fehlende oder unlesbare Zahl bleibt NaN (keine Zahl) und erzeugt eine Warnung; XFLR5 liest solchen Text als 0.
+6. `mapXflr5(file, options)` (`src/import/xflr5.js`) ist eine reine Funktion. `options` enthält `plane`, `surface` (`main` oder `stab`), `fileName`, `name`, `project` (das aktuelle Projekt), `library` (Einträge der mitgelieferten Bibliothek), `uploads` (eingelesene `.dat`-Dateien) und `choices` (der gewählte Optionsschlüssel je XFLR5-Profilname: `file:<name>`, `upload:<i>`, `project:<id>`, `library:<id>` oder `naca:<code>`). Das Ergebnis enthält `rows` (die Profiltabelle), `options` (die Einträge der Profillisten), `report` (Zeilen mit der Schwere `error`, `warning` oder `info`), `errors`, `project` (`null`, solange der Bericht einen Fehler enthält) und `summary`. Die Schritte: `mapSections` (y und z aus der abgewickelten Spannweite und der V-Form, Bereinigung von Schnitten bei gleichem y und von Profiltiefen unter 1 mm, Einrechnung von Einstellwinkel und Position); ein Profil je Name (Datei, Uploads, aktuelles Projekt, Bibliothek, NACA-Generator, ähnlicher Name); die Profillage (`placeAirfoil`; ein NACA-Profil des aktuellen Projekts, dessen Punkte der erzeugte oder geprüfte Schnitt seiner Bezeichnung sind, erhält die Profillage dieses erzeugten Schnitts, `checkProjectAirfoil`); `createProject` und `validateProject`. Prüfergebnisse werden je Profilobjekt und Sprache zwischengespeichert (`WeakMap`), weil der Dialog nach jeder Wahl erneut abbildet.
+7. `openXflr5Dialog(file, { fileName, project, library })` ruft nach jeder Wahl `mapXflr5` auf und zeichnet das Ergebnis. Die erste Abbildung folgt auf `checkSteps`, einen Generator mit einem Schritt je Profilname. Der Dialog führt ihn in Scheiben von 50 ms aus (`SLICE_MS`), damit Klicks, Escape und Scrollen währenddessen funktionieren. Ein Wechsel des Flugzeugs oder der Fläche führt `checkSteps` des neuen Flügels sofort bis zu 50 ms lang aus; ist es dann nicht fertig, schaltet der Dialog **Importieren** (Import) ab, leert Profiltabelle, Vorschau, Kennzahlenzeile und den nicht eingegebenen Projektnamen des vorigen Flügels und führt den Rest in Scheiben aus, wie bei der ersten Abbildung. Das Kandidatenprojekt wird für die Vorschau mit `buildWing` gebaut; ein Projekt über einer Größenwarnung wird nicht gebaut, und die Vorschau zeichnet gerade Felder. Die Fehler und Warnungen des Aufbaus werden zu Berichtszeilen (`buildNotes`), die **Importieren** nicht sperren. Das Promise wird mit `{ project, summary, warnings }` erfüllt, nach **Abbrechen** (Cancel) mit `null`.
+8. `main.js` ruft `replaceProject` auf (`store.replace`, ein Rückgängig-Schritt), öffnet die Registerkarte **Schnitte** und zeigt die Zusammenfassung und die erste Warnung als Meldung.
+
+| Konstante | Wert | Verwendung |
+| --- | ---: | --- |
+| `MIN_PANEL` (`src/import/xflr5.js`) | 0,1 mm | Ein Feld, das kürzer ist, zählt als Schnitte bei gleichem y_position; XFLR5 überspringt solche Felder |
+| `NUDGE` | 0,5 mm | Größte Verschiebung eines Schnitts, der sein y_position mit dem nächsten teilt; außerdem höchstens ¼ des Feldes |
+| `DIHEDRAL_WARN` | 10° | V-Form, über der der Bericht vor den dünneren senkrechten Schnitten warnt |
+| `FRAME_TOLERANCE` | 0,001 der Profiltiefe | Abweichung von x oder y der Profilnase von 0 oder der Profiltiefe von 1, bis zu der die Schnitte die Werte der Datei behalten |
+| `FRAME_WARN` | 0,02 der Profiltiefe | Abweichung, über der die Verschiebung der Schnitte eine Warnung ist, keine Infozeile |
+| `FRAME_LIMIT` | x oder y der Profilnase 0,1 der Profiltiefe, Profiltiefe 0,5 bis 2 | Darüber liegen die Koordinaten nicht in Einheiten der Profiltiefe |
+| `MAX_XFL_BYTES` (`src/import/xfl.js`) | 2 000 000 000 Byte | Größtes `.xfl`-Projekt |
+| `MAX_PLANES` | 10 000 | Flugzeuge je Datei (beide Leser) |
+| `MAX_TOTAL_SECTIONS` | 1 000 000 | Flügelschnitte aller Flugzeuge eines `.xfl`-Projekts |
+| `MAX_FOILS` | `LIMITS.maxAirfoils` (10 000) | Aus einem `.xfl`-Projekt gelesene Profile |
+| `MAX_FOIL_POINTS` | 2 000 000 | Aus einem `.xfl`-Projekt gelesene Profilpunkte; weitere Profile werden übersprungen und gemeldet |
+| `MAX_XFLR5_FOIL_POINTS` | 1000 | Punkte eines Profils; XFLR5 fasst höchstens 604 |
+| `MAX_ELEMENTS`, `MAX_DEPTH`, `MAX_ATTRIBUTES` (`src/import/xflxml.js`) | 1 000 000; 100; 100 | XML-Elemente je Datei, Schachtelungstiefe, Attribute je Element |
+
+Schnitte je Flügel: `LIMITS.maxSections` (20 000). XML-Dateien: `MAX_PROJECT_BYTES` (100 MB).
 
 ### Build- und Exportzeiten
 
@@ -233,8 +269,11 @@ Einen Text hinzufügen:
 | `model.js` | `src/model/` |
 | `geom.js` | `src/geom/`, `src/export/` |
 | `airfoil.js` | `src/airfoil/` |
+| `xfl.js` | `src/import/xfl.js` |
+| `xflxml.js` | `src/import/xflxml.js` |
+| `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` und die Texte des XFLR5-Imports in `src/main.js` und `src/ui/airfoils.js`: Titel von **Öffnen** (Open), Eintrag in **Hilfe** (Help), Anzahl weiterer Warnungen, Ablehnung einer XFLR5-Datei beim Hochladen, `XFLR5: <file>` unter einem importierten Profil |
 
-`src/i18n/de/index.js` fasst die sechs Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`.
+`src/i18n/de/index.js` fasst die neun Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 33 und 141 Texte.
 
 Eine Sprache hinzufügen:
 
@@ -273,10 +312,54 @@ Regeln für Texte:
 | Hochladen in Browsertests | In den Spec-Dateien erzeugt, keine Daten Dritter: `.dat`-Datei mit 13 Punkten in `e2e/smoke.spec.js` und `e2e/mobile-layout.spec.js`; Selig, Lednicer, X/Yo/Yu-Prozenttabelle mit Dezimalkomma und ungültige Dateien (sich kreuzende Profilseiten, Text) aus den Gleichungen der 4-stelligen NACA-Profile in `e2e/airfoils.spec.js` |
 | Mitgelieferte Bibliothek in Browsertests | `e2e/airfoils.spec.js` listet die 6 Dateien aus `public/airfoils/` auf und fügt S9104 dem Projekt hinzu |
 | Hochladen für Screenshots | NACA 4412, berechnet in `scripts/screenshots.mjs`, 14 x-Positionen von 0 bis 100 %, als X/Yo/Yu-Prozenttabelle mit Dezimalkomma; dieselbe Datei in beiden Sprachen |
+| XFLR5-Dateien in Unit- und Browsertests | `test/fixtures/xflr5/`: eigene Arbeit und Dateien unter der MIT-Lizenz (Lizenz des Massachusetts Institute of Technology), Herkunft und Lizenz je Datei in `test/fixtures/xflr5/SOURCE.md` (Abschnitt [XFLR5-Testdateien und Tests](#xflr5-testdateien-und-tests)) |
+| XFLR5-Projektdateien für Sonderfälle | Von `test/xflr5-writer.js` nach der Beschreibung des Formats in `src/import/xfl.js` geschrieben; kein Code von XFLR5 |
+| Hochgeladene Profile in den XFLR5-Browsertests | In `e2e/xflr5.spec.js` erzeugt: `.dat`-Datei `TEST 12` mit 13 Punkten, erfundene Koordinaten |
+| Screenshot des Importdialogs | `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** (Sport) geöffnet, in beiden Sprachen |
 
-Profildateien Dritter werden nur unter einer Lizenz aus der Zeile Lizenz in [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek) eingecheckt.
+Profildateien Dritter werden nur unter einer Lizenz aus der Zeile Lizenz in [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek) eingecheckt. XFLR5-Dateien Dritter werden nur unter der MIT-Lizenz eingecheckt (`test/fixtures/xflr5/uaslab/`).
 Quellen: [[Profilquellen|Profilquellen]].
 Einlesetest außerhalb des Repositorys am 29.09.2026: 1964 Dateien Dritter von aerodesign.de, mh-aerotools.de und UIUC (University of Illinois Urbana-Champaign). Ergebnisse je Testmenge: [[Profilquellen|Profilquellen]], Abschnitt Einlesetest.
+Einlesetest der XFLR5-Leser außerhalb des Repositorys am 29.09. und 30.09.2026: 29 `.xfl`-Dateien und 66 XML-Dateien, die meisten von XFLR5-Nutzern, gelesen von `src/import/` und von einem unabhängigen Leser, der nach der Formatbeschreibung geschrieben wurde. Bis auf die unten aufgeführten Dateien sind sie nicht eingecheckt (20 der `.xfl`-Dateien tragen keine Lizenz). Ergebnisse: [RECORD.md](https://github.com/subtilitas/Wingdesigner/blob/main/RECORD.md), Zeile XFLR5-Import.
+
+### XFLR5-Testdateien und Tests
+
+Dateien in `test/fixtures/xflr5/`; `test/fixtures/xflr5/SOURCE.md` nennt Herkunft und Lizenz jeder Datei:
+
+| Datei | Byte | Herkunft | Lizenz |
+| --- | ---: | --- | --- |
+| `fixtures_v662.xfl` | 11 092 | Eigene Arbeit: 2 Testflugzeuge, „Fixture A“ (Tragfläche, Höhenleitwerk, Seitenleitwerk, Einstellwinkel, V-Form, Schränkung) und „Fixture B“ (ohne Höhenleitwerk), gespeichert vom Projektschreiber von XFLR5 6.62 (Subversion-Trunk r1506, Qt 5.15.13); Projektformat 200002 | MIT, wie das Projekt |
+| `xml_mm/0.plane.xml`, `xml_mm/0.w2.wing.xml`, `xml_mm/0.w3.wing.xml` | 2154 bis 7493 | Eigene Arbeit: Flugzeug „Fixture A“ in Millimetern sowie sein Höhenleitwerk und sein Seitenleitwerk als Flügeldateien, geschrieben vom XML-Schreiber von XFLR5 6.62 | MIT, wie das Projekt |
+| `xml_in/0.plane.xml` | 7494 | Eigene Arbeit: dasselbe Flugzeug in Zoll | MIT, wie das Projekt |
+| `xml_m/1.plane.xml` | 3936 | Eigene Arbeit: Flugzeug „Fixture B“ in Metern | MIT, wie das Projekt |
+| `uaslab/Rascal110.xfl` | 397 086 | UASLab/OpenFlightSim auf GitHub, Commit `b020511`: echte Ausgabe von XFLR5, Projektformat 200001, Zoll, mit Rumpf, Tragfläche mit 13 Schnitten, Höhenleitwerk mit 9 Schnitten und Klappenprofilen bei 0° | MIT (`uaslab/LICENSE.md`) |
+| `uaslab/UltraStick25e.xml` | 16 852 | Derselbe Commit: XFLR5-Flugzeugdatei in Zoll | MIT (`uaslab/LICENSE.md`) |
+| `uaslab/UltraStick25e_v662_stripped.xfl` | 28 418 | Derselbe Commit: `UltraStick25e.xfl`, von XFLR5 6.62 ohne die Analysen und Ergebnisse geladen und gespeichert; Projektformat 200002; dasselbe Flugzeug wie `UltraStick25e.xml` | MIT (`uaslab/LICENSE.md`) |
+
+XFLR5 liefert keine Beispielprojekte mit. Ein lokaler Treiber, der die Quellen von XFLR5 6.62 einbindet (GNU General Public License, Version 2 oder neuer), schrieb die selbst erstellten Dateien. Der Treiber gehört nicht zu diesem Repository, sodass das Repository diese Dateien nicht neu erzeugen kann. Die Dateien enthalten keinen Code von XFLR5.
+
+Unit-Tests (Vitest, Node.js):
+
+| Datei | Tests | Inhalt |
+| --- | ---: | --- |
+| `test/xflr5-xfl.test.js` | 38 | Leser für `.xfl`-Projekte: Byte-Aufbau von `fixtures_v662.xfl`; die alten Formate von `Rascal110.xfl`; `UltraStick25e_v662_stripped.xfl` gegen `UltraStick25e.xml`; Projekte aus `test/xflr5-writer.js` (Analysen mit Steuerverstärkungen und Ergebnispunkten, Flugzeugergebnisse, Null-Zeichenketten, Rümpfe, wiederholte Profilnamen, Klappen, bereinigte Positionen); abgelehnte Dateien (flow5, `.wpa`, JSON, Größe, Anzahlen, ungerade Zeichenkettenlängen); Beschädigung (abgeschnitten an jeder Datensatzgrenze und an jedem Byte, Beschädigung nach den Flugzeugen); Fenster beliebiger Größe; deutsche Meldungen |
+| `test/xflr5-xml.test.js` | 45 | Leser für XML-Dateien: Fixtures in Millimetern, Zoll und Metern; Flügeldateien; Einheiten; Syntax (Byte-Order-Mark, Text im 16-Bit Unicode Transformation Format (UTF-16), Kommentare, Abschnitte mit Zeichendaten (CDATA), Entitäten, Groß- und Kleinschreibung, aufgefüllte Zahlen, Exponenten); fehlende und unlesbare Zahlen; Flügelplätze nach `<Type>` und nach der Reihenfolge; abgelehnte Dateien; Grenzen; lineare Laufzeit bei langer und feindlicher Eingabe; deutsche Meldungen |
+| `test/xflr5-map.test.js` | 61 | Abbildung: y und z aus abgewickelter Spannweite und V-Form, Schränkung, Einrechnung von Einstellwinkel und Position; Bereinigung (Schnitte bei gleichem y, Profiltiefen unter 1 mm, Grenzen); Flächen eines Flugzeugs; Profilquellen, Wahl, Uploads und Klappen; Profillage gegen die Zahlen von Fixture A und B, auch für NACA-Schnitte des aktuellen Projekts (erzeugte und geprüfte Punkte, von Hand bearbeitete Angaben); Berichtszeilen für Profile des aktuellen Projekts aus einem XFLR5-Import, einem Upload oder der Bibliothek; Projekt, JSON-Rundlauf und Bericht; 10 000 Profilnamen in linearer Zeit; Deutsch |
+| `test/airfoil.test.js` | 1 von 78 | `leadingNacaCode` |
+
+`test/xflr5-writer.js` schreibt XFLR5-Projektdateien im Big-Endian-Format aus Optionen mit Vorgabewerten, nach der Beschreibung des Formats in `src/import/xfl.js`. Zahlen, die der Leser überspringt, stehen als erkennbare Werte ungleich 0 in der Datei, sodass ein Leser, der zu viele oder zu wenige Byte überspringt, das Folgende falsch liest. `writeProject(options)` liefert `{ bytes, marks }`; `marks` listet den Offset jedes Datensatzes für die Tests mit abgeschnittenen Dateien.
+
+Browsertests: `e2e/xflr5.spec.js`, 9 Tests, 18 Läufe:
+
+- XML-Flugzeugdatei: das Höhenleitwerk mit einem NACA-Profil und einer hochgeladenen `.dat`-Datei, dann **Rückgängig** (Undo).
+- `.xfl`-Projekt mit zwei Flugzeugen: Flugzeugwahl, ein Flugzeug ohne Höhenleitwerk, Profilhinweise bleiben nach dem Neuladen; danach ein Projekt aus `test/xflr5-writer.js` mit 300 Profilen: eine andere Fläche wird in Scheiben geprüft, mit abgeschaltetem **Importieren** (Import) und geleerter Tabelle des vorigen Flügels.
+- **Abbrechen** (Cancel) lässt den Entwurf unverändert und legt keinen Rückgängig-Schritt an.
+- Ein beschädigtes `.xfl`-Projekt und eine XML-Datei mit anderem Wurzelelement erzeugen eine Meldung und lassen den Entwurf unverändert.
+- Die Dateiauswahl von **Öffnen** akzeptiert XFLR5-Dateien.
+- **Öffnen** erkennt XFLR5-Dateien, deren Name die Endung verloren hat.
+- Das Hochladen unter **Profile** (Airfoils) lehnt XFLR5-Dateien ab, auch ein `.xfl`-Projekt über 20 MB.
+- Der Importdialog passt auf ein 360 px breites Smartphone (nur `mobile`).
+- Der Dialog auf Deutsch (Sprache `de-DE`).
 
 ## Befehle
 
@@ -289,7 +372,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 371 Tests in 15 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 517 Tests in 18 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -297,7 +380,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Prüfungen unter [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek); Exit-Code 1 bei einem Problem |
 | `npm run e2e` | `npm run build && playwright test` | Browsertests in `e2e/` gegen `vite preview` auf Port 4173 |
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 8 STEP-Dateien, 8 3MF-Dateien und `cases.json` in `step-check/` |
-| `npm run screenshots` | `node scripts/screenshots.mjs` | 24 Dateien im Format Portable Network Graphics (PNG): 12 in `docs/wiki/images/` (Englisch) und 12 in `docs/wiki/images/de/` (Deutsch) |
+| `npm run screenshots` | `node scripts/screenshots.mjs` | 26 Dateien im Format Portable Network Graphics (PNG): 13 in `docs/wiki/images/` (Englisch) und 13 in `docs/wiki/images/de/` (Deutsch) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Prüfungen unter [Prüfung der Testanzahlen](#prüfung-der-testanzahlen); Exit-Code 1 bei einer Abweichung |
 | `npm run i18n:check` | `node scripts/check-i18n.mjs` | Prüfungen unter [Übersetzungen](#übersetzungen); Exit-Code 1 bei einem Problem |
@@ -331,12 +414,12 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Server | `npm run preview -- --port 4173 --strictPort`; jeder Lauf startet einen eigenen Server (`reuseExistingServer: false`) |
 | Zeitlimits | 60000 ms je Test, 60000 ms für den Serverstart |
 | Wiederholungsversuche | 0 |
-| Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` setzt `de-DE` in seinem Block `German browser` |
+| Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-165 Tests in 11 Spec-Dateien, 330 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+175 Tests in 12 Spec-Dateien, 350 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
-30 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
+31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 
 | Spec-Datei | nur `desktop` | nur `mobile` |
 | --- | --- | --- |
@@ -344,6 +427,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | `e2e/viewer.spec.js` | 3: Drehen per Maus-Ziehen, Verschieben per Ziehen mit rechter Maustaste, Zoom per Mausrad | 4: Drehen mit einem Finger, Verschieben mit zwei Fingern, Pinch-Zoom mit zwei Fingern, **Vergrößern** (Enlarge) |
 | `e2e/planform.spec.js` | 1: Zoom-Schaltflächen, Mausrad, Doppelklick zum Einpassen | 2: Ziehen eines Leitkurvenpunkts mit einem Finger, Pinch-Zoom mit zwei Fingern |
 | `e2e/sections.spec.js` | 2: Strg+Z und Strg+Umschalt+Z, Strg+Y | 0 |
+| `e2e/xflr5.spec.js` | 0 | 1: der Importdialog passt auf ein 360 px breites Smartphone |
 
 Kein Test ist mit `test.fail` markiert.
 `npm run e2e` baut `dist/` vorher neu; vor einem direkten `npx playwright test` `npm run build` ausführen.
@@ -432,7 +516,7 @@ Beim nächsten Lauf werden im Wiki bearbeitete Seiten überschrieben und dort an
 | `docs/wiki/images/` | Englisch | `en-US` |
 | `docs/wiki/images/de/` | Deutsch | `de-DE` |
 
-Beide Ordner enthalten 12 Dateien mit denselben Namen und denselben Zuständen. Die englischen Wiki-Seiten binden `images/<name>.png` ein, die deutschen Seiten `images/de/<name>.png`.
+Beide Ordner enthalten 13 Dateien mit denselben Namen und denselben Zuständen. Die englischen Wiki-Seiten binden `images/<name>.png` ein, die deutschen Seiten `images/de/<name>.png`.
 
 Die beiden Sprachen durchlaufen dieselben Schritte. Die Schritte benennen jedes Bedienelement mit seiner englischen Beschriftung. Der deutsche Durchlauf ordnet diese Beschriftung ihrem deutschen Eintrag in `DE` (`src/i18n/de/index.js`) zu und bricht ab, wenn es keinen Texteintrag gibt. Beide Durchläufe brechen ab, wenn die App in einer anderen Sprache startet, als die Sprache des Browsers verlangt (Attribut `lang` des Elements `html`). Der Text `Sample 4412 table` in `upload-preview.png` ist die erste Zeile der erzeugten Datei und lautet in beiden Sprachen gleich.
 
@@ -452,6 +536,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | `flying-wing-control-net.png` | 3D-Ansicht, **Pfeilnurflügel** (Swept flying wing), **NURBS-Kontrollnetz zeigen** (Show NURBS control net) an | 680 x 730 | 680 x 730 |
 | `mobile-main.png` | Smartphone, Entwurfstyp **Sportmodell** (Sport) | 1082 x 2202 | 1082 x 2202 |
 | `mobile-planform.png` | Smartphone, **Grundriss**, **Sportmodell**, Endlinie eingeschaltet | 1082 x 2202 | 1082 x 2202 |
+| `xflr5-import.png` | Dialog **Aus XFLR5 importieren** (Import from XFLR5) für `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** geöffnet, Fenster 1280 x 1200 CSS-Pixel | 960 x 888 | 960 x 964 |
 
 ### Dokumentationsprüfung
 

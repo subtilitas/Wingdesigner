@@ -14,18 +14,18 @@ Deutsch: [[Entwicklung|Entwicklung]]
 | Browser tests | Playwright `^1.63.0` |
 | App version | `package.json` `version`, compiled in as `__APP_VERSION__` by `vite.config.js`. Shown in the **Help** dialog. Written to `generator.version` in the project file (JavaScript Object Notation, JSON). |
 
-Code in `src/geom/`, `src/airfoil/`, `src/export/` and `src/model/` does not use the Document Object Model (DOM) application programming interface (API).
+Code in `src/geom/`, `src/airfoil/`, `src/export/`, `src/import/` and `src/model/` does not use the Document Object Model (DOM) application programming interface (API).
 Unit tests and scripts import it in Node.js.
 The bundled airfoil library needs no network request: plugin `airfoilLibrary` in `vite.config.js` compiles `public/airfoils/index.json` and its files into the module `virtual:airfoil-library`, read by `src/airfoil/bundled.js`. Vite also copies `public/airfoils/` to `dist/airfoils/`.
 
 | Path | Content |
 | --- | --- |
 | `index.html` | Page shell; loads `src/main.js` |
-| `src/main.js` | Entry: store, rebuild scheduling, top bar, status bar, **Checks** tab, **Help** dialog, autosave |
-| `src/geom/`, `src/airfoil/`, `src/export/`, `src/model/`, `src/ui/` | See [Modules](#modules) |
+| `src/main.js` | Entry: store, rebuild scheduling, top bar (**Open** chooses the reader for a project file or an XFLR5 file), status bar, **Checks** tab, **Help** dialog, autosave |
+| `src/geom/`, `src/airfoil/`, `src/export/`, `src/import/`, `src/model/`, `src/ui/` | See [Modules](#modules) |
 | `public/airfoils/` | 6 coordinate files (`.dat`, Selig format), `index.json` with 6 entries, `NOTICE.md` (source, legal basis, conditions and attribution per file). An entry needs a free license and a line in `NOTICE.md` (see [Airfoil library check](#airfoil-library-check)). The 17 National Advisory Committee for Aeronautics (NACA) presets are computed at run time, not stored. |
 | `scripts/` | See [Scripts](#scripts) |
-| `test/` | Vitest unit tests (`*.test.js`), `helpers.js` (NACA sample project), `step-cases.js` (validation cases for Standard for the Exchange of Product model data (STEP) files and 3MF files) |
+| `test/` | Vitest unit tests (`*.test.js`), `helpers.js` (NACA sample project), `step-cases.js` (validation cases for Standard for the Exchange of Product model data (STEP) files and 3MF files), `xflr5-writer.js` (writer of XFLR5 project files), `fixtures/xflr5/` (XFLR5 test files, see [XFLR5 test files and tests](#xflr5-test-files-and-tests)) |
 | `e2e/` | Playwright end-to-end (E2E) browser tests (`*.spec.js`), `helpers.js` |
 | `docs/wiki/` | Wiki pages in English and German, `_Sidebar.md`, `images/` (English screenshots), `images/de/` (German screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
@@ -38,21 +38,25 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | --- | --- |
 | `src/geom/nurbs.js` | Non-uniform rational B-spline (NURBS) primitives |
 | `src/geom/linalg.js` | Band lower-upper (LU) factorization without pivoting (B-spline interpolation, used by `src/geom/nurbs.js`); dense LU factorization with partial pivoting (unit tests only) |
-| `src/geom/profile.js` | Airfoil as NURBS curve; chordwise resampling |
+| `src/geom/profile.js` | Airfoil as NURBS curve; chordwise resampling; `fitProfile` (curve fit and shape check of an airfoil, used by the airfoil preview and the XFLR5 import) |
 | `src/geom/spanwise.js` | Spanwise blending of section values (`linear`, `smooth`) |
 | `src/geom/guide.js` | Guide curves (nose line, end line) |
 | `src/geom/wing.js` | Wing loft: `buildWing`; profile cache |
 | `src/geom/mesh.js` | Tessellation, mirror, mesh volume, area and edge check |
 | `src/geom/triangulate.js` | End-cap triangulation: strip of upper and lower point pairs (linear time); ear clipping as fallback |
 | `src/geom/stats.js` | Planform statistics |
-| `src/airfoil/parse.js` | Airfoil file parser |
+| `src/airfoil/parse.js` | Airfoil file parser; `cleanPoints` cleans a point list from another format (the airfoils of an XFLR5 project) by the rules of a parsed file |
 | `src/airfoil/geometry.js` | Polyline geometry |
 | `src/airfoil/sanity.js` | Sanity checks, `importAirfoilText` |
-| `src/airfoil/naca.js` | NACA 4- and 5-digit generator |
-| `src/airfoil/library.js` | 17 NACA presets, bundled library, external sources |
+| `src/airfoil/naca.js` | NACA 4- and 5-digit generator; `leadingNacaCode` finds the code that starts a name (`NACA0014_Flap`) |
+| `src/airfoil/library.js` | 17 NACA presets, bundled library, external sources; `librarySource` (source record of a bundled entry) |
 | `src/export/step.js` | STEP writer; file format International Organization for Standardization (ISO) 10303-21 |
 | `src/export/stl.js` | Binary stereolithography (STL) writer |
 | `src/export/threemf.js` | 3MF writer |
+| `src/import/errors.js` | `XflrError`: file-level error of the XFLR5 readers, with a `code` and, for an `.xfl` project, the byte `offset` |
+| `src/import/xfl.js` | Reader of XFLR5 projects (`.xfl`): `readXfl` (windows of 4,194,304 bytes), `readXflBytes` (bytes in memory), `startsLikeXfl`, `sniffXflr5` |
+| `src/import/xflxml.js` | Reader of XFLR5 plane and wing files in Extensible Markup Language (XML): `readXflr5Xml` |
+| `src/import/xflr5.js` | Mapping of one XFLR5 wing to a project: surfaces of a plane (`planeSurfaces`), sections (`mapSections`), airfoil table, report and project (`mapXflr5`), airfoil checks in steps (`checkSteps`), airfoil uploads (`readAirfoilUpload`) |
 | `src/model/project.js` | Project model, defaults, limits, validation |
 | `src/model/budget.js` | Warning thresholds, loft grid, time and memory estimates |
 | `src/model/io.js` | Project JSON import and export |
@@ -64,14 +68,15 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/ui/panzoom.js` | 2D canvas with pan and zoom |
 | `src/ui/sections.js` | **Sections** tab |
 | `src/ui/planform.js` | **Planform** tab |
-| `src/ui/airfoils.js` | **Airfoils** tab, upload preview |
+| `src/ui/airfoils.js` | **Airfoils** tab, upload preview; `readAirfoilFile` (reads an uploaded file and refuses XFLR5 files) |
 | `src/ui/settings.js` | **Settings** tab |
-| `src/ui/wizard.js` | Wizard dialog |
+| `src/ui/wizard.js` | Wizard dialog; `drawPlanform` (also draws the planform in the import dialog) |
+| `src/ui/xflr5.js` | Import dialog for XFLR5 files: `openXflr5Dialog` |
 | `src/ui/exportui.js` | **Export** dialog |
 | `src/ui/dom.js` | DOM helpers |
 | `src/ui/styles.css` | Styles |
 | `src/i18n/index.js` | Language (`language`, `setLanguage`, `initialLanguage`), `tr()` and the number formats `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`; `index.js` merges them |
+| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`; `index.js` merges them |
 
 ### Scripts
 
@@ -110,6 +115,37 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `wingdesigner.project.v1.stale` | Time of the first failed autosave; removed at the next start and when an autosave succeeds |
 | `wingdesigner.tab` | Active tab |
 | `wingdesigner.language` | Chosen language, `en` or `de` (section [Translations](#translations)) |
+
+### XFLR5 import
+
+The import reads an XFLR5 file and builds a project from one wing of one plane in it. XFLR5 is a program for the analysis of airfoils and wings; 6.62 is its last release. The readers and the mapping in `src/import/` use no DOM API and run in Node.js. The dialog (`src/ui/xflr5.js`) and **Open** (`src/main.js`) use the DOM. The rules for the files and the formulas of the mapping are in [[File Formats|File-Formats]], section XFLR5 import; the dialog is described in the [[User Guide|User-Guide]], section Import from XFLR5.
+
+1. The change handler of the **Open** file input in `src/main.js` chooses the reader. Extension `.xfl`, `.wpa` or `.fl5`: the `.xfl` reader. `.xml`: the XML reader. Any other extension except `.json`, or none: first the first 4 bytes (`sniffXflr5`, and a UTF-16 byte order mark for the XML reader), then text that starts with `<?xml`, `<!` or `<explane` (XML reader); otherwise project JSON. `importXflr5` runs the reader and opens the dialog.
+2. A reader throws `XflrError` for a file that it cannot import. `code` is `not-xflr5`, `flow5`, `wpa`, `damaged`, `not-plane-xml`, `no-plane`, `fin` or `too-large`; `offset` is the byte of the damage in an `.xfl` project, else `null`. **Open** shows `Cannot open <file>: <message>` and leaves the design and the undo history as they are. Any other exception of the import shows as `Cannot open <file>: Internal error: <message>`.
+3. `readXfl(file)` and `readXflr5Xml(text)` return the same object, `XflrFile`: `kind` (`xfl` or `xml`), `format`, `lengthUnit` (millimetres per length unit of the file; 1000 for `.xfl`), `unitName`, `wingOnly`, `planes`, `foils`, `foilError` and `warnings`. A plane has a `name` and `wings`, the 4 XFLR5 wing slots main wing, second wing, elevator (horizontal stabilizer) and fin; a slot that the plane lacks is `null`. `foils` (`.xfl` only) maps an airfoil name to its base coordinates and flap settings. Wing sections keep the values of the file: the length unit of the file and degrees.
+4. `readXfl` reads a project through windows of 4,194,304 bytes (`WINDOW_SIZE`, `Blob.slice`). The record readers are generator functions. One yields when its next read lies outside the window; `readXfl` loads the window that starts there and resumes it. A skip only moves the offset. The analyses and the analysis results, which make up most of a project of 96.7 MB, are skipped by their counts. Reading ends after the airfoils. `readXflBytes` reads a file held in memory as one window. A file damaged after the planes gives its planes without airfoils (`foilError` and a warning).
+5. `readXflr5Xml` is a pull tokenizer without a tree, linear in the length of the text. A missing or garbled number stays NaN (not a number) and gives a warning; XFLR5 reads such text as 0.
+6. `mapXflr5(file, options)` (`src/import/xflr5.js`) is a pure function. `options` holds `plane`, `surface` (`main` or `stab`), `fileName`, `name`, `project` (the current project), `library` (bundled library entries), `uploads` (read `.dat` files) and `choices` (the option key picked per XFLR5 airfoil name: `file:<name>`, `upload:<i>`, `project:<id>`, `library:<id>` or `naca:<code>`). The result holds `rows` (the airfoil table), `options` (the entries of the airfoil lists), `report` (lines with the severity `error`, `warning` or `info`), `errors`, `project` (`null` while the report holds an error) and `summary`. The steps: `mapSections` (y and z from the developed span and the dihedral, clean-up of sections at one y and of chords below 1 mm, fold of the tilt angle and the position); one airfoil per name (file, uploads, current project, library, NACA generator, similar name); the airfoil frame (`placeAirfoil`; a NACA airfoil of the current project whose points are the generated or checked section of its code gets the frame of that generated section, `checkProjectAirfoil`); `createProject` and `validateProject`. Check results are cached per airfoil object and language (`WeakMap`), because the dialog maps again after every choice.
+7. `openXflr5Dialog(file, { fileName, project, library })` calls `mapXflr5` after every choice and draws the result. The first mapping follows `checkSteps`, a generator with one step per airfoil name. The dialog runs it in slices of 50 ms (`SLICE_MS`), so that clicks, Escape and scrolling work meanwhile. A change of plane or surface runs `checkSteps` of the new wing at once for up to 50 ms; when it has not ended by then, the dialog turns **Import** off, empties the airfoil table, the preview, the stats line and the untyped project name of the previous wing, and runs the rest in slices, as for the first mapping. The candidate project is built with `buildWing` for the preview; a project above a size warning is not built, and the preview draws straight panels. The errors and warnings of the build become report lines (`buildNotes`) that do not block **Import**. The promise resolves with `{ project, summary, warnings }`, or with `null` after **Cancel**.
+8. `main.js` calls `replaceProject` (`store.replace`, one undo step), opens the **Sections** tab and shows the summary and the first warning as a message.
+
+| Constant | Value | Use |
+| --- | ---: | --- |
+| `MIN_PANEL` (`src/import/xflr5.js`) | 0.1 mm | A panel shorter than this counts as sections at one y_position; XFLR5 skips such panels |
+| `NUDGE` | 0.5 mm | Largest move of a section that shares its y_position with the next one; also at most ¼ of the panel |
+| `DIHEDRAL_WARN` | 10° | Dihedral above which the report warns about the thinner vertical sections |
+| `FRAME_TOLERANCE` | 0.001 chord | Offset of x or y of the leading edge from 0, or of the chord from 1, up to which the sections keep the values of the file |
+| `FRAME_WARN` | 0.02 chord | Offset above which the move of the sections is a warning, not an info line |
+| `FRAME_LIMIT` | x or y of the leading edge 0.1 chord, chord 0.5 to 2 | Beyond it the coordinates are not in chord units |
+| `MAX_XFL_BYTES` (`src/import/xfl.js`) | 2,000,000,000 bytes | Largest `.xfl` project |
+| `MAX_PLANES` | 10,000 | Planes per file (both readers) |
+| `MAX_TOTAL_SECTIONS` | 1,000,000 | Wing sections of all planes of an `.xfl` project |
+| `MAX_FOILS` | `LIMITS.maxAirfoils` (10,000) | Airfoils read from an `.xfl` project |
+| `MAX_FOIL_POINTS` | 2,000,000 | Airfoil points read from an `.xfl` project; airfoils beyond it are skipped and reported |
+| `MAX_XFLR5_FOIL_POINTS` | 1,000 | Points of one airfoil; XFLR5 holds at most 604 |
+| `MAX_ELEMENTS`, `MAX_DEPTH`, `MAX_ATTRIBUTES` (`src/import/xflxml.js`) | 1,000,000; 100; 100 | XML elements per file, nesting depth, attributes per element |
+
+Sections per wing: `LIMITS.maxSections` (20,000). XML files: `MAX_PROJECT_BYTES` (100 MB).
 
 ### Build and export times
 
@@ -233,8 +269,11 @@ To add a text:
 | `model.js` | `src/model/` |
 | `geom.js` | `src/geom/`, `src/export/` |
 | `airfoil.js` | `src/airfoil/` |
+| `xfl.js` | `src/import/xfl.js` |
+| `xflxml.js` | `src/import/xflxml.js` |
+| `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` and the texts of the XFLR5 import in `src/main.js` and `src/ui/airfoils.js`: title of **Open**, item in **Help**, count of further warnings, refusal of an XFLR5 file in the upload, `XFLR5: <file>` under an imported airfoil |
 
-`src/i18n/de/index.js` merges the six files into `DE` and exports them by name as `AREAS`.
+`src/i18n/de/index.js` merges the nine files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 33 and 141 texts.
 
 To add a language:
 
@@ -273,10 +312,54 @@ Rules for texts:
 | Browser test uploads | Generated in the spec files, no third-party data: 13-point `.dat` in `e2e/smoke.spec.js` and `e2e/mobile-layout.spec.js`; Selig, Lednicer, X/Yo/Yu percent table with decimal commas and invalid files (crossing surfaces, text) from the NACA 4-digit equations in `e2e/airfoils.spec.js` |
 | Bundled library in browser tests | `e2e/airfoils.spec.js` lists the 6 files of `public/airfoils/` and adds S9104 to the project |
 | Screenshot upload | NACA 4412 computed in `scripts/screenshots.mjs`, 14 x positions from 0 to 100 %, written as X/Yo/Yu percent table with decimal commas; the same file in both languages |
+| XFLR5 files in unit tests and browser tests | `test/fixtures/xflr5/`: own work and files under the MIT license (license of the Massachusetts Institute of Technology), origin and license per file in `test/fixtures/xflr5/SOURCE.md` (section [XFLR5 test files and tests](#xflr5-test-files-and-tests)) |
+| XFLR5 project files for edge cases | Written by `test/xflr5-writer.js` from the description of the format in `src/import/xfl.js`; no XFLR5 code |
+| Airfoil uploads in the XFLR5 browser tests | Generated in `e2e/xflr5.spec.js`: `.dat` file `TEST 12` with 13 points, invented coordinates |
+| Screenshot of the import dialog | `test/fixtures/xflr5/fixtures_v662.xfl`, opened over the **Sport** preset, in both languages |
 
-Third-party airfoil files are committed only under a license from the License row in [Airfoil library check](#airfoil-library-check).
+Third-party airfoil files are committed only under a license from the License row in [Airfoil library check](#airfoil-library-check). Third-party XFLR5 files are committed only under the MIT license (`test/fixtures/xflr5/uaslab/`).
 Sources: [[Airfoil Sources|Airfoil-Sources]].
 Parser test outside the repository on 2026-09-29: 1,964 third-party files from aerodesign.de, mh-aerotools.de and UIUC (University of Illinois Urbana-Champaign). Results per set: [[Airfoil Sources|Airfoil-Sources]], section Parser test.
+Reader test outside the repository on 2026-09-29 and 2026-09-30: 29 `.xfl` files and 66 XML files, most of them of XFLR5 users, read by `src/import/` and by an independent reader written from the format description. Apart from the files listed below they are not committed (20 of the `.xfl` files carry no license). Results: [RECORD.md](https://github.com/subtilitas/Wingdesigner/blob/main/RECORD.md), row XFLR5 import.
+
+### XFLR5 test files and tests
+
+Files in `test/fixtures/xflr5/`; `test/fixtures/xflr5/SOURCE.md` gives the origin and the license of each:
+
+| File | Bytes | Origin | License |
+| --- | ---: | --- | --- |
+| `fixtures_v662.xfl` | 11,092 | Own work: 2 test planes, "Fixture A" (main wing, elevator, fin, tilt angle, dihedral, twist) and "Fixture B" (no elevator), saved by the project writer of XFLR5 6.62 (Subversion trunk r1506, Qt 5.15.13); project format 200002 | MIT, as the project |
+| `xml_mm/0.plane.xml`, `xml_mm/0.w2.wing.xml`, `xml_mm/0.w3.wing.xml` | 2,154 to 7,493 | Own work: plane "Fixture A" in millimetres, and its elevator and its fin as wing files, written by the XML writer of XFLR5 6.62 | MIT, as the project |
+| `xml_in/0.plane.xml` | 7,494 | Own work: the same plane in inches | MIT, as the project |
+| `xml_m/1.plane.xml` | 3,936 | Own work: plane "Fixture B" in metres | MIT, as the project |
+| `uaslab/Rascal110.xfl` | 397,086 | UASLab/OpenFlightSim on GitHub, commit `b020511`: real XFLR5 output, project format 200001, inches, with body, 13-section main wing, 9-section elevator and flap airfoils at 0° | MIT (`uaslab/LICENSE.md`) |
+| `uaslab/UltraStick25e.xml` | 16,852 | Same commit: XFLR5 plane file in inches | MIT (`uaslab/LICENSE.md`) |
+| `uaslab/UltraStick25e_v662_stripped.xfl` | 28,418 | Same commit: `UltraStick25e.xfl` loaded and saved by XFLR5 6.62 without the analyses and results; project format 200002; the same plane as `UltraStick25e.xml` | MIT (`uaslab/LICENSE.md`) |
+
+XFLR5 ships no sample projects. A local driver that links the XFLR5 6.62 sources (GNU General Public License, version 2 or later) wrote the own-work files. The driver is not part of this repository, so the repository cannot regenerate these files. The files contain no XFLR5 code.
+
+Unit tests (Vitest, Node.js):
+
+| File | Tests | Content |
+| --- | ---: | --- |
+| `test/xflr5-xfl.test.js` | 38 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the old formats of `Rascal110.xfl`; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
+| `test/xflr5-xml.test.js` | 45 | Reader of XML files: fixtures in millimetres, inches and metres; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
+| `test/xflr5-map.test.js` | 61 | Mapping: y and z from developed span and dihedral, twist, fold of tilt angle and position; clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
+| `test/airfoil.test.js` | 1 of 78 | `leadingNacaCode` |
+
+`test/xflr5-writer.js` writes big-endian XFLR5 project files from options with default values, written from the description of the format in `src/import/xfl.js`. Numbers that the reader skips are written as recognizable non-zero values, so a reader that skips too many or too few bytes misreads what follows. `writeProject(options)` returns `{ bytes, marks }`; `marks` lists the offset of every record for the truncation tests.
+
+Browser tests: `e2e/xflr5.spec.js`, 9 tests, 18 runs:
+
+- XML plane file: the stabilizer with a NACA airfoil and an uploaded `.dat` file, then **Undo**.
+- `.xfl` project with two planes: plane choice, a plane without stabilizer, airfoil notes kept after a reload; then a project from `test/xflr5-writer.js` with 300 airfoils: another surface checked in slices, with **Import** off and the table of the previous wing emptied.
+- **Cancel** keeps the design and adds no undo step.
+- A damaged `.xfl` project and an XML file with another root element give a message and keep the design.
+- The file chooser of **Open** accepts XFLR5 files.
+- **Open** recognizes XFLR5 files whose name lost its extension.
+- The **Airfoils** upload refuses XFLR5 files, also an `.xfl` project above 20 MB.
+- The import dialog fits a 360 px wide phone (`mobile` only).
+- The dialog in German (locale `de-DE`).
 
 ## Commands
 
@@ -289,7 +372,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 371 tests in 15 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 517 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -297,7 +380,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 8 STEP files, 8 3MF files and `cases.json` in `step-check/` |
-| `npm run screenshots` | `node scripts/screenshots.mjs` | 24 Portable Network Graphics (PNG) files: 12 in `docs/wiki/images/` (English) and 12 in `docs/wiki/images/de/` (German) |
+| `npm run screenshots` | `node scripts/screenshots.mjs` | 26 Portable Network Graphics (PNG) files: 13 in `docs/wiki/images/` (English) and 13 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
 | `npm run i18n:check` | `node scripts/check-i18n.mjs` | Checks in [Translations](#translations); exit code 1 on a problem |
@@ -331,12 +414,12 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Server | `npm run preview -- --port 4173 --strictPort`; every run starts its own server (`reuseExistingServer: false`) |
 | Timeouts | 60000 ms per test, 60000 ms for server start |
 | Retries | 0 |
-| Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` sets `de-DE` in its block `German browser` |
+| Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-165 tests in 11 spec files, 330 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+175 tests in 12 spec files, 350 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
-30 tests run in one project only (`test.skip` in the other project):
+31 tests run in one project only (`test.skip` in the other project):
 
 | Spec file | `desktop` only | `mobile` only |
 | --- | --- | --- |
@@ -344,6 +427,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | `e2e/viewer.spec.js` | 3: mouse drag rotates, right mouse button drag pans, mouse wheel zooms | 4: one-finger rotate, two-finger pan, two-finger pinch zoom, **Enlarge** |
 | `e2e/planform.spec.js` | 1: zoom buttons, mouse wheel, double-click fit | 2: one-finger drag of a guide point, two-finger pinch zoom |
 | `e2e/sections.spec.js` | 2: Ctrl+Z and Ctrl+Shift+Z, Ctrl+Y | 0 |
+| `e2e/xflr5.spec.js` | 0 | 1: the import dialog fits a 360 px wide phone |
 
 No test is marked `test.fail`.
 `npm run e2e` rebuilds `dist/` first; before a direct `npx playwright test`, run `npm run build`.
@@ -432,7 +516,7 @@ On the next run, pages edited in the wiki web interface are overwritten, and pag
 | `docs/wiki/images/` | English | `en-US` |
 | `docs/wiki/images/de/` | German | `de-DE` |
 
-Both folders hold 12 files with the same names and the same states. The English wiki pages embed `images/<name>.png`, the German pages `images/de/<name>.png`.
+Both folders hold 13 files with the same names and the same states. The English wiki pages embed `images/<name>.png`, the German pages `images/de/<name>.png`.
 
 The two languages run the same steps. The steps name every control by its English label. The German run maps that label to its German entry in `DE` (`src/i18n/de/index.js`) and stops when there is no text entry. Both runs stop when the app starts in another language than the locale asks for (`lang` attribute of the `html` element). The text `Sample 4412 table` in `upload-preview.png` is the first line of the generated file and reads the same in both languages.
 
@@ -452,6 +536,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 | 680 x 730 |
 | `mobile-main.png` | Phone, **Sport** preset | 1082 x 2202 | 1082 x 2202 |
 | `mobile-planform.png` | Phone, **Planform**, **Sport**, end line on | 1082 x 2202 | 1082 x 2202 |
+| `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 888 | 960 x 964 |
 
 ### Documentation check
 

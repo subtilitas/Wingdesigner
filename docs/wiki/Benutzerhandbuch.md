@@ -30,7 +30,7 @@ Die App zeigt sich auf Deutsch oder Englisch (Abschnitt [Sprache](#sprache)). Di
 | Schaltfläche der Kopfleiste | Wirkung |
 | --- | --- |
 | **Neu** | Öffnet den Assistenten (Abschnitt [Assistent](#assistent)). |
-| **Öffnen** | Lädt eine Projektdatei im Format JSON (JavaScript Object Notation, Dateiendung `.json`). Dateien über 100 MB werden ungelesen abgewiesen: `<Datei> kann nicht geöffnet werden: … MB; Projektdateien sind auf 100 MB begrenzt.` Eine Datei, die der Browser nicht lesen kann (entferntes Laufwerk, entzogene Berechtigung), zeigt `<Datei> kann nicht geöffnet werden: Der Browser konnte die Datei nicht lesen (NotReadableError).`; der aktuelle Entwurf bleibt. Ungültige Dateien werden abgewiesen; die Meldung zeigt bis zu 3 Fehler. Abgeleitete NURBS-Daten in der Datei werden ignoriert und neu berechnet. |
+| **Öffnen** | Lädt eine Projektdatei im Format JSON (JavaScript Object Notation, Dateiendung `.json`). Öffnet den Importdialog für eine XFLR5-Datei (Dateiendung `.xfl` oder `.xml`; XML: Extensible Markup Language; Abschnitt [Import aus XFLR5](#import-aus-xflr5)). Die Dateiauswahl listet `.json`-, `.xfl`-, `.xml`-, `.wpa`- und `.fl5`-Dateien. JSON- und XML-Dateien über 100 MB werden ungelesen abgewiesen: `<Datei> kann nicht geöffnet werden: … MB; Projektdateien sind auf 100 MB begrenzt.` Eine Datei, die der Browser nicht lesen kann (entferntes Laufwerk, entzogene Berechtigung), zeigt `<Datei> kann nicht geöffnet werden: Der Browser konnte die Datei nicht lesen (NotReadableError).`; der aktuelle Entwurf bleibt. Ungültige JSON-Dateien werden abgewiesen; die Meldung zeigt bis zu 3 Fehler. Abgeleitete NURBS-Daten in der Datei werden ignoriert und neu berechnet. |
 | **Speichern** | Lädt das Projekt-JSON herunter. Gleiche Datei wie **Exportieren** > **Projekt-JSON** (Project JSON). Brächten die abgeleiteten NURBS-Daten die Datei über 100 MB, lässt die Datei sie weg (Abschnitt [Export](#export)). Ein Fehler zeigt die rote Meldung `Speichern fehlgeschlagen: ….` |
 | **Exportieren** | Öffnet den Exportdialog (Abschnitt [Export](#export)). |
 | **Rückgängig** / **Wiederholen** | Springen im Bearbeitungsverlauf einen Schritt zurück beziehungsweise vor. Der Verlauf liegt nur im Arbeitsspeicher: höchstens 100 Schritte und höchstens 64 000 000 Zeichen serialisiertes Projekt (Rückgängig- und Wiederholen-Schritte zusammen); ein Projekt über 640 000 Zeichen behält weniger Schritte, mindestens 1. **Neu** und **Öffnen** lassen sich mit **Rückgängig** zurücknehmen. |
@@ -52,6 +52,153 @@ Bei einer Fensterbreite von höchstens 860 px:
 ![Smartphone-Ansicht der Registerkarte Grundriss mit Grundriss-Editor und eingeschalteter Endlinie](images/de/mobile-planform.png)
 
 Auf Touchscreens (grober Zeiger) sind Schaltflächen und Eingabefelder mindestens 40 px hoch.
+
+## Import aus XFLR5
+
+![Importdialog für die Datei fixtures_v662.xfl: Flugzeug, Fläche, Profiltabelle, Grundrissvorschau, Bericht](images/de/xflr5-import.png)
+
+**Öffnen** (Open) liest neben Projektdateien auch Dateien von XFLR5. Der Import übernimmt eine Fläche aus einem Flugzeug der Datei, die Tragfläche oder das Höhenleitwerk (XFLR5 nennt es Elevator), und ersetzt damit das aktuelle Projekt. Er liest Dateien von XFLR5 6.10.01 bis 6.62. Version 6.62 (24.03.2026) ist die letzte Version von XFLR5.
+
+### Dateien
+
+- **Öffnen** akzeptiert neben `.json` auch `.xfl` (XFLR5-Projekt) und `.xml` (XFLR5-Flugzeug- oder -Flügeldatei). Der Filter der Dateiauswahl listet `.json`-, `.xfl`- und `.xml`-Dateien sowie `.wpa`- und `.fl5`-Dateien, die **Öffnen** mit dem Grund abweist (nächster Punkt). Ob die Dateiauswahl von Android und iOS `.xfl`-Dateien mit diesem Filter anzeigt, ist ungetestet.
+- Ein `.xfl`-Projekt enthält die Flugzeuge mit Profilkoordinaten. Eine XML-Datei enthält die Flügelgeometrie in der in XFLR5 eingestellten Längeneinheit und nur die Profilnamen. Gelesen werden die Projektformate 200001 (XFLR5 6.10.01 bis 6.43) und 200002 (6.44 bis 6.62) sowie XML-Dateien von XFLR5 6.11 bis 6.62.
+- Projekte von XFLR5 6.09 und älter (`.wpa`) und Dateien von flow5 (`.fl5` und XML) werden nicht gelesen: rote Meldung mit dem Grund.
+- Eine Datei, die sich nicht importieren lässt, ergibt die rote Meldung `<Datei> kann nicht geöffnet werden: <Grund>`, z. B. `Die Datei ist bei Byte 902 beschädigt oder abgeschnitten (in einem Flügel).` Der aktuelle Entwurf bleibt, und der Bearbeitungsverlauf erhält keinen Schritt.
+- Eine `.xfl`-Datei, die hinter den Flugzeugen beschädigt ist, ergibt trotzdem ihre Flugzeuge. Die Profile fehlen dann, und der Bericht enthält die Warnung `Die Profile konnten nicht gelesen werden. Die Datei ist bei Byte … beschädigt oder abgeschnitten (in der Liste der Profile). Profile auswählen oder hochladen.`
+- Wie **Öffnen** das Leseprogramm wählt (Dateiendung, erste Bytes, Text), die Gründe für Abweisungen und die Grenzen (`.xfl` bis 2000 MB, andere Dateien 100 MB): [[Dateiformate]], Abschnitt XFLR5-Import.
+
+### Dialog
+
+Der Dialog ist modal. Er öffnet sich sofort. **Importieren** (Import) bleibt gesperrt, solange die App die Profile des Flügels prüft. Der Bericht zeigt `Die Profile werden geprüft …`, bei vielen Profilen `Die Profile werden geprüft … 236 von 1.000`. Die Prüfungen laufen in Scheiben von 50 ms, sodass **Abbrechen** (Cancel), Esc und Scrollen währenddessen funktionieren. Bis sie enden, sind Profiltabelle, Grundrissvorschau und die Zeile darunter leer, ebenso der Projektname, solange keiner eingegeben ist. Ein Wechsel des Flugzeugs oder der Fläche prüft die Profile des neuen Flügels auf dieselbe Weise, und nichts vom vorigen Flügel bleibt stehen; Prüfungen, die innerhalb von 50 ms enden, etwa die schon geprüfter Profile, zeigen keine Fortschrittszeile und leeren nichts.
+
+| Element | Inhalt und Wirkung |
+| --- | --- |
+| Titel und Quellzeile | Titel **Aus XFLR5 importieren** (Import from XFLR5). Die Zeile darunter nennt den Dateinamen und die Art der Datei: `XFLR5-Projekt, Format 200002 (XFLR5 6.44 oder neuer)`, `XFLR5-Projekt, Format 200001 (XFLR5 6.10 bis 6.43)`, `XFLR5-Flugzeugdatei (XML), Längeneinheit: Millimeter`, `XFLR5-Flügeldatei (XML), Längeneinheit: Zoll`. Längeneinheiten: Millimeter, Zentimeter, Dezimeter, Meter, Zoll, Fuß. Eine andere Einheit lautet `Längen in Einheiten von 25 mm`. |
+| **Flugzeug** (Plane) | Nur, wenn die Datei mehr als ein Flugzeug enthält. Listet die Namen der Flugzeuge (`Flugzeug 2` für ein Flugzeug ohne Namen). Das erste Flugzeug ist vorgewählt. Ein Wechsel des Flugzeugs behält die gewählte Fläche, wenn das neue Flugzeug sie hat, sonst gilt die Vorgabe: die Tragfläche, oder das Höhenleitwerk, wenn es die einzige Fläche ist. |
+| **Zu importierende Fläche** (Surface to import) | Zwei Karten mit Optionsfeldern: **Tragfläche** (Main wing) und **Höhenleitwerk (XFLR5: Elevator)** (Horizontal stabilizer (XFLR5: Elevator)). Eine Karte zeigt den XFLR5-Namen des Flügels, die Anzahl der Schnitte, die Spannweite (2 × y des Randschnitts, in mm) und die Wurzeltiefe (mm): `„Main Wing“: 3 Schnitte, Spannweite 1.794 mm, Wurzeltiefe 240 mm`. Eine Fläche, die das Flugzeug nicht hat, ist gesperrt und nennt ihren Grund: `Dieses Flugzeug hat kein Höhenleitwerk.` In einer Flügeldatei lautet der Grund `Der Flügel in dieser Datei ist ein Höhenleitwerk (Typ ELEVATOR).` (Karte Tragfläche) oder `Der Flügel in dieser Datei ist kein Höhenleitwerk (Typ ELEVATOR).` Vorgewählt: die Tragfläche, oder das Höhenleitwerk, wenn es die einzige Fläche ist. Das Seitenleitwerk und der zweite Flügel (Doppeldecker) werden nie angeboten. |
+| **Profile** (Airfoils) | Die Profiltabelle (Abschnitt [Profiltabelle](#profiltabelle)). |
+| Grundrissvorschau | Beide Hälften des Flügels. Fehlt ein Profil, zeichnet sie die geraden Felder zwischen den Schnitten, sonst den Umriss des gebauten Flügels. Darunter, wenn sich der Flügel bauen lässt: `Spannweite … mm · Fläche … dm² · AR … · MAC … mm` (AR und MAC wie im Abschnitt [Bildschirmaufbau](#bildschirmaufbau)). Die Vorschau passt sich nach jeder Wahl neu ein. Doppelklick passt sie ein, Ziehen verschiebt sie, Strg+Mausrad zoomt. Eine Mausraddrehung ohne Strg scrollt den Dialog. |
+| **Projektname** (Project name) | Vorgabe: Name des Flugzeugs und Name des Flügels, z. B. `Fixture A Main Wing`. Eine Flügeldatei hat keinen Flugzeugnamen. Ohne jeden Namen: `Importierter Flügel` (englische Oberfläche: `Imported wing`). Höchstens 10 000 Zeichen. Das Feld folgt dem Flugzeug und der Fläche, bis ein Name eingegeben wird. Ein geleertes Feld folgt ihnen wieder: Die nächste Wahl trägt den vorgegebenen Namen ein, und **Importieren** verwendet ihn bei leerem Feld. |
+| **Bericht** (Report) | Jeder Wert, den der Import ändert, umrechnet oder weglässt (Abschnitt [Bericht](#bericht)). |
+| **Abbrechen** | Schließt den Dialog. Nichts ändert sich. |
+| **Importieren** | Importiert die Fläche wie angezeigt. Gesperrt, solange der Bericht einen Fehler enthält. Die Beschriftung lautet `Importieren`, wenn jeder Profilname ein verwendbares Profil hat, sonst `Importieren (1 Profil fehlt)` oder `Importieren (2 Profile fehlen)`: die Anzahl der Profilnamen ohne verwendbares Profil. |
+
+- Der Tastaturfokus beginnt bei **Flugzeug** oder, wenn die Datei ein Flugzeug enthält, bei der gewählten Fläche, nicht im Feld **Projektname**. Enter auf einer Fläche importiert nicht. Enter im Feld **Projektname** importiert, solange **Importieren** aktiv ist. Esc bricht ab.
+- Jede Wahl berechnet den Flügel neu: Profiltabelle, Vorschau, Name, Bericht und **Importieren** folgen ihr.
+- Ein Flügel über den Größenwarnungen des Abschnitts [Projektgröße](#projektgröße) wird im Dialog nicht gebaut. Die Vorschau zeichnet gerade Felder, und der Bericht enthält die Warnung `Großes Projekt`.
+
+### Profiltabelle
+
+Die Tabelle hat eine Zeile je verschiedenem Profilnamen der rechten Seite des gewählten Flügels, in der Reihenfolge der Schnitte.
+
+| Spalte | Inhalt |
+| --- | --- |
+| **XFLR5-Profil** (XFLR5 airfoil) | Der Name, wie er in der Datei steht. Zugeordnet wird er mit führenden, nachgestellten und doppelten Leerzeichen; der Browser zeigt diese Leerzeichen nicht an. Ein leerer Name lautet `(ohne Namen)`. Darunter die Schnitte, die ihn verwenden: `Schnitt 3` oder `Schnitte 1–2, 5` (1 = Wurzel). |
+| **Gefunden** (Found) | Die Quelle, die die App für den Namen gefunden hat (Tabelle unten), oder nach einer Wahl **Gewählt** (Picked) oder **Nicht verwendbar** (Not usable; rot: das gewählte Profil besteht die Prüfungen nicht). |
+| **Verwendetes Profil** (Airfoil used) | Eine Auswahlliste. Der erste Eintrag ist die automatische Wahl, `Automatisch – Aus der Datei: Clark Y`, oder `Profil wählen`, wenn nichts gefunden wurde. Dann folgen die Einträge des NACA-Generators (NACA: National Advisory Committee for Aeronautics) für die Namen der Tabelle, die Profile der Datei, die hochgeladenen Dateien, die Profile des aktuellen Projekts, die Bibliotheksprofile und die NACA-Vorgaben des Abschnitts [Bibliothek](#bibliothek). Ein Name, der mit einer NACA-Bezeichnung beginnt, z. B. `NACA0014_Flap`, wird nicht automatisch zugeordnet; seine Liste bietet `NACA-Generator: NACA 0014` zuerst an. Über 20 000 Einträgen (Zeilen × Profile) enthält eine Liste nur ihren gewählten Eintrag, bis sie den Fokus erhält oder angeklickt wird. |
+| **.dat hochladen** (Upload .dat) | Öffnet eine Dateiauswahl (Abschnitt unten). |
+| **Anzeigen** (View) | Öffnet die Vorschau des verwendeten Profils: Name und Quellenangabe sind schreibgeschützt, einzige Schaltfläche ist **Schließen** (Close). Gesperrt, solange für die Zeile weder ein Profil gefunden noch eines gewählt ist. Bei **Nicht verwendbar** zeigt die Vorschau die gewählte Datei mit ihrem Fehler; eine abgewiesene Datei hat keine Punkte. |
+
+Die Spalte der beiden Schaltflächen hat die Überschrift **Aktionen** (Actions), nur für Screenreader sichtbar.
+
+Die automatische Wahl ist die erste Quelle in dieser Reihenfolge, deren Profil die Prüfungen besteht:
+
+| Reihenfolge | **Gefunden** | Quelle |
+| --- | --- | --- |
+| 1 | Aus der Datei | Das Profil der `.xfl`-Datei mit genau diesem Namen (ein späteres Profil desselben Namens ersetzt ein früheres). Ein leerer Name findet keines. XML-Dateien enthalten keine Profile. |
+| 2 | Hochgeladene Datei | Eine in diesem Dialog hochgeladene Datei, deren Namenszeile dem Namen gleicht oder deren Dateiname ohne Endung ihm gleicht. Gleich, dann gleich ohne die Leerzeichen an beiden Enden. |
+| 3 | Aktuelles Projekt | Ein Profil des aktuellen Projekts mit diesem Namen (gleich, dann ohne die Leerzeichen an beiden Enden). |
+| 4 | Bibliothek | Ein Bibliotheksprofil mit diesem Namen (gleich, dann ohne die Leerzeichen an beiden Enden). |
+| 5 | NACA-Gleichungen | Der Name ist eine NACA-Bezeichnung des Generators, z. B. `NACA 0009`, `NACA0009`, `0009` (gültige Bezeichnungen: Abschnitt [NACA-Generator](#naca-generator)). |
+| 6 | Ähnlicher Name | Ein Name, der dem Namen eines hochgeladenen Profils, eines Profils des aktuellen Projekts oder eines Bibliotheksprofils gleicht, wenn Groß- und Kleinschreibung, Leerzeichen, `-` und `_` unberücksichtigt bleiben. Die Zelle erscheint in der Warnfarbe, und der Bericht enthält eine Warnung. |
+| – | Fehlt | Keine Quelle besteht die Prüfungen. Die Zelle ist rot, und **Importieren** ist gesperrt. |
+
+- Die Prüfungen sind die der Vorschau in der Registerkarte **Profile** (Abschnitt [Hochladen](#hochladen)), dazu eine Prüfung, dass die NURBS-Kurve durch die Punkte sich weder kreuzt noch in x zurückläuft. Eine Quelle, die durchfällt, wird übergangen. Besteht keine Quelle, nennt der Fehler die erste, die durchgefallen ist, und ihr Problem.
+- Ein Profil einer `.xfl`-Datei ist seine Grundform ohne Klappenausschlag. Der Bericht nennt eine Klappe des Profils (Abschnitt [Bericht](#bericht)).
+- Über 200 Profilnamen zeigt die Tabelle 200 Zeilen, zuerst die Zeilen ohne verwendbares Profil und die gewählten Zeilen. Darunter: `… weitere Profilnamen sind nicht aufgeführt; hochgeladene .dat-Dateien werden ihnen über den Namen zugeordnet.` Über 10 000 Namen oder wenn die Profile der Datei für die Namen ohne Wahl mehr als 1 000 000 Punkte haben, wird kein Name aufgelöst, und der Bericht enthält den Fehler `Die Profile dieses Flügels überschreiten die Grenzen eines Projekts (10.000 Profile, 1.000.000 Punkte zusammen).` Über 10 000 Namen ist die Tabelle außerdem leer.
+
+**.dat hochladen**:
+
+- Die Dateiauswahl nimmt die Dateitypen des Hochladens von Profilen (`.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`). Eine Datei über 20 MB wird abgewiesen wie im Abschnitt [Hochladen](#hochladen).
+- Die Datei wird gelesen und geprüft wie in der Registerkarte **Profile**. Sie wird zur Wahl ihrer Zeile. Die anderen Zeilen finden sie über den Namen (Tabelle oben). Sie kommt nur ins Projekt, wenn ein Schnitt sie verwendet.
+- Eine nicht verwendbare Datei zeigt **Nicht verwendbar** in ihrer Zeile, wenn eine Zeile sie verwendet, sonst eine Info-Zeile im Bericht.
+- Jede hochgeladene Datei bleibt bis zum Schließen des Dialogs in der Liste jeder Zeile als `Hochgeladen: <Datei>`.
+- Eine Statusmeldung, nur für Screenreader sichtbar, gibt das Ergebnis an: `test12.dat wird für „TEST 12“ verwendet.` oder `test12.dat ist nicht verwendbar: <Grund>`. Screenreader sind ungetestet.
+
+### Lage der Profile
+
+XFLR5 zeichnet die Koordinaten eines Profils, wie sie sind: Die x-Achse der Datei liegt auf der Profilsehne des Schnitts. Wingdesigner legt die Profilnase eines Profils auf den Schnittpunkt und skaliert das Profil auf die Profiltiefe 1. Der Import gleicht das aus, wenn die Koordinaten bekannt sind, die XFLR5 verwendet hat:
+
+| Profil | Schnitte |
+| --- | --- |
+| Profil der `.xfl`-Datei, hochgeladene `.dat`-Datei, NACA-Profil des Generators, Profil des aktuellen Projekts, das aus den NACA-Gleichungen erzeugt ist (Profile aus dem NACA-Generator oder den NACA-Vorlagen der Registerkarte **Profile**, aus dem Assistenten und im Beispielflügel; es erhält die Lage des erzeugten Schnitts seiner NACA-Bezeichnung) | Verschoben und skaliert, sodass jeder Profilpunkt dort liegt, wo XFLR5 ihn zeichnet |
+| Anderes Profil des aktuellen Projekts, Bibliotheksprofil | Behalten die Werte der Datei: ihre Koordinaten in XFLR5 sind unbekannt |
+
+- Beispiel: `fixtures_v662.xfl`, Flugzeug Fixture A. Das Clark Y der Datei hat seine Profilnase 3,55 % der Profiltiefe über der x-Achse. Der Wurzelschnitt (Profiltiefe 240 mm) wird um 8,53 mm entlang seiner Normalen verschoben. Die Schnitttabelle weicht dann um diesen Betrag von der Flügeltabelle von XFLR5 ab.
+- Abweichungen bis 0,1 % der Profiltiefe gelten als keine (0,25 mm bei 250 mm Profiltiefe).
+- Der Bericht nennt jedes Profil, das Schnitte verschiebt: Info, und eine Warnung über 2 % der Profiltiefe.
+- Ein Bibliotheksprofil, bei dem x oder y der Profilnase in seinen eigenen Koordinaten mehr als 2 % der Profiltiefe von 0 entfernt liegt oder dessen Profiltiefe um mehr als 2 % von 1 abweicht, erhält eine Info-Zeile: mitgeliefertes Clark Y 3,55 %, USA 35B 2,87 %. Dasselbe gilt für ein aus der Bibliothek übernommenes Profil des aktuellen Projekts. Das Hochladen der `.dat`-Datei, die XFLR5 verwendet hat, setzt die Schnitte wie XFLR5.
+- Ein Profil des aktuellen Projekts aus einem XFLR5-Import oder einem Upload ist auf die Profiltiefe 1 skaliert gespeichert; seine eigenen Koordinaten sind verloren. Es erhält eine Info-Zeile: `Profil „Clark Y“ (Schnitte 1–2) des aktuellen Projekts ist auf die Profiltiefe 1 skaliert gespeichert, mit der Profilnase bei (0, 0); diese Schnitte behalten daher die Tabellenwerte. …` Beispiel: Die XML-Datei eines Flugzeugs, geöffnet, während das Projekt aus dessen `.xfl`-Import offen ist.
+- Koordinaten, die nicht in Einheiten der Profiltiefe angegeben sind (x oder y der Profilnase mehr als 10 % der Profiltiefe von 0 entfernt, eine Profiltiefe unter 0,5 oder über 2 oder eine als Prozent der Profiltiefe gelesene Datei mit einer Profiltiefe außerhalb von 98 bis 102; z. B. eine Datei in Millimetern): Ein Profil einer `.xfl`-Datei besteht die Prüfung nicht (`Die Koordinaten sind nicht in Einheiten der Profiltiefe angegeben (Profilnase bei x = …, y = …; Endleiste bei x = …).`), und die anderen Quellen der Tabelle im Abschnitt [Profiltabelle](#profiltabelle) werden versucht. Eine Quelle, die besteht, wird verwendet, mit der Warnung `Profil „<name>“ aus der Datei besteht die Prüfung nicht: … Stattdessen wird „<match>“ verwendet.` Besteht keine, fehlt die Zeile: `Profil „<name>“ (…) aus der Datei besteht die Prüfung nicht: Die Koordinaten sind nicht in Einheiten der Profiltiefe angegeben (…). Eine .dat-Datei hochladen oder ein Profil wählen.` Eine hochgeladene Datei wird ohne Verschiebung verwendet, auf die Profiltiefe 1 skaliert, mit einer Warnung.
+
+### Bericht
+
+Der Bericht listet jeden Wert, den der Import ändert, umrechnet oder weglässt. Fehler stehen zuerst, dann Warnungen, dann Infos. Jede Zeile beginnt mit ihrem Schweregrad (**Fehler**, **Warnung**, **Info**). Zeilen über Schnitte nennen sie mit Nummer (`Schnitt 3`, `Schnitte 1–2, 5`; 1 = Wurzel).
+
+- Zeilen einer Art über Schnitte oder Felder zeigen höchstens 5; eine weitere Zeile nennt die Anzahl der übrigen (`Weitere auseinandergeschobene Schnitte: 3.`). Der Bericht zeigt höchstens 200 Zeilen (`Weitere, nicht angezeigte Berichtszeilen: 12.`).
+- Ein Fehler sperrt **Importieren**. Warnungen und Infos tun das nicht.
+- Fehler und Warnungen des Aufbaus des Flügels (wie in der Registerkarte **Prüfungen** (Checks)) erscheinen als Warnungen: `Der Flügel lässt sich noch nicht bauen: …`. Sie sperren **Importieren** nicht, wie bei **Öffnen**.
+
+| Schweregrad | Zeilen | Beispiel |
+| --- | --- | --- |
+| Fehler | Ein Profilname ohne verwendbares Profil. Ein Flügel, der sich nicht abbilden lässt: weniger als 2 Schnitte, fallendes `y_position`, Profiltiefe 0 oder kleiner, ein Wert, der keine Zahl ist, Werte außerhalb der Grenzen eines Projekts. Mehr Profile, als ein Projekt enthält. | `Profil „E423“ (Schnitte 1–2) fehlt: eine .dat-Datei hochladen oder ein Profil wählen.` |
+| Warnung | Eine Warnung der Profilprüfungen, einmal je verwendetem Profil. Ein Profil, das über einen ähnlichen Namen gefunden wurde. Ein Profil, das seine Schnitte um mehr als 2 % der Profiltiefe verschiebt. Eine Klappe eines Profils nicht bei 0° (ohne Ausschlag importiert). Ein Feld mit mehr als 10° V-Form. Schnitte bei einem y, auseinandergeschoben. Eine auf 1 mm erhöhte Profiltiefe. Verschiedene Profile links und rechts. Ein Profil der Datei, das die Prüfung nicht besteht, wenn eine andere Quelle verwendet wird. Profile einer `.xfl`, die nicht gelesen werden konnten. Aufbauwarnungen des Flügels. Warnungen des XML-Leseprogramms. | `Profil „Clark Y“ (Schnitte 1–2) hat in seinen eigenen Koordinaten die Profilnase bei x = 0 %, y = 3,55 % und die Endleiste bei x = 100 % der Profiltiefe; diese Schnitte wurden so verschoben, dass das Profil wie in XFLR5 liegt.` |
+| Info | Was umgerechnet oder angewendet wird: V-Form, Einstellwinkel, Position, eine Lücke an der Wurzel, ganze Umdrehungen der Schränkung, Längeneinheiten. Ein Profil, das seine Schnitte um höchstens 2 % der Profiltiefe verschiebt. Eine Klappe bei 0°. Ein Bibliotheksprofil, dessen Koordinaten neben (0, 0) liegen, auch als Profil des aktuellen Projekts. Ein Profil des aktuellen Projekts aus einem XFLR5-Import oder einem Upload. Eine nicht verwendbare hochgeladene Datei, die keine Zeile gewählt hat. Eine geneigte Profilsehne. Flächen, die nicht importiert werden. Daten, die nicht verwendet werden. Die Endleiste. | `Einstellwinkel 2° wie im XFLR5-Flugzeug angewendet: Die Schnitte sind um den Ursprung des Flügels gedreht, und jede Schränkung enthält ihn.` |
+
+- Mit zwei Schnitten bei einem y wechselt XFLR5 das Profil abrupt. Wingdesigner braucht streng steigendes y: Der innere Schnitt wird um min(0,5 mm, ¼ des inneren Feldes) nach innen verschoben, mit der Warnung `Die Schnitte 3 und 4 liegen beide bei y = 250 mm; Schnitt 3 wurde um 0,5 mm nach innen verschoben.`
+- Ein Feld mit einer V-Form über 10° ergibt `Das Feld von Schnitt 2 bis 3 hat 35° V-Form: Quer zum Feld haben die senkrechten Schnitte 82 % der Dicke in XFLR5.` XFLR5 baut die Schnitte quer zum Feld, Wingdesigner senkrecht: Die Dicke quer zum Feld beträgt cos(V-Form) mal die Dicke in XFLR5.
+- Jede Zeile mit ihrer Bedingung und die Abbildung der Werte: [[Dateiformate]], Abschnitt XFLR5-Import.
+- Die letzten Info-Zeilen jedes Berichts: `Nicht verwendet: VLM-Panelanzahlen und -verteilungen, Farben, Massen, der Rumpf und die Analysen.` (VLM: Vortex-Lattice-Verfahren, vortex lattice method, ein Analyseverfahren von XFLR5) und `Die Endleiste wird wie in den Profilen gebaut; Einstellungen > Endleiste kann sie schließen oder ihr eine Dicke geben.`
+
+### Importieren, Abbrechen und Rückgängig
+
+**Importieren** ersetzt das aktuelle Projekt, wie es **Neu** (New) tut: Name, Profile, Schnitte, Leitkurven und Einstellungen. Es ist ein Rückgängig-Schritt.
+
+| Punkt | Ergebnis |
+| --- | --- |
+| Schnitte | Einer je XFLR5-Schnitt, von der Wurzel zum Rand; von zwei gleichen Schnitten bei einem y nur der äußere (Kennungen `s1`, `s2`, … in der Projektdatei). Werte auf 4 Nachkommastellen gerundet (0,0001 mm, 0,0001°). |
+| Profile | Jedes verwendete Profil. Gleiche Profile mehrerer Zeilen werden zusammengelegt. Ein Profil eines `.xfl`-Projekts zeigt in der Registerkarte **Profile** unter seinem Namen `XFLR5: <Dateiname>` oder seine Quellenangabe, und die Projektdatei behält einen Vermerk zur Herkunft, z. B. `Profil „Clark Y“ aus dem XFLR5-Flugzeug „Fixture A“; Grundform ohne Klappenausschlag.` Hochgeladene Profile, Bibliotheksprofile, NACA-Profile und Profile des aktuellen Projekts behalten ihre eigene Quelle. |
+| **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)) | 0,25, der Punkt, um den XFLR5 einen Schnitt schränkt |
+| **Interpolation in Spannweitenrichtung** (Spanwise interpolation) | **Linear zwischen den Schnitten (gerade Felder)** (Linear between sections (straight panels)) |
+| **Endleiste** (Trailing edge) | **Wie in den Profildateien** (As in the airfoil files) |
+| **Flügelende** (Wing tip) | **Flach (am Randschnitt abgeschnitten)** (Flat (cut at the tip section)) |
+| **Gespiegelte Hälfte zeigen (y < 0)** (Show mirrored half (y < 0)) | an |
+| Leitkurven | aus, Punkte an den Schnittkanten |
+| Übrige Einstellungen | Vorgaben: 60 **Stationen je Profilseite** (Chordwise stations per surface), 8 **Stationen je Feld mit Leitkurve oder glatter Interpolation** (Spanwise stations per panel with guides or smooth mode), **Zentripetal (empfohlen)** (Centripetal (recommended)) |
+
+- Die Registerkarte **Schnitte** (Sections) öffnet sich, und die 3D-Ansicht und der Grundriss-Editor passen sich dem neuen Flügel an. Die automatische Sicherung speichert das Projekt (Abschnitt [Speicherung](#speicherung)).
+- **Rückgängig** (Undo) stellt das vorherige Projekt wieder her, **Wiederholen** (Redo) den Import.
+- Die Meldung lautet `Tragfläche „Main Wing“ von „Fixture A“ aus fixtures_v662.xfl importiert: 3 Schnitte, 2 Profile.` Für das Höhenleitwerk: `Höhenleitwerk „Elevator“ von … importiert`. Ein Flugzeug ohne Namen ergibt `Tragfläche „Main Wing“ aus <Datei> importiert: …`. Die erste Warnung des Berichts folgt in derselben Meldung, bei weiteren Warnungen `(2 weitere Warnungen im Importbericht.)`. Die Warnungen des XML-Leseprogramms bleiben im Bericht. Die Meldung hat mehr als 66 Zeichen und bleibt daher 60 ms je Zeichen (Abschnitt [Bildschirmaufbau](#bildschirmaufbau), Zeile Meldungen).
+- **Abbrechen** und Esc ändern nichts und fügen keinen Rückgängig-Schritt hinzu.
+
+### Dialog auf schmalen Bildschirmen
+
+Der Dialog ist höchstens so hoch wie das Fenster minus 16 px, und sein Inhalt scrollt in ihm.
+
+- Bis zu einer Fensterbreite von 860 px liegt die Grundrissvorschau über dem Projektnamen und dem Bericht (1 Spalte).
+- Bis zu einer Fensterbreite von 800 px wird jede Zeile der Profiltabelle zu einer Karte ohne Kopfzeile: Name, Schnitte und **Gefunden** in der ersten Zeile, darunter die Liste **Verwendetes Profil** über die volle Breite, dann die Schaltflächen **.dat hochladen** und **Anzeigen**. Die 4 Spalten brauchen etwa 800 px.
+- Die beiden Flächenkarten stehen nebeneinander, wenn der Dialog zwei Karten von mindestens 220 px fasst, sonst untereinander.
+- Getestet in Chromium mit der Smartphone-Emulation des Pixel 7 bei einem Fenster von 360 × 780 px: Dialog und Seite haben keinen waagerechten Bildlauf, jedes Bedienelement liegt im Dialog, **Importieren** lässt sich nach dem Scrollen antippen, und die Meldung nach dem Import liegt in der 3D-Ansicht. Nicht auf einem Smartphone getestet.
+
+### XFLR5-Dateien beim Hochladen von Profilen
+
+Die Registerkarte **Profile** weist XFLR5-Dateien als Profile ab, mit der roten Meldung `<Datei> ist eine XFLR5-Datei, kein Profil. Mit „Öffnen“ lässt sich daraus ein Flügel importieren.`
+
+- Die Abweisung gilt für `.xfl`-Projekte jeder Größe (die ersten 4 Bytes sind das Projektformat 200001 oder 200002) und für jede Datei bis 20 MB, deren Text das Element `<explane` enthält (XFLR5-Flugzeug- und -Flügeldateien im XML-Format). Jede andere Datei über 20 MB wird wegen ihrer Größe abgewiesen (Abschnitt [Hochladen](#hochladen)).
+- Mit **Dateien wählen** (Choose files) gewählte oder abgelegte Dateien werden einzeln geprüft. Eine abgewiesene Datei öffnet keine Vorschau; die übrigen Dateien derselben Wahl öffnen weiterhin eine.
+- Eingefügter Text wird darauf nicht geprüft.
+- **.dat hochladen** im Importdialog weist dieselben Dateien ab. Die abgewiesene Datei wird zur Wahl ihrer Zeile: Die Zeile zeigt **Nicht verwendbar**, der Bericht enthält den Fehler `Profil „<name>“ (<Schnitte>): Das gewählte Profil besteht die Prüfung nicht: <Datei> ist eine XFLR5-Datei, kein Profil. Mit „Öffnen“ lässt sich daraus ein Flügel importieren.`, und **Importieren** bleibt gesperrt, bis die Zeile eine andere Wahl erhält. Die Statusmeldung für Screenreader nennt die Abweisung. Nach einer anderen Wahl bleibt die Abweisung als Info-Zeile.
 
 ## Speicherung
 
@@ -212,7 +359,7 @@ Der Assistent erzeugt aus 12 Eingaben (Tabelle unten) ein vollständiges Projekt
 
 - Öffnet sich beim ersten Aufruf mit dem Titel „Neuen Flügelentwurf beginnen“ (Start a new wing design) und mit **Neu** (New) mit dem Titel „Neuer Flügelentwurf“ (New wing design).
 - Vorausgewählter Entwurfstyp: **Sportmodell** (Sport). Ein Klick auf die Karte eines Entwurfstyps lädt dessen Werte.
-- Profile sind NACA-Profile (National Advisory Committee for Aeronautics) der 4- oder 5-stelligen Reihe. Gültige Bezeichnungen: Abschnitt [NACA-Generator](#naca-generator).
+- Profile sind NACA-Profile der 4- oder 5-stelligen Reihe. Gültige Bezeichnungen: Abschnitt [NACA-Generator](#naca-generator).
 - Die Zahlenfelder lesen eine getippte Zahl wie in Abschnitt [Zahlen](#zahlen) und prüfen sie schon beim Tippen. Beim Verlassen eines Felds zeigt es die gelesene Zahl, z. B. `1500` für ein auf Deutsch getipptes `1.500`. Die Pfeiltasten nach oben und unten ändern den Wert wie in den Registerkarten; in einem leeren Feld oder einem Feld ohne Zahl gehen sie vom Wert des gewählten Entwurfstyps aus.
 
 | Eingabefeld | Bereich | Wirkung |
@@ -434,10 +581,11 @@ Grenzen der Projektprofile (Abschnitt [Projektgröße](#projektgröße)):
 
 | Eingabe | Regel |
 | --- | --- |
-| Dateien | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Auf die Ablagefläche ziehen oder **Dateien wählen** (Choose files) verwenden. Mehrere Dateien öffnen nacheinander je eine Vorschau. Eine Datei über 20 MB wird nicht gelesen: rote Meldung `<Datei>: … MB; Profildateien sind auf 5.000.000 Zeichen begrenzt.` Eine Datei, die der Browser nicht lesen kann: rote Meldung `<Datei>: Der Browser konnte die Datei nicht lesen (NotReadableError).` |
+| Dateien | `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv`. Auf die Ablagefläche ziehen oder **Dateien wählen** (Choose files) verwenden. Mehrere Dateien öffnen nacheinander je eine Vorschau. Eine Datei über 20 MB wird nicht gelesen: rote Meldung `<Datei>: … MB; Profildateien sind auf 5.000.000 Zeichen begrenzt.` Ein XFLR5-Projekt erhält auch über 20 MB den Hinweis auf **Öffnen** (Abschnitt [XFLR5-Dateien beim Hochladen von Profilen](#xflr5-dateien-beim-hochladen-von-profilen)). Eine Datei, die der Browser nicht lesen kann: rote Meldung `<Datei>: Der Browser konnte die Datei nicht lesen (NotReadableError).` |
 | Eingefügter Text | Koordinaten in den Textbereich einfügen, dann **Eingefügten Text prüfen** (Check pasted text). |
+| XFLR5-Dateien | Werden abgewiesen: Abschnitt [XFLR5-Dateien beim Hochladen von Profilen](#xflr5-dateien-beim-hochladen-von-profilen). |
 | Zeichenkodierung | UTF-8 (Unicode Transformation Format, 8 Bit); eine Datei, die kein gültiges UTF-8 ist, wird als Windows-1252 gelesen. |
-| Aufbau und Prüfungen | Selig, Lednicer, Tabelle x/Oberseite/Unterseite, XML (Extensible Markup Language), HTML (HyperText Markup Language): siehe [[Dateiformate]] |
+| Aufbau und Prüfungen | Selig, Lednicer, Tabelle x/Oberseite/Unterseite, XML, HTML (HyperText Markup Language): siehe [[Dateiformate]] |
 
 ![Vorschau „Hochladen: sample4412.txt“ einer Prozenttabelle mit Dezimalkomma: Dateipunkte, NURBS-Kurve, Meldungen unter Info und Warnung](images/de/upload-preview.png)
 
