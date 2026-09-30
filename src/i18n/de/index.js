@@ -5,9 +5,12 @@ import editors from './editors.js';
 import model from './model.js';
 import geom from './geom.js';
 import airfoil from './airfoil.js';
+import xfl from './xfl.js';
+import xflxml from './xflxml.js';
+import xflr5 from './xflr5.js';
 
 /** Area files by name, for the i18n check. */
-export const AREAS = { shell, panels, editors, model, geom, airfoil };
+export const AREAS = { shell, panels, editors, model, geom, airfoil, xfl, xflxml, xflr5 };
 
 /** All German entries; `npm run i18n:check` reports a key that two areas translate differently. */
 export const DE = Object.assign({}, ...Object.values(AREAS));
