@@ -638,7 +638,13 @@ Das Klonen in `docs.yml` setzt ein vorhandenes Repository-Wiki voraus; GitHub le
 1. Version setzen: `npm version <version> --no-git-tag-version` (ändert `package.json` und `package-lock.json`).
 2. In `CHANGELOG.md` die Einträge unter `## [Unreleased]` unter eine Überschrift `## [<version>] - YYYY-MM-DD` verschieben.
 3. Committen und nach `main` mergen. Warten, bis `ci.yml` bestanden ist.
-4. Den Merge-Commit auf `main` taggen und den Tag pushen: `git fetch origin main && git tag v<version> origin/main && git push origin v<version>`.
+4. Den Merge-Commit des Release-Pull-Requests `<number>` taggen und den Tag pushen. Der Tag nennt diesen Commit, nicht die Spitze von `main`, die spätere Änderungen enthalten kann. Die Seite des Pull Requests auf GitHub zeigt denselben Commit.
+
+   ```bash
+   git fetch origin main
+   c=$(git log origin/main --merges -1 --format=%H --grep='^Merge pull request #<number>[^0-9]')
+   test -n "$c" && git show -s --format='%h %s' "$c" && git tag v<version> "$c" && git push origin v<version>
+   ```
 
 Danach läuft `release.yml`:
 

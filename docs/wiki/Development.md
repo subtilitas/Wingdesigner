@@ -638,7 +638,13 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 1. Set the version: `npm version <version> --no-git-tag-version` (updates `package.json` and `package-lock.json`).
 2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`.
 3. Commit and merge to `main`. Wait until `ci.yml` passes.
-4. Tag the merge commit on `main` and push the tag: `git fetch origin main && git tag v<version> origin/main && git push origin v<version>`.
+4. Tag the merge commit of the release pull request `<number>` and push the tag. The tag names that commit, not the tip of `main`, which can hold later changes. The pull request page on GitHub shows the same commit.
+
+   ```bash
+   git fetch origin main
+   c=$(git log origin/main --merges -1 --format=%H --grep='^Merge pull request #<number>[^0-9]')
+   test -n "$c" && git show -s --format='%h %s' "$c" && git tag v<version> "$c" && git push origin v<version>
+   ```
 
 `release.yml` then runs:
 

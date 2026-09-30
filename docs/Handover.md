@@ -22,10 +22,14 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
 
 ## Next steps
 
-1. The owner merges pull request #10. After `ci.yml` passes on `main`, the owner pushes the tag:
+1. The owner merges pull request #10. After `ci.yml` passes on `main`, the owner tags the merge commit
+   of pull request #10, not the tip of `main`, which can hold later changes (Development, section
+   Release):
 
    ```bash
-   git fetch origin main && git tag v0.3.0 origin/main && git push origin v0.3.0
+   git fetch origin main
+   c=$(git log origin/main --merges -1 --format=%H --grep='^Merge pull request #10[^0-9]')
+   test -n "$c" && git show -s --format='%h %s' "$c" && git tag v0.3.0 "$c" && git push origin v0.3.0
    ```
 
    After `release.yml` publishes the release, the next pull request (from `main`) enters the tag
