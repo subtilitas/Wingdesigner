@@ -5,13 +5,19 @@ export default {
   Section: 'Schnitt',
   Airfoil: 'Profil',
   Chord: 'Tiefe',
-  Twist: 'Schränkung',
+  // A soft hyphen (U+00AD) lets the column header break the long word: the table then fits the
+  // 650 px side panel.
+  Twist: 'Schrän\u00ADkung',
   deg: '°',
   'Span position of the section plane': 'Spannweitenposition der Schnittebene',
   'Leading-edge position, chordwise (positive aft = sweep back)': 'Lage der Profilnase in Profiltiefenrichtung (positiv nach hinten = Pfeilung nach hinten)',
   'Leading-edge height (dihedral)': 'Höhe der Profilnase (V-Form)',
   'Chord length (profile scale)': 'Profiltiefe (Maßstab des Profils)',
   'Twist about the pivot; positive = leading edge up': 'Schränkung um den Drehpunkt; positiv = Nase hoch',
+  'Panel angle': 'Feld\u00ADwinkel',
+  'Angle of the panel to the next section for the mitred section planes. Empty: from y and z of the two sections.':
+    'Winkel des Felds zum nächsten Schnitt für die Schnittebenen auf Gehrung. Leer: aus y und z der beiden Schnitte.',
+  'auto {angle}': 'auto {angle}',
 
   // Sections table: rows, notes and buttons
   'Airfoil of section {n}': 'Profil des Schnitts {n}',

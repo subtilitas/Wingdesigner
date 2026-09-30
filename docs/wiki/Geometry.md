@@ -23,7 +23,7 @@ Deutsch: [[Geometrie|Geometrie]]
 | K | spanwise stations per panel: **Settings** > **Spanwise stations per panel with guides, smooth mode or mitred linear panels**, default 8, range 3 to 40; the grid limit of section 3.2 can reduce it |
 | c | chord in mm |
 | f_pivot | twist pivot as a fraction of the chord: **Settings** > **Twist pivot (fraction of chord)**, default 0.25, range 0 to 1 |
-| δ | dihedral of a panel: atan2(z_(i+1) − z_i, y_(i+1) − y_i) of its two section positions, in degrees |
+| δ | dihedral of a panel: atan2(z_(i+1) − z_i, y_(i+1) − y_i) of its two section positions, in degrees. The section planes use the panel angle instead, which a section can store (section 3.8) |
 | φ | roll of a section plane about the x axis (section 3.8); φ = 0 is the plane y = const |
 | m | thickness stretch of a placed airfoil (section 3.8); 1 in a vertical plane |
 | n | index of the last point of a point list (points 0 … n) |
@@ -266,7 +266,10 @@ its own plane (roll and stretch of section 3.8), as with a guide curve. With one
 the loft would be the ruled surface of **Straight panels**. The two differ where the chord changes
 together with the airfoil or the twist: on the **Sport** preset (NACA 2412 at 240 mm, NACA 2410 at
 144 mm, −1° twist at the tip) the ruled surface lies up to 0.343 mm off the **Linear** surface, and the
-volume differs by 1.4 %.
+volume differs by 1.4 %. Current limitation: any roll difference switches a **Linear** panel from one
+station to K stations. NACA 2412 at 300 mm chord to NACA 0009 at 100 mm chord, −4° twist, 600 mm
+panel: a dihedral of 1e-6° instead of 0° moves the surface up to 0.17 mm and changes the volume by
+0.25 %.
 
 ```
 y_(i,k) = y_i + (y_(i+1) − y_i) (1 − cos(π k / K)) / 2          k = 0 … K − 1
@@ -452,12 +455,12 @@ Checks in code order. Every row is an error; no surface is built.
 | Airfoil | sanity-check error, failed NURBS interpolation, self-crossing NURBS curve (section 1.4) or x reversal (section 1.5). With **Chord length** or **Uniform** parametrization the message ends with 'Settings > Profile parametrization "centripetal" follows the points more closely.' |
 | Guide curves | a condition of section 3.3 violated |
 | Straight panels | **Straight panels** with a guide curve on (section 3.1) |
-| Section planes, stretch | **Mitred** section planes (not with **Smooth**, section 3.8): a section whose plane lies more than 60° from a panel next to it, a stretch m above 2 (`MAX_STRETCH` in `src/geom/planes.js`): a first panel steeper than 60°, or a dihedral change of more than 120° at a section. The stretch is never clamped. Message: "Section n: its mitred plane lies …° from the panel next to it, which stretches the airfoil … times (limit 2, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical." |
+| Section planes, stretch | **Mitred** section planes (not with **Smooth**, section 3.8): a section whose plane lies more than 60° from a panel next to it (its panel angle, section 3.8), a stretch m above 2 (`MAX_STRETCH` in `src/geom/planes.js`): a first panel steeper than 60°, or a dihedral change of more than 120° at a section. A plane that rounds to 60.0° counts as within the limit (below 60.05°, `STRETCH_LIMIT`): section positions hold 4 decimals. The stretch is never clamped. Message, with the angle to 1 decimal and the stretch to 3: "Section n: its mitred plane lies …° from the panel next to it, which stretches the airfoil … times (limit 2, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical." Example: a first panel at 65°: "… lies 65.0° … stretches the airfoil 2.366 times …". |
 | Loft grid | more than 5,000,000 grid points with the stations per panel used (section 3.2) |
-| Section planes, fold | **Mitred** section planes: the planes of two neighbouring sections of different roll meet in a line parallel to x. The surface between them folds when that line passes through either placed airfoil (its extent along the up direction of its plane, with chord, twist and stretch), when the two airfoils lie on opposite sides of the line, or when the inner airfoil lies outboard of the plane of the outer one (`planeFold` in `src/geom/planes.js`). Message: "Sections a and b: their mitred planes meet … mm from the position (y, z) of section a, within the airfoils, so the surface between them folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." Example: panels of 0°, 40° (10 mm long) and 80°, NACA 0012 at 300 mm chord: the planes rolled 20° and 60° meet 14.6 mm from section 2, inside its ±19.2 mm; at 150 mm chord (±9.6 mm) the surface builds. |
+| Section planes, fold | **Mitred** section planes, **Straight panels**: the planes of two neighbouring sections of different roll meet in a line parallel to x. The surface between them folds when that line passes through either placed airfoil (its extent along the up direction of its plane, with chord, twist and stretch), when the two airfoils lie on opposite sides of the line, or when the inner airfoil lies outboard of the plane of the outer one (`planeFold` in `src/geom/planes.js`). Message: "Sections a and b: their mitred planes meet … mm from the position (y, z) of section a, within the airfoils, so the surface between them folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." Example: panels of 0°, 40° (10 mm long) and 80°, NACA 0012 at 300 mm chord: the planes rolled 20° and 60° meet 14.6 mm from section 2, inside its ±19.2 mm; at 150 mm chord (±9.6 mm) the surface builds. **Linear** panels: the check "Section planes, turning". |
 | Section values | x_LE, c, z or cos(twist) of a check position is not a finite number. Message: "Section values give non-finite coordinates at y = … mm; check the positions, chords and twists of the sections." |
 | Geometry extent | at a check position: x_LE, x_LE + c (trailing edge) or z beyond ±1,200,000 mm (`LIMITS.maxExtent`), or c above 100,000 mm. Causes: **Smooth** overshoot; a guide curve close to ±1,200,000 mm, where the chord added to it or taken from it leaves the extent; nose line and end line more than 100,000 mm apart. Message: "At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves, or use linear interpolation." |
-| Section planes, turning | **Mitred** section planes, **Linear**: at a check position in a panel whose two planes differ, the roll φ changes along y by dφ/dy = (φ_(i+1) − φ_i) / (y_(i+1) − y_i). A point at height t in the plane of its station (along the up direction, with chord, twist and stretch) moves across that plane at the rate cos φ + tan δ · sin φ − t · dφ/dy per mm of span; t is the highest point of the airfoil where dφ/dy > 0, the lowest where dφ/dy < 0. At 0 or below the surface folds, also where the planes of the stations around the position do not cross. Message: "Sections a and b: at y = … mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." Example: NACA 0018 at 217 mm chord, rolls 0° and 46.9° over a 21.7 mm panel: at the root 1 − 30.4 mm · 0.0377/mm < 0; the end planes meet 46 mm up the root plane, beyond the airfoil. **Straight panels** are ruled between the sections; the check "Section planes, fold" covers them. |
+| Section planes, turning | **Mitred** section planes, **Linear**: at a check position in a panel whose two planes differ, the roll φ changes along y by dφ/dy = (φ_(i+1) − φ_i) / (y_(i+1) − y_i). A point at height t in the plane of its station (along the up direction, with chord, twist and stretch) moves across that plane at the rate cos φ + tan δ · sin φ − t · dφ/dy per mm of span; t is the highest point of the airfoil where dφ/dy > 0, the lowest where dφ/dy < 0; δ is the dihedral from the section positions, the direction in which the station moves, also where the panel stores a panel angle. At the position of a section both panels next to it are tested. At 0 or below the surface folds, also where the planes of the stations around the position do not cross. Message: "Sections a and b: at y = … mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." Example: NACA 0018 at 217 mm chord, rolls 0° and 46.9° over a 21.7 mm panel: at the root 1 − 30.4 mm · 0.0377/mm < 0; the end planes meet 46 mm up the root plane, beyond the airfoil. **Straight panels** are ruled between the sections; the check "Section planes, fold" covers them. |
 | **Smooth** overshoot | **Smooth** only. At a check position an interpolated value lies more than 2 × (max − min) of its section values outside [min, max] (`OVERSHOOT_LIMIT` = 2). Values: x_LE (no guide curve on), chord (not both guide curves on), z, twist, and the height z_unit of every profile point k = 1 … 2N − 1. The message names the value with the largest overshoot (`leading-edge x`, `chord`, `z`, `twist`, `upper surface height at x = … % chord` or `lower surface height at x = … % chord`), its y, the section range and the smallest gap between 2 sections. Remedy in the message: **Linear**, more evenly spaced sections, or fewer closely spaced sections. |
 | Blended thickness | min t_k < −1e-9 at a check position. **Smooth**: overshoot (section 3.1); remedy in the message: **Linear** or more sections. **Linear**: upper and lower surface of a section airfoil cross at that chord station; remedy in the message: check the airfoils or raise **Chordwise stations per surface**. The message gives y and x. |
 | Thickness after the **Trailing edge** setting | min t_k < −1e-9 after the gap change of section 3.7. Checked at positions with c ≥ 1 mm. **Fixed thickness in mm**: gap limited to 5 % of the chord. Cause: the airfoil is thinner inside than the set TE gap. |
@@ -533,7 +536,7 @@ With φ = 0 and m = 1 the section lies in the plane Y = y.
 
 | Value | Roll φ | Stretch m |
 | --- | --- | --- |
-| **Mitred (square to the panels, as XFLR5)** (`mitred`, default of new projects) | root 0; a section between panels i − 1 and i: (δ_(i−1) + δ_i) / 2, the bisector plane; tip: δ of the last panel, square to it | 1 / cos(φ − δ) with δ of the panel outboard of the section (the tip: the last panel; at a bisector both panels give the same value): root 1 / cos δ_0, a break 1 / cos((δ_i − δ_(i−1)) / 2), tip 1 |
+| **Mitred (square to the panels, as XFLR5)** (`mitred`, default of new projects) | root 0; a section between panels i − 1 and i: (δ_(i−1) + δ_i) / 2, the bisector plane; tip: δ of the last panel, square to it. δ: the panel angle (below) | 1 / cos(φ − δ) with δ of the panel outboard of the section (the tip: the last panel; at a bisector both panels give the same value): root 1 / cos δ_0, a break 1 / cos((δ_i − δ_(i−1)) / 2), tip 1 |
 | **Vertical (y = const)** (`vertical`) | 0 | 1 |
 
 - Stations between sections: φ is blended like the twist (section 3.1); m = 1 / cos(φ − δ) with δ of
@@ -547,13 +550,25 @@ With φ = 0 and m = 1 the section lies in the plane Y = y.
 - **Smooth** builds vertical section planes: the mitred construction along a spline is not built. With
   **Mitred** and a wing with dihedral, the Checks tab shows the info line "Smooth spanwise interpolation
   builds vertical section planes; mitred section planes need Linear or Straight panels."
+- Panel angle: a section can store the angle of the panel to the next section (**Sections** column
+  **Panel angle**, shown with **Mitred** and **Linear** or **Straight panels**; `panelAngle` in the
+  project file, degrees, within ±89.9999°). The planes use it as δ of that panel, for the rolls and
+  for the stretch. Empty: δ from the section positions; the field shows it as "auto …". The tip
+  section has no panel. The XFLR5 import stores XFLR5's dihedrals (below).
 - The planes follow the section positions. A section moved in z changes the rolls of its planes and
-  of its neighbours' planes.
+  of its neighbours' planes. A stored panel angle stays when a section moves. A section inserted
+  halfway along a panel takes over the panel angle that the panel stores.
+- Short panels: a panel less than 1 mm wide in y (`SHORT_PANEL` in `src/geom/planes.js`) counts as
+  no panel. The sections at its ends share one plane: the bisector plane of the panels around it;
+  before the first panel the vertical plane, after the last panel the plane square to it. Their
+  stretch refers to those panels. XFLR5 skips panels shorter than 0.1 mm along the span in the same
+  way. Current limitation: a panel 0.1 mm to 1 mm long in an XFLR5 file is a panel in XFLR5 and none
+  in Wingdesigner; its two sections lie in one plane.
 - Limits: stretch at most 2 and no fold between neighbouring planes (section 3.6).
 - Project files of format version 1 hold no section-plane setting and open with **Vertical**
   ([[File Formats|File-Formats]]).
 
-**Sections written by an XFLR5 import.** XFLR5 is a program for the analysis of airfoils and wings. The import sets **Twist pivot (fraction of chord)** (f_pivot) to 0.25, the point about which XFLR5 twists a section, **Spanwise interpolation** to **Straight panels**, the construction of XFLR5's panels (section 3.1), and **Section planes** to **Mitred**, XFLR5's planes. A tilted part and a part whose mitred planes would fold import with **Vertical** section planes. It also applies a frame rule. XFLR5 draws the coordinates of an airfoil as they are; the build puts the leading edge of the airfoil curve (section 1.3) at the section origin and scales the airfoil to chord 1 (section 2). Where the coordinates that XFLR5 used are known (an airfoil of the `.xfl` file, an uploaded `.dat` file, a NACA section), the import moves and scales the section by the difference, so that the airfoil lies where XFLR5 draws it; a difference up to 0.1 % of the chord counts as none. Sections with a library airfoil or another airfoil of the current project keep the values of the file. How the import sets the sections, the pivot and the interpolation, with the rules and formulas: [[File Formats|File-Formats]], section XFLR5 import, subsection Mapping to sections.
+**Sections written by an XFLR5 import.** XFLR5 is a program for the analysis of airfoils and wings. The import sets **Twist pivot (fraction of chord)** (f_pivot) to 0.25, the point about which XFLR5 twists a section, **Spanwise interpolation** to **Straight panels**, the construction of XFLR5's panels (section 3.1), and **Section planes** to **Mitred**, XFLR5's planes. A tilted part and a part whose mitred planes would fold import with **Vertical** section planes. It also applies a frame rule. XFLR5 draws the coordinates of an airfoil as they are; the build puts the leading edge of the airfoil curve (section 1.3) at the section origin and scales the airfoil to chord 1 (section 2). Where the coordinates that XFLR5 used are known (an airfoil of the `.xfl` file, an uploaded `.dat` file, a NACA section), the import moves and scales the section by the difference, so that the airfoil lies where XFLR5 draws it; a difference up to 0.1 % of the chord counts as none. The move turns a panel whose two sections move differently (two airfoils, or one airfoil at two twists). Such a section stores XFLR5's dihedral as its panel angle when it differs by more than 0.001° from the dihedral of the moved sections, so the planes and stretches stay XFLR5's. Sections with a library airfoil or another airfoil of the current project keep the values of the file. How the import sets the sections, the pivot and the interpolation, with the rules and formulas: [[File Formats|File-Formats]], section XFLR5 import, subsection Mapping to sections.
 
 ## 4. Surface
 
@@ -571,7 +586,7 @@ Procedure:
 2. Interpolate each column of the resulting control points along v (band LU, section 1.2).
 3. Set y of the control points at v = 0 to y_root, and project the control points at v = 1 onto the
    tip plane (y = y_tip for φ = 0). This removes solver round-off: the root and tip rows lie in their
-   planes (11 STEP cases: within 2e-13 mm, section 6).
+   planes (12 STEP cases: within 3e-13 mm, section 6).
 
 Properties:
 
@@ -686,9 +701,11 @@ Orientation flags:
 | Plane normal | root −y, tip (0, cos φ_tip, sin φ_tip) | mirrored as vectors: root +y, tip (0, −cos φ_tip, sin φ_tip) (outward) |
 
 Validation: `scripts/validate_step.py` reads the files written by `scripts/export-step-cases.mjs`
-with OpenCascade. Cases: the 11 cases of `test/step-cases.js`, 3 of them with **Mitred** section
+with OpenCascade. Cases: the 12 cases of `test/step-cases.js`, 4 of them with **Mitred** section
 planes (a 35° V-tail with **Straight panels**, written once without and once with the **Fusion 360
-fix** (Y up), and a 15°/−5° gull with **Linear**).
+fix** (Y up), a 15°/−5° gull with **Linear**, and an airfoil switch with **Straight panels**: two
+sections 0.5 mm apart in y in one plane between panels of 0° and 10°, the outer panel with a stored
+panel angle of 10.5°).
 
 **Fusion 360 fix** of the export (File Formats, section "Bodies per file"): every point and direction
 of the part is written as (x, z, −y). The turn is a rotation, so the orientation flags stay.

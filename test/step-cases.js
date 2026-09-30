@@ -52,5 +52,20 @@ export function stepCases() {
   gull.sections[1].z = 300 * Math.tan(15 * DEG);
   gull.sections[2].z = gull.sections[1].z - 300 * Math.tan(5 * DEG);
   cases.push({ name: 'mitred-gull-15-5', project: gull, mirror: true });
+  // An XFLR5 airfoil switch: sections 0.5 mm apart in y share the bisector plane of the 0° and 10°
+  // panels around them; the outer panel stores 10.5° (panelAngle), which the tip plane is square to.
+  const tan10 = Math.tan(10 * DEG);
+  const sw = createProject({
+    name: 'Mitred airfoil switch',
+    airfoils: [naca('2412', 'in'), naca('0012', 'out')],
+    sections: [
+      { airfoil: 'in', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+      { airfoil: 'in', x: 10, y: 299.5, z: 0, chord: 180, twist: 0 },
+      { airfoil: 'out', x: 10, y: 300, z: 0, chord: 180, twist: 0, panelAngle: 10.5 },
+      { airfoil: 'out', x: 40, y: 600, z: 300 * tan10, chord: 120, twist: -2 },
+    ],
+    settings: { spanwise: 'straight', sectionPlanes: 'mitred' },
+  });
+  cases.push({ name: 'mitred-switch-short-panel', project: sw, mirror: true });
   return cases;
 }

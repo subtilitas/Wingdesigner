@@ -44,6 +44,8 @@ export default {
   'Section {n}: chord must be at most {max} mm.': 'Schnitt {n}: Profiltiefe darf höchstens {max} mm betragen.',
   'Section {n}: {axis} must be within ±{max} mm.': 'Schnitt {n}: {axis} muss innerhalb von ±{max} mm liegen.',
   'Section {n}: twist must be within ±{max} degrees.': 'Schnitt {n}: Schränkung muss innerhalb von ±{max} Grad liegen.',
+  'Section {n}: panelAngle must be within ±{max} degrees.': 'Schnitt {n}: panelAngle muss innerhalb von ±{max} Grad liegen.',
+  'Section {n}: panelAngle must be a finite number or null.': 'Schnitt {n}: panelAngle muss eine endliche Zahl oder null sein.',
   'guides.{key}.points: at most {max} points (found {found}).': 'guides.{key}.points: höchstens {max} Punkte ({found} gefunden).',
   'guides.{key}.points: x must be within ±{maxX} mm and y within ±{maxY} mm.': 'guides.{key}.points: x muss innerhalb von ±{maxX} mm und y innerhalb von ±{maxY} mm liegen.',
 

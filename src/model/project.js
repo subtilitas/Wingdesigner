@@ -43,6 +43,8 @@ export const LIMITS = Object.freeze({
   maxChord: 100_000,
   maxCoordinate: 1_000_000,
   maxTwist: 360,
+  // A stored panel angle (section.panelAngle, degrees): a panel stays below 90°, as y is the span.
+  maxPanelAngle: 89.9999,
   // Hard size limits: beyond them a desktop browser tab runs out of memory or a change takes about
   // a minute (measurements in RECORD.md). Sizes above the warning thresholds in budget.js work, with
   // a warning that names the expected time and memory.
@@ -158,6 +160,7 @@ export function limitErrors(p) {
       if (isNum(s[k]) && Math.abs(s[k]) > LIMITS.maxCoordinate) errors.push(tr('Section {n}: {axis} must be within ±{max} mm.', { n: plain(i + 1), axis: k, max: whole(LIMITS.maxCoordinate) }));
     }
     if (isNum(s.twist) && Math.abs(s.twist) > LIMITS.maxTwist) errors.push(tr('Section {n}: twist must be within ±{max} degrees.', { n: plain(i + 1), max: plain(LIMITS.maxTwist) }));
+    if (isNum(s.panelAngle) && Math.abs(s.panelAngle) > LIMITS.maxPanelAngle) errors.push(tr('Section {n}: panelAngle must be within ±{max} degrees.', { n: plain(i + 1), max: plain(LIMITS.maxPanelAngle) }));
   });
   // The tilt angle an XFLR5 import folded into the sections, reduced by whole turns, and its pivot.
   const tilt = p?.foldedTilt;
@@ -235,6 +238,8 @@ export function validateProject(p) {
       if (!isNum(s[k])) errors.push(tr('Section {n}: {field} must be a finite number.', { n, field: k === 'chord' ? tr('chord') : k === 'twist' ? tr('twist') : k }));
     }
     if (isNum(s.chord) && s.chord < LIMITS.minChord) errors.push(tr('Section {n}: chord must be at least {min} mm.', { n, min: plain(LIMITS.minChord) }));
+    // The angle of the panel to the next section that the mitred planes use; absent or null: from y and z.
+    if (s.panelAngle !== undefined && s.panelAngle !== null && !isNum(s.panelAngle)) errors.push(tr('Section {n}: panelAngle must be a finite number or null.', { n }));
     if (isNum(s.y) && s.y < 0) errors.push(tr('Section {n}: y must be >= 0 (the half wing lies on the +y side).', { n }));
     if (!ids.has(s.airfoil)) errors.push(tr('Section {n}: unknown airfoil "{id}".', { n, id: shown(s.airfoil) }));
     // Sections without an id get "s<n>" on import; check the effective id.

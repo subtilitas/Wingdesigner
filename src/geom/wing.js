@@ -489,7 +489,7 @@ export function buildWing(project) {
       tr('Section {n}: its mitred plane lies {angle}° from the panel next to it, which stretches the airfoil {stretch} times (limit {limit}, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical.', {
         n: plain(stretched + 1),
         angle: fixed(planes.angles[stretched], 1),
-        stretch: fixed(planes.stretches[stretched], 2),
+        stretch: fixed(planes.stretches[stretched], 3),
         limit: plain(MAX_STRETCH),
       }),
     );
@@ -568,8 +568,8 @@ export function buildWing(project) {
   // (O(1) per span position; a full weight vector per position made time and memory grow with the
   // square of the section count).
   const scalarBlender = () => spanwiseBlender(ys, settings.spanwise, sections.map((_, i) => [[X[i], C[i], Z[i], T[i], R[i]]]));
-  // Panel of a span position (binary search): the stretch follows from the blended roll and the
-  // dihedral of that panel, so every station keeps the airfoil thickness across its panel.
+  // Panel of a span position (binary search): the stretch follows from the blended roll and the angle
+  // the planes of that panel are square to, so every station keeps the airfoil thickness across it.
   const panelOf = (y) => {
     let lo = 0;
     let hi = ys.length - 2;
@@ -594,7 +594,7 @@ export function buildWing(project) {
     if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
     if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
     const roll = raw[4];
-    const stretch = planesOn ? stretchOf(roll, planes.dihedrals[panelOf(y)]) : 1;
+    const stretch = planesOn ? stretchOf(roll, planes.panels[panelOf(y)]) : 1;
     return { raw, xLE, chord, z: raw[2], twist: raw[3], roll, stretch };
   };
   const placement = (y) => {
@@ -625,9 +625,11 @@ export function buildWing(project) {
     result.tipChordLimited = false;
   }
 
-  // Mitred planes of neighbouring sections meet in a line parallel to x; within the airfoils the loft
-  // between them folds in span (a short panel at a large dihedral change).
-  if (planesOn) {
+  // Mitred planes of neighbouring sections meet in a line parallel to x; within the airfoils the ruled
+  // surface of Straight panels between them folds in span (a short panel at a large dihedral change).
+  // A Linear panel turns its planes between the sections, and where the end planes meet says nothing
+  // about a fold there: the turning test at the check positions decides for it.
+  if (planesOn && straight) {
     const fold = firstFold(R, (i) => {
       const pl = placement(ys[i]);
       const [low, high] = upExtent(compat[i], pl, pivot);
@@ -750,13 +752,19 @@ export function buildWing(project) {
     // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendCompat(y);
     if (rollRate && !turnFold) {
-      const i = panelOf(y);
-      const rate = rollRate[i];
-      if (rate !== 0) {
+      // At a section both panels next to it count: it ends the inner one and starts the outer one. At a
+      // bisector the stretch is the same for both.
+      const outer = panelOf(y);
+      for (const i of ys[outer] === y && outer > 0 ? [outer - 1, outer] : [outer]) {
+        const rate = rollRate[i];
+        if (rate === 0) continue;
         const [low, high] = upExtent(shape, { chord, twist, stretch }, pivot);
         const phi = (roll * Math.PI) / 180;
         const dihedral = (planes.dihedrals[i] * Math.PI) / 180;
-        if (!(Math.cos(phi) + Math.tan(dihedral) * Math.sin(phi) - (rate > 0 ? high : low) * rate > 0)) turnFold = { y, i };
+        if (!(Math.cos(phi) + Math.tan(dihedral) * Math.sin(phi) - (rate > 0 ? high : low) * rate > 0)) {
+          turnFold = { y, i };
+          break;
+        }
       }
     }
     if (smooth) {

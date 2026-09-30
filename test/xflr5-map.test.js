@@ -28,6 +28,7 @@ import { buildWing, placeSection } from '../src/geom/wing.js';
 import { fitProfile } from '../src/geom/profile.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { dist, surfacePoint } from '../src/geom/nurbs.js';
+import { panelDihedrals } from '../src/geom/planes.js';
 import { defaultProject } from '../src/model/defaults.js';
 import { sampleProject } from './helpers.js';
 
@@ -1325,10 +1326,24 @@ describe('XFLR5 mapping: section planes', () => {
     expect(projectFromJsonText(projectToJsonText(r.project)).project.foldedTilt).toEqual({ angle: 3, x: 100, z: 20 });
   });
 
+  it('keeps mitred section planes at an airfoil switch: the two sections share the bisector plane, as in XFLR5', () => {
+    // Sections 2 and 3 share y: section 2 moves 0.5 mm inwards, a panel XFLR5 skips. Both lie in the
+    // bisector plane of the 0° and 10° panels around them.
+    const sw = [sec(0, 150, 0, 0, 0, 'NACA 0012'), sec(300, 150, 0, 0, 0, 'NACA 0012'), sec(300, 140, 0, 10, 0, 'NACA 0012'), sec(600, 100, 0, 0, 0, 'NACA 0012')];
+    const r = mapXflr5(xmlFile([wingOf(sw), null, null, null]));
+    expect([r.errors, r.project.settings.sectionPlanes]).toEqual([0, 'mitred']);
+    expect(texts(r.report)).toContain('Sections 2 and 3 share y = 300 mm; section 2 was moved 0.5 mm inwards.');
+    const b = buildWing(r.project);
+    expect(b.errors).toEqual([]);
+    expect(b.rolls.map((v) => Number(v.toFixed(4)))).toEqual([0, 5, 5, 10]);
+    // NACA 0012 has no frame: the sections stay where XFLR5 puts them and store no panel angle.
+    expect(r.project.sections.map((q) => q.panelAngle)).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
   it('falls back to vertical section planes where mitred planes fold the surface or stretch an airfoil beyond 60°', () => {
-    // Sections 2 and 3 share y: section 2 moves 0.5 mm inwards, and the planes of 0° and 5° meet about
-    // 5.7 mm from the reference line, inside the 150 mm NACA 0012 (±9 mm).
-    const fold = [sec(0, 150, 0, 0, 0, 'NACA 0012'), sec(300, 150, 0, 0, 0, 'NACA 0012'), sec(300, 140, 0, 10, 0, 'NACA 0012'), sec(600, 100, 0, 0, 0, 'NACA 0012')];
+    // A 1.5 mm panel at 10° between panels of 0° and 30°: the planes of 5° and 20° meet about 5.7 mm
+    // from the reference line, inside the 150 mm NACA 0012 (±9 mm).
+    const fold = [sec(0, 150, 0, 0, 0, 'NACA 0012'), sec(300, 150, 0, 10, 0, 'NACA 0012'), sec(301.5, 150, 0, 30, 0, 'NACA 0012'), sec(600, 100, 0, 0, 0, 'NACA 0012')];
     const r = mapXflr5(xmlFile([wingOf(fold), null, null, null]));
     expect([r.errors, r.project.settings.sectionPlanes]).toEqual([0, 'vertical']);
     expect(planesText(r)).toEqual(['Section planes: vertical. Mitred planes, as in XFLR5, would fold the surface between sections 2 and 3.']);
@@ -1365,8 +1380,12 @@ describe('XFLR5 mapping: section planes', () => {
     const te = [(raw[0][0] + raw.at(-1)[0]) / 2, (raw[0][1] + raw.at(-1)[1]) / 2];
     const build = buildWing(r.project);
     expect(build.errors).toEqual([]);
-    // The rolls of the build come from the moved sections: 3.9° and 4.88° instead of 4.5° and 6°.
-    expect(build.rolls.map((v) => Number(v.toFixed(2)))).toEqual([0, 3.9, 4.88]);
+    // The moved sections alone give panels of 2.92° and 4.88°: the sections store XFLR5's 3° and 6°,
+    // and the build rolls as XFLR5 does.
+    expect(panelDihedrals(r.project.sections).map((v) => Number(v.toFixed(2)))).toEqual([2.92, 4.88]);
+    expect(r.project.sections.map((q) => q.panelAngle)).toEqual([3, 6, undefined]);
+    expect(validateProject(r.project)).toEqual({ ok: true, errors: [] });
+    expect(build.rolls.map((v) => Number(v.toFixed(9)))).toEqual([0, 4.5, 6]);
     [0, 1].forEach((i) => {
       const q = mapped.sections[i];
       const s = r.project.sections[i];
@@ -1376,11 +1395,11 @@ describe('XFLR5 mapping: section planes', () => {
       const [xflr5] = placeSection([te], { xLE: q.x, y: q.y, z: q.z, chord: q.chord, twist: q.twist, ...at }, 0.25);
       const [moved] = placeSection([[(te[0] - fr.x) / fr.chord, (te[1] - fr.y) / fr.chord]], { xLE: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist, ...at }, 0.25);
       expect(dist(moved, xflr5)).toBeLessThan(1e-3);
-      // The built trailing edge: at the vertical root within 1e-3 mm, at the break within 0.1 mm (the roll).
+      // The built trailing edge lies within 1e-3 mm of XFLR5's, at the vertical root and at the break.
       const v = build.stations.find((st) => st.y === s.y).v;
       const u0 = surfacePoint(build.surface, 0, v);
       const u1 = surfacePoint(build.surface, 1, v);
-      expect(dist(u0.map((c, k) => (c + u1[k]) / 2), xflr5)).toBeLessThan(i === 0 ? 1e-3 : 0.1);
+      expect(dist(u0.map((c, k) => (c + u1[k]) / 2), xflr5)).toBeLessThan(1e-3);
     });
     // Section 2 moves 7.82 mm along its up direction, rolled 4.5°: 0.61 mm inwards.
     expect(mapped.sections[1].y - r.project.sections[1].y).toBeCloseTo(0.61, 2);

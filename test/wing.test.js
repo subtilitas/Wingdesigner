@@ -14,6 +14,7 @@ import { defaultProject } from '../src/model/defaults.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { LIMITS, createProject, resolveSettings, validateProject } from '../src/model/project.js';
 import { loftGrid } from '../src/model/budget.js';
+import { projectFromJsonText, projectToJsonText } from '../src/model/io.js';
 import { naca, sampleProject } from './helpers.js';
 import { setLanguage, tr } from '../src/i18n/index.js';
 
@@ -1219,17 +1220,68 @@ describe('mitred section planes', () => {
     [[pl.dihedrals, [15, -5]], [pl.rolls, [0, 5, -5]], [pl.angles, [15, 10, 0]], [pl.stretches, [1 / Math.cos(15 * DEG), 1 / Math.cos(10 * DEG), 1]]].forEach(([got, want]) =>
       got.forEach((v, i) => expect(v).toBeCloseTo(want[i], 12)),
     );
-    expect(sectionPlanes(sections, 'vertical')).toEqual({ rolls: [0, 0, 0], stretches: [1, 1, 1], dihedrals: pl.dihedrals, angles: [0, 0, 0] });
+    expect(sectionPlanes(sections, 'vertical')).toEqual({ rolls: [0, 0, 0], stretches: [1, 1, 1], dihedrals: pl.dihedrals, panels: pl.dihedrals, angles: [0, 0, 0] });
     expect(sectionPlanes(sections.slice(0, 1), 'mitred').rolls).toEqual([0]);
     // 60° between plane and panel stretches the airfoil twice; the build stops beyond MAX_STRETCH.
     expect(stretchOf(60, 0)).toBeCloseTo(MAX_STRETCH, 12);
-    expect([overStretched([1, 2, 2.0001]), overStretched([1, NaN]), overStretched([1, 2])]).toEqual([2, 1, -1]);
+    // A plane that rounds to 60.0° builds: section positions hold 4 decimals.
+    expect([overStretched([1, 2, 2.0031]), overStretched([1, NaN]), overStretched([1, 2.0000002])]).toEqual([2, 1, -1]);
     // Linear panels between planes that differ get the stations per panel; straight and smooth
     // panels, vertical planes and a flat wing get none. The sections may come in any order.
     const panels = (settings, secs = sections) => rolledPanelCount(secs, resolveSettings({ sectionPlanes: 'mitred', ...settings }));
     expect([panels({}), panels({}, sections.slice().reverse()), panels({ spanwise: 'straight' }), panels({ spanwise: 'smooth' }), panels({ sectionPlanes: 'vertical' })]).toEqual([2, 2, 0, 0, 0]);
     expect(panels({}, sampleProject().sections.map((q) => ({ ...q, z: 0 })))).toBe(0);
     expect(panels({}, sections.slice(0, 1))).toBe(0);
+  });
+
+  it('takes a stored panel angle in place of the dihedral from y and z, for the rolls and the stretches', () => {
+    const sections = gull().sections;
+    // Section 1 stores 17° for its panel (15° from y and z): the break rolls to (17 − 5) / 2 = 6°.
+    const stored = sections.map((q, i) => (i === 0 ? { ...q, panelAngle: 17 } : q));
+    const pl = sectionPlanes(stored, 'mitred');
+    [[pl.dihedrals, [15, -5]], [pl.panels, [17, -5]], [pl.rolls, [0, 6, -5]], [pl.angles, [17, 11, 0]], [pl.stretches, [1 / Math.cos(17 * DEG), 1 / Math.cos(11 * DEG), 1]]].forEach(([got, want]) =>
+      got.forEach((v, i) => expect(v).toBeCloseTo(want[i], 12)),
+    );
+    // The tip has no panel: a stored angle there changes nothing. null means from y and z.
+    expect(sectionPlanes(sections.map((q, i) => (i === 2 ? { ...q, panelAngle: 40 } : i === 1 ? { ...q, panelAngle: null } : q)), 'mitred').rolls).toEqual(sectionPlanes(sections, 'mitred').rolls);
+    // The build places the rows in the stored planes; each Linear station keeps the stretch of its panel.
+    const p = gull();
+    p.sections[0].panelAngle = 17;
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.rolls.map((r) => Number(r.toFixed(9)))).toEqual([0, 6, -5]);
+    const mid = b.stations.find((st) => st.y > 100 && st.y < 200);
+    expect(mid.stretch).toBeCloseTo(1 / Math.cos((mid.roll - 17) * DEG), 12);
+    // Validation: a number within ±89.9999° or null; the JSON file keeps it.
+    const bad = (v) => validateProject({ ...p, sections: p.sections.map((q, i) => (i === 0 ? { ...q, panelAngle: v } : q)) }).errors;
+    expect([bad(null), bad(89.9999), bad(-90), bad('5')]).toEqual([[], [], ['Section 1: panelAngle must be within ±89.9999 degrees.'], ['Section 1: panelAngle must be a finite number or null.']]);
+    expect(projectFromJsonText(projectToJsonText(p)).project.sections.map((q) => q.panelAngle)).toEqual([17, undefined, undefined]);
+  });
+
+  it('puts the two sections of a panel narrower than 1 mm in y in one plane, the bisector of the panels around it', () => {
+    const at = (y, z) => ({ airfoil: 'a', x: 0, y, z, chord: 150, twist: 0 });
+    const planesOf = (secs) => sectionPlanes(secs, 'mitred');
+    const roundAll = (v) => v.map((r) => Number(r.toFixed(9)));
+    // A 0° panel, a 0.5 mm airfoil switch at y = 300 mm, a 10° panel: both switch sections roll 5°,
+    // with the stretch of the panels around them.
+    const sw = [at(0, 0), at(299.5, 0), at(300, 0), at(600, 300 * tan(10))];
+    const pl = planesOf(sw);
+    expect(roundAll(pl.rolls)).toEqual([0, 5, 5, 10]);
+    expect(roundAll(pl.stretches)).toEqual(roundAll([1, 1 / Math.cos(5 * DEG), 1 / Math.cos(5 * DEG), 1]));
+    expect(roundAll(pl.panels)).toEqual(roundAll([0, 10, 10]));
+    // The width in y counts: 0.9 mm in y and 5 mm in z is no panel; 1 mm in y is one.
+    expect(roundAll(planesOf([at(0, 0), at(299.1, 0), at(300, 5), at(600, 5 + 300 * tan(10))]).rolls)).toEqual([0, 5, 5, 10]);
+    expect(planesOf([at(0, 0), at(299, 0), at(300, 0), at(600, 300 * tan(10))]).rolls[1]).toBe(0);
+    // At the root the sections before the first panel stay vertical, at the tip those after the last
+    // panel lie square to it. Without any panel every plane is vertical.
+    expect(roundAll(planesOf([at(0, 0), at(0.5, 0), at(300.5, 300 * tan(10)), at(300.9, 300 * tan(10))]).rolls)).toEqual([0, 0, 10, 10]);
+    expect(planesOf([at(0, 0), at(0.5, 3)]).rolls).toEqual([0, 0]);
+    // The build: Linear and Straight panels between the two switch sections do not fold.
+    for (const spanwise of ['linear', 'straight']) {
+      const b = buildWing(createProject({ airfoils: [naca('0012', 'a')], sections: sw, settings: { sectionPlanes: 'mitred', spanwise } }));
+      expect([spanwise, b.errors]).toEqual([spanwise, []]);
+      expect(roundAll(b.rolls)).toEqual([0, 5, 5, 10]);
+    }
   });
 
   it('keeps the airfoil thickness across every panel and puts each end row in its plane', () => {
@@ -1285,7 +1337,7 @@ describe('mitred section planes', () => {
       settings: { sectionPlanes: 'mitred' },
     });
     expect(buildWing(steep).errors).toEqual([
-      'Section 1: its mitred plane lies 65.0° from the panel next to it, which stretches the airfoil 2.37 times (limit 2, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical.',
+      'Section 1: its mitred plane lies 65.0° from the panel next to it, which stretches the airfoil 2.366 times (limit 2, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical.',
     ]);
     expect(mitredPlaneProblem(steep)).toMatchObject({ kind: 'stretch', i: 0 });
     expect(mitredPlaneProblem(steep).angle).toBeCloseTo(65, 9);
@@ -1331,6 +1383,20 @@ describe('mitred section planes', () => {
       });
     const message = 'Sections 1 and 2: at y = 0.0 mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical.';
     for (const K of [3, 4, 8]) for (const scale of [1, 7]) expect(buildWing(turning(K, scale)).errors, `K ${K}, scale ${scale}`).toEqual([message]);
+    // End planes that meet within the airfoils: the ruled Straight panel folds; the Linear panel turns
+    // its planes in between and does not (NACA 0021, chords 400 and 100 mm, a 33 mm flat panel, then 80°).
+    const turnOut = (spanwise) =>
+      createProject({
+        airfoils: [naca('0021', 'a')],
+        sections: [
+          { airfoil: 'a', x: 0, y: 0, z: 0, chord: 400 },
+          { airfoil: 'a', x: 0, y: 33, z: 0, chord: 100 },
+          { airfoil: 'a', x: 0, y: 33 + 200 * Math.cos(80 * DEG), z: 200 * Math.sin(80 * DEG), chord: 100 },
+        ],
+        settings: { sectionPlanes: 'mitred', spanwise, panelStations: 12 },
+      });
+    expect(buildWing(turnOut('linear')).errors).toEqual([]);
+    expect(buildWing(turnOut('straight')).errors[0]).toMatch(/^Sections 1 and 2: their mitred planes meet 39\.3 mm from the position \(y, z\) of section 1/);
     // Straight panels are ruled between the sections: the check of the two end planes decides.
     const straight = turning(3);
     straight.settings.spanwise = 'straight';

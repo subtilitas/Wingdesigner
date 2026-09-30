@@ -92,9 +92,9 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 
 | Format | File | Content | Verification |
 | --- | --- | --- | --- |
-| STEP, Application Protocol 214 (AP214), ISO (International Organization for Standardization) 10303-21 text | `.step` | One closed B-rep (boundary representation) solid per half. Faces: upper and lower B-spline surface (the exact loft surface), ruled trailing-edge face (open trailing edge only), planar root and tip caps. | CI: `scripts/validate_step.py` reads 11 test wings with OpenCascade (cadquery-ocp 8.0.1). Pass: shapes valid, shells closed and oriented, volume within 0.05 % of the mesh volume, cap edges within 1e-6 mm of their planes. |
+| STEP, Application Protocol 214 (AP214), ISO (International Organization for Standardization) 10303-21 text | `.step` | One closed B-rep (boundary representation) solid per half. Faces: upper and lower B-spline surface (the exact loft surface), ruled trailing-edge face (open trailing edge only), planar root and tip caps. | CI: `scripts/validate_step.py` reads 12 test wings with OpenCascade (cadquery-ocp 8.0.1). Pass: shapes valid, shells closed and oriented, volume within 0.05 % of the mesh volume, cap edges within 1e-6 mm of their planes. |
 | STL, binary | `.stl` | Closed triangle mesh; one shell per body. | Unit tests: every directed edge occurs once and its reverse once; volume from the parsed float32 file within 0.0005 % of the mesh volume. |
-| 3MF | `.3mf` | Same meshes; one object per shell; unit millimetre. | Unit tests: 3 package parts, unit millimetre, 1 object and 1 build item per shell, vertex count. CI: `scripts/validate_3mf.py` reads the 11 test wings with lib3mf 2.5.0 in strict mode. Pass: no warnings while reading, triangle count per object as written, every object manifold and oriented. Slicer software: not tested. |
+| 3MF | `.3mf` | Same meshes; one object per shell; unit millimetre. | Unit tests: 3 package parts, unit millimetre, 1 object and 1 build item per shell, vertex count. CI: `scripts/validate_3mf.py` reads the 12 test wings with lib3mf 2.5.0 in strict mode. Pass: no warnings while reading, triangle count per object as written, every object manifold and oriented. Slicer software: not tested. |
 | Project JSON | `.json` | Airfoil coordinates, sections, guide curves, settings. Derived NURBS data, only when the wing builds without errors. When the file with the derived data would exceed 100 MB, **Save** and the JSON export leave it out and show `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.` Derived data: curve of every airfoil used by a section, each enabled guide curve (null when off), spanwise stations, wing surface (degrees, knots, control points). Import ignores the derived data and recomputes it. | Unit tests: write, read back and rebuild gives the same sections, guide curves, airfoil points and surface control points; validation of every field. |
 
 | Export option | Values | Effect |
@@ -214,16 +214,16 @@ Version history: [CHANGELOG.md](CHANGELOG.md).
 npm ci
 npx playwright install chromium   # browser for end-to-end (e2e) tests and screenshots (or set PW_CHROMIUM=/path/to/chrome)
 npm run dev              # development server on http://localhost:5173
-npm test                 # 538 unit tests (Vitest)
+npm test                 # 542 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
-npm run e2e              # production build, then 177 Playwright tests on desktop 1280 x 720 and Pixel 7 (354 runs)
+npm run e2e              # production build, then 178 Playwright tests on desktop 1280 x 720 and Pixel 7 (356 runs)
 npm run coverage         # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage tables into README.md and README.de.md
 npm run coverage:check   # exit code 1 when a README coverage table differs from coverage/
 npm run airfoils:check   # validate the bundled airfoil library and the NACA presets
-npm run step:cases       # write 11 STEP files, 11 3MF files and cases.json to step-check/
+npm run step:cases       # write 12 STEP files, 12 3MF files and cases.json to step-check/
 npm run screenshots      # rebuild and regenerate docs/wiki/images/
 npm run docs:check       # check page pairs, wiki links, images and coverage markers
 npm run counts:check     # compare the test counts in README, RECORD and wiki with the suites
@@ -241,7 +241,7 @@ The Playwright tests run the DOM (Document Object Model) code; its coverage is n
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.3 % | 95.2 % | 98.7 % | 99.0 % |
+| 98.3 % | 95.3 % | 98.7 % | 99.0 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

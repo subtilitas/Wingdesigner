@@ -347,7 +347,7 @@ Unit tests (Vitest, Node.js):
 | --- | ---: | --- |
 | `test/xflr5-xfl.test.js` | 39 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the old formats of `Rascal110.xfl`; the reserved blocks of XFLR5 6.10.01 to 6.10.04; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
 | `test/xflr5-xml.test.js` | 46 | Reader of XML files: fixtures in millimetres, inches and metres; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
-| `test/xflr5-map.test.js` | 66 | Mapping: y and z from developed span and dihedral, twist, fold of tilt angle and position; section planes of an import (mitred, tilted, fold and stretch fallback, the airfoil frame along a rolled plane); clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library, and for library airfoils with an inclined chord line; a file airfoil whose trailing edge crosses its own end; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
+| `test/xflr5-map.test.js` | 67 | Mapping: y and z from developed span and dihedral, twist, fold of tilt angle and position; section planes of an import (mitred, tilted, fold and stretch fallback, an airfoil switch in one plane, the airfoil frame along a rolled plane with XFLR5's panel angles); clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library, and for library airfoils with an inclined chord line; a file airfoil whose trailing edge crosses its own end; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
 | `test/airfoil.test.js` | 1 of 79 | `leadingNacaCode` |
 
 `test/xflr5-writer.js` writes big-endian XFLR5 project files from options with default values, written from the description of the format in `src/import/xfl.js`. Numbers that the reader skips are written as recognizable non-zero values, so a reader that skips too many or too few bytes misreads what follows. `writeProject(options)` returns `{ bytes, marks }`; `marks` lists the offset of every record for the truncation tests. The plane option `spare: 'index'` writes the reserved blocks of the plane and its wings as XFLR5 6.10.01 to 6.10.04 do.
@@ -375,14 +375,14 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 538 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 542 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit code 1 when a README table differs from `coverage/coverage-summary.json`; exit code 2 when that file or a marker is missing |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 11 STEP files, 11 3MF files and `cases.json` in `step-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 12 STEP files, 12 3MF files and `cases.json` in `step-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 26 Portable Network Graphics (PNG) files: 13 in `docs/wiki/images/` (English) and 13 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
@@ -420,7 +420,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-177 tests in 12 spec files, 354 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+178 tests in 12 spec files, 356 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 
@@ -492,6 +492,7 @@ x and z: position of the leading edge.
 | `mitred-vtail-35` | Not the base wing: 2 sections of NACA 0009, chords 120 and 70 mm, the tip 320 mm along a 35° panel, x 40 mm; **Straight panels**, **Mitred** section planes (tip cap rolled 35°) | 2 |
 | `mitred-vtail-35-y-up` | As `mitred-vtail-35`, written with the **Fusion 360 fix** (Y up): every point as (x, z, −y) | 2 |
 | `mitred-gull-15-5` | z 80.3848 mm at section 2 and 54.1382 mm at the tip (panels of 15° and −5°); **Mitred** section planes (rolls 0°, 5°, −5°), linear blending with 8 stations per panel | 2 |
+| `mitred-switch-short-panel` | Not the base wing: NACA 2412 at y 0 and 299.5 mm (chords 200 and 180 mm), NACA 0012 at y 300 and 600 mm (chords 180 and 120 mm, tip z 52.8981 mm, twist −2°); **Straight panels**, **Mitred** section planes: the 0.5 mm panel counts as none, both switch sections roll 5.25°; the outer panel stores a panel angle of 10.5° (tip roll 10.5°) | 2 |
 
 ## Documentation
 

@@ -186,7 +186,7 @@ input.num {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 600px);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 650px);
 }
 
 .view-wrap {
@@ -408,6 +408,13 @@ legend {
   padding-right: 2px;
 }
 
+/* The panel angle field holds its placeholder, "auto" and the angle from y and z (auto 12.5). */
+.grid-table.sections input.num.angle {
+  width: 5.2em;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
 .grid-table.sections .sec-word {
   display: none;
 }
@@ -552,7 +559,10 @@ svg.thumb polyline {
   margin-bottom: 8px;
 }
 
+/* One line high before the first build writes it: the 3D view keeps its height, and the first camera
+   fit, which a view narrower than high takes from its size, matches the view that follows. */
 .statusbar {
+  min-height: calc(1lh + 9px);
   padding: 4px 12px;
   font-size: 12px;
   border-top: 1px solid var(--line);
@@ -782,7 +792,8 @@ dialog.xflr5 .issues {
     grid-template-columns: 1fr;
   }
 
-  input.num {
+  input.num,
+  .grid-table.sections input.num.angle {
     width: 100%;
   }
 

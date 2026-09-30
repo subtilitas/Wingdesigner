@@ -347,7 +347,7 @@ Unit-Tests (Vitest, Node.js):
 | --- | ---: | --- |
 | `test/xflr5-xfl.test.js` | 39 | Leser für `.xfl`-Projekte: Byte-Aufbau von `fixtures_v662.xfl`; die alten Formate von `Rascal110.xfl`; die reservierten Blöcke von XFLR5 6.10.01 bis 6.10.04; `UltraStick25e_v662_stripped.xfl` gegen `UltraStick25e.xml`; Projekte aus `test/xflr5-writer.js` (Analysen mit Steuerverstärkungen und Ergebnispunkten, Flugzeugergebnisse, Null-Zeichenketten, Rümpfe, wiederholte Profilnamen, Klappen, bereinigte Positionen); abgelehnte Dateien (flow5, `.wpa`, JSON, Größe, Anzahlen, ungerade Zeichenkettenlängen); Beschädigung (abgeschnitten an jeder Datensatzgrenze und an jedem Byte, Beschädigung nach den Flugzeugen); Fenster beliebiger Größe; deutsche Meldungen |
 | `test/xflr5-xml.test.js` | 46 | Leser für XML-Dateien: Fixtures in Millimetern, Zoll und Metern; Flügeldateien; Einheiten; Syntax (Byte-Order-Mark, Text im 16-Bit Unicode Transformation Format (UTF-16), Kommentare, Abschnitte mit Zeichendaten (CDATA), Entitäten, Groß- und Kleinschreibung, aufgefüllte Zahlen, Exponenten); fehlende und unlesbare Zahlen; Flügelplätze nach `<Type>` und nach der Reihenfolge; abgelehnte Dateien; Grenzen; lineare Laufzeit bei langer und feindlicher Eingabe; deutsche Meldungen |
-| `test/xflr5-map.test.js` | 66 | Abbildung: y und z aus abgewickelter Spannweite und V-Form, Schränkung, Einrechnung von Einstellwinkel und Position; Schnittebenen eines Imports (auf Gehrung, mit Einstellwinkel, Rückfall bei Faltung und Dickenstreckung, die Profillage entlang einer geneigten Ebene); Bereinigung (Schnitte bei gleichem y, Profiltiefen unter 1 mm, Grenzen); Flächen eines Flugzeugs; Profilquellen, Wahl, Uploads und Klappen; Profillage gegen die Zahlen von Fixture A und B, auch für NACA-Schnitte des aktuellen Projekts (erzeugte und geprüfte Punkte, von Hand bearbeitete Angaben); Berichtszeilen für Profile des aktuellen Projekts aus einem XFLR5-Import, einem Upload oder der Bibliothek und für Bibliotheksprofile mit geneigter Profilsehne; ein Profil der Datei, dessen Endleiste ihr eigenes Ende kreuzt; Projekt, JSON-Rundlauf und Bericht; 10 000 Profilnamen in linearer Zeit; Deutsch |
+| `test/xflr5-map.test.js` | 67 | Abbildung: y und z aus abgewickelter Spannweite und V-Form, Schränkung, Einrechnung von Einstellwinkel und Position; Schnittebenen eines Imports (auf Gehrung, mit Einstellwinkel, Rückfall bei Faltung und Dickenstreckung, ein Profilwechsel in einer Ebene, die Profillage entlang einer geneigten Ebene mit den Feldwinkeln von XFLR5); Bereinigung (Schnitte bei gleichem y, Profiltiefen unter 1 mm, Grenzen); Flächen eines Flugzeugs; Profilquellen, Wahl, Uploads und Klappen; Profillage gegen die Zahlen von Fixture A und B, auch für NACA-Schnitte des aktuellen Projekts (erzeugte und geprüfte Punkte, von Hand bearbeitete Angaben); Berichtszeilen für Profile des aktuellen Projekts aus einem XFLR5-Import, einem Upload oder der Bibliothek und für Bibliotheksprofile mit geneigter Profilsehne; ein Profil der Datei, dessen Endleiste ihr eigenes Ende kreuzt; Projekt, JSON-Rundlauf und Bericht; 10 000 Profilnamen in linearer Zeit; Deutsch |
 | `test/airfoil.test.js` | 1 von 79 | `leadingNacaCode` |
 
 `test/xflr5-writer.js` schreibt XFLR5-Projektdateien im Big-Endian-Format aus Optionen mit Vorgabewerten, nach der Beschreibung des Formats in `src/import/xfl.js`. Zahlen, die der Leser überspringt, stehen als erkennbare Werte ungleich 0 in der Datei, sodass ein Leser, der zu viele oder zu wenige Byte überspringt, das Folgende falsch liest. `writeProject(options)` liefert `{ bytes, marks }`; `marks` listet den Offset jedes Datensatzes für die Tests mit abgeschnittenen Dateien. Die Flugzeugoption `spare: 'index'` schreibt die reservierten Blöcke des Flugzeugs und seiner Flügel wie XFLR5 6.10.01 bis 6.10.04.
@@ -375,14 +375,14 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 538 Tests in 18 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 542 Tests in 18 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit-Code 1, wenn eine README-Tabelle von `coverage/coverage-summary.json` abweicht; Exit-Code 2, wenn diese Datei oder eine Markierung fehlt |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Prüfungen unter [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek); Exit-Code 1 bei einem Problem |
 | `npm run e2e` | `npm run build && playwright test` | Browsertests in `e2e/` gegen `vite preview` auf Port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 11 STEP-Dateien, 11 3MF-Dateien und `cases.json` in `step-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 12 STEP-Dateien, 12 3MF-Dateien und `cases.json` in `step-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 26 Dateien im Format Portable Network Graphics (PNG): 13 in `docs/wiki/images/` (Englisch) und 13 in `docs/wiki/images/de/` (Deutsch) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Prüfungen unter [Prüfung der Testanzahlen](#prüfung-der-testanzahlen); Exit-Code 1 bei einer Abweichung |
@@ -420,7 +420,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-177 Tests in 12 Spec-Dateien, 354 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+178 Tests in 12 Spec-Dateien, 356 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 
@@ -492,6 +492,7 @@ x und z: Lage der Profilnase.
 | `mitred-vtail-35` | Nicht der Basisflügel: 2 Schnitte mit NACA 0009, Profiltiefen 120 und 70 mm, der Rand 320 mm entlang eines Feldes mit 35°, x 40 mm; **Gerade Felder** (Straight panels), Schnittebenen **Auf Gehrung** (Mitred) (Randfläche um 35° geneigt) | 2 |
 | `mitred-vtail-35-y-up` | Wie `mitred-vtail-35`, mit **Fusion-360-Korrektur** (Y nach oben) geschrieben: jeder Punkt als (x, z, −y) | 2 |
 | `mitred-gull-15-5` | z 80,3848 mm an Schnitt 2 und 54,1382 mm am Rand (Felder mit 15° und −5°); Schnittebenen **Auf Gehrung** (Neigungen 0°, 5°, −5°), lineare Interpolation mit 8 Stationen je Feld | 2 |
+| `mitred-switch-short-panel` | Nicht der Basisflügel: NACA 2412 bei y 0 und 299,5 mm (Profiltiefen 200 und 180 mm), NACA 0012 bei y 300 und 600 mm (Profiltiefen 180 und 120 mm, Rand-z 52,8981 mm, Schränkung −2°); **Gerade Felder**, Schnittebenen **Auf Gehrung**: Das 0,5 mm breite Feld gilt als keines, beide Schnitte des Profilwechsels sind um 5,25° geneigt; das äußere Feld speichert einen Feldwinkel von 10,5° (Neigung am Rand 10,5°) | 2 |
 
 ## Dokumentation
 

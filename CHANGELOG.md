@@ -130,9 +130,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - `scripts/validate_step.py` checks that the edges of every planar face (the end caps) lie in the
   plane within 1e-6 mm; `test/step-cases.js` adds a mitred 35° V-tail and a mitred 15°/−5° gull
   (10 cases).
+- Section field `panelAngle` and the Sections column **Panel angle** (shown with **Mitred** and
+  **Linear** or **Straight panels**): the angle of the panel to the next section that the mitred
+  planes use for rolls and stretches, −89.9999 to 89.9999°. Empty: the dihedral from y and z, shown
+  as `auto …`. It stays when a section moves; **+** halfway along a panel copies it. The side panel
+  is up to 650 px wide (600 px before), so the table keeps its row buttons in view; the German
+  headers **Schränkung** and **Feldwinkel** break at a soft hyphen.
+- XFLR5 import: where airfoil frames move the two sections of a panel differently, the section
+  stores XFLR5's dihedral as `panelAngle` (difference above 0.001°), so the planes and stretches are
+  XFLR5's. 284 random untilted parts with cambered NACA sections: largest distance of a built section
+  from XFLR5's placement 0.151 mm (0.417 mm with the dihedrals of the moved sections); the rest is
+  the fitted nose of cambered NACA sections, 0.43 mm at 1000 mm chord for NACA 4415. A flat wing with
+  a tip airfoil 10 % of the chord off (0, 0): 0.017 mm (0.80 mm before).
+- Mitred planes: a panel less than 1 mm wide in y counts as no panel. The sections at its ends share
+  the bisector plane of the panels around it, as XFLR5 does for panels shorter than 0.1 mm. An XFLR5
+  airfoil switch (two sections at one y, moved 0.5 mm apart) now imports with **Mitred** planes
+  instead of the vertical fallback. `test/step-cases.js` adds such a switch with a stored panel angle
+  (12 cases).
 
 ### Changed
 
+- Mitred plane checks: the end-plane fold check applies to **Straight panels**; **Linear** panels
+  are checked where their planes turn, at a section for both panels next to it. A Linear panel whose
+  end planes meet within the airfoils but whose surface does not fold builds: NACA 0021 at 400 mm and
+  100 mm chord, a flat 33 mm panel before an 80° panel (planes 0° and 40° meet 39.3 mm from the root);
+  with **Straight panels** that surface folds and the build stops. A plane that rounds to 60.0° from its panel builds (limit 60.05°); the
+  stretch error gives the stretch to 3 decimals (`2.366 times` for a first panel at 65°).
 - Project format version 2. A version 1 file opens with **Vertical** section planes, as designed; an
   app that reads version 1 only refuses a version 2 file. New projects, the wizard and the sample wing
   get **Mitred**: a preset with dihedral builds more stations (Sport, Trainer, Plank: 9 instead of 2;
@@ -184,6 +207,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ### Fixed
 
+- 3D view after a reload: the empty status bar was 17 px lower at start-up, so the first camera fit
+  took a 3D view 17 px higher than the one that followed. A 3D view narrower than high (a desktop
+  window with the 650 px side panel, or a narrow window) then showed the wing smaller after a reload
+  than after **New**. The status bar keeps the height of one line from the start.
 - Airfoil check: a crossing of the first and the last outline segment does not count when their free
   ends lie at most 1e-4 of the chord apart (`TE_CROSS_TOLERANCE`, the limit of `te-crossed`). 19 UIUC
   files that start at x = 1.00000 and end at x = 1.00001 (`sd7003.dat`, `sd8000.dat` and others)

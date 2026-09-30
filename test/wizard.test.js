@@ -161,6 +161,12 @@ describe('edit operations', () => {
     const lone = sampleProject();
     lone.sections = [lone.sections[0]];
     expect(insertSection(lone, 0).y).toBe(100);
+    // Halfway along a panel that stores its angle, the new section keeps it; beyond the tip it has none.
+    const stored = sampleProject();
+    stored.sections[0].panelAngle = 3;
+    stored.sections[2].panelAngle = 7;
+    expect(insertSection(stored, 0).panelAngle).toBe(3);
+    expect(insertSection(stored, 3)).not.toHaveProperty('panelAngle');
   });
 
   it('keeps enabled guides spanning root to tip', () => {

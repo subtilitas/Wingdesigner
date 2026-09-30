@@ -166,6 +166,7 @@ export function omittedNote() {
 }
 
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
 const samePoints = (a, b) => a.length === b.length && a.every((p, i) => Math.abs(p[0] - b[i][0]) <= 1e-9 && Math.abs(p[1] - b[i][1]) <= 1e-9);
 
@@ -196,7 +197,7 @@ export function projectFromJsonText(text) {
       points: a.points.map((p) => [p[0], p[1]]),
       ...(isObject(a.source) ? { source: Object.fromEntries(SOURCE_KEYS.filter((k) => a.source[k] !== undefined).map((k) => [k, a.source[k]])) } : {}),
     })),
-    sections: data.sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, airfoil: s.airfoil, x: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist })),
+    sections: data.sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, airfoil: s.airfoil, x: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist, ...(isNum(s.panelAngle) ? { panelAngle: s.panelAngle } : {}) })),
     // Version 1 files predate section planes: they open with vertical planes (owner decision R2,
     // docs/Flow5upgrade.md), set before the defaults fill the missing settings.
     settings: resolveSettings(data.version < 2 ? { ...(isObject(data.settings) ? data.settings : {}), sectionPlanes: 'vertical' } : data.settings),

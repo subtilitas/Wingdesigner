@@ -39,7 +39,7 @@ import { leadingNacaCode, parseNacaCode } from '../airfoil/naca.js';
 import { slug } from '../model/edit.js';
 import { DEFAULT_SETTINGS, LIMITS, createProject, validateProject } from '../model/project.js';
 import { fitProfile } from '../geom/profile.js';
-import { sectionPlanes } from '../geom/planes.js';
+import { SHORT_PANEL, panelDihedrals, sectionPlanes } from '../geom/planes.js';
 import { mitredPlaneProblem } from '../geom/wing.js';
 import { curvePoint } from '../geom/nurbs.js';
 import { displayName } from '../model/budget.js';
@@ -87,6 +87,12 @@ const NO_FRAME = Object.freeze({ x: 0, y: 0, chord: 1 });
 
 // Smallest width in y (mm) of a panel: a panel at 90° dihedral or more does not step outwards.
 const MIN_WIDTH = 1e-3;
+
+/**
+ * Difference (degrees) between XFLR5's dihedral of a panel and the dihedral of its moved sections
+ * above which the section stores XFLR5's (panelAngle). 0.001° changes a stretch at 60° by 3e-5.
+ */
+export const PANEL_ANGLE_TOLERANCE = 1e-3;
 
 // Report lines of one kind that name one section or panel each (a moved section, say): the first
 // ones, then a count of the rest. A damaged file can hold 20,000 sections.
@@ -1211,18 +1217,28 @@ function assemble(name, mapped, rows, add, planes, tilt) {
   }
   const frames = new Map(rows.map((row) => [row.name, row.frame]));
   // An airfoil frame moves a section in its own plane: in a mitred plane along the rolled up
-  // direction, with the thickness stretch. The rolls are XFLR5's (from the file's dihedrals); the build
-  // takes them from the moved sections.
+  // direction, with the thickness stretch. The rolls are XFLR5's (from the file's dihedrals).
   const mitred = planes.mode === 'mitred';
   const placed = mapped.map((s, i) => ({ index: s.index, foil: s.foil, ...placeAirfoil(s, frames.get(s.foil), mitred ? planes.rolls[i] : 0, mitred ? planes.stretches[i] : 1) }));
   if (!withinLimits(placed, add)) return null;
   // The project holds 4 decimals (1e-4 mm and degrees, far below the differences from XFLR5's
   // construction): the unit conversion leaves noise such as a chord of 400.04999999999995 mm.
   const r4 = (v) => zero(Number(v.toFixed(4)));
+  const sections = placed.map((s, i) => ({ id: `s${i + 1}`, airfoil: ids.get(s.foil), x: r4(s.x), y: r4(s.y), z: r4(s.z), chord: Math.max(r4(s.chord), LIMITS.minChord), twist: r4(s.twist) }));
+  // Frames that move the two sections of a panel differently turn it: the build would take other
+  // planes and stretches from the moved sections. Such a panel stores XFLR5's dihedral (panelAngle).
+  if (mitred) {
+    panelDihedrals(sections).forEach((d, i) => {
+      const xflr5 = planes.dihedrals[i];
+      if (sections[i + 1].y - sections[i].y >= SHORT_PANEL && Math.abs(xflr5 - d) > PANEL_ANGLE_TOLERANCE) {
+        sections[i].panelAngle = Math.min(Math.max(r4(xflr5), -LIMITS.maxPanelAngle), LIMITS.maxPanelAngle);
+      }
+    });
+  }
   return createProject({
     name,
     airfoils,
-    sections: placed.map((s, i) => ({ id: `s${i + 1}`, airfoil: ids.get(s.foil), x: r4(s.x), y: r4(s.y), z: r4(s.z), chord: Math.max(r4(s.chord), LIMITS.minChord), twist: r4(s.twist) })),
+    sections,
     settings: { twistPivot: 0.25, spanwise: 'straight', sectionPlanes: planes.mode, mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } },
     ...(tilt ? { foldedTilt: { angle: r4(tilt.angle), x: r4(tilt.x), z: r4(tilt.z) } } : {}),
   });

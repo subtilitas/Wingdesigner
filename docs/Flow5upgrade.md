@@ -49,7 +49,9 @@ User Guide (Settings, Checks).
 | R3 | Twist about the normal of the section plane; the stretch scales the thickness before the twist |
 | R4 | **Linear** panels between planes of different roll get K stations and a cubic loft; panels of 2 stations are straight segments raised to that degree |
 | R5 | Untilted imports mitred; tilted imports vertical with `foldedTilt`; fold or stretch fallback to vertical with an info line |
-| R6 | Stretch limit 2 (60°) as a build error; fold test between neighbouring sections before the loft, at every check position of a Linear panel whose planes turn, and between neighbouring stations after the fit |
+| R6 | Stretch limit 2 (60°) as a build error, a plane that rounds to 60.0° builds; fold test between neighbouring sections of **Straight panels** before the loft, at every check position of a **Linear** panel whose planes turn (at a section for both panels next to it), and between neighbouring stations after the fit |
+| Plane angles of an import | Optional section field `panelAngle`, the angle of the panel to the next section, and the Sections column **Panel angle**; the import stores XFLR5's dihedral where airfoil frames turn a panel (owner decision "Store XFLR5's angles"; stored as the panel angle, because the roll alone leaves the stretch of the moved sections) |
+| Short panels | A panel less than 1 mm wide in y counts as no panel; its sections share the bisector plane of the panels around it (owner decision "Bisector for short panels") |
 | Smooth | Vertical planes and an info line (owner decision (b)) |
 | Folded tilt with **Mitred** | Warning in Checks with the estimate 0.75 · c · sin(tilt) · sin(roll) (owner decision) |
 | Imports of pull request #5 | Documented on the File Formats page, not converted (owner decision) |
@@ -58,11 +60,16 @@ Measured on 2026-09-30:
 
 - XFLR5 6.62 STL of 93 surfaces of 15 real projects: 80 within 0.6 mm (75 with vertical planes).
   Untilted 35° V-tails 2.87 → 0.013 mm, the 40° V-tail of `mini_talon.xfl` 2.31 → 0.025 mm; the 4
-  tilted V-tails stay at 2.87 mm (step 2). The flat wings of `Wing Design and Analysis.xfl` gain
-  0.005 mm, because the build takes the rolls from the frame-moved sections.
-- OpenCascade on the 10 STEP cases (2 mitred): all valid and closed, volume within 7.6e-5 of the
-  mesh, cap edges within 2e-13 mm of their planes. A tip cap written vertical on the gull fails the
+  tilted V-tails stay at 2.87 mm (step 2). The flat wings of `Wing Design and Analysis.xfl` lie within
+  0.229 mm with the stored panel angles, as with vertical planes (0.234 mm with the rolls of the
+  frame-moved sections).
+- OpenCascade on the 12 STEP cases (4 mitred): all valid and closed, volume within 7.6e-5 of the
+  mesh, cap edges within 3e-13 mm of their planes. A tip cap written vertical on the gull fails the
   new cap check (0.67 mm) and passes the volume check (0.0475 %).
+- 284 random untilted imports with cambered NACA sections: largest distance of a built section from
+  XFLR5's placement 0.151 mm with the stored panel angles, 0.417 mm with the dihedrals of the
+  frame-moved sections and 0.430 mm with XFLR5's roll alone; the rest is the fitted nose of the
+  cambered NACA sections.
 - Wizard presets with dihedral build 9 or 17 stations; the Sport wing loses 1.4 % volume against the
   vertical build (the **Linear** blend instead of a ruled surface 0.343 mm off it), 0.02 % from the
   planes alone.

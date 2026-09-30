@@ -124,13 +124,19 @@ export function stepValue(from, delta, min, max) {
 
 /**
  * Number field of a panel. Commits on change (Enter, blur, arrow steps); an empty text or one that is
- * no number restores the stored value. focusKey identifies the field across re-renders so focus can
- * be restored.
+ * no number restores the stored value. `optional`: an empty text commits null (the value then comes
+ * from elsewhere, which `placeholder` names, and arrow steps start from `fallback()`). focusKey
+ * identifies the field across re-renders so focus can be restored.
  */
-export function numberInput({ value, step = 1, min, max, title, onCommit, width, focusKey }) {
-  const input = numberField({ value, step, min, max, title, width, className: 'num' });
+export function numberInput({ value, step = 1, min, max, title, onCommit, width, focusKey, optional = false, placeholder, fallback }) {
+  const input = numberField({ value, step, min, max, title, width, className: 'num', ...(fallback ? { fallback } : {}) });
   if (focusKey) input.dataset.focusKey = focusKey;
+  if (placeholder) input.placeholder = placeholder;
   input.addEventListener('change', () => {
+    if (optional && !input.value.trim()) {
+      onCommit(null);
+      return;
+    }
     const v = readNumber(input.value);
     if (!Number.isFinite(v)) {
       showNumber(input, value);

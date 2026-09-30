@@ -315,8 +315,9 @@ Ids made by the app:
 | `z` | mm | height of the LE; −1,000,000 to 1,000,000 mm |
 | `chord` | mm | 1 to 100,000 mm |
 | `twist` | ° | rotation about the chord point at `settings.twistPivot`; positive = LE up; −360 to 360° |
+| `panelAngle` | ° | optional; `null` or missing: the dihedral from `y` and `z`. Angle of the panel to the next section (in the order of `y`) that **Mitred** section planes use for the rolls and the thickness stretch ([[Geometry]], section 3.8); −89.9999 to 89.9999°. Unused on the tip section and with **Vertical**. Written by the XFLR5 import (section "XFLR5 import", step 4) and the **Panel angle** column of the Sections tab. |
 
-- Every value is a finite number.
+- Every value except `panelAngle` is a finite number.
 - Limits: `LIMITS` in `src/model/project.js` (`minChord`, `maxChord`, `maxCoordinate`, `maxTwist`, `maxSections`, `maxAirfoils`, `maxAirfoilPoints`, `maxGuidePoints`, `maxGuideCoordinate`, `maxExtent`, `maxName`, `maxId`, `maxText`); points per airfoil: `MAX_POINTS` in `src/airfoil/parse.js`; names: `MAX_NAME` in `src/airfoil/parse.js`.
 - The wing build checks the same limits (`limitErrors`), so a project that cannot be saved cannot be exported. Planform drags stay within them: chord 1 to 100,000 mm, leading-edge x within ±1,000,000 mm, section y at most 1,000,000 mm, guide point x within ±1,100,000 mm.
 - Array order is free. The build sorts the sections by `y`.
@@ -384,9 +385,9 @@ The file is rejected, and the first 3 messages are shown, when:
 - `name` is longer than 10,000 characters, or an airfoil `name` is present and not a string or longer than 10,000 characters;
 - an airfoil `source` is present, not `null` and not an object, or a known `source` key holds something other than a string, `true`, `false` or `null`, or a string longer than 2,000 characters;
 - an airfoil has fewer than 5 or more than 100,000 points, or a point that is not an `[x, y]` pair of finite numbers;
-- a section `x`, `y`, `z`, `chord` or `twist` is not a finite number;
+- a section `x`, `y`, `z`, `chord` or `twist` is not a finite number, or `panelAngle` is present and neither `null` nor a finite number;
 - `chord` < 1 mm or > 100,000 mm, `y` < 0, 2 sections share `y`, or `airfoil` names an unknown id;
-- a section `x`, `y` or `z` lies outside −1,000,000 to 1,000,000 mm, or `twist` outside −360 to 360°;
+- a section `x`, `y` or `z` lies outside −1,000,000 to 1,000,000 mm, `twist` outside −360 to 360°, or `panelAngle` outside −89.9999 to 89.9999°;
 - a `settings` value is outside the table above;
 - `foldedTilt` is present, not `null`, and not an object with the numbers `angle`, `x` and `z`, or `angle` lies outside ±180° or `x` or `z` outside ±1,000,000 mm;
 - `guides.nose` or `guides.end` is neither an object nor `null`;
@@ -405,10 +406,10 @@ Checked only when the wing is built, in this order:
 - `curve-shape`: the NURBS profile curve crosses itself (loop size, mean width, above 0.05 % chord) or runs back in x (above 0.01 % chord);
 - guide curves: y strictly increasing; the curve does not double back in span direction; x of every control point of the curve within ±1,200,000 mm;
 - `spanwise` `"straight"` with a guide curve on;
-- `sectionPlanes` `"mitred"` (not with `"smooth"`): a section plane more than 60° from a panel next to it (thickness stretch above 2), or the planes of 2 neighbouring sections meet within the airfoils ([[Geometry]], section 3.6);
+- `sectionPlanes` `"mitred"` (not with `"smooth"`): a section plane more than 60° from a panel next to it (thickness stretch above 2; a plane that rounds to 60.0° builds), or, with `spanwise` `"straight"`, the planes of 2 neighbouring sections meet within the airfoils ([[Geometry]], section 3.6);
 - interpolated section values are finite numbers (leading-edge x, chord, z, cosine of the twist);
 - interpolated leading-edge x, trailing-edge x and z within ±1,200,000 mm, chord at most 100,000 mm;
-- `sectionPlanes` `"mitred"` with `spanwise` `"linear"`: along a panel the section planes turn faster than its airfoils allow, so the surface folds ([[Geometry]], section 3.6);
+- `sectionPlanes` `"mitred"` with `spanwise` `"linear"`: along a panel the section planes turn faster than its airfoils allow, so the surface folds; at a section both panels next to it count ([[Geometry]], section 3.6);
 - `spanwise` `"smooth"`: an interpolated value (leading-edge x, chord, z, twist or a profile point height) lies more than 2 × the range of its section values outside that range;
 - blended profile thickness below 0 (`spanwise` `"smooth"`: overshoot; `"linear"`: upper and lower surface of a section airfoil cross);
 - thickness after the trailing-edge setting below 0;
@@ -635,7 +636,7 @@ section i:  x = k·h_i   y = Y_i   z = Z_i   chord = k·c_i   twist = τ_i
 | dihedral above 10° or below −10° | kept. With **Vertical** section planes (step 6): warning `The panel from section <a> to <b> has <angle>° dihedral: the vertical sections are <pct> % as thick across the panel as in XFLR5.` With **Mitred** section planes no warning: the thickness across the panel is XFLR5's. |
 | root y_position above 0.1 mm | kept; the halves are built as separate bodies, as in XFLR5: info `The root lies at y = <y> mm: the two halves are built as separate bodies, as in XFLR5.` |
 | two sections at one y (a panel shorter than 0.1 mm), identical: same chord, `xOffset`, `Twist`, right and left airfoil name | the inner section is dropped without a message |
-| two or more sections at one y, not identical (XFLR5's way to switch the airfoil abruptly) | the inner sections move inwards along the inner panel by d = min(0.5 mm, ¼ of the inner panel length): warning `Sections <a> and <b> share y = <y> mm; section <a> was moved <d> mm inwards.` In a run of m + 1 sections at one y the outermost stays and the others move by d, d·(m−1)/m … d/m. A run at the root has no inner panel: the innermost stays and the others move outwards along the outer panel by d/m … d, with d = min(0.5 mm, ¼ of the outer panel length): `… section <b> was moved <d> mm outwards.` The project needs strictly increasing y. |
+| two or more sections at one y, not identical (XFLR5's way to switch the airfoil abruptly) | the inner sections move inwards along the inner panel by d = min(0.5 mm, ¼ of the inner panel length): warning `Sections <a> and <b> share y = <y> mm; section <a> was moved <d> mm inwards.` In a run of m + 1 sections at one y the outermost stays and the others move by d, d·(m−1)/m … d/m. A run at the root has no inner panel: the innermost stays and the others move outwards along the outer panel by d/m … d, with d = min(0.5 mm, ¼ of the outer panel length): `… section <b> was moved <d> mm outwards.` The project needs strictly increasing y. The moved sections lie less than 1 mm apart in y: with **Mitred** section planes they share one plane, the bisector plane of the panels around the run, as in XFLR5 ([[Geometry]], section 3.8, short panels). |
 | left airfoil name differs from the right one | the right one is used: warning `Left and right airfoils differ at <sections>; the right-side airfoils are used.` |
 | a position beyond ±1,000,000 mm, a chord above 100,000 mm, a twist beyond ±360° after the tilt | error naming the section, e.g. `Section <n>: the position lies beyond ±1000000 mm, the limit of Wingdesigner.` |
 
@@ -682,6 +683,7 @@ chord' = c·cT            twist unchanged
 ```
 
 - φ and m are XFLR5's: from the dihedrals of the file, with the mitred rules of [[Geometry]], section 3.8. With **Vertical** section planes (step 6) φ = 0 and m = 1: y stays.
+- The move turns a panel whose two sections move differently: two airfoils, or one airfoil at two twists or chords. The dihedral of the moved sections then differs from the file's, and the build would take other rolls and stretches. With **Mitred** section planes, a section i whose panel to section i + 1 is at least 1 mm wide in y stores the dihedral of the file as `panelAngle` (4 decimals) when the two differ by more than 0.001° (`PANEL_ANGLE_TOLERANCE`). The Sections tab shows it in the **Panel angle** column. Worked example without its tilt: the moved sections give panels of 2.92° and 4.88°, the file 3° and 6°; the sections store 3 and 6, and the build rolls 0°, 4.5° and 6°, as XFLR5.
 - With l_x = 0 and cT = 1 the section moves by c · m · l_y along the up direction of its twisted airfoil, (sin t, cos t) in x and the up direction (0, −sin φ, cos φ) of its plane.
 - Every airfoil point then lies where a rigid rotation of the airfoil about the quarter chord puts it; XFLR5's own mesh differs slightly (section "Differences from XFLR5").
 - The Sections table then differs from XFLR5's wing table by this move: 8.53 mm at the root of the worked example.
@@ -700,8 +702,9 @@ chord' = c·cT            twist unchanged
 | untilted, a mitred plane more than 60° from its panel (stretch above 2) | **Vertical** | `Section planes: vertical. The mitred plane of section 1, as in XFLR5, would lie 65.0° from its panel, beyond the limit of 60°.` The dihedral warnings of step 2 apply. |
 
 - The check runs on the section values and the airfoils of the project, without the loft (`mitredPlaneProblem` in `src/geom/wing.js`): the stretch and fold checks of the build ([[Geometry]], section 3.6). So it also holds where the dialog does not build the wing (sizes above the warning thresholds) and where the build has other errors. Sections that the airfoil frames of step 4 move past each other in y count as a fold.
-- Example of a fold: sections 2 and 3 share y = 300 mm, so section 2 moves 0.5 mm inwards (step 2), and a 10° panel follows. The planes of sections 2 and 3, rolled 0° and 5°, meet 5.7 mm from section 2, inside its NACA 0012 of 150 mm chord (±9 mm).
-- The build takes the rolls from the section positions of the project, after the airfoil frames of step 4; the import takes XFLR5's rolls from the dihedrals of the file. Where a frame moves sections, the two differ: the main wing of the worked example without its tilt builds rolls of 3.90° and 4.88° instead of 4.5° and 6°, and its trailing edge at section 2 lies within 0.1 mm of XFLR5's.
+- Example of a fold: a panel of 10° and 1.5 mm between panels of 0° and 30°, NACA 0012 of 150 mm chord. The planes of sections 2 and 3, rolled 5° and 20°, meet 5.7 mm from section 2, inside its airfoil (±9 mm).
+- Two sections at one y (step 2) do not fold: 0.5 mm apart, they share one plane.
+- The build takes the rolls from the section positions of the project, after the airfoil frames of step 4, and from the stored panel angles of step 4, which are XFLR5's dihedrals. The main wing of the worked example without its tilt builds rolls of 0°, 4.5° and 6°, as XFLR5; its trailing edges lie within 1e-3 mm of XFLR5's.
 
 ### Differences from XFLR5
 
@@ -713,7 +716,7 @@ Measured against the STL files that the code of XFLR5 6.62 wrote through a local
 | --- | --- |
 | With **Vertical** section planes (a tilted part, or the fallback of step 6): XFLR5 twists a section about an axis along its panels: at a dihedral break about the bisector of the two panels, and it cuts the section in the miter plane; at the tip about the axis of the outer panel, with the tip face square to that panel. Wingdesigner twists about the y axis and keeps the section in a plane of constant y. | Trailing-edge midpoints of the imported worked example: main wing 0.0001 mm at the root, 0.24 mm at the dihedral break (section 2), 0.51 mm at the tip; elevator 0.0001 mm; Fixture B 0.006, 0.057, 0.091 and 0.16 mm at sections 1 to 4. Tip face of real wings with 4° and 10° outer panels: 0.40 and 0.42 mm from XFLR5's vertices, up to 1.4 mm from XFLR5's surface. |
 | With **Vertical** section planes the thickness across a panel with dihedral δ is cos δ times XFLR5's. | 99.9 % at 3°, 98.5 % at 10°, 82 % at 35° (a V-tail modelled as an elevator with large dihedral). The report warns above 10°. The 4 tilted 35° V-tails of `initialAerodynamicSym.xfl` (tilt −3° and −10°) lie 2.87 mm off. With **Mitred** planes the 4 untilted 35° V-tails of that file lie within 0.013 mm and the 40° V-tail of `mini_talon.xfl` within 0.025 mm (2.87 and 2.31 mm with vertical planes). |
-| The build takes the rolls of the mitred planes from the section positions after the airfoil frames of step 4, XFLR5 from its dihedrals (step 6). | 0.005 mm more on the 9 flat wings of `Wing Design and Analysis.xfl` (0.229 to 0.234 mm); 0.6° and 1.1° on the worked example without its tilt, within 0.1 mm at its trailing edges. |
+| XFLR5 skips a panel shorter than 0.1 mm along the span; Wingdesigner puts the two sections of a panel less than 1 mm wide in y into one plane ([[Geometry]], section 3.8). A panel 0.1 to 1 mm long is a panel in XFLR5 and none in Wingdesigner. | Not measured: none of the 93 surfaces has such a panel. The frame-moved sections take XFLR5's plane angles (step 4): the 9 flat wings of `Wing Design and Analysis.xfl` lie within 0.229 mm, as with vertical planes (0.234 mm with the angles of the moved sections); the other 84 surfaces change by less than 0.001 mm. |
 | XFLR5 shears the airfoil of a twisted section: the thickness stays along the untwisted panel normal. The tilt angle of the wing turns the section rigidly in XFLR5 as well; only the twist of the file shears. Wingdesigner rotates the airfoil as a rigid shape. | 0.37 mm at 2° twist of the file and 300 mm chord (Fixture B root; 3° after the 1° tilt angle). 0.29 to 0.60 mm on 10 surfaces of real projects (0.60 mm: MH 112, 400 mm chord, 2°). |
 | XFLR5 joins the airfoil points with straight segments; Wingdesigner fits a cubic B-spline through them. | Median 0.15 mm over the 93 surfaces; 1.01 mm for a Clark YS of 33 points at 400 mm chord, 0.53 mm for the Rascal airfoil at 406 mm chord. |
 | XFLR5 draws a flap deflected; the import builds the base shape (section "Airfoils", flaps). | 2.5 to 2.7 mm behind the hinge for the 0.5° flap of `Wing Design and Analysis.xfl`. |

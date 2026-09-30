@@ -128,6 +128,7 @@ export const SECTION_TITLES = {
   z: 'Leading-edge height (dihedral)',
   chord: 'Chord length (profile scale)',
   twist: 'Twist about the pivot; positive = leading edge up',
+  panelAngle: 'Angle of the panel to the next section for the mitred section planes. Empty: from y and z of the two sections.',
 };
 
 export const sectionRows = (page) => page.locator('table.sections tbody tr');

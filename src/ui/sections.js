@@ -1,10 +1,11 @@
-// Section table: airfoil, span position y, leading-edge x and z, chord, twist per section.
+// Section table: airfoil, span position y, leading-edge x and z, chord, twist per section, and with
+// mitred section planes the angle of the panel to the next section (empty: from y and z).
 
 import { insertProblem, insertSection, removeSection, sortedSections, syncGuidesToSpan, resetDisabledGuides } from '../model/edit.js';
 import { clear, h, numberInput } from './dom.js';
 import { LIMITS } from '../model/project.js';
 import { LAZY_OPTIONS, WARN, costPhrase, displayName, loftGrid, projectSize } from '../model/budget.js';
-import { rolledPanelCount } from '../geom/planes.js';
+import { mitredPlanes, panelDihedrals, rolledPanelCount, storesPanelAngle } from '../geom/planes.js';
 import { count, fixed, plain, tr } from '../i18n/index.js';
 
 const C = LIMITS.maxCoordinate;
@@ -30,6 +31,22 @@ export function sectionFields() {
     { key: 'chord', label: tr('Chord'), unit: 'mm', title: tr('Chord length (profile scale)'), step: 1, min: LIMITS.minChord, max: LIMITS.maxChord },
     { key: 'twist', label: tr('Twist'), unit: tr('deg'), title: tr('Twist about the pivot; positive = leading edge up'), step: 0.1, min: -LIMITS.maxTwist, max: LIMITS.maxTwist },
   ];
+}
+
+/**
+ * The panel angle column, shown with mitred section planes: the angle of the panel to the next section
+ * that the planes use. Empty uses the dihedral from y and z of the two sections.
+ */
+export function panelAngleField() {
+  return {
+    key: 'panelAngle',
+    label: tr('Panel angle'),
+    unit: tr('deg'),
+    title: tr('Angle of the panel to the next section for the mitred section planes. Empty: from y and z of the two sections.'),
+    step: 0.1,
+    min: -LIMITS.maxPanelAngle,
+    max: LIMITS.maxPanelAngle,
+  };
 }
 
 /** Tooltip of the insert button: the hard limit, or above the warning threshold the time and memory with one more section. */
@@ -63,6 +80,38 @@ export class SectionsPanel {
     for (const row of this.root.querySelectorAll('tr[data-section]')) row.classList.toggle('selected', row.dataset.section === sel);
   }
 
+  /** Panel angle of sorted section i: a stored number, or empty for the angle `auto[i]` from y and z. The tip has no panel: an empty cell. */
+  panelAngleCell(s, i, auto, f) {
+    if (i >= auto.length) return h('td', {});
+    const label = { dataset: { label: `${f.label} (${f.unit})` } };
+    const commit = (value) => {
+      if (value === null && !storesPanelAngle(s)) {
+        this.render();
+        return;
+      }
+      this.store.update((q) => {
+        const t = q.sections.find((z) => z.id === s.id);
+        if (value === null) delete t.panelAngle;
+        else t.panelAngle = Math.min(Math.max(value, f.min), f.max);
+      });
+    };
+    const input = numberInput({
+      value: storesPanelAngle(s) ? s.panelAngle : null,
+      step: f.step,
+      min: f.min,
+      max: f.max,
+      title: f.title,
+      optional: true,
+      placeholder: tr('auto {angle}', { angle: fixed(auto[i], 1) }),
+      fallback: () => Number(auto[i].toFixed(1)),
+      onCommit: commit,
+      focusKey: `sec:${s.id}:panelAngle`,
+    });
+    // Wider than the other number fields: the placeholder names the angle from y and z.
+    input.classList.add('angle');
+    return h('td', label, input);
+  }
+
   render() {
     const p = this.store.project;
     const build = this.getBuild();
@@ -70,6 +119,9 @@ export class SectionsPanel {
     const sel = this.store.selection.section;
     const sections = sortedSections(p);
     const columns = sectionFields();
+    // With mitred planes: the panel angle column, and the angle of each panel from y and z.
+    const angleField = mitredPlanes(p.settings) ? panelAngleField() : null;
+    const auto = angleField ? panelDihedrals(sections) : [];
     const overridden = (key) => (key === 'x' && (guides.nose?.enabled || guides.end?.enabled)) || (key === 'chord' && guides.nose?.enabled && guides.end?.enabled);
     const stations = build?.stations ?? [];
     // One option per section and airfoil: 1,000 sections with 200 airfoils took 1.7 s per render.
@@ -148,6 +200,7 @@ export class SectionsPanel {
                 : null,
           );
         }),
+        angleField ? this.panelAngleCell(s, i, auto, angleField) : null,
         h(
           'td',
           { class: 'sec-actions' },
@@ -205,7 +258,7 @@ export class SectionsPanel {
               {},
               h('th', {}, '#'),
               h('th', {}, tr('Airfoil')),
-              columns.map((f) => h('th', { title: f.title }, `${f.label} `, h('span', { class: 'unit' }, f.unit))),
+              [...columns, ...(angleField ? [angleField] : [])].map((f) => h('th', { title: f.title }, `${f.label} `, h('span', { class: 'unit' }, f.unit))),
               h('th', {}, ''),
             ),
           ),

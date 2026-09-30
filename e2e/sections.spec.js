@@ -539,6 +539,39 @@ test.describe('Sections tab', () => {
     expect((await savedProject(page)).sections[1]).toMatchObject({ twist: -1, chord: 144 });
   });
 
+  test('panel angle: empty takes the angle from y and z, a number sets the section planes, the tip has none', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    // Tip at y 600 mm, z 15.71 mm: a panel of 1.50°.
+    const angle = field(page, 0, 'panelAngle');
+    await expect(angle).toHaveValue('');
+    await expect(angle).toHaveAttribute('placeholder', 'auto 1.5');
+    await expect(field(page, 1, 'panelAngle')).toHaveCount(0);
+    await expect(rows(page).nth(1).locator('td').nth(6)).toHaveText('');
+    // 70° at the vertical root lies beyond the 60° limit: the build stops and names it.
+    await editField(page, 0, 'panelAngle', 70);
+    expect((await savedProject(page)).sections[0].panelAngle).toBe(70);
+    await openTab(page, 'Checks');
+    await expect(page.locator('#pane-checks li.sev-error')).toHaveText([/^Error: Section 1: its mitred plane lies 70\.0° from the panel next to it, which stretches the airfoil 2\.924 times/]);
+    // Cleared, the angle comes from y and z again.
+    await openTab(page, 'Sections');
+    await editField(page, 0, 'panelAngle', '');
+    await expect(field(page, 0, 'panelAngle')).toHaveValue('');
+    expect((await savedProject(page)).sections[0]).not.toHaveProperty('panelAngle');
+    await openTab(page, 'Checks');
+    await expect(page.locator('#pane-checks li.sev-error')).toHaveCount(0);
+    // An arrow step from the empty field starts at the angle from y and z, rounded to the step.
+    await openTab(page, 'Sections');
+    await whenRerendered(table(page), () => field(page, 0, 'panelAngle').press('ArrowUp'));
+    await expect(field(page, 0, 'panelAngle')).toHaveValue('1.6');
+    expect((await savedProject(page)).sections[0].panelAngle).toBe(1.6);
+    // Vertical section planes use no panel angle: the column goes.
+    await openTab(page, 'Settings');
+    await page.getByRole('combobox', { name: 'Section planes', exact: true }).selectOption('vertical');
+    await openTab(page, 'Sections');
+    await expect(field(page, 0, 'panelAngle')).toHaveCount(0);
+    await expect(field(page, 0, 'twist')).toHaveCount(1);
+  });
+
   test('an airfoil list changed with the arrow keys keeps the focus after the table renders again', async ({ page }) => {
     await createDesign(page, 'Sport');
     const list = airfoilSelect(page, 0);
