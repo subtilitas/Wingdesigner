@@ -106,6 +106,10 @@ Options not taken:
 - Project format version 2. An older app refuses a version 2 file (`validateProject`) instead of
   dropping the new setting without a message (`resolveSettings` in `src/model/project.js` keeps only
   known keys).
+- Migration of version 1 files: `projectFromJsonText` in `src/model/io.js` sets the section planes of a
+  version 1 file to vertical before `resolveSettings` fills the missing keys from the defaults.
+  Without this step a version 1 file with dihedral would reopen mitred, against R2. A test opens a
+  version 1 file with dihedral and checks the vertical sections.
 - Section placement in a rolled plane: about 150 lines in the prototype (`src/geom/wing.js`,
   `src/geom/mesh.js`, `src/export/step.js`).
 - Checks and exports that give a wrong result without an error once section planes roll (measured in
@@ -234,6 +238,9 @@ Defaults without a question, as for the XFLR5 import:
   frame, report, dialog layout, Undo and the toast. The windowed reader of `src/import/xfl.js` and the
   XML tokenizer of `src/import/xflxml.js` move to shared modules (about 30 to 50 and 20 changed
   lines).
+- Airfoils of the source kind `flow5` get the lost-frame note of `airfoilSources()` in
+  `src/import/xflr5.js`, as the kinds `xflr5` and `upload` do: stored at unit chord, their own
+  coordinates are lost. Tests cover the kind.
 - Shared part: from "4 wing slots of an XFLR5 plane" to "a list of typed wings" and from "XFLR5" to
   "XFLR5 or flow5": about 1,400 to 2,200 lines with tests and docs.
 - New: `src/import/fl5xml.js` (flow5 XML), `src/import/fl5.js` (`.fl5` from format 500750, about 25
