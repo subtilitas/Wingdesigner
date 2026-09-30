@@ -90,6 +90,23 @@ goes from 0.91 to 0.94 mm. Two differences unrelated to the section planes set i
 | R5 | Imports of tilted parts before step 2 exists | Tilted parts import with vertical sections (exact tilt, as today); untilted parts import mitred. |
 | R6 | Span parameter and limits | y stays the span parameter (dihedral below 90°, no winglets). The stretch is limited to 2.0, which allows 60° between a section plane and its panel (the real XFLR5 samples reach 40°). A fold of two section planes is reported with the numbers of both sections. |
 
+R6 in detail:
+
+- A section whose stretch would exceed 2.0 (more than 60° between its plane and a panel: a first panel
+  steeper than 60°, or a break of more than 120°) stops the build with an error that names the section
+  and the angle, as a fold does. The stretch is never clamped.
+- The fold check runs on every pair of neighbouring stations, with each station's chord, twist and
+  thickness, whenever the build places stations between sections (guide curves, and linear panels
+  with rolled planes). A fold is reported with its span position and the numbers of the sections of
+  that panel.
+
+R4 in detail: in linear mode, a panel whose two section planes differ gets the spanwise stations per
+panel of Settings (8 by default) and a cubic loft in v, as with guide curves. With one station per
+panel the loft is XFLR5's ruled surface, not the R4 surface: the R4 surface differs from it by 0.05 to
+0.43 mm, below the 0.5 mm tolerance of the deviation probe, so the probe adds no stations. The loft
+grid (`loftGrid` in `src/model/budget.js`), the size warnings, the STEP and mesh sizes, the label
+"Spanwise stations per panel with guides or smooth mode" and the File Formats row of `degreeV` follow.
+
 A manual roll column (option (e), about 2 to 3 h as a later step) is not decided.
 
 Options not taken:
@@ -106,6 +123,10 @@ Options not taken:
 - Project format version 2. An older app refuses a version 2 file (`validateProject`) instead of
   dropping the new setting without a message (`resolveSettings` in `src/model/project.js` keeps only
   known keys).
+- Validation of the new values: `validateProject` accepts the section-plane setting only as
+  "vertical" or "mitred". The stored tilt angle lies within ±180° and its pivot x and z within
+  ±1,000,000 mm (`LIMITS.maxCoordinate`); the part tilt of step 2 lies within ±360°. Open refuses other
+  values with a message, as for the other settings, and `buildWing` checks them again (`limitErrors`).
 - Migration of version 1 files: `projectFromJsonText` in `src/model/io.js` sets the section planes of a
   version 1 file to vertical before `resolveSettings` fills the missing keys from the defaults.
   Without this step a version 1 file with dihedral would reopen mitred, against R2. A test opens a
@@ -125,10 +146,13 @@ Options not taken:
 | Merge of the two halves at y = 0 | A root rolled 17.5° spans y from −2.118 to 2.309 mm, so the halves overlap by 2.1 mm, and the mesh check still reports the mesh as closed; the root stays vertical |
 | Section order (y strictly increasing) | Mitred planes of a short panel cross (a 10 mm panel between 40° and 80°); needs a fold check |
 | Stretch | 1/cos grows without bound; limit 2.0 (R6) |
+| Project JSON `derived.stations` (y, v, xLE, z, chord, twist; `src/model/io.js`) | A station in a rolled plane also needs its roll and stretch: each entry gets `roll` (°) and `stretch`, and the File Formats page names them. Open ignores `derived` |
 
-- CI (continuous integration): `scripts/validate_step.py` checks BRepCheck, closed shells and the
-  volume within 0.5 %. If a test case expects the mesh volume, it catches the 35° V-tail (−2.4 %
-  volume) but not the 15°/−5° gull (+0.22 %); a check of the cap planes is needed.
+- CI (continuous integration): `scripts/validate_step.py` checks BRepCheck, closed shells, and the
+  volume against the mesh volume of the same build within 0.05 % (tolerance 5e-4 from
+  `scripts/export-step-cases.mjs`; the script default is 0.5 %). `test/step-cases.js` gets a mitred
+  35° V-tail and a mitred 15°/−5° gull; both errors (−2.4 % and +0.22 % volume) exceed 0.05 %. A check
+  of the cap planes is still needed for cap errors below 0.05 % of the volume.
 - XFLR5 import: the airfoil frame moves along the rolled normal; R5 decides the tilted parts. The
   dihedral warning above 10° goes for imports with mitred section planes and stays for imports with
   vertical section planes (tilted parts under R5 and the fold fallback below): a tilted 35° V-tail
@@ -139,11 +163,28 @@ Options not taken:
   and adds the angle to every twist). Without the stored values, a switch of such a project to
   mitred repeats the error of the folded tilt (section 2) without a warning, and step 2 cannot find
   the projects to convert.
+- Version 1 files and browser copies written by the XFLR5 import of pull request #5 (deployed
+  2026-09-30) hold a folded tilt without the stored values. They open vertical; a switch to mitred
+  gives the error of the folded tilt without a warning, and step 2 leaves them folded. Not decided:
+  document this on the File Formats page, or store the tilt angle and pivot in a version 1 update
+  before step 1 (an app before that update drops them without a message).
 - Untilted imports with a fold: when the mitre planes of an untilted import fail the fold check
   (R6), for example at the 0.5 mm panel of the equal-y move, the part imports with vertical section
   planes and an info line that names the sections. A test covers a 10° break with the 0.5 mm move.
+  The fold check and the stretch limit (R6) are a function of the section values and airfoils alone,
+  without a build. `mapXflr5` runs them on the candidate project and chooses the section planes from
+  the result; the dialog then builds as today. The fallback therefore also holds when the dialog does
+  not build (sizes above the warnings) and when the build has other errors. A stretch above 2.0 is
+  treated as a fold.
 - Tests that change: the 3 XFLR5 frame tests and the dihedral-warning test in
   `test/xflr5-map.test.js`, and the version tests in `test/wizard.test.js` and `e2e/export.spec.js`.
+  Also: the smooth-mode unit tests on `sampleProject` (`test/helpers.js`, 1.9° and 3.8° dihedral) in
+  `test/wing.test.js` and `test/wizard.test.js`; the STEP and 3MF case `closed-te-smooth` of
+  `test/step-cases.js`, on which `scripts/export-step-cases.mjs` stops at any build error; the browser
+  tests that choose Smooth on the Sport preset in `e2e/settings.spec.js` and `e2e/language.spec.js`;
+  the browser test of the Sport preset surface (degree 1, 2 stations); and the 2 browser tests in
+  `e2e/settings.spec.js` that compare the whole saved settings object. These projects set Section
+  planes to vertical, or follow the decision on smooth mode.
 - Size: 410 to 700 lines of code, 580 to 1,000 lines of tests, 300 to 500 lines of docs in English and
   German, 2 to 4 screenshots per language.
 - Review: 24 to 56 findings over 3 code rounds and 2 docs rounds; a geometric critic fuzzes rolls,
@@ -156,7 +197,14 @@ Options not taken:
 - Smooth spanwise interpolation with mitred sections is not built; its thickness and the fold at the
   root are not measured. The prototype blends the section rolls along the span and takes the stretch
   from the straight panels. Until that construction is built, measured and covered by the fold check
-  at every station, the app refuses the combination of smooth mode and mitred planes with a message.
+  at every station, smooth mode is not built with a rolled section plane. Under R2 this touches the
+  first-load sample wing and 4 of the 6 wizard presets (Trainer, Sport, Glider, Plank), which have
+  dihedral. Not decided: (a) a build error in Checks that names both settings; (b) smooth mode builds
+  with vertical section planes and an info line in Checks, as the import fallback does; (c) a choice
+  of Smooth sets Section planes to vertical in the same undo step, with a message. A wing whose section
+  planes are all vertical (no dihedral) builds in smooth mode as today. The refusal is never a
+  validation error: autosave stores only projects that pass `validateProject`, and Open would refuse
+  the file.
 - The fold check is measured on one synthetic case (0°, 40°, 80°); how often it fires on real wings is
   unknown. With automatic mitre planes, the XFLR5 import's move of sections at equal y (at most
   0.5 mm) makes a 0.5 mm panel whose section planes differ by half the break angle. A derived
@@ -191,19 +239,35 @@ A rigid rotation of the whole part after the build brings the trailing edges to 
 whole part (flow5's `rx`) is the same kind of transform; see F4.
 
 Migration of a folded tilt: step 2 first undoes the fold of a project with a stored tilt. It turns
-each quarter-chord point back about the stored pivot by the stored angle and subtracts the angle from
-every twist. It then applies the same angle as a rigid part tilt about the same pivot. The stored
-angle is the one left in the twists: the tilt less the whole turns that `mapSections` removes from all
-twists (a tilt of 400° stores 40°). With the full tilt, a section twist of −2° would become −362°,
-beyond the ±360° limit.
+the twist pivot point of each section back about the stored pivot by the stored angle: x + p · c, with
+p the current Settings > Twist pivot and c the chord the build uses (for a pointed tip, the scaled tip
+chord). With a pivot of 0.25 and a flat tip, this is the quarter-chord point that `mapSections` turns.
+It subtracts the angle from every twist and then applies the same angle as a rigid part tilt about the
+same pivot.
 
-A project with an edited nose or end guide, enabled or not, keeps its folded sections: a disabled
-guide keeps its edited points (`resetDisabledGuides` in `src/model/edit.js`) and uses them again when
+The stored angle is reduced by whole turns to within ±180° (a tilt of 400° stores 40°). With the full
+tilt, a section twist of −2° would become −362°, beyond the ±360° limit. When a twist still lies
+beyond ±360° after the upgrade (file twists near ±360°, or twists edited after the import), the
+upgrade keeps the project folded and reports it, as for guides.
+
+A project with an enabled nose or end guide (edited or not), or a disabled guide with edited points,
+keeps its folded sections: a disabled guide keeps its edited points (`resetDisabledGuides` in `src/model/edit.js`) and uses them again when
 it is switched on. The guides hold x only, as a function of y, and `buildWing` in `src/geom/wing.js`
 takes the leading edge and the chord from them; turning them back would need z along each guide. The
 upgrade leaves such a project unchanged, keeps the stored angle and reports that its tilt stays
-folded. Tests open version 2 projects without a guide, with an enabled guide, with a disabled edited
-guide and with a 400° tilt, and check that the geometry is unchanged by the upgrade.
+folded. Tests open version 2 projects without a guide, with an enabled guide that is not edited,
+with an enabled edited guide, with a disabled edited guide, with a 400° tilt, with file twists of 362°
+and 358° and a 3° tilt, with a twist pivot of 0.5 and with a pointed tip, and check that the geometry
+is unchanged by the upgrade.
+
+With a warning instead of a blocked switch (open point of section 1), a project with a stored folded
+tilt can be mitred at the upgrade. Its fold is not exact (0.45 to 7.5 mm, table above), so the
+upgrade changes its shape towards XFLR5's and reports the change. The test of such a project checks
+the report, not an unchanged geometry.
+
+Not decided: the statistics of a part with a rigid tilt are given in the plane axes (the upgrade
+keeps the MAC position and 25 % MAC) or in the part's own axes (the upgrade moves them, about 5 mm on
+a 35° V-tail with 3° tilt, estimated, and reports it). The migration tests compare these values too.
 
 A part tilt is a new project value. An app with step 1 only would drop it without a message
 (`resolveSettings` and the loader in `src/model/io.js` keep only known keys). Format rule:
@@ -271,7 +335,9 @@ Defaults without a question, as for the XFLR5 import:
   lines).
 - Airfoils of the source kind `flow5` get the lost-frame note of `airfoilSources()` in
   `src/import/xflr5.js`, as the kinds `xflr5` and `upload` do: stored at unit chord, their own
-  coordinates are lost. Tests cover the kind.
+  coordinates are lost. Tests cover the kind. The Airfoils tab shows the source of kind `flow5` as
+  `flow5: <file>` (`src/ui/airfoils.js`), as it shows `XFLR5: <file>`, and the File Formats table of
+  `source.kind` gets a `flow5` row.
 - Shared part: from "4 wing slots of an XFLR5 plane" to "a list of typed wings" and from "XFLR5" to
   "XFLR5 or flow5": about 1,400 to 2,200 lines with tests and docs.
 - New: `src/import/fl5xml.js` (flow5 XML), `src/import/fl5.js` (`.fl5` from format 500750, about 25
