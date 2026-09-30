@@ -322,7 +322,8 @@ A part tilt is a new project value. An app with step 1 only would drop it withou
 - Step 2 in the same release as step 1: project format version 2 holds both the section-plane
   setting and the part tilt.
 - Step 2 in a later release: it raises the project format to version 3. An app with step 1 only
-  refuses a version 3 file (`validateProject`) instead of dropping the tilt.
+  refuses a version 3 file (`validateProject`) instead of dropping the tilt. Step 1 shipped in 0.2.0
+  as project format version 2, so this rule applies.
 - Older files (version 1, and version 2 without the tilt) open with a part tilt of 0°.
 
 ## 3. flow5 import

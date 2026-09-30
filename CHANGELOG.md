@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [0.3.0] - 2026-09-30
 
+### Added
+
+- `docs/Handover.md`: where the work stands, the next steps, the working agreements with the owner,
+  the checks before a push and what the repository does not hold. README, RECORD and Development
+  link to it.
+
 ### Changed
 
 - Wizard: **Dihedral per half** accepts −60 to 60° (−15 to 30° in 0.2.0), for V-tails and inverted
