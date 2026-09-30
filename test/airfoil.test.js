@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage, tr } from '../src/i18n/index.js';
 import { airfoilFirstUseSeconds, formatSeconds } from '../src/model/budget.js';
 import { MAX_INPUT, MAX_NAME, MAX_POINTS, decodeText, parseDat, parseNumbers, toSeligDat } from '../src/airfoil/parse.js';
-import { DUPLICATE_DISTANCE, LIMITS, checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
+import { DUPLICATE_DISTANCE, LIMITS, TE_CROSS_TOLERANCE, checkAirfoil, importAirfoilText } from '../src/airfoil/sanity.js';
 import { profileCurve } from '../src/geom/profile.js';
 import { leadingNacaCode, nacaAirfoil, parseNacaCode } from '../src/airfoil/naca.js';
 import {
@@ -268,6 +268,31 @@ describe('sanity checks', () => {
     const r = checkAirfoil(pts);
     expect(r.ok).toBe(false);
     expect(codes(r.issues)).toEqual(expect.arrayContaining(['self-intersection']));
+  });
+
+  it('accepts a closed trailing edge whose end segments cross within 1e-4 chord', () => {
+    // UIUC pattern (sd8000.dat and 18 other files of the Selig set): the outline starts at x = 1.00000
+    // and ends at x = 1.00001, y = 0. The lower surface of NACA 6412 ends above y = 0, as the one of
+    // SD8000 does, so the first and the last segment cross.
+    const ending = (last) => {
+      const pts = nacaAirfoil('6412', { closedTE: true }).points.map((p) => p.slice());
+      pts[pts.length - 1] = last;
+      return pts;
+    };
+    const crossing = ending([1.00001, 0]);
+    expect(selfIntersections(crossing)).toEqual([[0, crossing.length - 2]]);
+    const uiuc = checkAirfoil(ending([1.00001, 0]));
+    expect(uiuc.ok).toBe(true);
+    expect(codes(uiuc.issues)).not.toContain('self-intersection');
+    // Ends 5e-4 chord apart: above TE_CROSS_TOLERANCE, the crossing counts.
+    const wide = checkAirfoil(ending([1, 5e-4]));
+    expect(wide.ok).toBe(false);
+    expect(codes(wide.issues)).toEqual(expect.arrayContaining(['self-intersection', 'te-crossed']));
+    expect(TE_CROSS_TOLERANCE).toBe(1e-4);
+    // Any other crossing still counts next to an accepted end crossing.
+    const both = ending([1.00001, 0]);
+    both[leadingEdgeIndex(both) + 40][1] = 0.2;
+    expect(codes(checkAirfoil(both).issues)).toContain('self-intersection');
   });
 
   it('flags non-monotonic surfaces and single-surface data', () => {

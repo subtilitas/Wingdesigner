@@ -36,14 +36,14 @@ Tab **Airfoils**, box **More airfoils (external, not bundled)**:
 
 | Site | File type | Loads in Wingdesigner |
 | --- | --- | --- |
-| aerodesign.de | Selig `.dat`, coordinates as fractions of the chord | Yes. Exceptions: `s3021.dat`, `sd7080.dat` ([Parser test](#parser-test)). |
+| aerodesign.de | Selig `.dat`, coordinates as fractions of the chord | Yes |
 | aerodesign.de | "Original" `.txt` tables, columns `X Yo Yu` in percent of chord, some with decimal commas (e.g. `HS 3,4/12,0`) | Yes |
 | aerodesign.de | `.txt` tables with 1 surface of a symmetric airfoil, columns `x y` in percent of chord: `naca0009.txt`, `naca63a008.txt`, `naca64a010.txt` | No. The parser needs an upper and a lower surface. |
 | aerodesign.de | `clarky.txt`: 2 coordinate tables (1928 and 1927 data) in 1 file | No. Both tables are read as 1 outline, which crosses itself. Delete the 1927 table in a text editor; the 1928 table then loads. |
 | aerodesign.de | "Original" coordinates of HS-0003 and HS-0004 as JPG (Joint Photographic Experts Group) images | No (image). The `.dat` file of the same airfoil loads. |
 | mh-aerotools.de | HTML (HyperText Markup Language) page per airfoil, e.g. `mh45koo.htm`. 8 of 56 tables are in percent of chord. | Yes: save the page as `.htm`, then upload it |
 | mh-aerotools.de | XML file per airfoil, e.g. `geo_xml/mh45_geo.xml`. 55 of 56 airfoils; none for MH 57. | Yes |
-| UIUC | Selig `.dat` | Yes. Exceptions: 38 of 1,665 files ([Parser test](#parser-test)). |
+| UIUC | Selig `.dat` | Yes. Exceptions: 20 of 1,665 files ([Parser test](#parser-test)). |
 
 - The column "Loads in Wingdesigner" holds for the default **Profile parametrization**, **Centripetal (recommended)**. **Chord length** and **Uniform** reject more files ([Parser test](#parser-test)).
 - If the largest x is above 5 and at most 110, all coordinates are divided by 100. The preview shows the warning `Coordinates look like percent of chord and were divided by 100.`
@@ -62,7 +62,7 @@ Above 200 airfoils the **Checks** tab shows a warning `Large project: …`. It l
 
 ### Parser test
 
-- Date: 2026-09-29, code of commit 89c4f22. The test files are not in the repository (license).
+- Date: 2026-09-30, code of commit 9faa12b with the trailing-edge tolerance of the crossing test (`TE_CROSS_TOLERANCE` in `src/airfoil/sanity.js`). The test files are not in the repository (license).
 - Stage 1: import and sanity checks (`importAirfoilText` in `src/airfoil/sanity.js`).
 - Stage 2: preview curve check (`profileProblem` in `src/geom/profile.js`) with each of the 3 settings of **Settings** > **Profile parametrization**. The NURBS (non-uniform rational B-spline) curve through the points must not cross itself; crossing loops with a mean width (area / bounding-box diagonal) up to 5e-4 of the chord (0.05 %) are ignored. Neither surface of the curve may run back in x by more than 1e-4 of the chord (0.01 %).
 - The preview and the wing build use the parametrization of the project. A file can be added when it passes stages 1 and 2 with that parametrization.
@@ -71,21 +71,23 @@ Above 200 airfoils the **Checks** tab shows a warning `Large project: …`. It l
 | --- | --- | --- | --- | --- | --- |
 | mh-aerotools.de: HTML pages (`*koo.htm`) | 56 | 56 | 56 | 56 | 53 |
 | mh-aerotools.de: XML files (`geo_xml/*_geo.xml`) | 55 | 55 | 55 | 55 | 52 |
-| aerodesign.de: all files in `/profile/data/` (154 `.dat`, 34 `.txt`) | 188 | 182 | 182 | 178 | 173 |
+| aerodesign.de: all files in `/profile/data/` (154 `.dat`, 34 `.txt`) | 188 | 184 | 184 | 180 | 175 |
 | aerodesign.de: HS files (`hs*.dat`, `hs*.txt`; part of the row above) | 43 | 43 | 43 | 43 | 42 |
-| UIUC: all `.dat` files in `coord_seligFmt.zip` (last updated 2026-02-23) | 1,665 | 1,632 | 1,627 | 1,619 | 1,563 |
+| UIUC: all `.dat` files in `coord_seligFmt.zip` (last updated 2026-02-23) | 1,665 | 1,650 | 1,645 | 1,637 | 1,581 |
 | UIUC: MH series (`mh*.dat`, part of the row above) | 52 | 51 | 51 | 51 | 48 |
 
 Rejected files with **Centripetal (recommended)**:
 
 | Files | Set | Error message |
 | --- | --- | --- |
-| `naca0009.txt`, `naca63a008.txt`, `naca64a010.txt` | aerodesign.de | `Upper or lower surface has fewer than 3 points; the point order is probably not Selig or Lednicer.` |
-| `clarky.txt` | aerodesign.de | `The outline crosses itself (3 crossing(s)).` Upper and lower surfaces also touch at x = 0.0 % chord, and the trailing edge is crossed (gap -3.380 % chord). |
-| `s3021.dat`, `sd7080.dat` | aerodesign.de and UIUC | `The outline crosses itself (1 crossing(s)).` Trailing-edge pattern below. |
+| `naca0009.txt`, `naca63a008.txt`, `naca64a010.txt` | aerodesign.de | `The last point lies at 0.0 % chord, not at the trailing edge; …` and `Upper or lower surface has fewer than 3 points; the point order is probably not Selig or Lednicer.` |
+| `clarky.txt` | aerodesign.de | `The last point lies at 0.0 % chord, not at the trailing edge; …` and `The outline crosses itself (3 crossing(s)).` Upper and lower surfaces also touch at x = 0.0 % chord, and the trailing edge is crossed (gap -3.380 % chord). |
 | `mh150.dat` | UIUC | `The outline crosses itself (1 crossing(s)).` Upper and lower surfaces touch at x = 98.6 % chord. |
-| 17 more `.dat` files | UIUC | `The outline crosses itself (1 crossing(s)).` Trailing-edge pattern below. |
-| 13 more `.dat` files | UIUC | Outline crosses itself at other places (9 files), trailing edge crossed (3), 1 surface only (1) |
+| `dsma523a.dat`, `e340.dat`, `e378.dat`, `fx38153.dat`, `fx62k131.dat`, `fx63147.dat`, `fx72150b.dat`, `fx72ls160.dat` | UIUC | `The outline crosses itself (1 crossing(s)).` (`e378.dat`: 2), away from the trailing edge. 4 of them also have the upper surface below the lower surface. |
+| `ste87151.dat`, `ste87391.dat`, `stf86361.dat` | UIUC | `Trailing edge is crossed (gap -0.050 % chord).` (-0.086 % and -0.081 %) |
+| `naca1.dat` | UIUC | `The last point lies at 0.0 % chord, not at the trailing edge; …` and `Upper or lower surface has fewer than 3 points; …` |
+| `ua79sfm.dat` | UIUC | `The last point lies at 78.1 % chord, not at the trailing edge; …` |
+| `30p-30n.dat` | UIUC | `The last point lies at 8.6 % chord, not at the trailing edge; …` and `The upper surface runs back in x at 203 points; the limit is 50.` |
 | `goe451.dat` | UIUC | Stage 2: `The NURBS curve through the points crosses itself near x = 2.6 % chord; the file has too few points there. …` |
 | `30p-30n-main.dat`, `30p-30n-slat.dat`, `cap21c.dat`, `rc0864c.dat` | UIUC | Stage 2: `The surface runs back in x by … % chord near x = … % chord; …` (0.046 %, 15.924 %, 0.113 %, 0.040 % chord) |
 
@@ -93,9 +95,9 @@ Stage 2 with **Chord length** rejects 17 files (5 crossings, 12 x reversals). St
 
 Trailing-edge pattern:
 
-- Condition: closed trailing edge with the first point at x = 1.00000 and the last point at x = 1.00001, both at y = 0.
-- The check reports 1 crossing at the trailing edge. 19 of the 22 UIUC files with this pattern are rejected, e.g. `s3021.dat`, `sd7003.dat`, `sd7080.dat`.
-- Workaround: change the last x to `1.00000` in a text editor. Result on the 19 files: all 19 pass stages 1 and 2.
+- Condition: closed trailing edge with the first point at x = 1.00000 and the last point at x = 1.00001, both at y = 0. 22 UIUC files have it.
+- In 19 of them the lower surface ends above y = 0, so the first and the last segment cross: by 2.7e-7 of the chord in `sd8000.dat`. Examples: `s3021.dat`, `sd7003.dat`, `sd7062.dat`, `sd7080.dat`, `sd8000.dat`.
+- The crossing test ignores a crossing of the first and the last segment when their free ends lie at most 1e-4 of the chord apart (0.01 %, `TE_CROSS_TOLERANCE`, the limit of `Trailing edge is crossed`). The 19 files pass stages 1 and 2 with all 3 parametrizations.
 
 ## Attribution
 

@@ -122,8 +122,14 @@ export const SECTIONS = [
   { rightFoil: 'Foil B', leftFoil: 'Foil B', chord: 0.1, y: 0.5, offset: 0.05, dihedral: 0, twist: -2 },
 ];
 
-/** Wing (format 100001). `count` overrides the section count. */
-export function wing(w, { format = 100001, name = 'Wing', description = '', symmetric = true, sections = SECTIONS, count, masses = [], type = 0 } = {}) {
+/** Spare block of XFLR5 6.10.01 to 6.10.04, wings and planes alike: each value is its index. */
+function indexSpare(w) {
+  for (let i = 0; i < 20; i++) w.i32(i);
+  for (let i = 0; i < 50; i++) w.f64(i);
+}
+
+/** Wing (format 100001). `count` overrides the section count; `spare: 'index'` writes the spare block of XFLR5 6.10.01 to 6.10.04. */
+export function wing(w, { format = 100001, name = 'Wing', description = '', symmetric = true, sections = SECTIONS, count, masses = [], type = 0, spare = 'fixed' } = {}) {
   w.mark('wing').i32(format).str(name).str(description).color().bool(symmetric);
   w.mark('sections').i32(count ?? sections.length);
   for (const s of sections) {
@@ -135,7 +141,12 @@ export function wing(w, { format = 100001, name = 'Wing', description = '', symm
   w.f64(0.25); // volume mass
   pointMasses(w.mark('wing masses'), masses);
   // Spare block: 1 (formerly a texture flag), 18 zeros, the type, 50 zeros.
-  w.mark('wing spare').i32(1);
+  w.mark('wing spare');
+  if (spare === 'index') {
+    indexSpare(w);
+    return w;
+  }
+  w.i32(1);
   for (let i = 0; i < 18; i++) w.i32(0);
   w.i32(type);
   for (let i = 0; i < 50; i++) w.f64(0);
@@ -163,7 +174,8 @@ export function body(w, { format = 100001, name = 'Body', hoops = [3, 4], frames
 
 /**
  * Plane: format 100002 has a StyleFl5 (`style` its options), 100001 none. `wings` are the options of
- * the 4 slots, `positions` the leading edge x, y, z and tilt of each slot.
+ * the 4 slots, `positions` the leading edge x, y, z and tilt of each slot. `spare: 'index'` writes the
+ * spare blocks of the plane and its wings as XFLR5 6.10.01 to 6.10.04 do.
  */
 export function plane(
   w,
@@ -184,11 +196,12 @@ export function plane(
     ],
     body: bodyOptions = null,
     masses = [],
+    spare = 'fixed',
   } = {},
 ) {
   w.mark('plane').i32(format).str(name).str(description);
   if (format >= 100002) styleFl5(w, style);
-  for (const o of wings) wing(w, o);
+  for (const o of wings) wing(w, { spare, ...o });
   w.mark('flags').bool(biplane).bool(stab).bool(fin).bool(false).bool(true).bool(false);
   w.mark('positions');
   for (const p of positions) for (const v of p) w.f64(v);
@@ -196,6 +209,10 @@ export function plane(
   if (bodyOptions) body(w.str(bodyOptions.name ?? 'Body'), bodyOptions);
   pointMasses(w.mark('plane masses'), masses);
   w.mark('plane spare');
+  if (spare === 'index') {
+    indexSpare(w);
+    return w;
+  }
   for (let i = 0; i < 20; i++) w.i32(0);
   for (let i = 0; i < 50; i++) w.f64(0);
   return w;

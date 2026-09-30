@@ -16,8 +16,9 @@
 // .xfl project, an uploaded .dat, which XFLR5 reads as it is, or a NACA section of the generator,
 // whose nose lies at (0, 0) as in XFLR5's own NACA foils) and its leading edge is off the origin or
 // its chord is not 1, the sections that use it are moved and scaled to match (the airfoil frame).
-// Library airfoils and current-project airfoils have no frame, except a current-project airfoil
-// generated from the NACA equations (source kind 'naca': the NACA generator and Library presets of
+// Library airfoils and current-project airfoils have no frame (the report warns when the chord line
+// of a library airfoil is inclined: a level copy in XFLR5 turns its sections), except a
+// current-project airfoil generated from the NACA equations (source kind 'naca': the NACA generator and Library presets of
 // the Airfoils tab, the wizard, the sample wing): it gets the frame of the generated section of its
 // NACA code. A cambered NACA section has one: its thickness is added across the mean line, so the
 // point of least x lies ahead of and above the nose. A current-project airfoil of an XFLR5 import or
@@ -27,7 +28,7 @@
 // and shows its report.
 
 import { cleanPoints, parseDat } from '../airfoil/parse.js';
-import { checkAirfoil } from '../airfoil/sanity.js';
+import { LIMITS as CHECK_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { bounds } from '../airfoil/geometry.js';
 import { NACA_PRESETS, librarySource, nacaEntry, suggestAttribution } from '../airfoil/library.js';
 import { leadingNacaCode, parseNacaCode } from '../airfoil/naca.js';
@@ -511,15 +512,29 @@ function checked(raw, extra = []) {
 }
 
 /**
+ * Angle (degrees) of the chord line against the x axis of checked points, from the leading edge of the
+ * fitted profile curve `prof` to the trailing-edge midpoint; positive when the trailing edge lies
+ * higher (nose down). The build keeps this angle: twist refers to the x axis.
+ */
+function chordIncline(checkedPoints, prof) {
+  const le = curvePoint(prof.curve, prof.tLE);
+  const a = checkedPoints[0];
+  const b = checkedPoints[checkedPoints.length - 1];
+  return (Math.atan2((a[1] + b[1]) / 2 - le[1], (a[0] + b[0]) / 2 - le[0]) * 180) / Math.PI;
+}
+
+/**
  * Parse and check the text of a library entry. Its coordinates in XFLR5 are not known: it gets no
  * frame. `ownFrame` is where its own coordinates put it (the frame an upload of the same file would
- * have, without FRAME_LIMIT; null when it fails the check), for the report.
+ * have, without FRAME_LIMIT; null when it fails the check), with the `incline` of its chord line, for
+ * the report.
  */
 function checkText(text, fileName) {
   const parsed = parseDat(text, { fileName });
   if (firstError(parsed.issues)) return { ok: false, name: parsed.name, points: parsed.points, issues: parsed.issues, problem: firstError(parsed.issues), ownFrame: null };
   const c = inspect(parsed.points, parsed.issues);
-  return { ok: c.ok, name: parsed.name, points: c.points, issues: c.issues, problem: c.problem, ownFrame: c.ok ? airfoilFrame(parsed.points, c.points, c.prof) : null };
+  const ownFrame = c.ok ? { ...airfoilFrame(parsed.points, c.points, c.prof), incline: chordIncline(c.points, c.prof) } : null;
+  return { ok: c.ok, name: parsed.name, points: c.points, issues: c.issues, problem: c.problem, ownFrame };
 }
 
 /** True when a frame moves or scales the sections. */
@@ -987,9 +1002,11 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     sections.sort((a, b) => a - b);
     const at = { name: shown, sections: sectionsText(sections) };
     // The check's warnings, once per airfoil. XFLR5 measures twist from the airfoil's own x axis as
-    // well: an inclined chord line is no difference from XFLR5 here.
+    // well: an inclined chord line is no difference from XFLR5 where XFLR5 drew the same coordinates.
+    // A library airfoil has a line of its own below.
     for (const issue of issues) {
-      if (issue.severity === 'warning') add(issue.code === 'rotated' ? 'info' : 'warning', tr('Airfoil "{name}" ({sections}): {problem}', { ...at, problem: issue.message }));
+      if (issue.severity !== 'warning' || (ownFrame && issue.code === 'rotated')) continue;
+      add(issue.code === 'rotated' ? 'info' : 'warning', tr('Airfoil "{name}" ({sections}): {problem}', { ...at, problem: issue.message }));
     }
     // An airfoil that moves its sections, named as the airfoil in use (an airfoil picked for another
     // name, too). A move of more than FRAME_WARN of the chord changes the wing noticeably from the
@@ -1004,6 +1021,23 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
           'Library airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% of chord in its own coordinates. If XFLR5 used these coordinates, it draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.',
           { ...at, x: pct(ownFrame.x), y: pct(ownFrame.y) },
         ),
+      );
+    }
+    // A library airfoil with an inclined chord line (Clark Y: 2.00° nose up) keeps that angle, as
+    // twist refers to its x axis. XFLR5 files often hold a level copy (the UIUC "CLARK Y AIRFOIL"):
+    // XFLR5 then draws these sections turned against the built ones, by the angle about the leading
+    // edge, the trailing edge chord · sin(angle) away. A chord that is no positive number has its own
+    // error.
+    const chords = sections.map((i) => wing.sections[i - 1].chord * file.lengthUnit).filter((c) => c > 0 && c < Infinity);
+    if (ownFrame && Math.abs(ownFrame.incline) > CHECK_LIMITS.rotationDeg && chords.length) {
+      const chord = Math.max(...chords);
+      const angle = Math.abs(ownFrame.incline);
+      const params = { ...at, angle: fixed(angle, 2), distance: fixed(chord * Math.sin((angle * Math.PI) / 180), 1), chord: num(chord) };
+      add(
+        'warning',
+        ownFrame.incline < 0
+          ? tr('Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose up in its own coordinates, and the built sections keep this angle. If the airfoil that XFLR5 used has a level chord line, these sections sit {angle}° more nose up than in XFLR5, the trailing edge {distance} mm lower at {chord} mm chord; upload the .dat file that XFLR5 used to place them as in XFLR5.', params)
+          : tr('Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose down in its own coordinates, and the built sections keep this angle. If the airfoil that XFLR5 used has a level chord line, these sections sit {angle}° more nose down than in XFLR5, the trailing edge {distance} mm higher at {chord} mm chord; upload the .dat file that XFLR5 used to place them as in XFLR5.', params),
       );
     }
     // A current-project airfoil of an XFLR5 import or an upload keeps the table values as well: its

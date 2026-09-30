@@ -25,7 +25,12 @@ function unitCounts() {
     const r = spawnSync(process.execPath, [cli, 'list', '--staticParse=false', `--json=${out}`], { cwd: root, encoding: 'utf8' });
     if (r.status !== 0) throw new Error(`vitest list failed (exit code ${r.status}):\n${r.stderr}`);
     const list = JSON.parse(readFileSync(out, 'utf8'));
-    return { tests: list.length, files: new Set(list.map((t) => t.file)).size };
+    const perFile = {};
+    for (const t of list) {
+      const f = relative(root, t.file).split(sep).join('/');
+      perFile[f] = (perFile[f] ?? 0) + 1;
+    }
+    return { tests: list.length, files: Object.keys(perFile).length, perFile };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -213,8 +218,28 @@ function caseTable(file, text, anchor, cases, problems) {
 }
 
 /**
+ * Unit tests of one test file, where a page states them: a table row starting with the backticked
+ * path and a count (all tests of the file), or with `<n> of <m>` (`von` in German; <m> all tests of the
+ * file, <n> at most <m>); and the backticked path followed by `(<n>)` (all tests of the file).
+ */
+function perFileCounts(file, text, perFile, problems) {
+  const check = (index, name, stated, total) => {
+    const at = `${file}:${lineOf(text, index)}`;
+    const actual = perFile[name];
+    if (actual === undefined) return problems.push(`${at}: ${name} holds no unit tests`);
+    if (total !== undefined) {
+      if (num(total) !== actual) problems.push(`${at}: ${name}: stated ${stated} of ${total}, the file has ${actual} tests`);
+      else if (num(stated) > actual) problems.push(`${at}: ${name}: stated ${stated} of ${total}, more than the file has`);
+    } else if (num(stated) !== actual) problems.push(`${at}: ${name}: stated ${stated}, the file has ${actual} tests`);
+  };
+  for (const m of text.matchAll(re(String.raw`^\| \`(test/[\w.-]+\.test\.js)\` \| {n}(?: (?:of|von) {n})? \|`, 'gm'))) check(m.index, m[1], m[2], m[3]);
+  for (const m of text.matchAll(re(String.raw`\`(test/[\w.-]+\.test\.js)\` \({n}\)`))) check(m.index, m[1], m[2]);
+}
+
+/**
  * Problems of the documentation `docs` ({ path: text }) against the counts `c`:
- * { unit: { tests, files }, e2e: e2eCounts(...), run: runResults(...) or null, cases: [{ name, mirror }] }.
+ * { unit: { tests, files, perFile }, e2e: e2eCounts(...), run: runResults(...) or null, cases: [{ name, mirror }] };
+ * perFile: { 'test/<file>': tests }, optional.
  */
 export function checkCounts(docs, c) {
   const problems = [];
@@ -247,6 +272,7 @@ export function checkCounts(docs, c) {
   deviceTable('docs/wiki/Entwicklung.md', docs['docs/wiki/Entwicklung.md'] ?? '', /^\d.* Tests laufen nur in einem Projekt/, c.run, problems);
   caseTable('docs/wiki/Development.md', docs['docs/wiki/Development.md'] ?? '', /^Cases from `test\/step-cases\.js`/, c.cases, problems);
   caseTable('docs/wiki/Entwicklung.md', docs['docs/wiki/Entwicklung.md'] ?? '', /^Testfälle aus `test\/step-cases\.js`/, c.cases, problems);
+  if (c.unit.perFile) for (const [file, text] of Object.entries(docs)) perFileCounts(file, text, c.unit.perFile, problems);
   return problems;
 }
 

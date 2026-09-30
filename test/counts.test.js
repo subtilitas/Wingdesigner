@@ -114,6 +114,30 @@ describe('test count check', () => {
     expect(p.filter((x) => x.startsWith('RECORD.md:3:'))).toHaveLength(3);
   });
 
+  it('checks the unit tests of one file where a table row or a parenthesis states them', () => {
+    const c = counts();
+    c.unit.perFile = { 'test/a.test.js': 39, 'test/b.test.js': 79 };
+    const rows = (a, b, total) => `\n## XFLR5 tests\n\n| File | Tests | Content |\n| --- | ---: | --- |\n| \`test/a.test.js\` | ${a} | Reader |\n| \`test/b.test.js\` | ${b} ${total} | one helper |\n\nUnit tests: \`test/a.test.js\` (${a}).`;
+    const d = docs();
+    d['docs/wiki/Development.md'] += rows(39, 1, 'of 79');
+    d['docs/wiki/Entwicklung.md'] += rows(39, 1, 'von 79');
+    expect(checkCounts(d, c)).toEqual([]);
+    const stale = docs();
+    stale['docs/wiki/Development.md'] += rows(38, 1, 'of 78');
+    stale['docs/wiki/Entwicklung.md'] += rows(39, 80, 'von 79');
+    stale['RECORD.md'] += '\nUnit tests: `test/gone.test.js` (4).';
+    expect(checkCounts(stale, c)).toEqual([
+      'docs/wiki/Development.md:29: test/a.test.js: stated 38, the file has 39 tests',
+      'docs/wiki/Development.md:30: test/b.test.js: stated 1 of 78, the file has 79 tests',
+      'docs/wiki/Development.md:32: test/a.test.js: stated 38, the file has 39 tests',
+      'docs/wiki/Entwicklung.md:26: test/b.test.js: stated 80 of 79, more than the file has',
+      'RECORD.md:6: test/gone.test.js holds no unit tests',
+    ]);
+    // Without per-file counts (older callers) the rows are not checked.
+    delete c.unit.perFile;
+    expect(checkCounts(stale, c)).toEqual([]);
+  });
+
   it('fails when a statement is missing or occurs a different number of times', () => {
     const d = docs();
     d['docs/wiki/Geometry.md'] = 'Cases: the cases of `test/step-cases.js`.';

@@ -36,14 +36,14 @@ Registerkarte **Profile** (Airfoils), Kasten **Weitere Profile (extern, nicht mi
 
 | Seite | Dateityp | In Wingdesigner ladbar |
 | --- | --- | --- |
-| aerodesign.de | Selig-`.dat`, Koordinaten als Bruchteil der Profiltiefe | Ja. Ausnahmen: `s3021.dat`, `sd7080.dat` ([Einlesetest](#einlesetest)). |
+| aerodesign.de | Selig-`.dat`, Koordinaten als Bruchteil der Profiltiefe | Ja |
 | aerodesign.de | „Original“-Tabellen als `.txt`, Spalten `X Yo Yu` in Prozent der Profiltiefe, teils mit Dezimalkomma (z. B. `HS 3,4/12,0`) | Ja |
 | aerodesign.de | `.txt`-Tabellen mit 1 Seite eines symmetrischen Profils, Spalten `x y` in Prozent der Profiltiefe: `naca0009.txt`, `naca63a008.txt`, `naca64a010.txt` | Nein. Der Parser braucht Ober- und Unterseite. |
 | aerodesign.de | `clarky.txt`: 2 Koordinatentabellen (Daten von 1928 und 1927) in 1 Datei | Nein. Beide Tabellen werden als 1 Kontur gelesen, die sich selbst kreuzt. Die Tabelle von 1927 im Texteditor löschen; die Tabelle von 1928 lässt sich dann laden. |
 | aerodesign.de | „Original“-Koordinaten von HS-0003 und HS-0004 als JPG-Bild (Joint Photographic Experts Group) | Nein (Bild). Die `.dat`-Datei desselben Profils lässt sich laden. |
 | mh-aerotools.de | HTML-Seite (HyperText Markup Language) je Profil, z. B. `mh45koo.htm`. 8 von 56 Tabellen stehen in Prozent der Profiltiefe. | Ja: Seite als `.htm` speichern, dann hochladen |
 | mh-aerotools.de | XML-Datei je Profil, z. B. `geo_xml/mh45_geo.xml`. 55 von 56 Profilen; keine für MH 57. | Ja |
-| UIUC | Selig-`.dat` | Ja. Ausnahmen: 38 von 1665 Dateien ([Einlesetest](#einlesetest)). |
+| UIUC | Selig-`.dat` | Ja. Ausnahmen: 20 von 1665 Dateien ([Einlesetest](#einlesetest)). |
 
 - Die Spalte „In Wingdesigner ladbar“ gilt für die Vorgabe der **Parametrisierung der Profile** (Profile parametrization), **Zentripetal (empfohlen)** (Centripetal (recommended)). **Sehnenlänge** (Chord length) und **Gleichabständig** (Uniform) lehnen mehr Dateien ab ([Einlesetest](#einlesetest)).
 - Liegt das größte x über 5 und höchstens bei 110, werden alle Koordinaten durch 100 geteilt. Die Vorschau zeigt dazu die Warnung `Die Koordinaten sehen nach Prozent der Profiltiefe aus und wurden durch 100 geteilt.`
@@ -62,7 +62,7 @@ Registerkarte **Profile** (Airfoils), Kasten **Weitere Profile (extern, nicht mi
 
 ### Einlesetest
 
-- Datum: 29.09.2026, Code von Commit 89c4f22. Die Testdateien liegen nicht im Repository (Lizenz).
+- Datum: 30.09.2026, Code von Commit 9faa12b mit der Endleistentoleranz der Kreuzungsprüfung (`TE_CROSS_TOLERANCE` in `src/airfoil/sanity.js`). Die Testdateien liegen nicht im Repository (Lizenz).
 - Stufe 1: Einlesen und Plausibilitätsprüfung (`importAirfoilText` in `src/airfoil/sanity.js`).
 - Stufe 2: Kurvenprüfung der Vorschau (`profileProblem` in `src/geom/profile.js`) mit jeder der 3 Optionen von **Einstellungen** (Settings) > **Parametrisierung der Profile**. Die NURBS-Kurve (Non-Uniform Rational B-Spline) durch die Punkte darf sich nicht selbst kreuzen; Kreuzungsschleifen mit einer mittleren Breite (Fläche / Diagonale des Hüllrechtecks) bis 0,0005 der Profiltiefe (0,05 %) werden ignoriert. Keine Profilseite der Kurve darf um mehr als 0,0001 der Profiltiefe (0,01 %) in x zurücklaufen.
 - Vorschau und Flügelaufbau verwenden die Parametrisierung des Projekts. Eine Datei lässt sich hinzufügen, wenn sie mit dieser Parametrisierung Stufe 1 und 2 besteht.
@@ -71,21 +71,23 @@ Registerkarte **Profile** (Airfoils), Kasten **Weitere Profile (extern, nicht mi
 | --- | --- | --- | --- | --- | --- |
 | mh-aerotools.de: HTML-Seiten (`*koo.htm`) | 56 | 56 | 56 | 56 | 53 |
 | mh-aerotools.de: XML-Dateien (`geo_xml/*_geo.xml`) | 55 | 55 | 55 | 55 | 52 |
-| aerodesign.de: alle Dateien unter `/profile/data/` (154 `.dat`, 34 `.txt`) | 188 | 182 | 182 | 178 | 173 |
+| aerodesign.de: alle Dateien unter `/profile/data/` (154 `.dat`, 34 `.txt`) | 188 | 184 | 184 | 180 | 175 |
 | aerodesign.de: HS-Dateien (`hs*.dat`, `hs*.txt`; Teil der Zeile darüber) | 43 | 43 | 43 | 43 | 42 |
-| UIUC: alle `.dat`-Dateien in `coord_seligFmt.zip` (Stand 23.02.2026) | 1665 | 1632 | 1627 | 1619 | 1563 |
+| UIUC: alle `.dat`-Dateien in `coord_seligFmt.zip` (Stand 23.02.2026) | 1665 | 1650 | 1645 | 1637 | 1581 |
 | UIUC: MH-Reihe (`mh*.dat`, Teil der Zeile darüber) | 52 | 51 | 51 | 51 | 48 |
 
 Abgelehnte Dateien mit **Zentripetal (empfohlen)**:
 
 | Dateien | Testmenge | Fehlermeldung |
 | --- | --- | --- |
-| `naca0009.txt`, `naca63a008.txt`, `naca64a010.txt` | aerodesign.de | `Ober- oder Unterseite hat weniger als 3 Punkte; die Punktreihenfolge ist vermutlich nicht Selig oder Lednicer.` |
-| `clarky.txt` | aerodesign.de | `Die Kontur überschneidet sich selbst (3 Kreuzungen).` Außerdem berühren sich Ober- und Unterseite bei x = 0,0 % der Profiltiefe, und die Endleiste ist gekreuzt (Endleistendicke −3,380 % der Profiltiefe). |
-| `s3021.dat`, `sd7080.dat` | aerodesign.de und UIUC | `Die Kontur überschneidet sich selbst (1 Kreuzung).` Endleistenmuster unten. |
+| `naca0009.txt`, `naca63a008.txt`, `naca64a010.txt` | aerodesign.de | `Der letzte Punkt liegt bei 0,0 % der Profiltiefe, nicht an der Endleiste; …` und `Ober- oder Unterseite hat weniger als 3 Punkte; die Punktreihenfolge ist vermutlich nicht Selig oder Lednicer.` |
+| `clarky.txt` | aerodesign.de | `Der letzte Punkt liegt bei 0,0 % der Profiltiefe, nicht an der Endleiste; …` und `Die Kontur überschneidet sich selbst (3 Kreuzungen).` Außerdem berühren sich Ober- und Unterseite bei x = 0,0 % der Profiltiefe, und die Endleiste ist gekreuzt (Endleistendicke −3,380 % der Profiltiefe). |
 | `mh150.dat` | UIUC | `Die Kontur überschneidet sich selbst (1 Kreuzung).` Ober- und Unterseite berühren sich bei x = 98,6 % der Profiltiefe. |
-| 17 weitere `.dat`-Dateien | UIUC | `Die Kontur überschneidet sich selbst (1 Kreuzung).` Endleistenmuster unten. |
-| 13 weitere `.dat`-Dateien | UIUC | Kontur kreuzt sich an anderer Stelle (9 Dateien), Endleiste gekreuzt (3), nur 1 Seite (1) |
+| `dsma523a.dat`, `e340.dat`, `e378.dat`, `fx38153.dat`, `fx62k131.dat`, `fx63147.dat`, `fx72150b.dat`, `fx72ls160.dat` | UIUC | `Die Kontur überschneidet sich selbst (1 Kreuzung).` (`e378.dat`: 2), abseits der Endleiste. Bei 4 davon liegt außerdem die Oberseite unter der Unterseite. |
+| `ste87151.dat`, `ste87391.dat`, `stf86361.dat` | UIUC | `Die Endleiste ist gekreuzt (Endleistendicke -0,050 % der Profiltiefe).` (-0,086 % und -0,081 %) |
+| `naca1.dat` | UIUC | `Der letzte Punkt liegt bei 0,0 % der Profiltiefe, nicht an der Endleiste; …` und `Ober- oder Unterseite hat weniger als 3 Punkte; …` |
+| `ua79sfm.dat` | UIUC | `Der letzte Punkt liegt bei 78,1 % der Profiltiefe, nicht an der Endleiste; …` |
+| `30p-30n.dat` | UIUC | `Der letzte Punkt liegt bei 8,6 % der Profiltiefe, nicht an der Endleiste; …` und `Die Oberseite läuft an 203 Punkten in x zurück; die Grenze liegt bei 50.` |
 | `goe451.dat` | UIUC | Stufe 2: `Die NURBS-Kurve durch die Punkte überschneidet sich selbst nahe x = 2,6 % der Profiltiefe; die Datei hat dort zu wenige Punkte. …` |
 | `30p-30n-main.dat`, `30p-30n-slat.dat`, `cap21c.dat`, `rc0864c.dat` | UIUC | Stufe 2: `Die Profilseite läuft in x um … % der Profiltiefe zurück, nahe x = … % der Profiltiefe; …` (0,046 %, 15,924 %, 0,113 %, 0,040 % der Profiltiefe) |
 
@@ -93,9 +95,9 @@ Stufe 2 mit **Sehnenlänge** lehnt 17 Dateien ab (5 Kreuzungen, 12 Rückläufe i
 
 Endleistenmuster:
 
-- Bedingung: geschlossene Endleiste, erster Punkt bei x = 1,00000, letzter Punkt bei x = 1,00001, beide bei y = 0.
-- Die Prüfung meldet 1 Kreuzung an der Endleiste. 19 der 22 UIUC-Dateien mit diesem Muster werden abgelehnt, z. B. `s3021.dat`, `sd7003.dat`, `sd7080.dat`.
-- Abhilfe: das letzte x im Texteditor auf `1.00000` ändern. Ergebnis bei den 19 Dateien: alle 19 bestehen Stufe 1 und 2.
+- Bedingung: geschlossene Endleiste, erster Punkt bei x = 1,00000, letzter Punkt bei x = 1,00001, beide bei y = 0. 22 UIUC-Dateien haben es.
+- Bei 19 davon endet die Unterseite über y = 0, daher kreuzen sich das erste und das letzte Segment: in `sd8000.dat` um 2,7e-7 der Profiltiefe. Beispiele: `s3021.dat`, `sd7003.dat`, `sd7062.dat`, `sd7080.dat`, `sd8000.dat`.
+- Die Kreuzungsprüfung übergeht eine Kreuzung des ersten und des letzten Segments, wenn ihre freien Enden höchstens 1e-4 der Profiltiefe auseinanderliegen (0,01 %, `TE_CROSS_TOLERANCE`, die Grenze von `Die Endleiste ist gekreuzt`). Die 19 Dateien bestehen Stufe 1 und 2 mit allen 3 Parametrisierungen.
 
 ## Quellenangabe
 

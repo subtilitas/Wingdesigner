@@ -515,7 +515,7 @@ describe('XFLR5 .xfl reader: written test files', () => {
     const plain = writeProject();
     const wingSpare = markAt(plain.marks, 'wing spare');
     const planeSpare = markAt(plain.marks, 'plane spare');
-    // Values XFLR5 writes: 0 or 1 first, a wing type of 0 to 4 last.
+    // Values XFLR5 6.11 and later write: 0 or 1 first, a wing type of 0 to 4 last.
     for (const [at, v] of [
       [wingSpare, 0],
       [wingSpare + 76, 4],
@@ -550,6 +550,30 @@ describe('XFLR5 .xfl reader: written test files', () => {
       [6942, 1],
     ]) {
       expect(failure(patchI32(bytes, at, v)), `byte ${at} = ${v}`).toMatchObject({ code: 'damaged', what: 'wing' });
+    }
+  });
+
+  it('reads the spare blocks of XFLR5 6.10.01 to 6.10.04, which hold their own indices', () => {
+    // These versions write i to the i-th i32 and f64 of every wing and plane spare block; XFLR5 6.11 and
+    // later write zeros. The planes read the same either way.
+    const planes = [{ format: 100001 }, { format: 100001, biplane: true }];
+    const fixed = writeProject({ format: 200001, planes, analyses: [{ format: 200012 }] });
+    const index = writeProject({ format: 200001, planes: planes.map((p) => ({ ...p, spare: 'index' })), analyses: [{ format: 200012 }] });
+    const wingSpare = markAt(index.marks, 'wing spare');
+    const planeSpare = markAt(index.marks, 'plane spare');
+    const view = new DataView(index.bytes.buffer, index.bytes.byteOffset);
+    expect([view.getInt32(wingSpare + 76), view.getFloat64(planeSpare + 80 + 8 * 49)]).toEqual([19, 49]);
+    const read = readXflBytes(index.bytes);
+    expect(read.planes).toEqual(readXflBytes(fixed.bytes).planes);
+    expect(read.planes).toHaveLength(2);
+    expect(read.warnings).toEqual([]);
+    // One value off the pattern is damage, in a wing and in a plane.
+    for (const [at, v, what] of [
+      [wingSpare + 4 * 7, 8, 'wing'],
+      [wingSpare + 76, 0, 'wing'],
+      [planeSpare + 4 * 3, 0, 'plane'],
+    ]) {
+      expect(failure(patchI32(index.bytes, at, v)), `${what} spare +${at - (what === 'wing' ? wingSpare : planeSpare)} = ${v}`).toMatchObject({ code: 'damaged', what });
     }
   });
 

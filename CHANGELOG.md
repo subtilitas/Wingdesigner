@@ -89,7 +89,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   unit tests and files from Vitest, browser tests, spec files and runs from the Playwright listing,
   tests that run on one device only from the report of the CI browser run, and the STEP and 3MF
   validation cases from `test/step-cases.js`. Exit code 1 on a difference or a missing statement.
-  Playwright writes a JSON report to `playwright-report/results.json`.
+  Playwright writes a JSON report to `playwright-report/results.json`. It also checks the unit tests
+  of one file where a page states them: a table row with the path of a test file and a count or
+  `<n> of <m>`, and the path followed by `(<n>)`.
 
 ### Changed
 
@@ -134,6 +136,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ### Fixed
 
+- Airfoil check: a crossing of the first and the last outline segment does not count when their free
+  ends lie at most 1e-4 of the chord apart (`TE_CROSS_TOLERANCE`, the limit of `te-crossed`). 19 UIUC
+  files that start at x = 1.00000 and end at x = 1.00001 (`sd7003.dat`, `sd8000.dat` and others)
+  and the aerodesign.de copies of `s3021.dat` and `sd7080.dat` load; the main wing of the XFLR5
+  project `Gertie.xfl` (airfoil SD8000-089-88) imports.
+- XFLR5 import: `.xfl` projects of XFLR5 6.10.01 to 6.10.04 read. These versions write the index
+  into the reserved blocks of wings and planes (0 to 19 and 0 to 49), which the reader refused as
+  damage.
+- XFLR5 import: a library airfoil whose chord line is inclined more than 0.5° gets a warning with the
+  angle and the trailing-edge offset at the largest chord of its sections, in place of the info line
+  of the airfoil check. The Library Clark Y (2.00° nose up) picked for a level copy such as the UIUC
+  `CLARK Y AIRFOIL` sits 2.00° more nose up than in XFLR5: 14.0 mm at the trailing edge of a 400 mm
+  chord.
 - Number fields read a typed decimal comma: `0,7` is 0.7 in both languages, not 7 (the native number
   field of Chromium drops the comma). They are text fields with the role `spinbutton`, read a decimal
   comma or point in both languages and the digit groups of the current language (`1.500` is 1500 in

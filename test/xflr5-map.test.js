@@ -472,6 +472,19 @@ describe('XFLR5 mapping: airfoils', () => {
     expect(r.errors).toBe(3);
   });
 
+  it('imports a file airfoil whose closed trailing edge crosses its own end (UIUC pattern, Gertie.xfl)', () => {
+    // SD8000-089-88 of Gertie.xfl ends as the UIUC file sd8000.dat: first point x = 1.00000, last
+    // point x = 1.00001, and the last segment crosses the first. NACA 6412 ends the same way.
+    const points = nacaAirfoil('6412', { closedTE: true }).points.map((p) => p.slice());
+    points[points.length - 1] = [1.00001, 0];
+    const foil = foilOf('SD8000-089-88', points);
+    const w = wingOf([sec(0, 0.16, 0, 0, 0, foil.name), sec(0.6, 0.12, 0, 0, 0, foil.name)]);
+    const r = mapXflr5(xflFile([w, null, null, null], [foil]));
+    expect(texts(r.report, 'error')).toEqual([]);
+    expect(r.rows.map((row) => [row.name, row.found, row.ok])).toEqual([['SD8000-089-88', 'file', true]]);
+    expect(buildWing(r.project).errors).toEqual([]);
+  });
+
   it('refuses file airfoils that the clean-up rejects, and uploads that do not parse', () => {
     const w = wingOf([sec(0, 0.2, 0, 0, 0, 'NaN foil'), sec(0.5, 0.15, 0, 0, 0, 'NaN foil')]);
     const r = mapXflr5(xflFile([w, null, null, null], [foilOf('NaN foil', [...NACA12.slice(0, 5), [NaN, 0], ...NACA12.slice(5)])]));
@@ -728,7 +741,9 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
   /** Report lines on sections moved by an airfoil's own coordinates. */
   const frameText = (r) => texts(r.report).filter((t) => t.startsWith('Airfoil "') && t.includes('in its own coordinates;'));
   /** Report lines on library airfoils whose own coordinates lie far off. */
-  const libraryText = (r) => texts(r.report).filter((t) => t.startsWith('Library airfoil "'));
+  const libraryText = (r) => texts(r.report).filter((t) => t.startsWith('Library airfoil "') && t.includes('has its leading edge'));
+  /** Warnings on library airfoils whose chord line is inclined. */
+  const inclineText = (r) => texts(r.report, 'warning').filter((t) => t.startsWith('Library airfoil "') && t.includes('has its chord line inclined'));
 
   it("imports the Clark Y wing of fixture A where XFLR5 draws it: the folded rows moved by the Clark Y's own frame", () => {
     // The rows of XFLR5's wing table with the tilt folded in (spec section 6.7).
@@ -842,6 +857,17 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
         'Library airfoil "Clark Y" (sections 1–2) has its leading edge at x = 0 %, y = 3.55 % of chord in its own coordinates. If XFLR5 used these coordinates, it draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.',
       ),
     ]);
+    // The library Clark Y has its chord line 2.00° nose up (from the leading edge of the fitted curve).
+    // If XFLR5 used a level copy, as the UIUC "CLARK Y AIRFOIL", the built sections sit that much more
+    // nose up: 240 mm · sin(2.00°) = 8.4 mm at the trailing edge of section 1. The check's note on
+    // the inclined line is not repeated for it; the file's Clark Y, which XFLR5 drew, keeps it.
+    expect(inclineText(lib)).toEqual([
+      'Library airfoil "Clark Y" (sections 1–2) has its chord line inclined 2.00° nose up in its own coordinates, and the built sections keep this angle. If the airfoil that XFLR5 used has a level chord line, these sections sit 2.00° more nose up than in XFLR5, the trailing edge 8.4 mm lower at 240 mm chord; upload the .dat file that XFLR5 used to place them as in XFLR5.',
+    ]);
+    const rotatedNote = (r) => texts(r.report, 'info').filter((t) => t.includes('The line from the leading edge to the trailing edge is inclined'));
+    expect(rotatedNote(lib)).toEqual([]);
+    expect(rotatedNote(plain)).toEqual(['Airfoil "Clark Y" (sections 1–2): The line from the leading edge to the trailing edge is inclined by -1.97 degrees; the coordinates are kept, so twist refers to the file\'s x axis.']);
+    expect(inclineText(plain)).toEqual([]);
     // A cambered NACA section of the generator adds its thickness across the mean line: its leading
     // edge lies 0.16 % of the chord above the nose (0, 0), which XFLR5 puts at the section point.
     const naca = mapXflr5(FIXTURES, { choices: { 'Clark Y': 'naca:2412' } });
@@ -895,6 +921,13 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     expect(libraryText(first)).toEqual([expect.stringMatching(/^Library airfoil "Clark Y" \(sections 1–2\) has its leading edge at x\u00a0=\u00a00\u00a0%, y\u00a0=\u00a03\.55\u00a0% of chord/)]);
     expect(first.project.airfoils[0].source).toMatchObject({ kind: 'library', id: 'clark-y' });
     expect(libraryText(again)).toEqual(libraryText(first));
+    expect(inclineText(first)).toHaveLength(1);
+    expect(inclineText(again)).toEqual(inclineText(first));
+    // A chord that is no number has its own error; the warning takes the largest chord that is one.
+    const garbled = mapXflr5(xmlFile([wingOf([sec(0, NaN, 0, 0, 0, 'Clark Y'), sec(500, 200, 0, 0, 0, 'Clark Y')]), null, null, null]), { library: LIBRARY });
+    expect(inclineText(garbled)).toEqual([expect.stringContaining('the trailing edge 7.0 mm lower at 200 mm chord')]);
+    expect(texts(garbled.report).filter((t) => t.includes('NaN'))).toEqual([]);
+    expect(garbled.errors).toBeGreaterThan(0);
     // An upload of the file's Clark Y gives the wing of the .xfl project.
     const clarkDat = readAirfoilUpload(toSeligDat('Clark Y', FIXTURES.foils.get('Clark Y').points), 'clarky.dat');
     const fromDat = mapXflr5(f, { uploads: [clarkDat] });
@@ -1419,5 +1452,10 @@ describe('XFLR5 mapping: German', () => {
     expect(texts(both.report, 'error')).toContain('XFLR5 nennt für Schnitt 2 kein Profil: eine .dat-Datei hochladen oder ein Profil wählen.');
     expect(texts(mapXflr5(xml('xml_m/1.plane.xml')).report, 'info')).toContain('Längen in mm umgerechnet (Längeneinheit der Datei: Meter).');
     expect(planeSurfaces(xmlFile([wingOf([sec(0, 240)], { name: 'W' }), null, null, null])).surfaces[0].detail).toBe('„W“: 1 Schnitt, Wurzeltiefe 240 mm');
+    // The inclined chord line of a library airfoil, with decimal commas.
+    const lib = mapXflr5(FIXTURES, { library: LIBRARY, choices: { 'Clark Y': 'library:clark-y' } });
+    expect(texts(lib.report, 'warning')).toContain(
+      'Das Bibliotheksprofil „Clark Y“ (Schnitte 1–2) hat in seinen eigenen Koordinaten eine Profilsehne, die 2,00° mit der Nase nach oben geneigt ist, und die gebauten Schnitte behalten diesen Winkel. Ist die Profilsehne des Profils, das XFLR5 verwendet hat, waagrecht, stehen diese Schnitte 2,00° weiter mit der Nase nach oben als in XFLR5, die Endleiste 8,4 mm tiefer bei 240 mm Profiltiefe; die .dat-Datei hochladen, die XFLR5 verwendet hat, um sie wie in XFLR5 zu setzen.',
+    );
   });
 });

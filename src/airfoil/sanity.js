@@ -25,6 +25,9 @@ export const LIMITS = {
   rotationDeg: 0.5,
 };
 
+/** A trailing edge crossed by up to this fraction of the chord is accepted. */
+export const TE_CROSS_TOLERANCE = 1e-4;
+
 function issue(severity, code, message, where) {
   return where === undefined ? { severity, code, message } : { severity, code, message, where };
 }
@@ -186,7 +189,13 @@ export function checkAirfoil(rawPointsIn) {
     return { ok: false, points, issues, stats: null };
   }
 
-  const hits = selfIntersections(points);
+  // A closed trailing edge may cross its own end: UIUC files such as sd8000.dat start at x = 1.00000
+  // and end at x = 1.00001, so the first and last segments cross by 2.7e-7 chord. The crossing of
+  // these two segments counts when their free ends lie more than TE_CROSS_TOLERANCE apart; the
+  // te-crossed check below holds the crossed trailing edge to the same limit.
+  const lastSegment = points.length - 2;
+  const endGap = Math.hypot(points[0][0] - points[lastSegment + 1][0], points[0][1] - points[lastSegment + 1][1]);
+  const hits = selfIntersections(points, 10, endGap <= TE_CROSS_TOLERANCE ? (i, j) => !(i === 0 && j === lastSegment) : null);
   if (hits.length) {
     issues.push(issue('error', 'self-intersection', tr('The outline crosses itself ({n} crossing(s)).', { n: plain(hits.length) + (hits.length >= 10 ? '+' : '') }), hits[0][0]));
   }
@@ -223,7 +232,7 @@ export function checkAirfoil(rawPointsIn) {
       ),
     );
   }
-  if (stats.teGap < -1e-4) {
+  if (stats.teGap < -TE_CROSS_TOLERANCE) {
     issues.push(issue('error', 'te-crossed', tr('Trailing edge is crossed (gap {gap} % chord).', { gap: fixed(stats.teGap * 100, 3) })));
   } else if (stats.teGap > LIMITS.teGapWarn) {
     issues.push(issue('warning', 'te-gap', tr('Trailing-edge gap is {gap} % chord.', { gap: fixed(stats.teGap * 100, 2) })));

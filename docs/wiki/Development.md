@@ -343,12 +343,12 @@ Unit tests (Vitest, Node.js):
 
 | File | Tests | Content |
 | --- | ---: | --- |
-| `test/xflr5-xfl.test.js` | 38 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the old formats of `Rascal110.xfl`; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
-| `test/xflr5-xml.test.js` | 45 | Reader of XML files: fixtures in millimetres, inches and metres; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
-| `test/xflr5-map.test.js` | 61 | Mapping: y and z from developed span and dihedral, twist, fold of tilt angle and position; clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
-| `test/airfoil.test.js` | 1 of 78 | `leadingNacaCode` |
+| `test/xflr5-xfl.test.js` | 39 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the old formats of `Rascal110.xfl`; the reserved blocks of XFLR5 6.10.01 to 6.10.04; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
+| `test/xflr5-xml.test.js` | 46 | Reader of XML files: fixtures in millimetres, inches and metres; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
+| `test/xflr5-map.test.js` | 62 | Mapping: y and z from developed span and dihedral, twist, fold of tilt angle and position; clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library, and for library airfoils with an inclined chord line; a file airfoil whose trailing edge crosses its own end; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
+| `test/airfoil.test.js` | 1 of 79 | `leadingNacaCode` |
 
-`test/xflr5-writer.js` writes big-endian XFLR5 project files from options with default values, written from the description of the format in `src/import/xfl.js`. Numbers that the reader skips are written as recognizable non-zero values, so a reader that skips too many or too few bytes misreads what follows. `writeProject(options)` returns `{ bytes, marks }`; `marks` lists the offset of every record for the truncation tests.
+`test/xflr5-writer.js` writes big-endian XFLR5 project files from options with default values, written from the description of the format in `src/import/xfl.js`. Numbers that the reader skips are written as recognizable non-zero values, so a reader that skips too many or too few bytes misreads what follows. `writeProject(options)` returns `{ bytes, marks }`; `marks` lists the offset of every record for the truncation tests. The plane option `spare: 'index'` writes the reserved blocks of the plane and its wings as XFLR5 6.10.01 to 6.10.04 do.
 
 Browser tests: `e2e/xflr5.spec.js`, 9 tests, 18 runs:
 
@@ -373,7 +373,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 517 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 521 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -558,7 +558,7 @@ Not checked: language switch line, alt text language, link target language, link
 ### Test count check
 
 `npm run counts:check` derives every test count that `README.md`, `README.de.md`, `RECORD.md`, Development, Entwicklung, Geometry and Geometrie state from the suites.
-Exit code 1 when a stated number differs or a statement is not found; `scripts/check-test-counts.mjs` holds each statement as a pattern with the number of times it occurs.
+Exit code 1 when a stated number differs or a statement is not found; `scripts/check-test-counts.mjs` holds each statement as a pattern with the number of times it occurs. It also checks the tests of one file wherever a page states them: a table row that starts with the path of a test file in backticks and a count (all tests of the file) or `<n> of <m>` (`<m>` all tests of the file), and the path followed by `(<n>)`.
 
 | Count | Source |
 | --- | --- |

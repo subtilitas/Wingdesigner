@@ -212,12 +212,17 @@ class Reader {
 /**
  * Check a spare block (SPARE bytes, already in the window) and move past it. XFLR5 writes fixed values
  * there: 20 i32 and 50 f64 zeros, except that a wing writes 0 or 1 first (formerly a texture flag) and
- * its type (0 to 4) last. Records have no end mark: other values show a read that has lost its place,
- * after a damaged count, say.
+ * its type (0 to 4) last. XFLR5 6.10.01 to 6.10.04 write the index instead, in wings and planes alike:
+ * 0 to 19 as i32, 0 to 49 as f64. Records have no end mark: other values show a read that has lost its
+ * place, after a damaged count, say.
  */
 function checkSpare(r, what, wing) {
   const at = r.o;
   const o = at - r.base;
+  if (isIndexSpare(r.dv, o)) {
+    r.o += SPARE;
+    return;
+  }
   for (let i = 0; i < 20; i++) {
     const v = r.dv.getInt32(o + 4 * i);
     const ok = wing && i === 0 ? v === 0 || v === 1 : wing && i === 19 ? v >= 0 && v <= 4 : v === 0;
@@ -225,6 +230,13 @@ function checkSpare(r, what, wing) {
   }
   for (let i = 0; i < 50; i++) if (r.dv.getFloat64(o + 80 + 8 * i) !== 0) throw damaged(what, at);
   r.o += SPARE;
+}
+
+/** Whether the spare block at byte `o` of `dv` holds its own indices, as XFLR5 6.10.01 to 6.10.04 write it. */
+function isIndexSpare(dv, o) {
+  for (let i = 0; i < 20; i++) if (dv.getInt32(o + 4 * i) !== i) return false;
+  for (let i = 0; i < 50; i++) if (dv.getFloat64(o + 80 + 8 * i) !== i) return false;
+  return true;
 }
 
 /** Position component or tilt as XFLR5 loads it: NaN, below 1e-6 and above 1000 in magnitude become 0. */
