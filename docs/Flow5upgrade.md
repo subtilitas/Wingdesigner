@@ -131,6 +131,10 @@ Options not taken:
   volume) but not the 15°/−5° gull (+0.22 %); a check of the cap planes is needed.
 - XFLR5 import: the dihedral warning above 10° goes; the airfoil frame moves along the rolled normal;
   R5 decides the tilted parts.
+- Folded tilt: an import that folds a tilt into x, z and twist (R5) stores the tilt angle with the
+  project, as a value of format version 2. Without it, a switch of such a project to mitred repeats
+  the error of the folded tilt (section 2) without a warning, and step 2 cannot find the projects to
+  convert. Step 2 turns the stored angle into a rigid part tilt.
 - Tests that change: the 3 XFLR5 frame tests and the dihedral-warning test in
   `test/xflr5-map.test.js`, and the version tests in `test/wizard.test.js` and `e2e/export.spec.js`.
 - Size: 410 to 700 lines of code, 580 to 1,000 lines of tests, 300 to 500 lines of docs in English and
@@ -155,6 +159,8 @@ Options not taken:
 - Two differences from XFLR5 remain and need their own decisions: 0.93 mm at mid-panel where a panel
   changes airfoil and chord together, and 0.43 to 0.60 mm from XFLR5's linear airfoil interpolation
   (Clark Y).
+- A switch to mitred of a project with a stored folded tilt, before step 2 exists: a warning with
+  the estimated error, or a blocked switch. Not decided.
 - With the prototype, 16 of 348 browser test runs fail on 84d4e5e; the independent check does not
   rerun the full browser suite.
 
