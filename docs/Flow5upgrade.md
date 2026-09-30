@@ -129,8 +129,10 @@ Options not taken:
 - CI (continuous integration): `scripts/validate_step.py` checks BRepCheck, closed shells and the
   volume within 0.5 %. If a test case expects the mesh volume, it catches the 35° V-tail (−2.4 %
   volume) but not the 15°/−5° gull (+0.22 %); a check of the cap planes is needed.
-- XFLR5 import: the dihedral warning above 10° goes; the airfoil frame moves along the rolled normal;
-  R5 decides the tilted parts.
+- XFLR5 import: the airfoil frame moves along the rolled normal; R5 decides the tilted parts. The
+  dihedral warning above 10° goes for imports with mitred section planes and stays for imports with
+  vertical section planes (tilted parts under R5 and the fold fallback below): a tilted 35° V-tail
+  still comes out 81.9 % thick.
 - Folded tilt: an import that folds a tilt into x, z and twist (R5) stores the tilt angle and its
   pivot with the project, as values of format version 2. The pivot is the wing origin, the position
   x, z of the part (`mapSections` in `src/import/xflr5.js` turns each quarter-chord point about it
@@ -152,7 +154,9 @@ Options not taken:
 ### Open points
 
 - Smooth spanwise interpolation with mitred sections is not built; its thickness and the fold at the
-  root are not measured.
+  root are not measured. The prototype blends the section rolls along the span and takes the stretch
+  from the straight panels. Until that construction is built, measured and covered by the fold check
+  at every station, the app refuses the combination of smooth mode and mitred planes with a message.
 - The fold check is measured on one synthetic case (0°, 40°, 80°); how often it fires on real wings is
   unknown. With automatic mitre planes, the XFLR5 import's move of sections at equal y (at most
   0.5 mm) makes a 0.5 mm panel whose section planes differ by half the break angle. A derived
@@ -188,13 +192,18 @@ whole part (flow5's `rx`) is the same kind of transform; see F4.
 
 Migration of a folded tilt: step 2 first undoes the fold of a project with a stored tilt. It turns
 each quarter-chord point back about the stored pivot by the stored angle and subtracts the angle from
-every twist. It then applies the same angle as a rigid part tilt about the same pivot.
+every twist. It then applies the same angle as a rigid part tilt about the same pivot. The stored
+angle is the one left in the twists: the tilt less the whole turns that `mapSections` removes from all
+twists (a tilt of 400° stores 40°). With the full tilt, a section twist of −2° would become −362°,
+beyond the ±360° limit.
 
-A project with an enabled nose or end guide keeps its folded sections. The guides hold x only, as a
-function of y, and `buildWing` in `src/geom/wing.js` takes the leading edge and the chord from them;
-turning them back would need z along each guide. The upgrade leaves such a project unchanged, keeps
-the stored angle and reports that its tilt stays folded. A test opens a version 2 project of each
-kind, with and without guides, and checks that the geometry is unchanged by the upgrade.
+A project with an edited nose or end guide, enabled or not, keeps its folded sections: a disabled
+guide keeps its edited points (`resetDisabledGuides` in `src/model/edit.js`) and uses them again when
+it is switched on. The guides hold x only, as a function of y, and `buildWing` in `src/geom/wing.js`
+takes the leading edge and the chord from them; turning them back would need z along each guide. The
+upgrade leaves such a project unchanged, keeps the stored angle and reports that its tilt stays
+folded. Tests open version 2 projects without a guide, with an enabled guide, with a disabled edited
+guide and with a 400° tilt, and check that the geometry is unchanged by the upgrade.
 
 A part tilt is a new project value. An app with step 1 only would drop it without a message
 (`resolveSettings` and the loader in `src/model/io.js` keep only known keys). Format rule:
@@ -238,7 +247,7 @@ breaks that the XFLR5 import also has.
 | # | Question | Decision |
 | --- | --- | --- |
 | F1 | Scope and order | Option C: flow5 XML and `.fl5` in one branch, after the XFLR5 import is merged. |
-| F2 | Which `.fl5` files | Project format 500750 and later (flow5 7.50 on). Older files get a message: open and save the project in a current flow5, or export the plane as XML. |
+| F2 | Which `.fl5` files | Project format 500750 and later (flow5 7.50 on), up to the newest layout the reader knows (project format 500754, Part format 500757). A higher format number in any record is refused with a message, not read. Older files get a message: open and save the project in a current flow5, or export the plane as XML. |
 | F3 | Which wings | The first main wing and the first elevator (F4 applies to them), and further two-sided, unrolled wings: a second main wing, a canard, "other" wings. One surface per import; a wing that cannot be built is listed as disabled, with its reason. |
 | F4 | A rolled (`rx` ≠ 0) or one-sided main wing or elevator | Rolled: built without the roll, with a warning (the shape is exact, the roll is lost). One-sided: refused with a reason. |
 | F5 | Test files (flow5 is GPL-3.0) | Files that flow5 writes from Wingdesigner's own inputs (script mode or a local driver) are committed; the drivers and build changes stay out of the repository, as for the XFLR5 test files. flow5's fixed comment lines stay in committed XML. flow5's own sample files are not committed. |
