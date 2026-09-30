@@ -406,7 +406,7 @@ Bei einer der folgenden Bedingungen wird die Zeile rot und nennt die Probleme; *
 - **Anzahl der Schnitte** ist nicht ganzzahlig.
 - Wurzel- oder Randprofil ist keine gültige NACA-Bezeichnung.
 - **Elliptisch** mit Flügelende **Flach** hat eine Zuspitzung ≥ 1 (`Ein elliptischer Grundriss braucht eine Zuspitzung < 1.`).
-- Der Flügel hat einen Aufbaufehler (Abschnitt [Prüfungen](#prüfungen)).
+- Der Flügel hat einen Aufbaufehler (Abschnitt [Prüfungen](#prüfungen)). Beispiel: Entwurfstyp **Leitwerk** mit 100 mm Spannweite, 8 Schnitten und 55° V-Form je Hälfte. Die Schnittebene der senkrechten Wurzel und die des nächsten Schnitts, 7,1 mm weiter außen in y, drehen sich schneller, als die Profile erlauben, sodass sich die Fläche faltet. Eine größere Spannweite, weniger Schnitte oder weniger V-Form bauen; ab 200 mm Spannweite baut dieser Entwurfstyp mit 2 bis 8 Schnitten bis 60°.
 
 | Entwurfstyp | Spannweite mm | Wurzeltiefe mm | Zuspitzung | Pfeilung ° | V-Form ° | Schränkung Rand ° | Schnitte | Grundriss | Flügelende | Wurzel- / Randprofil |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

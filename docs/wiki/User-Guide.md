@@ -406,7 +406,7 @@ The line turns red, lists the problems, and **Create design** is disabled when:
 - **Number of sections** is not an integer;
 - a root or tip airfoil is not a valid NACA code;
 - **Elliptic** with **Flat** tip has taper ≥ 1 (`An elliptic planform needs taper < 1.`);
-- the wing has a build error (section [Checks](#checks)).
+- the wing has a build error (section [Checks](#checks)). Example: preset **Tail surface** with 100 mm span, 8 sections and 55° dihedral per half. The section plane of the vertical root and that of the next section, 7.1 mm further out in y, turn faster than the airfoils allow, so the surface folds. A larger span, fewer sections or less dihedral builds; from 200 mm span, this preset builds with 2 to 8 sections up to 60°.
 
 | Preset | Span mm | Root chord mm | Taper | Sweep ° | Dihedral ° | Tip twist ° | Sections | Planform | Tip | Root / tip airfoil |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |

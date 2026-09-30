@@ -11,7 +11,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - Wizard: **Dihedral per half** accepts −60 to 60° (−15 to 30° before), for V-tails and inverted
   V-tails. 60° is the steepest first panel that **Mitred** section planes build (stretch 2 at the
   vertical root). Every preset with both planforms, both tips and 2 to 8 sections builds at −60,
-  −55, −45, −30, 30, 35, 45, 50, 55, 59.5 and 60° (1,056 builds, no error).
+  −55, −45, −30, 30, 35, 45, 50, 55, 59.5 and 60° (1,056 builds, no error). A short, steep V-tail
+  with many sections folds at its root and keeps **Create design** disabled with the build error:
+  Tail surface at 100 mm span with 8 sections and 55°; from 200 mm span, 2 to 8 sections build up
+  to 60°.
 - XFLR5 import: every airfoil frame applies exactly. The leading edge of the fitted curve lies up
   to 1e-3 of the chord off the nose point of real files (32 of 64 airfoil entries); dropping such
   offsets put sections up to 0.30 mm off XFLR5's placement (NACA 4415, 391 mm chord). Offsets up to
