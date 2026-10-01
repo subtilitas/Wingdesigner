@@ -73,32 +73,53 @@ export const INTERNAL_TERMS = [
   [/handover/gi, 'the handover'],
   [/\bRECORD\b/g, 'RECORD.md'],
   [/\bnpm\s+(?:run|test|ci|install|i|exec|start|version|publish)\b|\bnpx\b/g, 'an npm command'],
-  [/(?<![\w/.-])(?:\.\/)?(?:scripts|test|e2e|src|public|\.github)\/|\/(?:blob|tree)\/[^/\s]+\/(?:scripts|test|e2e|src|public|\.github)\//g, 'a path of the repository'],
+  [/(?<![\w/.-])(?:\.\/)?(?:scripts|test|e2e|src|public|\.github)\/|\/(?:blob|tree)\/\S*?\/(?:scripts|test|e2e|src|public|\.github)\//g, 'a path of the repository'],
   [/\b(?:ci|docs|release)\.yml\b|\bcontinuous\s+integration\b/gi, 'continuous integration'],
   [/\bCI\b/g, 'continuous integration'],
   [/\b(?:unit|browser|end-to-end|e2e|integration|regression|smoke|snapshot|component|acceptance|automated)\s+tests?\b|\btest\s+(?:suites?|runs?|cases?|files?|counts?)\b|\bVitest\b|\bPlaywright\b|\.spec\.js\b/gi, 'tests'],
   [/\b(?:test|code|line|branch|statement|V8)\s+coverage\b|\bcoverage\s+(?:check|table|report|markers?)\b/gi, 'test coverage'],
   [/\[\[(?:Development|Entwicklung)\b|\b(?:Development|Entwicklung)(?:\s+(?:page|wiki)\b|,\s+section\b|\s+\/\s+Entwicklung\b)/g, 'the Development page'],
-  [/`[A-Za-z_$][\w$.]*\([^`]*\)`/g, 'a function of the source code'],
 ];
 
-/** Upper-case names with an underscore that the JavaScript files under `dir` declare with `const`, `let` or `var`. */
-export function sourceConstants(dir = 'src') {
-  const names = new Set();
+/**
+ * Names that the JavaScript files under `dir` declare: `functions` holds function and class names
+ * in camelCase or PascalCase, `constants` upper-case names of 3 or more characters declared with
+ * `const`, `let` or `var`.
+ */
+export function sourceNames(dir = 'src') {
+  const functions = new Set();
+  const constants = new Set();
   for (const f of readdirSync(dir, { recursive: true })) {
     if (!String(f).endsWith('.js')) continue;
-    for (const m of readFileSync(join(dir, String(f)), 'utf8').matchAll(/\b(?:const|let|var)\s+([A-Z][A-Z0-9]*_[A-Z0-9_]+)\b/g)) names.add(m[1]);
+    const text = readFileSync(join(dir, String(f)), 'utf8');
+    const declared = [
+      ...text.matchAll(/\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/g),
+      ...text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:function\b|\([^()]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/g),
+      ...text.matchAll(/\bclass\s+([A-Za-z_$][\w$]*)/g),
+    ];
+    for (const m of declared) if (/^[a-z_$][\w$]*[A-Z]|^[A-Z][a-z]/.test(m[1])) functions.add(m[1]);
+    for (const m of text.matchAll(/\b(?:const|let|var)\s+([A-Z][A-Z0-9_]{2,})\b/g)) constants.add(m[1]);
   }
-  return names;
+  return { functions, constants };
+}
+
+/** Keys of the project file that the File Formats page documents: JSON keys and first table cells. */
+export function formatKeys(file = `${WIKI}/File-Formats.md`) {
+  const text = readFileSync(file, 'utf8');
+  const keys = new Set([...text.matchAll(/"([A-Za-z_]\w*)"\s*:/g)].map((m) => m[1]));
+  for (const m of text.matchAll(/^\|\s*`([A-Za-z_][\w.[\]*]*)`/gm)) for (const part of m[1].split(/[.[\]*]+/)) if (part) keys.add(part);
+  return keys;
 }
 
 /**
  * Lines of the version sections of a changelog (from the first `## ` heading on) that name
- * contributor material: a term of `INTERNAL_TERMS`, or a name of `constants` in backticks. Each line
- * is read together with the next one, so a term broken over two lines is found and reported on the
- * line where it starts.
+ * contributor material: a term of `INTERNAL_TERMS`, or a code span that holds a function call, or a
+ * function, class or constant that `names` lists and `keys` (the project file format) does not.
+ * Each line is read together with the next one, so a term broken over two lines is found and
+ * reported on the line where it starts.
  */
-export function changelogProblems(text, file = 'CHANGELOG.md', constants = new Set()) {
+export function changelogProblems(text, file = 'CHANGELOG.md', names = {}, keys = new Set()) {
+  const { functions = new Set(), constants = new Set() } = names;
   const lines = text.split(/\r?\n/);
   const start = lines.findIndex((l) => l.startsWith('## '));
   const problems = [];
@@ -110,7 +131,12 @@ export function changelogProblems(text, file = 'CHANGELOG.md', constants = new S
     for (const [pattern, what] of INTERNAL_TERMS) {
       for (const m of joined.matchAll(pattern)) if (m.index < line.length) report(i, what, m[0].replace(/\s+/g, ' '));
     }
-    for (const m of line.matchAll(/`([A-Z][A-Z0-9]*_[A-Z0-9_]+)`/g)) if (constants.has(m[1])) report(i, 'a constant of the source code', m[0]);
+    for (const m of line.matchAll(/`([A-Za-z_$][\w$.]*)(\([^`]*\))?`/g)) {
+      const name = m[1].split('.').pop();
+      if (keys.has(name)) continue;
+      if (constants.has(name)) report(i, 'a constant of the source code', m[0]);
+      else if (m[2] || functions.has(name)) report(i, 'a function of the source code', m[0]);
+    }
   }
   return problems;
 }
@@ -119,7 +145,7 @@ function main() {
   const problems = [];
   // release.yml reads the release notes from CHANGELOG.md.
   if (!existsSync('CHANGELOG.md')) problems.push('missing CHANGELOG.md');
-  else problems.push(...changelogProblems(readFileSync('CHANGELOG.md', 'utf8'), 'CHANGELOG.md', sourceConstants()));
+  else problems.push(...changelogProblems(readFileSync('CHANGELOG.md', 'utf8'), 'CHANGELOG.md', sourceNames(), formatKeys()));
   for (const [en, de] of PAGE_PAIRS) {
     for (const f of [en, de]) if (!existsSync(f)) problems.push(`missing page ${f}`);
   }
