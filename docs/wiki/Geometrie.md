@@ -750,6 +750,7 @@ Beispiel: Entwurfstyp **Sportmodell** (Sport), N = 60, d = 1, offene Endleiste: 
 | **Beide Hälften als getrennte Körper** (Both halves as separate bodies) | 2 geschlossene Hüllen, Abschlussflächen an der Wurzel enthalten |
 | **Ganzer Flügel als ein Körper (Netzformate, Wurzel bei y = 0)** (Full wing as one body (mesh formats, root at y = 0)) | Wurzel bei genau y = 0 mm und **Rollwinkel des Teils** 0°: 1 geschlossene Hülle, die Hälften teilen die Wurzelpunkte, keine Abschlussflächen an der Wurzel; sonst 2 Hüllen |
 | **Nur rechte Hälfte** (Right half only) | 1 geschlossene Hülle |
+| **Nur linke Hälfte** (Left half only) | 1 geschlossene Hülle, die linke Hälfte |
 
 ## 6. STEP-Topologie
 
@@ -760,7 +761,7 @@ Toleranz: [[Dateiformate|Dateiformate]].
 
 | **Flügelhälften** (Wing halves) | Volumenkörper |
 | --- | --- |
-| **Nur rechte Hälfte** (Right half only) | 1 |
+| **Nur rechte Hälfte** (Right half only), **Nur linke Hälfte** (Left half only) | 1 (`<name> right` oder `<name> left`) |
 | beide anderen Optionen | 2 (im STEP-Export werden die Hälften nie zusammengefügt) |
 
 Lage des Teils (Abschnitt 3.9): Jeder Punkt (Kontrollpunkte von Flächen und Kurven, Eckpunkte, die

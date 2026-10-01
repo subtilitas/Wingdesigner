@@ -1201,7 +1201,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     }
   }
   if (wing?.oneSided) {
-    add('info', tr('A one-sided wing: flow5 builds its left half only, with the left-side airfoils. The part\'s left half is that half, its right half the mirror image (on top of it for a fin at y = 0); Settings > Show mirrored half and Export > Wing halves > Right half only give one half.'));
+    add('info', tr('A one-sided wing: flow5 builds its left half only, with the left-side airfoils. The part\'s left half is that half, its right half the mirror image (on top of it for a fin at y = 0); Export > Wing halves > Left half only exports flow5\'s half alone.'));
   }
   add('info', tr('Not used: VLM panel counts and distributions, colours, masses, the body and the analyses.'));
   add('info', tr('The trailing edge is built as in the airfoils; Settings > Trailing edge can close it or give it a thickness.'));

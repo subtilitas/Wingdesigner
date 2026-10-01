@@ -710,6 +710,7 @@ Example: **Sport** preset, N = 60, d = 1, open TE: **Mitred** section planes (9 
 | **Both halves as separate bodies** | 2 closed shells, root caps included |
 | **Full wing as one body (mesh formats, root at y = 0)** | root at exactly y = 0 mm and **Part roll** 0°: 1 closed shell, the halves share the root vertices, no root caps; otherwise 2 shells |
 | **Right half only** | 1 closed shell |
+| **Left half only** | 1 closed shell, the left half |
 
 ## 6. STEP topology
 
@@ -719,7 +720,7 @@ STEP file as defined in ISO 10303 (ISO: International Organization for Standardi
 
 | **Wing halves** | Solids |
 | --- | --- |
-| **Right half only** | 1 |
+| **Right half only**, **Left half only** | 1 (`<name> right` or `<name> left`) |
 | both other options | 2 (the halves are never merged in STEP) |
 
 Part placement (section 3.9): every point (control points of surfaces and curves, vertices, the

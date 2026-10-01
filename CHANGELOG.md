@@ -33,6 +33,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   (whole wing, as flow5)**. With a part roll, the turned left half rolls the other way than the mirror image. STEP,
   STL, 3MF, the 3D view and the span in **Checks** follow it. A project with the turned left half is saved as format
   version 4, which Wingdesigner 0.4.0 refuses; other projects stay version 3.
+- Export > **Wing halves** > **Left half only** writes the left half alone (STEP, STL, 3MF): for a one-sided flow5
+  wing, the half flow5 builds.
 - **Upload .dat files…** in the import dialog takes several airfoil files at once and gives each airfoil name the
   file of that name.
 

@@ -121,6 +121,7 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
         radio('half', 'halves', tr('Both halves as separate bodies'), true),
         radio('half', 'merged', tr('Full wing as one body (mesh formats, root at y = 0)'), false),
         radio('half', 'right', tr('Right half only'), false),
+        radio('half', 'left', tr('Left half only'), false),
       ),
       h('fieldset', {}, h('legend', {}, tr('Mesh density (STL, 3MF)')), radio('dens', '1', tr('Normal'), true), radio('dens', '2', tr('Fine (4x triangles)'), false)),
       // The Fusion 360 fix: Y as the up axis (src/export/axes.js) for STEP, STL and 3MF.
@@ -157,7 +158,7 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
       }
       if (blocked) return;
       if (fmt === 'step') {
-        download(slugFile(name, 'step'), wingToStep(build, { mirror: half !== 'right', name, up: upAxis }), 'application/step');
+        download(slugFile(name, 'step'), wingToStep(build, { mirror: half !== 'right', right: half !== 'left', name, up: upAxis }), 'application/step');
         return;
       }
       const meshes = exportMeshes(build, half, { uRefine: dens, vRefine: vRefine(build, dens), up: upAxis });

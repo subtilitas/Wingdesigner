@@ -193,7 +193,7 @@ The report lists every value that the import changes, converts or leaves out. Er
 - The source line: `flow5 project, format 500754 (flow5 7.54 or later)`, `flow5 plane file (XML), lengths in millimetres`.
 - **Plane** lists the planes of the file in its order; flow5 sorts them by name. A plane built from a triangle mesh (STL) has no wing and offers no surface; the report gives the error `Plane "Mesh plane" has no wing to import.` The dialog opens on the first plane with a wing.
 - **Surface to import** lists every wing of the plane in file order: **Main wing**, **Horizontal stabilizer (flow5: Elevator)**, **Fin**, **Other wing**, numbered when a type occurs more than once (**Main wing 1**, **Main wing 2**). Every wing can be imported, except a one-sided wing turned about z, which a part placement cannot reproduce: `A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.`
-- A fin (a one-sided wing) is imported as the half that flow5 builds: the left half of the part, with **Part roll** 90° for a fin at −90°. Its mirrored right half lies on it; **Show mirrored half** off and the export option **Right half only** give one half.
+- A fin (a one-sided wing) is imported as the half that flow5 builds: the left half of the part, with **Part roll** 90° for a fin at −90°. Its mirrored right half lies on it for a fin at y = 0; on a canted one-sided wing it is a second wing that flow5 does not build. The export option **Left half only** writes flow5's half alone.
 - The wing's angles become the rigid placement of the part (**Settings** > **Part tilt** and **Part roll**, about the wing origin): `Ry_angle` the tilt, `Rx_angle` the roll. flow5 rolls both halves of a two-sided wing as one body: for a rolled wing the import sets **Settings** > **Left half** to **Turned with the right half (whole wing, as flow5)**, and the report says so. Both halves of the rolled wings of the test files lie within 0.01 mm of flow5's analysis mesh.
 - A `.fl5` project holds the airfoils (**Found**: **From the file**). An XML file names them, or names `.dat` files next to it: flow5 7.54 and later write one `.dat` file per airfoil next to the XML file. Upload them with **Upload .dat files…**; each row takes the file of its name.
 - Details: [[File Formats|File-Formats]], section flow5 import.
@@ -1042,6 +1042,7 @@ Measured per chord edit in the browser: Chromium 141 headless, software renderin
 | Wing halves | **Both halves as separate bodies** | selected |
 | Wing halves | **Full wing as one body (mesh formats, root at y = 0)** | – |
 | Wing halves | **Right half only** | – |
+| Wing halves | **Left half only**: the left half alone, as **Left half** in **Settings** builds it; for a one-sided flow5 wing the half flow5 builds | – |
 | Mesh density (STL, 3MF) | **Normal** | selected |
 | Mesh density (STL, 3MF) | **Fine (4x triangles)**: doubles the subdivision in both surface directions | – |
 | Checkbox | **Fusion 360 fix: Y up (also SolidWorks)**: STEP, STL and 3MF with Y as the up axis, the part turned by −90° about x | off, unless it was on at the last STEP, STL or 3MF export |

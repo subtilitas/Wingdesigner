@@ -213,6 +213,13 @@ describe('left half turned with the whole wing (settings.leftHalf)', () => {
       const q = b.part.point([l0.mesh.positions[i], l0.mesh.positions[i + 1], l0.mesh.positions[i + 2]]);
       for (let k = 0; k < 3; k++) expect(left.mesh.positions[i + k]).toBeCloseTo(q[k], 9);
     }
+    // Left half only: the same left half alone, for the turned and for the mirrored left half.
+    const [only] = exportMeshes(b, 'left');
+    expect([only.name, only.mesh.positions]).toEqual(['Wing left', left.mesh.positions]);
+    const mb = buildWing(placed(ROLL));
+    expect(exportMeshes(mb, 'left')[0].mesh.positions).toEqual(exportMeshes(mb, 'halves')[1].mesh.positions);
+    const leftStep = wingToStep(b, { mirror: true, right: false, timestamp: '2026-01-01T00:00:00' });
+    expect([...leftStep.matchAll(/MANIFOLD_SOLID_BREP\('([^']*)'/g)].map((m) => m[1])).toEqual(['Wing left']);
     // STEP: the trailing edge of the tip (a corner of the clamped surface, so a control point) of the
     // left half lies where the turned wing puts it, not at the mirror image of the turned right half.
     const tip = surfacePoint(b.surface, 0, 1);

@@ -161,6 +161,7 @@ describe('STEP export size', () => {
     const { LIMITS: L } = await import('../src/model/project.js');
     const build = { surface: { points: Array.from({ length: 401 }, () => new Array(121)) } };
     expect(stepPoints(build, 'right')).toBe(48_521);
+    expect(stepPoints(build, 'left')).toBe(48_521);
     expect(stepPoints(build, 'halves')).toBe(97_042);
     expect(stepPoints(build, 'merged')).toBe(97_042);
     expect(stepPoints({ surface: null }, 'halves')).toBe(0);

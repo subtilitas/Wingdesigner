@@ -246,7 +246,7 @@ export async function downloadOf(page, trigger) {
 }
 
 export const FORMAT_LABEL = { step: /^STEP/, stl: /^STL/, '3mf': /^3MF/, json: /^Project JSON/ };
-export const HALF_LABEL = { halves: /^Both halves as separate bodies/, merged: /^Full wing as one body/, right: /^Right half only/ };
+export const HALF_LABEL = { halves: /^Both halves as separate bodies/, merged: /^Full wing as one body/, right: /^Right half only/, left: /^Left half only/ };
 export const DENS_LABEL = { normal: /^Normal/, fine: /^Fine/ };
 /** The checkbox that writes Y as the up axis (the Fusion 360 fix). */
 export const FUSION_FIX = /^Fusion 360 fix: Y up/;
