@@ -6,6 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Added
+
+- Foam-cutting wizard (**Foam** in the top bar) for hot-wire cutting of the wing in segments.
+  - Cuts: proposed at every section and at equal spacing no longer than **Longest core** (20 to 5000 mm, default 800 mm,
+    measured along the dihedral), then moved, added or removed in the dialog; at least 5 mm apart, at most 200 segments
+    per half.
+  - Each core has parallel end faces square to its axis. Where it meets its neighbour, the root or the tip, the dialog
+    lists the wedge to sand to the joint plane: angle, depth along the core and the surface where it is deepest. The
+    joint plane is the section plane at a section, else the bisector of the two core axes.
+  - Deviation of the straight-line core from the wing per segment. **Split segments over the limit** halves every
+    segment of 10 mm or more above **Deviation limit** (0.01 to 10 mm, default 0.2 mm) until none is left or 200
+    segments are reached. Example: the **Sport** preset (**Linear** between **Mitred** section planes of different
+    roll; chord 240 to 144 mm with NACA 2412 to 2410, −1° twist) as one core from y = 0 to 600 mm deviates 0.341 mm,
+    as two cores 0.085 mm.
+  - **Profiles (.dat, ZIP)**: per segment end a `.dat` file in mm in the block frame and one normalized to chord 1, with
+    equal point counts (point i of both ends on one straight line of the core), `segments.csv` (cuts, core length,
+    axis angle, block size, deviation, chord, leading-edge position, incidence and wedge per end) and `README.txt`.
+  - 1:1 templates as one SVG (Scalable Vector Graphics) sheet, as DXF (Drawing Exchange Format) (AutoCAD R12, layers PROFILE, FRAME, MARKS and TEXT) and as PDF (Portable Document Format) on A4,
+    A3 or Letter: a frame 10 mm around the block, the end profile offset by half of **Kerf for templates** (0 to 5 mm,
+    default 0), 21 numbered marks at points of equal index on both ends, a 100 mm scale bar. The PDF keeps each
+    template whole on one page where it fits and splits a wider or taller one into strips with 10 mm overlap and registration
+    crosses.
+  - The settings are kept in the browser; the cuts are not saved with the project. User Guide, section Foam cutting;
+    Geometry, section 8; File Formats, section Foam-cutting files.
+
+### Changed
+
+- Top bar: 8 buttons with **Foam**. At a window width of 460 px or less the buttons take 5 px of padding on each side
+  instead of 8 px, at 402 px or less 3 px with 2 px gaps. The English top bar stays in 1 row at every width and
+  scrolls sideways below 356 px (364 px in 0.3.0). The German top bar takes 2 rows up to 637 px (563 px in 0.3.0).
+
 ## [0.3.0] - 2026-10-01
 
 ### Changed

@@ -21,7 +21,7 @@ The interface speaks English or German (section [Language](#language)). This pag
 
 | Area | Content |
 | --- | --- |
-| Top bar | **New**, **Open**, **Save**, **Export**, **Undo**, **Redo**, **Help** |
+| Top bar | **New**, **Open**, **Save**, **Export**, **Foam**, **Undo**, **Redo**, **Help** |
 | 3D view | Wing surface, section outlines (blue, selected section red), leading-edge and trailing-edge lines (grey), grid in the plane z = 0 (20 × 20 cells); view buttons |
 | Side panel | Tabs **Sections**, **Planform**, **Airfoils**, **Settings**, **Checks**. Right of the 3D view, 360 to 650 px wide; the 3D view takes the rest of the width. |
 | Status bar | Span, wing area, aspect ratio (AR), mean aerodynamic chord (MAC), warning count (only with 1 or more warnings). With errors: error count and first error message in red text. With autosave off: `Autosave off: use Save` in red text (section [Storage](#storage)). |
@@ -33,6 +33,7 @@ The interface speaks English or German (section [Language](#language)). This pag
 | **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Opens the import dialog for an XFLR5 file (extension `.xfl` or `.xml`; XML: Extensible Markup Language; section [Import from XFLR5](#import-from-xflr5)). The file chooser lists `.json`, `.xfl`, `.xml`, `.wpa` and `.fl5` files. Rejects JSON and XML files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` A file the browser cannot read (removed drive, revoked permission) shows `Cannot open <file>: the browser could not read the file (NotReadableError).` and keeps the current design. Rejects invalid JSON files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. |
 | **Save** | Downloads the project JSON. Same file as **Export** > Project JSON. When the derived NURBS data would take the file above 100 MB, the file leaves it out (section [Export](#export)). A failure shows the red notice `Save failed: <reason>.` |
 | **Export** | Opens the export dialog (section [Export](#export)). |
+| **Foam** | Opens the foam-cutting wizard (section [Foam cutting](#foam-cutting)). |
 | **Undo** / **Redo** | Steps through the edit history, kept in memory only: at most 100 steps and at most 64,000,000 characters of serialized project (undo and redo together); a project above 640,000 characters keeps fewer steps, at least 1. **New** and **Open** are undoable. |
 | **Help** | App version, workflow, controls, links to this wiki, to the source code and to `LICENSES.txt` (**Licenses of this app and its libraries**: the MIT license of the app and the license texts of three.js and fflate). The link **Documentation (wiki)** opens the start page of this wiki in the English interface and the page Benutzerhandbuch in the German interface. |
 
@@ -46,8 +47,9 @@ At a window width of 860 px or less:
 - **Enlarge** appears in the 3D view. It hides the side panel and gives the 3D view the full height; a second tap restores the side panel.
 - The section table turns into one card per section (3 columns, label above each value).
 - The planform canvas is 260 px high.
-- German interface: the status bar takes at most 2 lines (**Checks** shows the whole text). The top bar takes 2 rows at a window width of 563 px or less (measured in Chromium 141: 2 rows at 563 px, 1 row at 564 px).
-- At a window width of 420 px or less, the 7 top-bar buttons of the English interface stay in 1 row. The row scrolls sideways when it is wider than the window. The German top bar wraps instead, and the buttons of a project airfoil move below its name.
+- German interface: the status bar takes at most 2 lines (**Checks** shows the whole text). The top bar takes 2 rows at a window width of 637 px or less (measured in Chromium 141: 2 rows at 637 px, 1 row at 638 px).
+- At a window width of 460 px or less, the top-bar buttons take 5 px of padding on each side instead of 8 px; at 402 px or less, 3 px with 2 px gaps.
+- At a window width of 420 px or less, the 8 top-bar buttons of the English interface stay in 1 row. The row scrolls sideways when it is wider than the window: below 356 px (measured in Chromium 141). The German top bar wraps instead, and the buttons of a project airfoil move below its name.
 
 ![Phone layout of the planform editor with the end line on](images/mobile-planform.png)
 
@@ -974,3 +976,105 @@ For STEP, the note gives the surface control points in the file and the file siz
 - STL and 3MF store 32-bit coordinates. When the rounding collapses or turns over a triangle that is visible at that resolution, the export writes no file and shows the red notice `STL stores 32-bit coordinates: at … mm their spacing is … mm, and … of … triangles collapse or turn over. Move the wing towards the origin, or export STEP.` (3MF: `3MF readers store 32-bit coordinates: …`). `at … mm` gives the largest coordinate of the damaged triangles.
 - When the first damaged triangle still collapses or turns over with its x and z moved next to 0 and the root moved to y = 0 (both halves of a mirrored wing), its distance from the root alone is too coarse: sections or stations lie closer together than the 32-bit spacing, and moving the wing does not help. The last sentence then reads `Sections or stations near y = … mm lie closer together than the spacing there (… mm); move them apart, or export STEP.` Example: 4 sections, 2 of them at y = 300 mm and y = 300.00001 mm: `STL stores 32-bit coordinates: at 300 mm their spacing is 0.000031 mm, and 484 of 1928 triangles collapse or turn over. Sections or stations near y = 300 mm lie closer together than the spacing there (0.000031 mm); move them apart, or export STEP.`
 - File contents: [[File Formats|File-Formats]].
+
+## Foam cutting
+
+![Foam-cutting wizard for the Glider preset after Split segments over the limit: settings, cuts, planform with the cuts, segment table, downloads](images/foam-dialog.png)
+
+**Foam** in the top bar opens the foam-cutting wizard for the current wing. It splits the half wing into segments. Each segment is one foam core, cut by a hot wire as straight lines between its two end profiles. The wizard writes these end profiles for cutting programs and as 1:1 templates. It does not change the project.
+
+| Term | Meaning |
+| --- | --- |
+| Cut | span position y (mm) where one core ends and the next begins |
+| Segment, core | the wing between two neighbouring cuts, or between root or tip and a cut |
+| Inboard end, outboard end | the end of a core nearer the root, nearer the tip |
+| End face | flat end of the core, square to the core axis; both end faces are parallel |
+| Joint plane | the plane where two cores meet, or where a core ends at root or tip (section plane at a section, else the bisector of the two core axes) |
+| Wedge | material between end face and joint plane, sanded off before the cores are glued |
+| Deviation | largest distance (mm) between the straight-line core and the wing |
+| Kerf | width of the cut that the hot wire melts (mm) |
+
+Geometry, formulas and examples: [[Geometry|Geometry]], section 8 "Foam cores".
+
+### Settings
+
+| Field | Range | Default | Effect |
+| --- | --- | --- | --- |
+| **Longest core (mm)** | 20 to 5000 | 800 | Cutter width or foam block length. A change proposes the cuts again; edited cuts are replaced. |
+| **Deviation limit (mm)** | 0.01 to 10 | 0.2 | Segments above it are marked; **Split segments over the limit** adds cuts to bring them within it. |
+| **Kerf for templates (mm)** | 0 to 5 | 0 | The template outlines (SVG: Scalable Vector Graphics, PDF: Portable Document Format, DXF: Drawing Exchange Format) are offset outward by half of it. The `.dat` profiles stay without offset. |
+| **Paper (PDF)** | A4, A3, Letter | A4 | Page size of the PDF templates |
+
+- A value outside its range is refused: the field shows the stored value again.
+- The 4 settings are stored in the browser under `wingdesigner.foam`. The cuts are not stored: each opening proposes them from **Longest core**.
+
+### Cuts
+
+The proposal puts a cut at every section between root and tip. It splits each piece between them into equal parts no longer than **Longest core**, measured along the dihedral. Sections closer than 5 mm to each other give one cut. The core length adds the wedge depths at its ends and can exceed **Longest core** by them: **Sport** as one core, reference line 600.2 mm, core 600.5 mm.
+
+| Control | Effect |
+| --- | --- |
+| Field **Cut i, y in mm** | Moves cut i. The list is sorted again. |
+| **×** next to a cut | Removes it. |
+| **Add cut** | Adds a cut in the middle of the longest segment. |
+| **Propose cuts again** | Replaces the list with the proposal. |
+| **Split segments over the limit** | Cuts every segment above **Deviation limit** in the middle and repeats until no segment of 10 mm or more lies above it, or 200 segments are reached. A segment shorter than 10 mm is not split. |
+
+- Every change recomputes the segments in the next animation frame. 200 segments take about 1 s (Node.js 24 on a 2.1 GHz server CPU; in the browser not measured).
+- A cut closer than 5 mm to another cut, the root or the tip is removed with `1 cut was removed: closer than 5 mm to another cut, the root or the tip.`
+- At most 200 segments per half wing.
+- Enter in a field commits it and keeps the dialog open.
+
+### Segment table and summary
+
+| Column | Content |
+| --- | --- |
+| **Segment** | number, from the root |
+| **y (mm)** | inboard and outboard cut |
+| **Core length (mm)** | distance of the end faces along the core axis; warning colour above **Longest core** |
+| **Block (mm)** | chordwise × height of the template frame: the smallest block that holds both end profiles, plus 10 mm on each side |
+| **Chords (mm)** | chord of the inboard / outboard end profile |
+| **Deviation (mm)** | largest distance between the straight-line core and the wing; warning colour above **Deviation limit** |
+| **Wedge inboard**, **Wedge outboard** | angle, depth along the core and the surface where the wedge is deepest (`upper`, `lower`); `–` without a wedge |
+
+The summary under the planform names the number of segments and the largest deviation, the cores longer than **Longest core**, the segments above **Deviation limit**, removed cuts and the number of PDF pages. Example, **Sport** preset with the defaults: `1 segment per half, deviation 0.341 mm. 1 segment deviates more than 0.20 mm from the wing; Split segments over the limit adds cuts. The PDF templates take 2 pages.` After **Split segments over the limit**: 2 segments, largest deviation 0.085 mm.
+
+The planform shows both halves with the root, the cuts and the tip as blue lines.
+
+### Downloads
+
+| Button | File | Content |
+| --- | --- | --- |
+| **Profiles (.dat, ZIP)** | `<name>_foam_profiles.zip` | Per segment end a `.dat` file in mm (folder `mm/`) and one normalized to chord 1 (folder `normalized/`); `segments.csv`; `README.txt` |
+| **Templates (SVG)** | `<name>_foam_templates.svg` | All templates on one sheet at 1:1, width and height in mm |
+| **Templates (PDF)** | `<name>_foam_templates.pdf` | The templates at 1:1 on pages of **Paper (PDF)** |
+| **Templates (DXF)** | `<name>_foam_templates.dxf` | The templates as AutoCAD R12 DXF, mm |
+
+`<name>`: the project name, as for the export (section [Export](#export)). File contents: [[File Formats|File-Formats]], section Foam-cutting files.
+
+Each template shows:
+
+- Text lines, wrapped at the frame width (at least 150 mm): segment and end; y, core length and block size; chord and incidence; the wedge to sand. A narrow frame wraps a text over 2 lines.
+- A frame: the block cross-section plus 10 mm on each side. Both templates of a segment have the same frame.
+- The end profile, offset outward by half the kerf.
+- 21 numbered marks (0 to 20) at points with the same index on both templates of a segment. Marks with the same number are passed at the same time.
+
+The sheet starts with a 100 mm scale bar and the instructions. Every PDF page repeats the scale bar with `100 mm. Page <i> of <n>.`
+
+PDF pages:
+
+- Margin 10 mm. The lowest 12 mm of the printable area hold the scale bar and the page label.
+- Templates follow each other from the top of a page and start a new page where they do not fit.
+- A template wider or taller than the printable area is cut into strips that overlap by 10 mm. Each strip is labelled `<template>: part <i> of <n> (row <r>, column <c>)`. Crosses in the overlap print on both strips of a joint, for gluing them in register.
+- Orientation: the one with the fewer templates cut into strips, then the one with the fewer pages; portrait on a tie. The 260 mm wide templates of the **Sport** preset fit A4 landscape (277 mm printable width) whole.
+
+Example, **Longest core** 800 mm, split to 0.2 mm: **Sport** 3 pages on A4, 1 on A3, 4 on Letter; **Glider** 10 pages on A4, 4 on A3, 10 on Letter.
+
+### Cutting
+
+- The files describe the right half. The left half is the mirror image: the same profiles with inboard and outboard swapped, the same templates turned over.
+- Each core is cut with parallel end faces square to its axis. At a joint with a wedge, sand the end face to the joint plane: the wedge columns, `segments.csv` and the template give angle, depth and side.
+- The `.dat` files carry no kerf offset; the cutting program adds it.
+- Point i of the inboard `.dat` file and point i of the outboard file lie on one straight line of the core. A cutting program that pairs the points by index cuts the computed core.
+
+A wing with errors opens the dialog with `The wing has errors; fix them before planning foam cores.` and no downloads.

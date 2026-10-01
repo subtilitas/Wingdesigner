@@ -48,6 +48,7 @@ Bezeichner (x_LE, x_norm).
 | 5. Dreiecksnetze | `src/geom/mesh.js`, `src/geom/triangulate.js` | A3.5 |
 | 6. STEP-Topologie (STEP: Standard for the Exchange of Product model data) | `src/export/step.js` | A5.1 |
 | 7. Grundrisskennwerte | `src/geom/stats.js`, `src/geom/wing.js` (`planformAt`) | – |
+| 8. Schaumkerne | `src/geom/foam.js` | A3.5 (je Spaltenkurve) |
 
 ## 1. Profil als NURBS-Kurve
 
@@ -832,3 +833,140 @@ Profilnase x 6,5 mm, **25 % MAC (geometrischer Bezugspunkt)** x 50,0 mm, **Wurze
 **NURBS-Fläche** Grad 3 x 3, 121 x 17 Kontrollpunkte, **Endleiste** offen.
 
 ![Registerkarte Prüfungen, Entwurfstyp Segelflugmodell: Spannweite, Flügelfläche, Streckung, mittlere aerodynamische Flügeltiefe (MAC), Lage der MAC, 25 % MAC, Wurzel- und Randtiefe, NURBS-Fläche mit Grad und Kontrollpunkten, Endleiste](images/de/checks.png)
+
+## 8. Schaumkerne
+
+Der Schaumschnitt-Assistent ([[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Schaumschnitt) teilt den Halbflügel in
+Segmente. Jedes Segment ist ein Schaumkern. Ein Heißdraht schneidet ihn als Regelfläche: gerade Linien
+zwischen zwei Endprofilen. Code: `src/geom/foam.js`.
+
+### 8.1 Schnitte
+
+Ein Schnitt ist eine Spannweitenposition y in mm. Wurzel und Rand sind die Enden; die Schnitte liegen
+dazwischen. Ein Schnitt in diesem Abschnitt trennt zwei Kerne; die Schnitte des Projekts heißen hier
+Profilschnitte.
+
+| Regel | Wert |
+| --- | --- |
+| Vorschlag | Ein Schnitt an jedem Profilschnitt zwischen Wurzel und Rand. Jedes Stück dazwischen wird in n = ceil(L / L_max) gleiche Teile in y geteilt. L: Länge der Bezugslinie des Stücks; L_max: **Längster Kern** (Longest core) |
+| Bezugslinie | (y, z) der Stationen, linear dazwischen. Ihre Länge berücksichtigt die V-Form: 600 mm in y bei 1,5° sind 600,2 mm |
+| Kürzestes Segment | 5 mm in y. Ein Schnitt, der näher als 5 mm am vorigen Schnitt, an der Wurzel oder am Rand liegt, entfällt |
+| Profilschnitte näher als 5 mm | Ein Schnitt, am ersten von ihnen |
+| Segmente | höchstens 200 je Halbflügel; weitere Schnitte entfallen |
+
+### 8.2 Bezugssystem eines Segments
+
+```
+z_ref(y)  = z der Stationen, linear in y dazwischen
+α         = atan2(z_ref(y_b) − z_ref(y_a), y_b − y_a)       Achswinkel des Segments (°)
+a         = (0, cos α, sin α)                               Achsrichtung
+up        = (0, −sin α, cos α)                              Aufwärtsrichtung der Endflächen
+```
+
+y_a und y_b sind der innere und der äußere Schnitt. Ohne V-Form ist α = 0, a = (0, 1, 0) und up = (0, 0, 1).
+
+### 8.3 Stoßebenen und Endflächen
+
+Die Stoßebene an einem Schnitt ist die Ebene, in der zwei Kerne aneinanderstoßen oder ein Kern an Wurzel
+oder Rand endet:
+
+| Schnitt | Stoßebene |
+| --- | --- |
+| Wurzel, Rand, ein Profilschnitt | die Schnittebene der Station dort (Abschnitt 3.8): senkrecht oder um φ um x geneigt |
+| Zwischen zwei Profilschnitten | die winkelhalbierende Ebene der beiden Segmentachsen: rechtwinklig zu beiden, wenn α auf beiden Seiten gleich ist |
+
+```
+n         = (0, cos φ, sin φ)                    Normale einer Schnittebene
+n         = (a_k + a_(k+1)) / |a_k + a_(k+1)|    Winkelhalbierende der Segmente k und k + 1
+q(u)      = Punkt der Flügelfläche in der Stoßebene, für jedes u der Fläche
+d_in      = min über u von q_in(u) · a            innere Endfläche  {p : p · a = d_in}
+d_out     = max über u von q_out(u) · a           äußere Endfläche  {p : p · a = d_out}
+L_core    = d_out − d_in                          Kernlänge entlang der Achse
+```
+
+- Die Endflächen stehen rechtwinklig zur Achse und sind parallel: die Flächen eines Blocks, wie ihn ein
+  Heißdrahtschneider schneidet.
+- Jede Endfläche liegt dort, wo der kürzeste Kern endet, der das Stoßprofil q abdeckt. Der Kern ist dann
+  mindestens so lang wie das Flügelsegment, und Schleifen bringt seine Endfläche auf die Stoßebene.
+- Punkte des Flügels jenseits des Segmentendes stammen aus der Segmentfläche, gerade entlang ihrer
+  Endtangente in v fortgesetzt. Ein Kern übernimmt über einen Knick der V-Form hinweg nicht die Form
+  seines Nachbarn.
+
+Keil zwischen Endfläche und Stoßebene:
+
+```
+Winkel    = acos |n · a|                                     (°); kein Keil unter 0.001°
+Tiefe     = max über u von q(u) · a − min über u von q(u) · a   (mm, entlang der Achse)
+Seite     = Oberseite oder Unterseite: wo q am weitesten von der Endfläche entfernt liegt
+```
+
+| Flügel | Stoßstelle | Keil |
+| --- | --- | --- |
+| Gerades Feld mit 10° V-Form, Schnittebenen **Auf Gehrung** (Mitred) | Wurzel (senkrechte Ebene) | 10°, h · tan 10° tief an der Oberseite (h: Höhe des Profils bei seiner Profiltiefe, rechtwinklig zum Feld: 24,31 mm bei 200 mm Profiltiefe des NACA 2412 ergeben 4,29 mm) |
+| ebenso | Rand (rechtwinklig zum Feld) | keiner |
+| ebenso, in der Mitte geschnitten | Winkelhalbierende gleicher Achsen | keiner |
+| Möwenflügel: Felder mit 15° und −5°, **Auf Gehrung** | der Profilschnitt am Knick (winkelhalbierende Ebene) | 10° an der Unterseite, an beiden Kernen |
+| Beispielflügel (Ebenen **Senkrecht** (Vertical), Felder mit 1,91° und 3,81°) | der Profilschnitt bei y = 300 mm (senkrecht) | 1,91° an der Unterseite (innerer Kern), 3,81° an der Oberseite (äußerer Kern) |
+
+### 8.4 Endprofile
+
+```
+P(u)       = Punkt der Segmentfläche in der Endfläche {p : p · a = d}, für jedes u der Fläche
+x          = P_x − x_0
+h          = P · up − h_0
+(x_0, h_0) = kleinstes x und kleinstes P · up über beide Endprofile des Segments
+```
+
+- u durchläuft die Flächenparameter des Aufbaus (2N + 1 Werte, 121 bei N = 60): obere Endleiste,
+  Profilnase, untere Endleiste.
+- Punkt i des inneren und Punkt i des äußeren Profils liegen auf einer Geraden der Regelfläche des Kerns.
+  Ein Schneideprogramm, das beide Drahtenden von Punkt zu Punkt mit gleichem Index führt, schneidet
+  den Kern als Regelfläche.
+- Der Ursprung (x, h) = (0, 0) ist die vordere untere Ecke des kleinsten Blocks, der beide Profile
+  enthält.
+- Je Endprofil: LE = Punkt bei u_LE; TE = Mitte zwischen erstem und letztem Punkt; Profiltiefe =
+  |TE − LE|; Anstellwinkel = atan2(h_LE − h_TE, x_TE − x_LE), positiv Nase hoch.
+- Nullstellensuche je u: Die Spaltenkurve C_u(v) = Σ N_i(u) P_ij ist eine B-Spline-Kurve in v; Regula
+  falsi mit Bisektionsschritten (`solveMonotonic`) auf 1e-10 mm in p · a. Außerhalb von [v_a, v_b]
+  liefert die fortgesetzte Gerade den Punkt in einem Schritt.
+
+Ein gerades Feld aus einem Profil bei 10° V-Form:
+
+| Schnittebenen | Dicke des Endprofils |
+| --- | --- |
+| **Auf Gehrung** | das Profil bei seiner Profiltiefe: Die Wurzel ist um 1/cos 10° gestreckt und der Rand steht rechtwinklig zum Feld, daher ist jeder Schnitt rechtwinklig zum Feld das Profil |
+| **Senkrecht** | cos 10° = 0,985 des Profils: Quer zum Feld hat der Flügel cos δ der Dicke (Abschnitt 3.8) |
+
+### 8.5 Abweichung
+
+Der Kern als Regelfläche wird in 7 Ebenen parallel zu den Endflächen mit dem Flügel verglichen, bei
+s = 1/8 … 7/8 der Kernlänge.
+
+```
+d_s        = d_in + s · (d_out − d_in)
+R_s(u)     = (1 − s) · A(u) + s · B(u)       Kern als Regelfläche: A, B inneres und äußeres Endprofil
+W_s        = geschlossenes Polygon der Segmentfläche in der Ebene p · a = d_s, an jedem u
+Abweichung = max über s und u des Abstands von R_s(u) zu W_s     (mm)
+```
+
+| Flügel | Abweichung |
+| --- | --- |
+| Gerade Felder (**Gerade Felder** (Straight panels) oder **Linear** mit Stationen nur an den Profilschnitten) | 0 bis auf Rundungsfehler (unter 1e-9 mm bei den getesteten Flügeln) |
+| Entwurfstyp **Sportmodell** (Sport): Profiltiefe 240 bis 144 mm, NACA 2412 bis 2410, Schränkung 0 bis −1°, **Linear**, **Auf Gehrung**: 1 Kern, y = 0 bis 600 mm | 0,341 mm |
+| ebenso, 2 Kerne, y = 0 bis 300 und 300 bis 600 mm | 0,085 mm |
+| Entwurfstyp **Segelflugmodell** (Glider) (elliptisch, Leitkurven): 2 Kerne, y = 0 bis 500 und 500 bis 1000 mm | 1,348 und 2,489 mm |
+| ebenso, auf 0,2 mm geteilt | 10 Kerne, höchstens 0,156 mm |
+
+- Ein Feld mit **Linear** zwischen Schnittebenen **Auf Gehrung** verschiedener Neigung (mit V-Form
+  mindestens das Wurzelfeld) erhält Stationen zwischen seinen Profilschnitten (Abschnitt 3.2). Seine
+  Fläche folgt dann c(y) · Profil(y): Beide Faktoren sind linear in y, ihr Produkt nicht. Der Kern als
+  Regelfläche verfehlt sie beim **Sportmodell** ohne Schränkung um bis zu 0,25 mm. Hat die Fläche
+  Stationen nur an den Profilschnitten, ergeben Zuspitzung und Schränkung keine Abweichung: Das
+  **Sportmodell** mit Ebenen **Senkrecht** weicht 0 mm ab.
+- Die Abweichung fällt mit dem Quadrat der Segmentlänge: Ein halbierter Kern weicht etwa 1/4 so weit ab.
+- Teilen (**Segmente über der Grenze teilen** (Split segments over the limit)): Jedes Segment von 10 mm
+  oder mehr über der Grenze wird in der Mitte (in y) geteilt, und die ganze Menge wird neu berechnet;
+  das wiederholt sich, bis kein solches Segment übrig ist oder 200 Segmente erreicht sind. Ein Segment
+  unter 10 mm wird nicht geteilt.
+- Zeit in Node.js 24 auf einem Server-Prozessor mit 2,1 GHz: 5 bis 19 ms für den Vorschlag der 6 Entwurfstypen
+  des Assistenten, etwa 1 s für 200 Segmente des **Segelflugmodells**.
