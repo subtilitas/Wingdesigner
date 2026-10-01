@@ -327,6 +327,13 @@ function panelProblems(params) {
       if (w < 1) out.push(tr('Panel {n} spans {w} mm of the half span; a panel needs at least 1 mm.', { n: i + 1, w: plain(Number(w.toPrecision(3))) }));
     });
   }
+  // An elliptic tip keeps cos(π (m − 1) / (2 m)) of its entry chord at its last inner section
+  // (m = ELLIPTIC_TIP_SECTIONS: cos 75° = 0.259), which must reach the smallest chord: 3.86 mm.
+  if (params.tip === 'elliptic' && Number.isFinite(params.rootChord)) {
+    const entry = list.length > 1 ? list[list.length - 2].chord * params.rootChord : params.rootChord;
+    const need = LIMITS.minChord / Math.cos((Math.PI * (ELLIPTIC_TIP_SECTIONS - 1)) / (2 * ELLIPTIC_TIP_SECTIONS));
+    if (entry < need) out.push(tr('Panel {n}: the elliptic tip needs at least {min} mm of chord where it begins.', { n: list.length, min: plain(Number(need.toPrecision(3))) }));
+  }
   // Every section but a pointed or elliptic tip keeps at least the smallest chord.
   const last = list.length - 1;
   const endsInPoint = params.tip === 'pointed' || params.tip === 'elliptic';

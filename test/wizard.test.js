@@ -901,6 +901,12 @@ describe('wizard panels', () => {
     // of two distinct sections and the 1 mm of a panel.
     const tiny = { ...base, span: 100, panels: [{ span: 0.001, sweep: 0, chord: 1, dihedral: 0 }, { span: 100, sweep: 0, chord: 1, dihedral: 0 }] };
     expect(wizardProblems(tiny)).toEqual(['Panel 1 spans 0.0005 mm of the half span; a panel needs at least 1 mm.']);
+    // An elliptic tip that begins at 1 mm (100 mm root, 1 %) would make sections down to 0.26 mm.
+    const thin = { ...base, rootChord: 100, tip: 'elliptic', panels: [{ span: 1, sweep: 0, chord: 0.01, dihedral: 0 }, { span: 1, sweep: 0, chord: 0.5, dihedral: 0 }] };
+    expect(wizardProblems(thin)).toEqual(['Panel 2: the elliptic tip needs at least 3.86 mm of chord where it begins.']);
+    thin.panels[0].chord = 0.0387;
+    expect(wizardProblems(thin)).toEqual([]);
+    expect(buildWing(wizardProject(thin)).errors).toEqual([]);
     // The extreme straight planform converts to a sweep within the panel range and builds.
     const extreme = { ...PRESETS.sport.params, span: 100, rootChord: 3000, taper: 0.1, sweep: 60, sections: 8 };
     expect(buildWing(wizardProject(extreme)).errors).toEqual([]);
