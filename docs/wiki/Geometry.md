@@ -977,3 +977,30 @@ deviation = max over s and u of the distance from R_s(u) to W_s     (mm)
 - The deviation falls with the square of the segment length: halving a core gives about 1/4.
 - Splitting (**Split segments over the limit**): every segment of 10 mm or more above the limit is cut in the middle (in y), and the whole set is computed again; this repeats until no such segment is left or 200 segments are reached. A segment shorter than 10 mm is not split.
 - Time in Node.js 24 on a 2.1 GHz server processor: 5 to 19 ms for the proposal of the 6 wizard presets with a straight or elliptic planform, about 1 s for 200 segments of the **Glider**.
+
+## 9. Winglet
+
+`src/model/winglet.js` appends the winglet as sections; the loft treats them as any other panel. Input: the tip section T (y_T, z_T, x_T, chord c_T, twist t_T), the angle a0 of the last panel (its stored **Panel angle**, else atan2(z_T − z_P, y_T − y_P) with P the section before T), and the parameters height H, cant a1, radius R, sweep Λ, tip chord share k, toe τ.
+
+```
+turn  = a1 − a0                          (degrees)
+n     = ceil(|turn| / 15°)               arc steps; 0 when R = 0
+L_arc = R · |turn| · π/180               must be shorter than H
+σ     = sign(turn)
+
+arc section j = 1 … n:   b_j = a0 + turn · j / n,   s_j = L_arc · j / n
+  y_j = y_T + σ · R · (sin b_j − sin a0)
+  z_j = z_T + σ · R · (cos a0 − cos b_j)
+
+winglet tip:             s = H
+  y = y_n + (H − L_arc) · cos a1,   z = z_n + (H − L_arc) · sin a1      (y_0 = y_T, z_0 = z_T)
+
+at length s:   x = x_T + s · tan Λ,   chord = c_T + (k · c_T − c_T) · s / H,   twist = t_T + τ · s / H
+```
+
+- The arc is tangent to the last panel at T. With R = 0 the reference line kinks at T.
+- Values are rounded to 0.01 mm and 0.01°. An arc section less than 1 mm (`SHORT_PANEL`) in y from the section before it or from the winglet tip is left out.
+- The cant angle stays within ±89°: y is the span parameter of the loft, so every panel has to advance in y. A panel narrower than 1 mm in y is refused.
+- The section planes are the **Mitred** bisector planes of section 3.8, square to the reference line. With **Vertical** planes (y = const) a panel at cant angle a would be cos a as thick across the panel, 0.26 times at 75°; the dialog requires **Mitred**.
+- Guide curves hold x and the chord as functions of y between root and tip; they would stretch over the winglet, so the dialog requires them off. A pointed tip (section 3.5) would scale the winglet tip profile; the dialog requires a flat tip.
+- Default radius 0.3 c_T: on a tighter radius an airfoil about 25 % thick folds the surface on the inner side of the arc. Tested: the **Sport** wing with cant −89°, −45°, 0°, 45°, 75°, 89° and radius 0, 0.3 and 0.6 c_T builds without errors; every other preset with a flat tip and the guide curves off builds a closed wing with the default winglet. **Batwing** ends in a point (chord below 1 mm with a flat tip) and is refused.

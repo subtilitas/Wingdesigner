@@ -1051,3 +1051,30 @@ Abweichung = max über s und u des Abstands von R_s(u) zu W_s     (mm)
   unter 10 mm wird nicht geteilt.
 - Zeit in Node.js 24 auf einem Server-Prozessor mit 2,1 GHz: 5 bis 19 ms für den Vorschlag der 6 Entwurfstypen mit geradem oder elliptischem Grundriss
   des Assistenten, etwa 1 s für 200 Segmente des **Segelflugmodells**.
+
+## 9. Winglet
+
+`src/model/winglet.js` fügt das Winglet als Schnitte an; der Loft behandelt sie wie jedes andere Feld. Eingang: der Randschnitt T (y_T, z_T, x_T, Tiefe c_T, Schränkung t_T), der Winkel a0 des letzten Feldes (sein gespeicherter **Feldwinkel**, sonst atan2(z_T − z_P, y_T − y_P) mit P dem Schnitt vor T) und die Parameter Höhe H, Neigung a1, Radius R, Pfeilung Λ, Anteil der Spitzentiefe k, Anstellung τ.
+
+```
+turn  = a1 − a0                          (Grad)
+n     = ceil(|turn| / 15°)               Bogenschritte; 0 bei R = 0
+L_arc = R · |turn| · π/180               muss kürzer als H sein
+σ     = sign(turn)
+
+Bogenschnitt j = 1 … n:   b_j = a0 + turn · j / n,   s_j = L_arc · j / n
+  y_j = y_T + σ · R · (sin b_j − sin a0)
+  z_j = z_T + σ · R · (cos a0 − cos b_j)
+
+Wingletspitze:            s = H
+  y = y_n + (H − L_arc) · cos a1,   z = z_n + (H − L_arc) · sin a1      (y_0 = y_T, z_0 = z_T)
+
+bei Länge s:   x = x_T + s · tan Λ,   Tiefe = c_T + (k · c_T − c_T) · s / H,   Schränkung = t_T + τ · s / H
+```
+
+- Der Bogen berührt das letzte Feld in T tangential. Mit R = 0 knickt die Bezugslinie in T.
+- Die Werte werden auf 0,01 mm und 0,01° gerundet. Ein Bogenschnitt, der in y weniger als 1 mm (`SHORT_PANEL`) vom Schnitt davor oder von der Wingletspitze entfernt liegt, entfällt.
+- Die Neigung bleibt innerhalb ±89°: y ist der Spannweitenparameter des Lofts, jedes Feld muss in y fortschreiten. Ein Feld, das in y weniger als 1 mm reicht, wird abgelehnt.
+- Die Schnittebenen sind die winkelhalbierenden Ebenen **Auf Gehrung** aus Abschnitt 3.8, senkrecht zur Bezugslinie. Mit **Senkrechten** Ebenen (y = konstant) wäre ein Feld mit der Neigung a quer zum Feld cos a so dick, 0,26-mal bei 75°; der Dialog verlangt **Auf Gehrung**.
+- Leitkurven halten x und die Tiefe als Funktionen von y zwischen Wurzel und Rand; sie würden sich über das Winglet dehnen, deshalb verlangt der Dialog sie ausgeschaltet. Ein spitzes Flügelende (Abschnitt 3.5) würde das Profil der Wingletspitze verkleinern; der Dialog verlangt ein flaches Flügelende.
+- Vorgabe des Radius 0,3 c_T: Bei engerem Radius faltet ein etwa 25 % dickes Profil die Fläche auf der Innenseite des Bogens. Geprüft: Der Flügel **Sport** mit Neigung −89°, −45°, 0°, 45°, 75°, 89° und Radius 0, 0,3 und 0,6 c_T baut ohne Fehler; jeder andere Entwurfstyp mit flachem Flügelende und ausgeschalteten Leitkurven baut mit dem Vorgabe-Winglet einen geschlossenen Flügel. **Batwing** endet spitz (Tiefe unter 1 mm bei flachem Flügelende) und wird abgelehnt.

@@ -7,6 +7,7 @@ import { LIMITS } from '../model/project.js';
 import { LAZY_OPTIONS, WARN, costPhrase, displayName, loftGrid, projectSize } from '../model/budget.js';
 import { mitredPlanes, panelDihedrals, rolledPanelCount, storesPanelAngle } from '../geom/planes.js';
 import { count, fixed, plain, tr } from '../i18n/index.js';
+import { wingletDialog } from './winglet.js';
 
 const C = LIMITS.maxCoordinate;
 
@@ -265,6 +266,7 @@ export class SectionsPanel {
           h('tbody', {}, rows),
         ),
       ),
+      h('div', { class: 'row' }, h('button', { type: 'button', title: tr('Append a winglet beyond the wing tip'), onclick: () => wingletDialog(this.store, (m) => this.onMessage(m)) }, tr('Winglet…'))),
       h(
         'p',
         { class: 'muted small' },

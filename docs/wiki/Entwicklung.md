@@ -71,6 +71,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/model/io.js` | Import und Export der Projekt-JSON; `upgradeFoldedTilt` (ein eingerechneter Einstellwinkel einer Datei der Version 2 wird zum **Einstellwinkel des Teils**) |
 | `src/model/edit.js` | Bearbeitungsoperationen |
 | `src/model/wizard.js` | Entwurfstypen und Wertebereiche des Assistenten (`RANGES`) und der Felder (`PANEL_RANGES`, höchstens `MAX_PANELS` = 24 Felder); `wizardProject` erzeugt die Schnitte des geraden, des elliptischen und des Feld-Grundrisses und des elliptischen Flügelendes (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` macht aus dem geraden Grundriss 1 Feld |
+| `src/model/winglet.js` | Integriertes Winglet: `wingletSections` (Übergangsbogen in Schritten von höchstens `WINGLET_STEP` = 15°, dann das gerade Stück), `wingletProblems`, `addWinglet`, `defaultWinglet`, Wertebereiche `WINGLET_RANGES` |
 | `src/model/defaults.js` | Projekt beim ersten Laden |
 | `src/ui/store.js` | Store mit Rückgängig und Wiederholen |
 | `src/ui/viewer3d.js` | 3D-Ansicht |
@@ -83,10 +84,11 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/xflr5.js` | Importdialog für XFLR5-Dateien: `openXflr5Dialog` |
 | `src/ui/exportui.js` | Dialog **Exportieren** (Export) |
 | `src/ui/foam.js` | Schaumschnitt-Assistent: `foamDialog`; gespeicherte Einstellungen (`storedFoamSettings`, Schlüssel `wingdesigner.foam`) |
+| `src/ui/winglet.js` | Winglet-Dialog der Registerkarte **Schnitte**: `wingletDialog` |
 | `src/ui/dom.js` | DOM-Hilfsfunktionen |
 | `src/ui/styles.css` | Stile |
 | `src/i18n/index.js` | Sprache (`language`, `setLanguage`, `initialLanguage`), `tr()` und die Zahlenformate `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`; `index.js` fasst sie zusammen |
+| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`; `index.js` fasst sie zusammen |
 
 ### Skripte
 
@@ -286,8 +288,9 @@ Einen Text hinzufügen:
 | `xflxml.js` | `src/import/xflxml.js` |
 | `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` und die Texte des XFLR5-Imports in `src/main.js` und `src/ui/airfoils.js`: Titel von **Öffnen** (Open), Eintrag in **Hilfe** (Help), Anzahl weiterer Warnungen, Ablehnung einer XFLR5-Datei beim Hochladen, `XFLR5: <file>` unter einem importierten Profil |
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` sowie Beschriftung und Titel von **Schaum** (Foam) in `src/main.js` |
+| `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` und die Schaltfläche **Winglet …** in `src/ui/sections.js` |
 
-`src/i18n/de/index.js` fasst die zehn Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 33 und 141 Texte.
+`src/i18n/de/index.js` fasst die elf Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 33 und 141 Texte.
 
 Eine Sprache hinzufügen:
 
@@ -388,7 +391,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 601 Tests in 20 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 607 Tests in 21 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -434,7 +437,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-195 Tests in 13 Spec-Dateien, 390 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+197 Tests in 14 Spec-Dateien, 394 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 

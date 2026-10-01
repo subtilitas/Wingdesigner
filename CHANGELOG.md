@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Added
+
+- Integral winglet: **Winglet…** in the **Sections** tab appends sections beyond the tip section as one undo step.
+  - A circular blend arc tangent to the last panel turns the leading-edge line to the cant angle (−89 to 89°,
+    positive = up, default 75°) in steps of at most 15°, one section per step; a straight part runs on to the winglet
+    tip. Height along the line 5 to 100,000 mm; blend radius 0 to 100,000 mm, default 0.3 tip chords (0 gives a kink).
+  - Leading-edge sweep (−60 to 80°, default 30°), tip chord (5 to 200 % of the wing tip chord, default 60 %) and toe
+    (−15 to 15°, default 0°) change linearly along the line; the winglet tip airfoil is selectable.
+  - Front-view preview with the number of sections and the position of the winglet tip. Example: the **Sport** preset
+    with the defaults gets 6 sections, the winglet tip 117.7 mm above and 63.4 mm beyond the tip section.
+  - Refused with a stated reason for a pointed tip, guide curves, section planes other than **Mitred**, **Smooth**
+    interpolation, a blend arc not shorter than the height and a winglet panel narrower than 1 mm in y.
+
 ## [0.4.0] - 2026-10-01
 
 ### Added
