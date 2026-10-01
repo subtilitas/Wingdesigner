@@ -258,8 +258,9 @@ Options not taken:
 - Float32 precision of STL and 3MF (3D Manufacturing Format) with rolled caps is not tested.
 - Not tested: the real 35° and 40° V-tail samples with the prototype.
 - The difference at mid-panel where a panel changes airfoil and chord together (0.93 mm on Fixture A)
-  is gone with **Straight panels**. XFLR5's linear airfoil interpolation remains: median 0.15 mm over
-  93 real surfaces, 1.01 mm for a 33-point Clark YS.
+  is gone with **Straight panels**. XFLR5's straight segments between the airfoil points remain: the
+  largest part of the distance on 58 of 93 real surfaces, 0.88 mm for a 33-point Clark YS (File
+  Formats, section Differences from XFLR5).
 - A switch to mitred of a project with a stored folded tilt, before step 2 exists: owner decision
   (2026-09-30): a warning in Checks with the estimated error, not a blocked switch.
 - With the prototype, 16 of 348 browser test runs fail on 84d4e5e; the independent check does not
@@ -321,7 +322,8 @@ A part tilt is a new project value. An app with step 1 only would drop it withou
 - Step 2 in the same release as step 1: project format version 2 holds both the section-plane
   setting and the part tilt.
 - Step 2 in a later release: it raises the project format to version 3. An app with step 1 only
-  refuses a version 3 file (`validateProject`) instead of dropping the tilt.
+  refuses a version 3 file (`validateProject`) instead of dropping the tilt. Step 1 shipped in 0.2.0
+  as project format version 2, so this rule applies.
 - Older files (version 1, and version 2 without the tilt) open with a part tilt of 0°.
 
 ## 3. flow5 import

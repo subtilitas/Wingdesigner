@@ -28,6 +28,7 @@ Die mitgelieferte Profilbibliothek braucht keine Netzanfrage: Das Plugin `airfoi
 | `test/` | Vitest-Unit-Tests (`*.test.js`), `helpers.js` (NACA-Beispielprojekt), `step-cases.js` (Testfälle für die Validierung von Dateien im Standard for the Exchange of Product model data (STEP) und von 3MF-Dateien), `xflr5-writer.js` (Schreiber für XFLR5-Projektdateien), `fixtures/xflr5/` (XFLR5-Testdateien, siehe [XFLR5-Testdateien und Tests](#xflr5-testdateien-und-tests)) |
 | `e2e/` | Playwright-End-to-End-Tests (E2E) im Browser (`*.spec.js`), `helpers.js` |
 | `docs/Flow5upgrade.md` | Plan und Entscheidungen des Eigentümers zu Schnitten in Gehrungsebenen, einer starren Drehung des ganzen Teils um den Einstellwinkel und dem flow5-Import (nur Englisch) |
+| `docs/Handover.md` | Stand der Arbeit, nächste Schritte, Absprachen mit dem Eigentümer, was das Repository nicht enthält (nur Englisch) |
 | `docs/wiki/` | Wiki-Seiten auf Englisch und Deutsch, `_Sidebar.md`, `images/` (englische Screenshots), `images/de/` (deutsche Screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
 
@@ -47,6 +48,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/geom/mesh.js` | Dreiecksnetz, Spiegelung, Volumen, Fläche und Kantenprüfung des Netzes |
 | `src/geom/triangulate.js` | Triangulierung der Abschlussflächen: Streifen aus Punktpaaren von Ober- und Unterseite (lineare Laufzeit); Ear Clipping als Rückfallverfahren |
 | `src/geom/stats.js` | Grundrisskennwerte |
+| `src/geom/sampling.js` | Stützstellen in Spannweitenrichtung zum Zeichnen, gemeinsam für die 3D-Ansicht und den Grundriss: `refine`, `thinParams`, `edgeParams`, `MAX_EDGE_SAMPLES` (20.000) |
 | `src/airfoil/parse.js` | Parser für Profildateien; `cleanPoints` bereinigt eine Punktliste aus einem anderen Format (die Profile eines XFLR5-Projekts) nach den Regeln einer eingelesenen Datei |
 | `src/airfoil/geometry.js` | Polyliniengeometrie |
 | `src/airfoil/sanity.js` | Plausibilitätsprüfung, `importAirfoilText` |
@@ -56,6 +58,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/export/axes.js` | Hochachse der exportierten Dateien (die Fusion-360-Korrektur des Exportdialogs): `UP_AXES`, `upAxisMap` (unverändert für Z nach oben, (x, z, −y) für Y nach oben), `meshToUpAxis` |
 | `src/export/stl.js` | Export als binäres STL (Stereolithografie) |
 | `src/export/threemf.js` | 3MF-Export |
+| `src/export/precision.js` | Prüfung der 32-Bit-Koordinaten beim Export als STL und 3MF: `checkPrecision`, `MeshPrecisionError` |
 | `src/import/errors.js` | `XflrError`: Fehler auf Dateiebene der XFLR5-Leser, mit einem `code` und, bei einem `.xfl`-Projekt, dem Byte-`offset` |
 | `src/import/xfl.js` | Leser für XFLR5-Projekte (`.xfl`): `readXfl` (Fenster von 4 194 304 Byte), `readXflBytes` (Bytes im Speicher), `startsLikeXfl`, `sniffXflr5` |
 | `src/import/xflxml.js` | Leser für XFLR5-Flugzeug- und -Flügeldateien in der Extensible Markup Language (XML): `readXflr5Xml` |
@@ -352,12 +355,13 @@ Unit-Tests (Vitest, Node.js):
 
 `test/xflr5-writer.js` schreibt XFLR5-Projektdateien im Big-Endian-Format aus Optionen mit Vorgabewerten, nach der Beschreibung des Formats in `src/import/xfl.js`. Zahlen, die der Leser überspringt, stehen als erkennbare Werte ungleich 0 in der Datei, sodass ein Leser, der zu viele oder zu wenige Byte überspringt, das Folgende falsch liest. `writeProject(options)` liefert `{ bytes, marks }`; `marks` listet den Offset jedes Datensatzes für die Tests mit abgeschnittenen Dateien. Die Flugzeugoption `spare: 'index'` schreibt die reservierten Blöcke des Flugzeugs und seiner Flügel wie XFLR5 6.10.01 bis 6.10.04.
 
-Browsertests: `e2e/xflr5.spec.js`, 9 Tests, 18 Läufe:
+Browsertests: `e2e/xflr5.spec.js`, 10 Tests, 20 Läufe:
 
 - XML-Flugzeugdatei: das Höhenleitwerk mit einem NACA-Profil und einer hochgeladenen `.dat`-Datei, dann **Rückgängig** (Undo).
 - `.xfl`-Projekt mit zwei Flugzeugen: Flugzeugwahl, ein Flugzeug ohne Höhenleitwerk, Profilhinweise bleiben nach dem Neuladen; danach ein Projekt aus `test/xflr5-writer.js` mit 300 Profilen: eine andere Fläche wird in Scheiben geprüft, mit abgeschaltetem **Importieren** (Import) und geleerter Tabelle des vorigen Flügels.
 - **Abbrechen** (Cancel) lässt den Entwurf unverändert und legt keinen Rückgängig-Schritt an.
 - Ein beschädigtes `.xfl`-Projekt und eine XML-Datei mit anderem Wurzelelement erzeugen eine Meldung und lassen den Entwurf unverändert.
+- **Importieren** (Import) wartet auf eine hochgeladene `.dat`-Datei, die noch gelesen wird.
 - Die Dateiauswahl von **Öffnen** akzeptiert XFLR5-Dateien.
 - **Öffnen** erkennt XFLR5-Dateien, deren Name die Endung verloren hat.
 - Das Hochladen unter **Profile** (Airfoils) lehnt XFLR5-Dateien ab, auch ein `.xfl`-Projekt über 20 MB.
@@ -437,7 +441,7 @@ Kein Test ist mit `test.fail` markiert.
 
 ### STEP- und 3MF-Validierung
 
-Python: 3.12 im Job `step` von `ci.yml`; andere Versionen nicht getestet.
+Python: 3.12 im Job `step` von `ci.yml`, 3.11.15 in einem lokalen Lauf am 30.09.2026; andere Versionen nicht getestet.
 
 ```bash
 pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0   # Python-Anbindung von OpenCascade 8, Bibliothek des 3MF Consortium
@@ -514,6 +518,8 @@ Beim nächsten Lauf werden im Wiki bearbeitete Seiten überschrieben und dort an
 | --- | --- |
 | [RECORD.md](https://github.com/subtilitas/Wingdesigner/blob/main/RECORD.md) | Verifizierter Stand, Entscheidungen mit Begründung, Messungen, offene Punkte |
 | [CHANGELOG.md](https://github.com/subtilitas/Wingdesigner/blob/main/CHANGELOG.md) | Versionshistorie |
+| [docs/Handover.md](https://github.com/subtilitas/Wingdesigner/blob/main/docs/Handover.md) | Stand der Arbeit, nächste Schritte, Absprachen mit dem Eigentümer, was das Repository nicht enthält |
+| [docs/Flow5upgrade.md](https://github.com/subtilitas/Wingdesigner/blob/main/docs/Flow5upgrade.md) | Plan und Entscheidungen des Eigentümers zu Schnitten in Gehrungsebenen, einer starren Drehung des ganzen Teils um den Einstellwinkel und dem flow5-Import |
 
 ### Screenshots
 
@@ -623,17 +629,22 @@ Alle aufgeführten Actions laufen auf Node.js 24 (`runs.using: node24`); `upload
 Die CI ändert die Tabellen der Testabdeckung in den READMEs nicht.
 Aktualisieren mit `npm run coverage && npm run coverage:readme`, dann beide READMEs committen.
 
-Der erste Lauf auf `main` (Merge von #1, 29.09.2026): CI-Lauf 36590504445 hat Pages veröffentlicht, Docs-Lauf 36590504459 hat das Wiki gepusht.
 Das Klonen in `docs.yml` setzt ein vorhandenes Repository-Wiki voraus; GitHub legt es mit der ersten Seite an, die in der Weboberfläche gespeichert wird.
 
 ## Release
 
-`<version>`: die zu veröffentlichende Version, z. B. `0.3.0`. `package.json` enthält `0.2.0`.
+`<version>`: die zu veröffentlichende Version, z. B. `0.4.0`. `package.json` enthält `0.3.0`.
 
 1. Version setzen: `npm version <version> --no-git-tag-version` (ändert `package.json` und `package-lock.json`).
 2. In `CHANGELOG.md` die Einträge unter `## [Unreleased]` unter eine Überschrift `## [<version>] - YYYY-MM-DD` verschieben.
 3. Committen und nach `main` mergen. Warten, bis `ci.yml` bestanden ist.
-4. Tag setzen und pushen: `git tag v<version> && git push origin v<version>`.
+4. Den Merge-Commit des Release-Pull-Requests `<number>` taggen und den Tag pushen. Der Tag nennt diesen Commit, nicht die Spitze von `main`, die spätere Änderungen enthalten kann. Die Seite des Pull Requests auf GitHub zeigt denselben Commit.
+
+   ```bash
+   git fetch origin main
+   c=$(git log origin/main --merges -1 --format=%H --grep='^Merge pull request #<number>[^0-9]')
+   test -n "$c" && git show -s --format='%h %s' "$c" && git tag v<version> "$c" && git push origin v<version>
+   ```
 
 Danach läuft `release.yml`:
 

@@ -207,8 +207,8 @@ Ein statischer Webserver auf dem entpackten Ordner funktioniert ebenso, z. B. `p
 ## Entwicklung
 
 Benötigt Node.js 24 (`.nvmrc`; `package.json` engines `>=24`).
-STEP- und 3MF-Prüfung: Python 3.12 (wie in der CI); andere Python-Versionen nicht getestet.
-Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md).
+STEP- und 3MF-Prüfung: Python 3.12 (wie in der CI), 3.11.15 in einem lokalen Lauf am 30.09.2026; andere Python-Versionen nicht getestet.
+Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md). Verifizierter Stand und offene Punkte: [RECORD.md](RECORD.md) (Englisch). Stand der Arbeit, nächste Schritte und Absprachen mit dem Eigentümer: [docs/Handover.md](docs/Handover.md) (Englisch).
 
 ```bash
 npm ci

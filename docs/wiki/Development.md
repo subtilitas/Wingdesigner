@@ -28,6 +28,7 @@ The bundled airfoil library needs no network request: plugin `airfoilLibrary` in
 | `test/` | Vitest unit tests (`*.test.js`), `helpers.js` (NACA sample project), `step-cases.js` (validation cases for Standard for the Exchange of Product model data (STEP) files and 3MF files), `xflr5-writer.js` (writer of XFLR5 project files), `fixtures/xflr5/` (XFLR5 test files, see [XFLR5 test files and tests](#xflr5-test-files-and-tests)) |
 | `e2e/` | Playwright end-to-end (E2E) browser tests (`*.spec.js`), `helpers.js` |
 | `docs/Flow5upgrade.md` | Plan and owner decisions for mitred section planes, a rigid tilt of the whole part and the flow5 import (English only) |
+| `docs/Handover.md` | Where the work stands, next steps, working agreements with the owner, what the repository does not hold (English only) |
 | `docs/wiki/` | Wiki pages in English and German, `_Sidebar.md`, `images/` (English screenshots), `images/de/` (German screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
 
@@ -47,6 +48,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/geom/mesh.js` | Tessellation, mirror, mesh volume, area and edge check |
 | `src/geom/triangulate.js` | End-cap triangulation: strip of upper and lower point pairs (linear time); ear clipping as fallback |
 | `src/geom/stats.js` | Planform statistics |
+| `src/geom/sampling.js` | Span samples for drawing, shared by the 3D view and the planform: `refine`, `thinParams`, `edgeParams`, `MAX_EDGE_SAMPLES` (20,000) |
 | `src/airfoil/parse.js` | Airfoil file parser; `cleanPoints` cleans a point list from another format (the airfoils of an XFLR5 project) by the rules of a parsed file |
 | `src/airfoil/geometry.js` | Polyline geometry |
 | `src/airfoil/sanity.js` | Sanity checks, `importAirfoilText` |
@@ -56,6 +58,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/export/axes.js` | Up axis of the exported files (the Fusion 360 fix of the export dialog): `UP_AXES`, `upAxisMap` (identity for Z up, (x, z, −y) for Y up), `meshToUpAxis` |
 | `src/export/stl.js` | Binary stereolithography (STL) writer |
 | `src/export/threemf.js` | 3MF writer |
+| `src/export/precision.js` | 32-bit coordinate check of STL and 3MF exports: `checkPrecision`, `MeshPrecisionError` |
 | `src/import/errors.js` | `XflrError`: file-level error of the XFLR5 readers, with a `code` and, for an `.xfl` project, the byte `offset` |
 | `src/import/xfl.js` | Reader of XFLR5 projects (`.xfl`): `readXfl` (windows of 4,194,304 bytes), `readXflBytes` (bytes in memory), `startsLikeXfl`, `sniffXflr5` |
 | `src/import/xflxml.js` | Reader of XFLR5 plane and wing files in Extensible Markup Language (XML): `readXflr5Xml` |
@@ -352,12 +355,13 @@ Unit tests (Vitest, Node.js):
 
 `test/xflr5-writer.js` writes big-endian XFLR5 project files from options with default values, written from the description of the format in `src/import/xfl.js`. Numbers that the reader skips are written as recognizable non-zero values, so a reader that skips too many or too few bytes misreads what follows. `writeProject(options)` returns `{ bytes, marks }`; `marks` lists the offset of every record for the truncation tests. The plane option `spare: 'index'` writes the reserved blocks of the plane and its wings as XFLR5 6.10.01 to 6.10.04 do.
 
-Browser tests: `e2e/xflr5.spec.js`, 9 tests, 18 runs:
+Browser tests: `e2e/xflr5.spec.js`, 10 tests, 20 runs:
 
 - XML plane file: the stabilizer with a NACA airfoil and an uploaded `.dat` file, then **Undo**.
 - `.xfl` project with two planes: plane choice, a plane without stabilizer, airfoil notes kept after a reload; then a project from `test/xflr5-writer.js` with 300 airfoils: another surface checked in slices, with **Import** off and the table of the previous wing emptied.
 - **Cancel** keeps the design and adds no undo step.
 - A damaged `.xfl` project and an XML file with another root element give a message and keep the design.
+- **Import** waits for an uploaded `.dat` file that is still being read.
 - The file chooser of **Open** accepts XFLR5 files.
 - **Open** recognizes XFLR5 files whose name lost its extension.
 - The **Airfoils** upload refuses XFLR5 files, also an `.xfl` project above 20 MB.
@@ -437,7 +441,7 @@ No test is marked `test.fail`.
 
 ### STEP and 3MF validation
 
-Python: 3.12 in the `ci.yml` job `step`; other versions not tested.
+Python: 3.12 in the `ci.yml` job `step`, 3.11.15 in a local run on 2026-09-30; other versions not tested.
 
 ```bash
 pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0   # OpenCascade 8 Python bindings, 3MF Consortium library
@@ -514,6 +518,8 @@ On the next run, pages edited in the wiki web interface are overwritten, and pag
 | --- | --- |
 | [RECORD.md](https://github.com/subtilitas/Wingdesigner/blob/main/RECORD.md) | Verified state, decisions with reasons, measurements, open items |
 | [CHANGELOG.md](https://github.com/subtilitas/Wingdesigner/blob/main/CHANGELOG.md) | Version history |
+| [docs/Handover.md](https://github.com/subtilitas/Wingdesigner/blob/main/docs/Handover.md) | Where the work stands, next steps, working agreements with the owner, what the repository does not hold |
+| [docs/Flow5upgrade.md](https://github.com/subtilitas/Wingdesigner/blob/main/docs/Flow5upgrade.md) | Plan and owner decisions for mitred section planes, a rigid tilt of the whole part and the flow5 import |
 
 ### Screenshots
 
@@ -623,17 +629,22 @@ All listed actions run on Node.js 24 (`runs.using: node24`); `upload-pages-artif
 CI does not rewrite the README coverage tables.
 Update them with `npm run coverage && npm run coverage:readme` and commit both READMEs.
 
-The first run on `main` (merge of #1, 2026-09-29): CI run 36590504445 deployed Pages, Docs run 36590504459 pushed the wiki.
 The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creates it with the first page saved in the web interface.
 
 ## Release
 
-`<version>`: the version to release, e.g. `0.3.0`. `package.json` holds `0.2.0`.
+`<version>`: the version to release, e.g. `0.4.0`. `package.json` holds `0.3.0`.
 
 1. Set the version: `npm version <version> --no-git-tag-version` (updates `package.json` and `package-lock.json`).
 2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`.
 3. Commit and merge to `main`. Wait until `ci.yml` passes.
-4. Tag and push: `git tag v<version> && git push origin v<version>`.
+4. Tag the merge commit of the release pull request `<number>` and push the tag. The tag names that commit, not the tip of `main`, which can hold later changes. The pull request page on GitHub shows the same commit.
+
+   ```bash
+   git fetch origin main
+   c=$(git log origin/main --merges -1 --format=%H --grep='^Merge pull request #<number>[^0-9]')
+   test -n "$c" && git show -s --format='%h %s' "$c" && git tag v<version> "$c" && git push origin v<version>
+   ```
 
 `release.yml` then runs:
 

@@ -207,8 +207,8 @@ A static web server on the unzipped folder works as well, e.g. `python3 -m http.
 ## Development
 
 Requires Node.js 24 (`.nvmrc`; `package.json` engines `>=24`).
-STEP and 3MF validation: Python 3.12 (as in CI); other Python versions not tested.
-Version history: [CHANGELOG.md](CHANGELOG.md).
+STEP and 3MF validation: Python 3.12 (as in CI), 3.11.15 in a local run on 2026-09-30; other Python versions not tested.
+Version history: [CHANGELOG.md](CHANGELOG.md). Verified state and open items: [RECORD.md](RECORD.md). Where the work stands, next steps and the working agreements with the owner: [docs/Handover.md](docs/Handover.md).
 
 ```bash
 npm ci
