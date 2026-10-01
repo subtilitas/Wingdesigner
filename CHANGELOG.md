@@ -6,20 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-09-30
-
-### Added
-
-- `docs/Handover.md`: where the work stands, the next steps, the working agreements with the owner,
-  the checks before a push and what the repository does not hold. README, RECORD and Development
-  link to it.
+## [0.3.0] - 2026-10-01
 
 ### Changed
 
 - Wizard: **Dihedral per half** accepts −60 to 60° (−15 to 30° in 0.2.0), for V-tails and inverted
   V-tails. 60° is the steepest first panel that **Mitred** section planes build (stretch 2 at the
-  vertical root). Every preset with both planforms, both tips and 2 to 8 sections builds at −60,
-  −55, −45, −30, 30, 35, 45, 50, 55, 59.5 and 60° (1,056 builds, no error). A short, steep V-tail
+  vertical root). Every preset with both planforms, both tips and 2, 3, 5 or 8 sections builds at
+  −60, −55, −45, −30, 30, 35, 45, 50, 55, 59.5 and 60°. A short, steep V-tail
   with many sections folds at its root and keeps **Create design** disabled with the build error:
   Tail surface at 100 mm span with 8 sections and 55°; from 200 mm span, 2 to 8 sections build up
   to 60°.
@@ -34,13 +28,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - XFLR5 import: every airfoil frame applies exactly. The leading edge of the fitted curve lies up
   to 1e-3 of the chord off the nose point of real files (32 of 64 airfoil entries); 0.2.0 dropped
   such offsets and put sections up to 0.30 mm off XFLR5's placement (NACA 4415, 391 mm chord).
-  Offsets up to 1e-9 of the chord count as round-off. `FRAME_TOLERANCE` (0.1 % of the chord) decides
-  only whether the report names the move. The report line says "scaled" only when its figures show a
-  chord other than 100 %. Against XFLR5's STL of 93 real surfaces, 19 lie closer (NACA 4415 0.094 mm
+  Offsets up to 1e-9 of the chord count as round-off. The import report names a move only above
+  0.1 % of the chord. The report line says "scaled" only when its figures show a chord other than
+  100 %. Against XFLR5's STL of 93 real surfaces, 19 lie closer (NACA 4415 0.094 mm
   instead of 0.325 mm, Clark YS 0.883 mm instead of 1.008 mm) and 32 lie 0.012 to 0.078 mm farther:
   the dropped offset had pointed against XFLR5's straight-segment sag or a construction difference
-  (flat wings of `Wing Design and Analysis.xfl` 0.277 mm instead of 0.229 mm). 284 random parts:
-  0.033 mm instead of 0.151 mm.
+  (flat wings of `Wing Design and Analysis.xfl` 0.277 mm instead of 0.229 mm). On 284 generated
+  untilted parts with cambered NACA sections, a built section lies at most 0.033 mm from XFLR5's
+  placement instead of 0.151 mm.
 
 ## [0.2.0] - 2026-09-30
 
@@ -77,11 +72,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   checkbox starts as it was at the last export (browser storage, key `wingdesigner.upAxis`); the
   project JSON keeps the axes of the app.
 - Info lines in the Checks tab, after errors and warnings.
-- `npm run counts:check` also checks the unit tests of one file where a page states them: a table
-  row with the path of a test file and a count or `<n> of <m>`, and the path followed by `(<n>)`.
-- `scripts/validate_step.py` checks that the edges of every planar face (the end caps) lie in the
-  plane within 1e-6 mm. `test/step-cases.js` adds a mitred 35° V-tail (also written with the Fusion
-  360 fix), a mitred 15°/−5° gull and a mitred airfoil switch with a stored panel angle: 12 cases.
 
 ### Changed
 
@@ -117,7 +107,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   window with the 650 px side panel, or a narrow window) then showed the wing smaller after a reload
   than after **New**. The status bar keeps the height of one line from the start.
 - Airfoil check: a crossing of the first and the last outline segment does not count when their free
-  ends lie at most 1e-4 of the chord apart (`TE_CROSS_TOLERANCE`, the limit of `te-crossed`). 19 UIUC
+  ends lie at most 1e-4 of the chord apart (the limit of the check `te-crossed`). 19 UIUC
   files that start at x = 1.00000 and end at x = 1.00001 (`sd7003.dat`, `sd8000.dat` and others)
   and the aerodesign.de copies of `s3021.dat` and `sd7080.dat` load; the main wing of the XFLR5
   project `Gertie.xfl` (airfoil SD8000-089-88) imports.
@@ -149,12 +139,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   row wraps instead of scrolling sideways. File contents, airfoil names, attributions, license
   identifiers and texts typed by the user are not translated. The English text is unchanged,
   with one exception: the `<noscript>` line of `index.html` names both languages, because JavaScript
-  cannot translate it. The browser tests run with the locale `en-US`; `e2e/language.spec.js` (16
-  tests) sets `de-DE` in its block `German browser`.
-- `npm run i18n:check` (in continuous integration, CI): exit code 1 when a text in `src/` has no
-  German entry, a German entry is unused, key and entry differ in their `{placeholders}`, two areas
-  translate one text differently, an entry is neither text nor function, or a `tr()` call does not
-  start with a string literal.
+  cannot translate it.
 - XFLR5 import: **Open** also takes an XFLR5 project (`.xfl`, XFLR5 6.10.01 to 6.62, project formats
   200001 and 200002) and an XFLR5 plane or wing file (`.xml`, Extensible Markup Language, XFLR5 6.11
   to 6.62), and imports one surface from it, the main wing or the horizontal stabilizer (XFLR5 calls
@@ -178,22 +163,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   project up to 2,000 MB is read through windows of 4,194,304 bytes (4 MiB); its analysis results
   are skipped. The
   **Airfoils** upload refuses XFLR5 files with a notice. The Airfoils tab shows `XFLR5: <file>`
-  under an imported airfoil, the title of **Open** names the import, and Help lists it. German
-  texts: 199 new (areas `xfl`, `xflxml`, `xflr5`). Wiki: User Guide section Import from XFLR5, File
-  Formats section XFLR5 import, the screenshot `xflr5-import.png`. Tests: 145 unit tests in
-  `test/xflr5-xfl.test.js`, `test/xflr5-xml.test.js` and `test/xflr5-map.test.js`, 10 browser tests
-  in `e2e/xflr5.spec.js`.
+  under an imported airfoil, the title of **Open** names the import, and Help lists it. The dialog
+  and its messages are in English and German. Wiki: User Guide section Import from XFLR5, File
+  Formats section XFLR5 import, the screenshot `xflr5-import.png`.
 - Bundled airfoil library: Clark Y, USA 35B, NACA M-6 and NACA 8-H-12 from NACA report tables, RAF 34
   from a Royal Aircraft Establishment table reprinted by NACA, and S9104 (CC BY 4.0, Michael Selig).
-  `public/airfoils/NOTICE.md` gives source, legal basis, conditions and attribution per file; the
-  status outside the United States of the public-domain tables is not established.
-- Documentation in English and German: `README.md`, `README.de.md` and 10 wiki pages (User Guide,
-  Geometry, File Formats, Airfoil Sources, Development, each in both languages). The English pages
-  name the interface elements by their English labels and show English screenshots. The German wiki
-  pages name them by the German labels of the German interface, quote messages in German and show
-  German screenshots. `npm run screenshots` writes 26 images: 13 in `docs/wiki/images/` and 13 in
-  `docs/wiki/images/de/`. `npm run docs:check` (in CI) checks that every page has its counterpart,
-  that wiki links and images resolve, and that both README coverage tables are present.
+  `airfoils/NOTICE.md` in the app folder gives source, legal basis, conditions and attribution per
+  file; the status outside the United States of the public-domain tables is not established.
+- Documentation in English and German: `README.md`, `README.de.md` and the wiki pages User Guide,
+  Geometry, File Formats and Airfoil Sources, each in both languages. The English pages name the
+  interface elements by their English labels and show English screenshots. The German wiki pages
+  name them by the German labels of the German interface, quote messages in German and show German
+  screenshots. The wiki holds 26 screenshots: 13 of the English interface for the English pages and
+  13 of the German interface for the German pages.
 - Size warnings: above 200 sections, 200 airfoils, 5,000 points in one airfoil, 100,000 airfoil
   points, 500 points in an enabled guide curve, 60,000 loft grid points or 200-character names, one
   warning lists the sizes and the expected time and browser memory of each change; a toast shows it
@@ -205,19 +187,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   memory above 1,000,000 control points; above 3,000,000 **Download** is disabled (3.3 million wrote
   330 MB in 8.4 s, about 5.4 million exceed the 512 MB string limit of the browser).
 - `LICENSES.txt` in the build and the release zip: the license of the app and the license text of
-  every npm package whose code the bundle contains (three.js and fflate, both MIT), derived from the
-  bundle at build time; a bundled package without a license file stops the build. Help links to it.
+  every npm package whose code the bundle contains (three.js and fflate, both MIT). Help links to it.
 - The release zip runs without a web server: `index.html` opened from the file loads the app,
   the bundled airfoil library and the autosave (tested in Chromium 141). The release notes say how
   to use the zip and where the licenses are.
-- `npm run counts:check` (in CI): compares every test count in `README.md`, `README.de.md`,
-  `RECORD.md` and the Development and Geometry wiki pages (English and German) with the suites:
-  unit tests and files from Vitest, browser tests, spec files and runs from the Playwright listing,
-  tests that run on one device only from the report of the CI browser run, and the STEP and 3MF
-  validation cases from `test/step-cases.js`. Exit code 1 on a difference or a missing statement.
-  Playwright writes a JSON report to `playwright-report/results.json`.
-- NURBS core: B-spline basis functions, curve and surface evaluation, global interpolation,
-  knot insertion and splitting.
 - Airfoil import for Selig, Lednicer, x/upper/lower tables, XML and HTML tables with sanity checks
   and preview; NACA 4-digit and 5-digit generator.
 - Half-wing loft through NURBS-interpolated sections with linear or smooth spanwise blending,
@@ -229,8 +202,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - Wing tip modes: flat, or pointed with the tip profile scaled to 1/100 to 1/1000 of the previous
   section chord; wizard tip option.
 - Adaptive spanwise stations where the loft deviates more than 0.5 mm from the intended planform.
-- CI with unit tests, README coverage check, OpenCascade STEP validation, browser smoke test and
-  GitHub Pages deployment; wiki publishing; tagged releases.
+- The app on GitHub Pages, the user documentation in the GitHub wiki, and releases with a zip of
+  the app.
 
 ### Changed
 
@@ -257,17 +230,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   triangles, 10,000-character names.
 - Mesh export: Fine density is always offered; Download is off above 10,000,000 triangles.
 - Save and JSON export leave out the derived NURBS data when the file would exceed 100 MB, so every
-  file they write reopens; Open reads project files up to 100 MB (50 MB before), airfoil uploads up
-  to 20 MB and 5,000,000 characters (8 MB and 2,000,000 before).
+  file they write reopens; Open reads project files up to 100 MB, airfoil uploads up to 20 MB and
+  5,000,000 characters.
 - Selecting a section marks the row, the 3D section outline and the planform handle without
   rebuilding the wing; a click in a row outside its fields and buttons selects it.
 - Sections table: above 20,000 section-airfoil list entries each airfoil list is filled when it is
   focused or pressed.
 - Lists and messages show the first 200 characters of a name followed by `…`; download file names
   are cut to 120 characters.
-- The build writes one classic deferred script (immediately invoked function expression, IIFE)
-  instead of an ES module loaded in cross-origin resource sharing (CORS) mode; the bundled airfoil
-  library is compiled into it instead of fetched from `airfoils/` at run time.
 - Airfoil files saved as UTF-16 (16-bit Unicode Transformation Format) text with a byte order mark (Windows editors call it "Unicode") are
   decoded; they were read as Windows-1252 text before.
 - The planform preview of the wizard and the canvas of the airfoil preview have the role `img` with
@@ -281,7 +251,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   German, `1,500` in English), and show a decimal comma in German. The wizard reads its fields the
   same way; a field that holds no number disables **Create design**.
 - Wiki: links in table rows ([[Label|Page]]) split the table cell at the |; tables link with the page
-  title alone. `npm run docs:check` reports a | inside a wiki link in a table row.
+  title alone.
 - STEP faces of symmetric airfoils: the leading-edge split parameter snaps to an existing knot
   within 1e-10.
 - Airfoil import: Lednicer detection requires the upper surface to start at the leading edge;
@@ -306,9 +276,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - B-spline interpolation rejects decreasing parameters instead of returning control points of 1e16 mm
   from the band LU without pivoting.
 - The profile cache keeps the most recently used entries and at least one per airfoil of the project.
-- Project files: at most 200 airfoils and 5000 points per airfoil (the file-import limit); guides
-  written without the `edited` flag count as edited when their points differ from the section edges,
-  so switching them on keeps the points.
+- Project files: guides written without the `edited` flag count as edited when their points differ
+  from the section edges, so switching them on keeps the points.
 - The build stops with the validation message when a section or guide value exceeds the project
   limits, so a project that cannot be saved cannot be exported; planform drags keep chords, section
   positions and guide points within the limits.
@@ -321,10 +290,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   edges and z within ±1,200,000 mm (an end line at its limit less the largest chord), so every
   valid project builds and only interpolation overshoot is rejected. Section and guide-point counts
   are checked before the entries are read (300,000 empty sections took 7.2 s to reject).
-- Loft: at most 160,000 grid points (stations times profile points) before added stations; stations
-  per panel are reduced with a warning. 20 sections with 40 stations per panel and 200 chord samples
-  build in 0.8 s instead of 4 s. Surface rows are tested halfway between the 64 widest station
-  intervals, each row with one basis evaluation.
+- Loft: surface rows are tested halfway between the 64 widest station intervals, each row with one
+  basis evaluation.
 - Airfoil check: consecutive points closer than 1e-9 chord are removed (their interpolation
   parameters coincide and the collocation matrix is singular); the preview reports an interpolation
   failure as an error and does not offer "Add to project".
@@ -365,11 +332,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - Loft: fitted-curve crossings, surface-row crossings and crossed trailing-edge slivers are ignored
   up to their chord fraction and at most 0.1 mm; a fixed fraction accepted a 6.19 mm loop at
   100,000 mm chord.
-- Airfoil import stops reading after 5001 coordinate lines (400,000 short lines: 175 ms and 23 MB of
-  heap instead of 1,051 ms and 175 MB); a name line above 200 characters keeps its first 200.
-- Project files: names and ids at most 200 characters, airfoil source texts at most 2000; only
-  known keys are kept on import (a deeply nested unknown key made every later start fail); the
-  points of all airfoils together at most 100,000 (200 airfoils of 5000 points took 40 s to build).
+- Airfoil import stops reading after 100,001 coordinate lines; a name line above 10,000 characters
+  keeps its first 10,000.
+- Project files: names at most 10,000 characters, ids at most 200, airfoil source texts at most
+  2000; only known keys are kept on import (a deeply nested unknown key made every later start
+  fail); the points of all airfoils together at most 1,000,000.
 - Autosave failures (browser storage holds about 5,000,000 characters per site) show a notice and
   the status bar note "Autosave off: use Save"; the next start names the time of the last save. A
   saved project that cannot be loaded and has no room for a copy stays in place with autosave off.
@@ -377,12 +344,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   162 ms); the profile cache is keyed by a hash of the points and keeps the resampling per chord
   sample count, so a Chord samples change reuses the checks; smooth blending evaluates each position
   from its two neighbouring sections.
-- Loft grid at most 60,000 points before added stations (160,000 took 0.7 s to build and 3.6 s to
-  display at 20 sections); the 3D view refines cubic lofts in v while the display mesh stays at or
-  below 100,000 vertices; mesh exports offer Fine only up to 2,000,000 triangles for both halves.
+- The 3D view refines cubic lofts in v while the display mesh stays at or below 100,000 vertices.
 - Airfoil thumbnails scale to the point bounds (project files in percent of chord were clipped);
   text in the paste field and the NACA designation stays when the Airfoils tab re-renders.
-- Airfoil import: files above 5000 points are rejected instead of stalling the checks; the largest
+- Airfoil import: files above 100,000 points are rejected; the largest
   x is found without spreading all rows into one call; a drawn blunt trailing-edge base is removed in
   both point orders and when the outline starts on the base; a closed trailing edge reached over a
   vertical segment is reported (`te-base`).
@@ -416,17 +381,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   twice; the View preview of a project airfoil offers only Close; undo or redo after "Add point"
   clears the guide-point selection; on phones up to 420 px the top bar stays on one row and the
   Settings pane no longer scrolls sideways.
-- Tests: 121 Playwright tests on desktop and phone replace the single smoke test in CI.
-- Airfoil uploads above 8 MB and project files above 50 MB are rejected before they are read.
-- XML airfoils are read in one pass and reading stops one point past the 5000-point limit.
+- Airfoil uploads above 20 MB and project files above 100 MB are rejected before they are read.
+- XML airfoils are read in one pass and reading stops one point past the 100,000-point limit.
 - Dragging a leading edge with only the end line enabled evaluates the end line at the new span
   position, so the leading edge lands under the pointer.
 - Area, aspect ratio and MAC integrate the planform with Gauss-Legendre quadrature and no longer
   depend on the station count in smooth mode or with guide curves (up to 2 % before).
 - Project import: `guides.*.enabled` must be a boolean; a guide point between neighbours closer than
   1 mm keeps its span position when edited.
-- CI: runs on `main` queue instead of cancelling a running Pages deployment; 3MF files are validated
-  with lib3mf.
 - STEP export keeps knots closer than 1e-12 distinct (a section 1e-10 mm from the root wrote an end
   knot of multiplicity degree + 2); only knots within 4 units in the last place merge.
 - The 3D view draws at most 100,000 control-net segments: above that it keeps every k-th control
@@ -524,7 +486,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   sweep warned with 0 added stations; now 1 added station and no warning).
 - Airfoil thumbnails in the Airfoils tab and the library list are SVG polylines of at most 400
   points: a canvas per airfoil held up to 77 KB of backing store at a pixel ratio of 2, about 770 MB
-  for 10,000 airfoils (derived from the code).
+  for 10,000 airfoils (calculated, not measured).
 - Sections table: the chosen airfoil of each row is looked up in a map (1.7 s per render at 20,000
   sections and 10,000 airfoils); adding an airfoil finds a free id with a set (0.73 s per add at
   9,999 same-named airfoils); the planform editor reuses the guide samples while mode, degree and

@@ -379,7 +379,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 543 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 546 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -554,7 +554,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 
 ### Documentation check
 
-`npm run docs:check` checks `docs/wiki/*.md`, `README.md` and `README.de.md`:
+`npm run docs:check` checks `docs/wiki/*.md`, `README.md`, `README.de.md` and the version sections of `CHANGELOG.md`:
 
 | Check | Fails when |
 | --- | --- |
@@ -564,9 +564,10 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | Wiki links in tables | Pages as markdown-it 15 reads them (CommonMark with GitHub tables and HTML; fenced code, block quotes and the end of a table follow the Markdown rules): a table cell holds, outside code spans, an opening double square bracket without the closing one, because the `\|` of a labelled wiki link ended the cell; or a header and delimiter row form no table, because a `\|` in the header gave it more cells. In tables a wiki link holds only the page title, with spaces for the hyphens of the page name (`User Guide` links to `User-Guide`). |
 | Images | An embedded image file does not exist, or its alt text is empty |
 | Relative links | The target of a relative Markdown link does not exist |
+| Release texts | `CHANGELOG.md` is missing, or a line of it from the first `## ` heading on names contributor material (`INTERNAL_TERMS`, `sourceNames` and `formatKeys` in `scripts/check-docs.mjs`): the handover; the working agreements (with the owner); `RECORD`; an npm command (`npm run`, `test`, `ci`, `install`, `i`, `exec`, `start`, `version`, `publish`) or `npx`; a path under `scripts/`, `test/`, `e2e/`, `src/`, `public/` or `.github/`, also after `./` or in a GitHub `blob` or `tree` link on any branch; `ci.yml`, `docs.yml` or `release.yml`; `CI`, continuous integration, GitHub Actions or a workflow run; unit, browser, end-to-end, e2e, integration, regression, smoke, snapshot, component, acceptance or automated tests, a test suite, run, case, file or count, Vitest, Playwright, a `.spec.js` file; test coverage (`test`, `code`, `line`, `branch`, `statement` or `V8` before `coverage`, or `check`, `table`, `report` or `marker(s)` after it); the Development page (`[[Development`, or Development before `page`, `wiki`, `, section` or `/ Entwicklung`; Entwicklung likewise); in backticks: a function call (`name()`, `name(arguments)`), a function, method or class name in camelCase or PascalCase that `src/` declares (`buildWing`, `updateLabels`), or an upper-case constant of 3 or more characters that `src/` declares (`LIMITS`, `FRAME_TOLERANCE`). Bare names of the project file that File Formats documents (JSON keys and first table cells, such as `sectionPlanes`) pass, a call such as `sectionPlanes(project)` does not; and so do STEP entity names such as `MANIFOLD_SOLID_BREP`, which `src/` does not declare. Code spans pair over the whole text, as in Markdown, so a span that wraps to the next line counts. Each line is read together with the next one, so a term broken over two lines is found, also after trailing spaces and with CRLF line ends. |
 
 Paths resolve against `docs/wiki/` for wiki pages and against the repository root for the READMEs.
-Not checked: language switch line, alt text language, link target language, link anchors (`#…`), external links (`http:`, `https:`, `mailto:`).
+Not checked: language switch line, alt text language, link target language, link anchors (`#…`), external links (`http:`, `https:`, `mailto:`), contributor material in other words than the listed terms.
 
 ### Test count check
 
@@ -636,7 +637,7 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 `<version>`: the version to release, e.g. `0.4.0`. `package.json` holds `0.3.0`.
 
 1. Set the version: `npm version <version> --no-git-tag-version` (updates `package.json` and `package-lock.json`).
-2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`.
+2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`. The section becomes the release notes: it describes the app, its files and its user documentation (README, User Guide, Geometry, File Formats, Airfoil Sources) and leaves out the handover, `RECORD.md`, the working agreements, continuous integration, tests, scripts, this page and the names of the source code. `npm run docs:check` reports the terms it knows (Documentation check).
 3. Commit and merge to `main`. Wait until `ci.yml` passes.
 4. Tag the merge commit of the release pull request `<number>` and push the tag. The tag names that commit, not the tip of `main`, which can hold later changes. The pull request page on GitHub shows the same commit.
 
@@ -656,3 +657,5 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 | GitHub release | Title `Wingdesigner <tag>`, the zip file as asset. Notes: the `CHANGELOG.md` section from `## [<version>]` to the next `## ` heading; `See CHANGELOG.md.` when the section is missing. Then a paragraph on use: unzip, open `index.html` (tested in Chromium) or serve the folder with a static web server; `LICENSES.txt` holds the licenses. |
 
 `release.yml` runs no coverage check, no airfoil library check, no documentation check, no STEP validation, no 3MF validation and no browser tests.
+
+After `release.yml` has published the release, a new pull request from `main` enters the tag commit, the `release.yml` run, the date and the size of the zip file in `RECORD.md`, row CI, and updates the rows Version, Next release and `main` of `docs/Handover.md`.

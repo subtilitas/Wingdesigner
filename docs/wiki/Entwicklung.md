@@ -379,7 +379,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 543 Tests in 18 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 546 Tests in 18 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -554,7 +554,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 
 ### Dokumentationsprüfung
 
-`npm run docs:check` prüft `docs/wiki/*.md`, `README.md` und `README.de.md`:
+`npm run docs:check` prüft `docs/wiki/*.md`, `README.md`, `README.de.md` und die Versionsabschnitte von `CHANGELOG.md`:
 
 | Prüfung | Schlägt fehl, wenn |
 | --- | --- |
@@ -564,9 +564,10 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | Wiki-Links in Tabellen | Seiten, wie markdown-it 15 sie liest (CommonMark mit GitHub-Tabellen und HTML; Codeblöcke, Zitatblöcke und das Tabellenende folgen den Markdown-Regeln): Eine Tabellenzelle enthält außerhalb von Code eine öffnende doppelte eckige Klammer ohne die schließende, weil das `\|` eines Wiki-Links mit Beschriftung die Zelle beendet hat; oder Kopf- und Trennzeile bilden keine Tabelle, weil ein `\|` im Kopf ihm mehr Zellen gab. In Tabellen enthält ein Wiki-Link nur den Seitentitel, mit Leerzeichen statt der Bindestriche des Seitennamens (`User Guide` verweist auf `User-Guide`). |
 | Bilder | Eine eingebundene Bilddatei fehlt oder ihr Alternativtext ist leer |
 | Relative Links | Das Ziel eines relativen Markdown-Links existiert nicht |
+| Release-Texte | `CHANGELOG.md` fehlt, oder eine Zeile davon ab der ersten Überschrift `## ` nennt Material für Mitwirkende (`INTERNAL_TERMS`, `sourceNames` und `formatKeys` in `scripts/check-docs.mjs`): die Übergabe (Handover); die Absprachen mit dem Eigentümer (englisch: working agreements, agreements with the owner); `RECORD`; einen npm-Befehl (`npm run`, `test`, `ci`, `install`, `i`, `exec`, `start`, `version`, `publish`) oder `npx`; einen Pfad unter `scripts/`, `test/`, `e2e/`, `src/`, `public/` oder `.github/`, auch nach `./` oder in einem GitHub-Link mit `blob` oder `tree` auf einem beliebigen Branch; `ci.yml`, `docs.yml` oder `release.yml`; `CI`, continuous integration, GitHub Actions oder einen Workflow-Lauf (englisch: workflow run); Tests (englisch: unit, browser, end-to-end, e2e, integration, regression, smoke, snapshot, component, acceptance oder automated tests), eine Testsuite, einen Testlauf, Testfall, eine Testdatei oder Testanzahl (englisch: test suite, run, case, file, count), Vitest, Playwright, eine `.spec.js`-Datei; Testabdeckung (`test`, `code`, `line`, `branch`, `statement` oder `V8` vor `coverage`, oder `check`, `table`, `report` oder `marker(s)` danach); die Seite Development (`[[Development` oder Development vor `page`, `wiki`, `, section` oder `/ Entwicklung`; Entwicklung ebenso); in Backticks: einen Funktionsaufruf (`name()`, `name(Argumente)`), einen Funktions-, Methoden- oder Klassennamen in camelCase oder PascalCase, den `src/` deklariert (`buildWing`, `updateLabels`), oder eine Konstante in Großbuchstaben mit 3 oder mehr Zeichen, die `src/` deklariert (`LIMITS`, `FRAME_TOLERANCE`). Bloße Namen der Projektdatei, die Dateiformate dokumentiert (JSON-Schlüssel und erste Tabellenzellen, etwa `sectionPlanes`), gelten nicht, ein Aufruf wie `sectionPlanes(project)` schon; ebenso STEP-Entitätsnamen wie `MANIFOLD_SOLID_BREP`, die `src/` nicht deklariert. Code-Spans werden wie in Markdown über den ganzen Text gepaart, sodass ein Span, der in die nächste Zeile umbricht, zählt. Jede Zeile wird zusammen mit der nächsten gelesen, sodass ein über zwei Zeilen umbrochener Begriff gefunden wird, auch nach Leerzeichen am Zeilenende und bei CRLF-Zeilenenden. |
 
 Pfade gelten relativ zu `docs/wiki/` für Wiki-Seiten und relativ zum Repository-Stamm für die READMEs.
-Nicht geprüft: Sprachumschaltzeile, Sprache des Alternativtexts, Sprache des Linkziels, Linkanker (`#…`), externe Links (`http:`, `https:`, `mailto:`).
+Nicht geprüft: Sprachumschaltzeile, Sprache des Alternativtexts, Sprache des Linkziels, Linkanker (`#…`), externe Links (`http:`, `https:`, `mailto:`), Material für Mitwirkende in anderen Worten als den genannten Begriffen.
 
 ### Prüfung der Testanzahlen
 
@@ -636,7 +637,7 @@ Das Klonen in `docs.yml` setzt ein vorhandenes Repository-Wiki voraus; GitHub le
 `<version>`: die zu veröffentlichende Version, z. B. `0.4.0`. `package.json` enthält `0.3.0`.
 
 1. Version setzen: `npm version <version> --no-git-tag-version` (ändert `package.json` und `package-lock.json`).
-2. In `CHANGELOG.md` die Einträge unter `## [Unreleased]` unter eine Überschrift `## [<version>] - YYYY-MM-DD` verschieben.
+2. In `CHANGELOG.md` die Einträge unter `## [Unreleased]` unter eine Überschrift `## [<version>] - YYYY-MM-DD` verschieben. Der Abschnitt wird zu den Release-Notes: Er beschreibt die App, ihre Dateien und ihre Benutzerdokumentation (README, Benutzerhandbuch, Geometrie, Dateiformate, Profilquellen) und lässt die Übergabe (`docs/Handover.md`), `RECORD.md`, die Absprachen, Continuous Integration, Tests, Skripte, diese Seite und die Namen des Quellcodes weg. `npm run docs:check` meldet die Begriffe, die es kennt (Dokumentationsprüfung).
 3. Committen und nach `main` mergen. Warten, bis `ci.yml` bestanden ist.
 4. Den Merge-Commit des Release-Pull-Requests `<number>` taggen und den Tag pushen. Der Tag nennt diesen Commit, nicht die Spitze von `main`, die spätere Änderungen enthalten kann. Die Seite des Pull Requests auf GitHub zeigt denselben Commit.
 
@@ -656,3 +657,5 @@ Danach läuft `release.yml`:
 | GitHub-Release | Titel `Wingdesigner <tag>`, die ZIP-Datei als Anhang. Release-Notes: der Abschnitt von `CHANGELOG.md` ab `## [<version>]` bis zur nächsten Überschrift `## `; `See CHANGELOG.md.`, wenn der Abschnitt fehlt. Danach ein Absatz zur Verwendung (englisch): entpacken, `index.html` öffnen (getestet in Chromium) oder den Ordner mit einem statischen Webserver ausliefern; `LICENSES.txt` enthält die Lizenzen. |
 
 `release.yml` führt keine Prüfung der Testabdeckung, keine Prüfung der Profilbibliothek, keine Dokumentationsprüfung, keine STEP-Validierung, keine 3MF-Validierung und keine Browsertests aus.
+
+Nachdem `release.yml` das Release veröffentlicht hat, trägt ein neuer Pull Request von `main` den Tag-Commit, den Lauf von `release.yml`, das Datum und die Größe der ZIP-Datei in `RECORD.md`, Zeile CI, ein und aktualisiert die Zeilen Version, Next release und `main` von `docs/Handover.md`.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tableLinkProblems, tableRows } from '../scripts/check-docs.mjs';
+import { changelogProblems, formatKeys, tableLinkProblems, tableRows } from '../scripts/check-docs.mjs';
 
 const lines = (...l) => l.join('\n');
 const split = (file, line) => `${file}:${line}: wiki link split by the | of a table cell; in tables a wiki link holds only the page title`;
@@ -57,5 +57,74 @@ describe('documentation check: wiki links in tables', () => {
 
   it('accepts page-title links in tables and piped links outside them', () => {
     expect(tableLinkProblems('| [[User Guide]] | a |\n| --- | --- |\n| [[Geometry]] | b |\n\nSee [[Geometry|Geometry]].', 'p.md')).toEqual([]);
+  });
+});
+
+describe('documentation check: release texts in the changelog', () => {
+  const names = { functions: new Set(['buildWing', 'updateLabels', 'sectionPlanes']), constants: new Set(['FRAME_TOLERANCE', 'LIMITS']) };
+  const keys = new Set(['sectionPlanes', 'panelAngle']);
+  const found = (text) => changelogProblems(text, 'C.md', names, keys).map((p) => p.replace(/;.*$/, ''));
+
+  it('reports contributor material in the version sections and skips the header', () => {
+    const text = lines(
+      '# Changelog', // 1
+      'Handover and RECORD in the header do not count.',
+      '',
+      '## [Unreleased]', // 4
+      '',
+      '## [1.0.0] - 2026-01-01',
+      '',
+      '### Added',
+      '- `docs/Handover.md` and RECORD.md: working agreements.', // 9
+      '- `npm run docs:check` in CI and GitHub Actions checks `./scripts/check-docs.mjs`; 12 unit tests, 3 end-to-end tests, test coverage.', // 10
+      '- `FRAME_TOLERANCE`, `LIMITS`, `tr()`, `mapXflr5(file)`, `sectionPlanes(project)`, `updateLabels` and `buildWing(', // 11
+      '  project)` decide it; `npm test`, `npm ci`; see the Development page and', // 12
+      '  [wing.js](https://github.com/o/r/blob/feature/foo/src/geom/wing.js).', // 13
+    );
+    expect(found(text)).toEqual([
+      'C.md:9: release text names the handover (Handover)',
+      'C.md:9: release text names the working agreements (working agreements)',
+      'C.md:9: release text names RECORD.md (RECORD)',
+      'C.md:10: release text names an npm command (npm run)',
+      'C.md:10: release text names a path of the repository (./scripts/)',
+      'C.md:10: release text names continuous integration (GitHub Actions)',
+      'C.md:10: release text names continuous integration (CI)',
+      'C.md:10: release text names tests (unit tests)',
+      'C.md:10: release text names tests (end-to-end tests)',
+      'C.md:10: release text names test coverage (test coverage)',
+      'C.md:12: release text names an npm command (npm test)',
+      'C.md:12: release text names an npm command (npm ci)',
+      'C.md:12: release text names the Development page (Development page)',
+      'C.md:13: release text names a path of the repository (/blob/feature/foo/src/)',
+      'C.md:11: release text names a constant of the source code (`FRAME_TOLERANCE`)',
+      'C.md:11: release text names a constant of the source code (`LIMITS`)',
+      'C.md:11: release text names a function of the source code (`tr()`)',
+      'C.md:11: release text names a function of the source code (`mapXflr5(file)`)',
+      'C.md:11: release text names a function of the source code (`sectionPlanes(project)`)',
+      'C.md:11: release text names a function of the source code (`updateLabels`)',
+      'C.md:11: release text names a function of the source code (`buildWing( project)`)',
+    ]);
+  });
+
+  it('finds a term broken over two lines once, on the line where it starts, also after trailing spaces and CR', () => {
+    const expected = [
+      'C.md:2: release text names an npm command (npm run)',
+      'C.md:3: release text names tests (browser tests)',
+    ];
+    expect(found(lines('## [1.0.0]', '- The check runs with npm', '  run and the browser', '  tests.'))).toEqual(expected);
+    expect(found(['## [1.0.0]', '- The check runs with npm  ', '  run and the browser', '  tests.'].join('\r\n'))).toEqual(expected);
+  });
+
+  it('accepts the app, its files, its project format and its user documentation', () => {
+    const text = lines(
+      '## [1.0.0] - 2026-01-01',
+      '- XFLR5 import: `foldedTilt` in the project JSON; `airfoils/NOTICE.md` in the app folder.',
+      '- Settings: `settings.sectionPlanes` `"vertical"`; `panelAngle`; `sectionPlanes`; ``a ` b``.',
+      '- Wiki: User Guide and File Formats; the airfoil check `te-crossed`; `LICENSES.txt` in the release zip.',
+      '- STEP export: one `MANIFOLD_SOLID_BREP` per half; `FILE_NAME` holds the project name.',
+      '- Development of the upper skin; the mesh coverage of the tip cap; Cirrus and ci words; every npm package of the bundle.',
+    );
+    expect(changelogProblems(text, 'C.md', names, keys)).toEqual([]);
+    expect(formatKeys('docs/wiki/No-Such-Page.md')).toEqual(new Set());
   });
 });

@@ -1,5 +1,6 @@
 // Documentation check: every English page has its German counterpart, wiki links resolve,
-// referenced images exist, and both READMEs carry the coverage markers.
+// referenced images exist, both READMEs carry the coverage markers, and the release texts in
+// CHANGELOG.md name no contributor material.
 // Usage: node scripts/check-docs.mjs
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -63,8 +64,102 @@ export function tableLinkProblems(text, file) {
   return problems;
 }
 
+/**
+ * Terms of contributor material that release texts leave out. `release.yml` publishes the
+ * `CHANGELOG.md` section of a version as its release notes; they describe the app, its files and
+ * its user documentation.
+ */
+export const INTERNAL_TERMS = [
+  [/handover/gi, 'the handover'],
+  [/\bworking\s+agreements?\b|\bagreements?\s+with\s+the\s+owner\b/gi, 'the working agreements'],
+  [/\bRECORD\b/g, 'RECORD.md'],
+  [/\bnpm\s+(?:run|test|ci|install|i|exec|start|version|publish)\b|\bnpx\b/g, 'an npm command'],
+  [/(?<![\w/.-])(?:\.\/)?(?:scripts|test|e2e|src|public|\.github)\/|\/(?:blob|tree)\/\S*?\/(?:scripts|test|e2e|src|public|\.github)\//g, 'a path of the repository'],
+  [/\b(?:ci|docs|release)\.yml\b|\bcontinuous\s+integration\b|\bGitHub\s+Actions\b|\bworkflow\s+runs?\b/gi, 'continuous integration'],
+  [/\bCI\b/g, 'continuous integration'],
+  [/\b(?:unit|browser|end-to-end|e2e|integration|regression|smoke|snapshot|component|acceptance|automated)\s+tests?\b|\btest\s+(?:suites?|runs?|cases?|files?|counts?)\b|\bVitest\b|\bPlaywright\b|\.spec\.js\b/gi, 'tests'],
+  [/\b(?:test|code|line|branch|statement|V8)\s+coverage\b|\bcoverage\s+(?:check|table|report|markers?)\b/gi, 'test coverage'],
+  [/\[\[(?:Development|Entwicklung)\b|\b(?:Development|Entwicklung)(?:\s+(?:page|wiki)\b|,\s+section\b|\s+\/\s+Entwicklung\b)/g, 'the Development page'],
+];
+
+/**
+ * Names that the JavaScript files under `dir` declare: `functions` holds function, method and class
+ * names in camelCase or PascalCase, `constants` upper-case names of 3 or more characters declared with
+ * `const`, `let` or `var`.
+ */
+export function sourceNames(dir = 'src') {
+  const functions = new Set();
+  const constants = new Set();
+  for (const f of readdirSync(dir, { recursive: true })) {
+    if (!String(f).endsWith('.js')) continue;
+    const text = readFileSync(join(dir, String(f)), 'utf8');
+    const declared = [
+      ...text.matchAll(/\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/g),
+      ...text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:function\b|\([^()]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/g),
+      ...text.matchAll(/\bclass\s+([A-Za-z_$][\w$]*)/g),
+      ...text.matchAll(/^\s+(?:static\s+)?(?:async\s+)?(?:get\s+|set\s+)?\*?([A-Za-z_$][\w$]*)\s*\([^()]*\)\s*\{/gm),
+    ];
+    for (const m of declared) if (/^[a-z_$][\w$]*[A-Z]|^[A-Z][a-z]/.test(m[1])) functions.add(m[1]);
+    for (const m of text.matchAll(/\b(?:const|let|var)\s+([A-Z][A-Z0-9_]{2,})\b/g)) constants.add(m[1]);
+  }
+  return { functions, constants };
+}
+
+/**
+ * Keys of the project file that the File Formats page documents: JSON keys and first table cells.
+ * Without the page the set is empty; the page-pair check reports the missing page.
+ */
+export function formatKeys(file = `${WIKI}/File-Formats.md`) {
+  if (!existsSync(file)) return new Set();
+  const text = readFileSync(file, 'utf8');
+  const keys = new Set([...text.matchAll(/"([A-Za-z_]\w*)"\s*:/g)].map((m) => m[1]));
+  for (const m of text.matchAll(/^\|\s*`([A-Za-z_][\w.[\]*]*)`/gm)) for (const part of m[1].split(/[.[\]*]+/)) if (part) keys.add(part);
+  return keys;
+}
+
+/**
+ * Lines of the version sections of a changelog (from the first `## ` heading on) that name
+ * contributor material: a term of `INTERNAL_TERMS`, or a code span that holds a function call, or a
+ * bare function, class or constant name that `names` lists and `keys` (the project file format)
+ * does not.
+ * Each line is read together with the next one, so a term broken over two lines is found and
+ * reported on the line where it starts.
+ */
+export function changelogProblems(text, file = 'CHANGELOG.md', names = {}, keys = new Set()) {
+  const { functions = new Set(), constants = new Set() } = names;
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((l) => l.startsWith('## '));
+  const problems = [];
+  if (start < 0) return problems;
+  const report = (i, what, found) => problems.push(`${file}:${i + 1}: release text names ${what} (${found}); release notes describe the app, its files and its user documentation`);
+  for (let i = start; i < lines.length; i++) {
+    const line = lines[i].trimEnd();
+    const joined = `${line} ${(lines[i + 1] ?? '').trim()}`;
+    for (const [pattern, what] of INTERNAL_TERMS) {
+      for (const m of joined.matchAll(pattern)) if (m.index < line.length) report(i, what, m[0].replace(/\s+/g, ' '));
+    }
+  }
+  // Code spans, paired over the whole text as Markdown pairs them: a span may wrap to the next line.
+  const body = lines.slice(start).join('\n');
+  const lineOf = (index) => start + body.slice(0, index).split('\n').length - 1;
+  for (const m of body.matchAll(/(?<!`)(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g)) {
+    if (/\n\s*\n/.test(m[2])) continue;
+    const call = /^\s*([A-Za-z_$][\w$.]*)\s*(\([\s\S]*\))?\s*$/.exec(m[2]);
+    if (!call) continue;
+    const name = call[1].split('.').pop();
+    const span = m[0].replace(/\s+/g, ' ');
+    if (keys.has(name) && !call[2]) continue;
+    if (constants.has(name)) report(lineOf(m.index), 'a constant of the source code', span);
+    else if (call[2] || functions.has(name)) report(lineOf(m.index), 'a function of the source code', span);
+  }
+  return problems;
+}
+
 function main() {
   const problems = [];
+  // release.yml reads the release notes from CHANGELOG.md.
+  if (!existsSync('CHANGELOG.md')) problems.push('missing CHANGELOG.md');
+  else problems.push(...changelogProblems(readFileSync('CHANGELOG.md', 'utf8'), 'CHANGELOG.md', sourceNames(), formatKeys()));
   for (const [en, de] of PAGE_PAIRS) {
     for (const f of [en, de]) if (!existsSync(f)) problems.push(`missing page ${f}`);
   }
@@ -100,7 +195,7 @@ function main() {
     console.error(problems.join('\n'));
     process.exit(1);
   }
-  console.log(`${files.length} documentation files checked.`);
+  console.log(`${files.length} documentation files and CHANGELOG.md checked.`);
 }
 
 // Runs the check unless Vitest imports the module for test/docs.test.js.

@@ -1,18 +1,19 @@
 # Handover
 
-State of Wingdesigner on 2026-09-30, for the next person or session that works on it. Read
+State of Wingdesigner on 2026-10-01, for the next person or session that works on it. Read
 `RECORD.md` first: it holds the verified state, the decisions with their reasons, the measurements and
 the open items, each as a claim to re-check. This page adds where the work stands, what comes next,
 how the owner works with contributors, and what the repository does not hold.
 
 ## Where the work stands
 
-| Item | State on 2026-09-30 |
+| Item | State on 2026-10-01 |
 | --- | --- |
-| Version | `package.json` holds 0.3.0 (pull request #10). Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c, each with `wingdesigner-v<version>-site.zip` built by `release.yml`. |
-| Next release | Tag `v0.3.0` on the merge commit of pull request #10. `release.yml` takes the release notes from the 0.3.0 section of `CHANGELOG.md` (Added, Changed, Fixed). |
-| `main` | dd72ec5, the merge of pull request #9: wizard dihedral −60 to 60°, exact airfoil frames of the XFLR5 import, the attribution of the differences from XFLR5. |
-| Unit tests | 543 in 18 files (Vitest). |
+| Version | `package.json` holds 0.3.0. Released: `v0.1.0` on 9faa12b, `v0.2.0` on 3b9a67c and `v0.3.0` on 6580092 (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
+| Next release | Not prepared: the section Unreleased of `CHANGELOG.md` is empty. The steps: Development, section Release. |
+| Release texts | The notes of `v0.1.0`, `v0.2.0` and `v0.3.0` on GitHub hold contributor material that their sections of `CHANGELOG.md` leave out; the owner replaces them by hand (`RECORD.md`, Open items). |
+| `main` | Release 0.3.0 (6580092, the merge of pull request #10) and the record of that release in `RECORD.md`, on this page and in Development, section Release. |
+| Unit tests | 546 in 18 files (Vitest). |
 | Browser tests | 179 in 12 spec files, 358 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
 | Export validation | 12 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. |
 | Documentation | `README.md`, `README.de.md`, wiki pages in English and German in `docs/wiki/` (mirrored to the GitHub wiki by `docs.yml`), `RECORD.md`, `CHANGELOG.md`, `docs/Flow5upgrade.md`, this page. |
@@ -22,20 +23,7 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
 
 ## Next steps
 
-1. The owner merges pull request #10. After `ci.yml` passes on `main`, the owner tags the merge commit
-   of pull request #10, not the tip of `main`, which can hold later changes (Development, section
-   Release):
-
-   ```bash
-   git fetch origin main
-   c=$(git log origin/main --merges -1 --format=%H --grep='^Merge pull request #10[^0-9]')
-   test -n "$c" && git show -s --format='%h %s' "$c" && git tag v0.3.0 "$c" && git push origin v0.3.0
-   ```
-
-   After `release.yml` publishes the release, the next pull request (from `main`) enters the tag
-   commit, the `release.yml` run and the size of `wingdesigner-v0.3.0-site.zip` in `RECORD.md`, row
-   CI, and updates the rows Version and Next release of this page.
-2. Step 2 of `docs/Flow5upgrade.md`: a rigid tilt of the whole part. A tilted XFLR5 part imports with
+1. Step 2 of `docs/Flow5upgrade.md`: a rigid tilt of the whole part. A tilted XFLR5 part imports with
    vertical section planes and its tilt folded into the section values. The largest distance of
    XFLR5's STL (stereolithography) from the 4 tilted 35° V-tails of `initialAerodynamicSym.xfl` is
    2.87 mm for that reason (File Formats, section Differences from XFLR5; the tilts:
@@ -50,18 +38,18 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
    - Not decided: whether the statistics of a tilted part use the plane axes or the part axes.
    - The estimate of 2 to 4 h is a guess: size, user interface and exports of step 2 are not
      analysed.
-3. Step 3 of `docs/Flow5upgrade.md`: the flow5 import of Extensible Markup Language (XML) files and
+2. Step 3 of `docs/Flow5upgrade.md`: the flow5 import of Extensible Markup Language (XML) files and
    `.fl5` files, with its decisions F1 to F6 and open points.
-4. Question for the owner, not yet asked (`RECORD.md`, Open items): cambered NACA (National Advisory
+3. Question for the owner, not yet asked (`RECORD.md`, Open items): cambered NACA (National Advisory
    Committee for Aeronautics) sections of the generator get an airfoil frame, although the answer to
    Q9 reads "NACA and normalized airfoils do not move".
-5. Not measured or not tested, among the Open items of `RECORD.md`: smooth blending with rolled
+4. Not measured or not tested, among the Open items of `RECORD.md`: smooth blending with rolled
    section planes (not built), a rolled STEP file in a CAD (computer-aided design) program other than
    OpenCascade, STL and 3MF float32 precision of rolled caps, how often the fold test fires on real
    wings, the file choosers of Android and iOS, the import dialog with a screen reader, build time and
    memory on phones. The app is tested in Chromium only; Firefox and Safari are not tested (README,
    Limitations).
-6. Known failures (`RECORD.md`, Open items):
+5. Known failures (`RECORD.md`, Open items):
    - The STEP file of `Final Design.xfl`, plane 1, main wing (S1223, closed cusped trailing edge)
      holds one solid that fails the BRepCheck of OpenCascade; with a trailing-edge thickness of 0.4 mm
      both solids are valid. The cause is not analysed. The file is not in the repository.
@@ -71,20 +59,38 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
 
 ## Working with the owner
 
-- One pull request per change, from a branch. The owner merges, or asks for the merge. After a merge
-  the next change starts from `main` in a new pull request; a merged pull request takes no further
-  commits.
+- One pull request per change, from a branch. After a merge the next change starts from `main` in a
+  new pull request; a merged pull request takes no further commits.
+- Merge (standing rule of the owner, 2026-10-01): the contributor merges a pull request, with a merge
+  commit, once `ci.yml` passes on the head commit and the bot reviews of that commit are clean: no
+  open finding, no unresolved thread. Otherwise the pull request waits for the owner. A finding that
+  only names another wording of a kind of material the release-text check already covers (owner
+  decision of 2026-10-01) is a known limit of a word-list check: its thread is resolved, the pull
+  request text lists it, and it does not block the merge. Defects of the check (a crash, a false
+  report on user-facing text, wrong documentation) are fixed.
 - Before a merge: `ci.yml` passes on the head commit, and the Codex bot has reviewed that commit.
   Codex runs a code review and a security review on each push. Its pull request comment "Codex Review
   Summary" names the reviewed commit and the status of both. Findings come as a review with inline
   comments; a review without findings leaves only a 👍 reaction. When the summary does not name the
-  head commit, the comment `@codex review` starts a review. Each finding is reproduced first, then
-  fixed or answered on its thread.
+  head commit, the comment `@codex review` starts a review. The Copilot reviewer
+  (`copilot-pull-request-reviewer`) can also review a commit; its findings count like those of Codex.
+  Each finding is reproduced first, then fixed, and its thread resolved; a finding that stays as it
+  is gets its reason in the pull request text. No reply goes on a review thread: the GitHub tools of
+  the cloud session append a "Generated by" footer to review replies, and no tool there edits a
+  review reply.
 - The owner pushes the release tags.
-- Commit messages and pull request texts state the change and its effect, in imperative mood. No link
-  to a chat session goes into a commit, a pull request, a comment or any other text on GitHub. Claude
-  Code appends such a link to pull request texts by default; check the text after creating the pull
-  request and remove the link.
+- Release texts (owner rule of 2026-10-01): `release.yml` publishes the `CHANGELOG.md` section of a
+  version as its release notes, so `CHANGELOG.md` describes the app, its files and its user
+  documentation only. The handover, `RECORD.md`, these agreements, continuous integration, tests,
+  scripts, the Development page and the names of the source code stay out; `npm run docs:check`
+  reports the terms it knows. Changes of that kind go into git and the pull request text only.
+- Commit messages and pull request texts state the change and its effect, in imperative mood.
+- Credit (owner rule of 2026-10-01): the README, section Authors, names Claude (Anthropic) as
+  co-creator. That is the one place for it; commits, pull request texts and comments do not repeat
+  it: no co-author line, no "Generated by" footer, no link to a chat session. Commits are authored
+  as `Julian <31176428+subtilitas@users.noreply.github.com>` (`git config user.name` and
+  `git config user.email` in the clone). A tool can append a session link or a footer to a pull
+  request text; read the text after creating the pull request and remove both.
 - Documentation and code comments: present tense, no development history (that lives in
   `CHANGELOG.md` and git), numbers with units, every acronym expanded on its first use in a document,
   unknowns stated as unknown. English and German pages change together.
@@ -113,9 +119,10 @@ npm run screenshots
   drift (`coverage:check`).
 - `npm run docs:check` checks that the 6 English–German page pairs exist, that both READMEs carry the
   coverage markers, and, in `docs/wiki/*.md` and both READMEs, that wiki links, relative links and
-  images resolve, that every image has alt text, and 2 table errors (Development, section
+  images resolve, that every image has alt text, 2 table errors, and that the version sections of
+  `CHANGELOG.md` name no contributor material from its list of terms (Development, section
   Documentation check). It does not compare the contents of the two languages and does not read this
-  page, `docs/Flow5upgrade.md`, `RECORD.md` or `CHANGELOG.md`.
+  page, `docs/Flow5upgrade.md` or `RECORD.md`.
 - `npm run i18n:check` checks that every interface text has a German translation (739 texts).
 - `npm run e2e` took 5.4 min for 358 runs in the cloud container.
 - `npm run screenshots` regenerates 26 images. An image that differs only by rendering noise is
