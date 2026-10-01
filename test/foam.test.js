@@ -106,6 +106,18 @@ describe('cuts', () => {
     }
   });
 
+  it('measure a reference line of 200,001 stations without scanning them per station', () => {
+    // A straight line at 45° from y = 0 to 1000 mm, 1,414.2 mm long: 8 parts for a 200 mm longest core.
+    const n = 200001;
+    const stations = Array.from({ length: n }, (_, i) => ({ y: (1000 * i) / (n - 1), z: (1000 * i) / (n - 1), roll: 0 }));
+    const fine = { rootY: 0, tipY: 1000, sections: [{ y: 0 }, { y: 1000 }], stations };
+    const t0 = performance.now();
+    const cuts = proposeCuts(fine, 200);
+    expect(cuts).toHaveLength(7);
+    cuts.forEach((y, k) => expect(y).toBeCloseTo((1000 * (k + 1)) / 8, 6));
+    expect(performance.now() - t0, 'time (ms)').toBeLessThan(5000);
+  });
+
   it('merge sections closer than the shortest segment', () => {
     const p = sampleProject();
     p.sections.splice(2, 0, { ...p.sections[1], id: 'extra', y: 300.5 });

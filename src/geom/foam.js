@@ -124,8 +124,15 @@ function stationValue(stations, y, key) {
   if (y <= stations[0].y) return stations[0][key];
   const last = stations[stations.length - 1];
   if (y >= last.y) return last[key];
-  let i = 1;
-  while (stations[i].y < y) i++;
+  // Binary search for the first station at or beyond y: callers walk every station of a fine loft.
+  let lo = 1;
+  let hi = stations.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (stations[mid].y < y) lo = mid + 1;
+    else hi = mid;
+  }
+  const i = lo;
   const a = stations[i - 1];
   const b = stations[i];
   const t = (y - a.y) / (b.y - a.y);
