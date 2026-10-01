@@ -848,7 +848,7 @@ Profilschnitte.
 
 | Regel | Wert |
 | --- | --- |
-| Vorschlag | Ein Schnitt an jedem Profilschnitt zwischen Wurzel und Rand. Jedes Stück dazwischen wird in n = ceil(L / L_max) gleiche Teile in y geteilt. L: Länge der Bezugslinie des Stücks; L_max: **Längster Kern** (Longest core) |
+| Vorschlag | Ein Schnitt an jedem Profilschnitt zwischen Wurzel und Rand. Jedes Stück dazwischen wird in n = min(ceil(L / L_max), floor(Δy² / (L · 5 mm))) Teile gleicher Länge entlang der Bezugslinie geteilt; eine gekrümmte Linie (**Glatt**) ergibt dort, wo sie steiler ist, kürzere Teile in y. L: Länge der Bezugslinie des Stücks; Δy: ihre Ausdehnung in y; L_max: **Längster Kern** (Longest core). Die zweite Schranke hält die Teile auf einem geraden Feld mindestens 5 mm in y auseinander |
 | Bezugslinie | (y, z) der Stationen, linear dazwischen. Ihre Länge berücksichtigt die V-Form: 600 mm in y bei 1,5° sind 600,2 mm |
 | Kürzestes Segment | 5 mm in y. Ein Schnitt, der näher als 5 mm am vorigen Schnitt, an der Wurzel oder am Rand liegt, entfällt |
 | Profilschnitte näher als 5 mm | Ein Schnitt, am ersten von ihnen |

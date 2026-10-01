@@ -13,7 +13,7 @@ how the owner works with contributors, and what the repository does not hold.
 | Next release | Not prepared. The section Unreleased of `CHANGELOG.md` holds the foam-cutting wizard (Added) and the top bar of 8 buttons (Changed). The steps: Development, section Release. |
 | Release texts | The notes of `v0.2.0` and `v0.3.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
 | `main` | Release 0.3.0 (6580092) and, from pull requests #11 to #14, documentation only: the record of that release; release texts without contributor material, with the check of `npm run docs:check`; the section Authors of both READMEs; the standing rules of the owner below; the state of the release texts on GitHub. No change to the app since 0.3.0. |
-| Unit tests | 571 in 19 files (Vitest). |
+| Unit tests | 572 in 19 files (Vitest). |
 | Browser tests | 184 in 13 spec files, 368 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
 | Export validation | 12 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 11 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
 | Documentation | `README.md`, `README.de.md`, wiki pages in English and German in `docs/wiki/` (mirrored to the GitHub wiki by `docs.yml`), `RECORD.md`, `CHANGELOG.md`, `docs/Flow5upgrade.md`, this page. |

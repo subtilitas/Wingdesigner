@@ -77,14 +77,33 @@ describe('cuts', () => {
     expect(proposeCuts(built(p), 1000)[0]).toBe(FOAM_LIMITS.minSegment);
     // A 20 mm longest core: the two pieces (300.2 and 300.7 mm along the dihedral) take 16 cores each,
     // 15 + 15 cuts plus the section. 0.5 mm asks for about 1,200 cores: each 300 mm piece takes at most
-    // 60 parts of 5 mm (59 + 59 cuts plus the section).
+    // as many parts as stay 5 mm apart in y, 300² / (300.2 · 5) = 59.9: 59 parts (58 + 58 cuts plus the section).
     const b = built(sampleProject());
     expect(proposeCuts(b, 20)).toHaveLength(31);
-    expect(proposeCuts(b, 0.5)).toHaveLength(119);
+    expect(proposeCuts(b, 0.5)).toHaveLength(117);
     // A 1,500 mm half span in 5 mm parts reaches the segment limit: 199 cuts.
     const long = panel('vertical', 0);
     long.sections.forEach((q) => (q.y *= 2.5));
     expect(proposeCuts(built(long), 0.5)).toHaveLength(FOAM_LIMITS.maxSegments - 1);
+  });
+
+  it('split a curved reference line by its length, and find the deviation where its plane crosses the line', () => {
+    // Smooth blending through z = 0, 0 and 200 mm at y = 0, 300 and 600: the line steepens towards the tip.
+    const p = sampleProject({ settings: { spanwise: 'smooth' } });
+    p.sections[1].z = 0;
+    p.sections[2].z = 200;
+    const b = built(p);
+    const segs = foamSegments(b, proposeCuts(b, 150));
+    // Every core of the proposal stays within the longest core along the reference line.
+    for (const s of segs) expect(s.nominal).toBeLessThanOrEqual(150 + 1e-6);
+    // The parts of one piece have equal length along the line, so they are shorter in y towards the tip.
+    const outer = segs.filter((s) => s.ya >= 300);
+    expect(outer.at(-1).yb - outer.at(-1).ya).toBeLessThan(outer[0].yb - outer[0].ya);
+    for (const s of outer) expect(s.nominal).toBeCloseTo(outer[0].nominal, 6);
+    for (const s of segs) {
+      expect(s.deviation.y).toBeGreaterThanOrEqual(s.ya - 1);
+      expect(s.deviation.y).toBeLessThanOrEqual(s.yb + 1);
+    }
   });
 
   it('merge sections closer than the shortest segment', () => {

@@ -489,7 +489,8 @@ const PT = 72 / 25.4;
  */
 export function registrationCrosses(plan, block) {
   const strips = plan.pieces.filter((q) => q.block === block);
-  const at = (c, r) => strips.find((q) => q.col === c && q.row === r);
+  const byCell = new Map(strips.map((q) => [`${q.col},${q.row}`, q]));
+  const at = (c, r) => byCell.get(`${c},${r}`);
   const out = [];
   for (const s of strips) {
     const right = at(s.col + 1, s.row);
@@ -520,6 +521,8 @@ export function layoutPdf(layout, paper = 'a4', { title = 'Templates' } = {}) {
       ops.push(`${color} ${STROKE[it.kind]} w ${path} ${it.closed ? 'h ' : ''}S`);
     }
   };
+  // Registration crosses once per split block; each strip draws those inside it.
+  const crossesOf = new Map();
   const pages = Array.from({ length: plan.pages }, (_, i) => {
     const ops = [`${f(PT)} 0 0 ${f(PT)} 0 0 cm`, '0 0 0 RG 0 0 0 rg 1 J 1 j'];
     // Foot: scale bar and page label.
@@ -544,7 +547,8 @@ export function layoutPdf(layout, paper = 'a4', { title = 'Templates' } = {}) {
         // the overlap, and in the middle of the row (or column) both strips share, so it prints on both.
         ops.push('0 0 0 RG 0.15 w');
         const cross = (x, y) => ops.push(`${f(x - 3)} ${f(y)} m ${f(x + 3)} ${f(y)} l ${f(x)} ${f(y - 3)} m ${f(x)} ${f(y + 3)} l S`);
-        for (const [x, y] of registrationCrosses(plan, pc.block)) cross(x, y);
+        if (!crossesOf.has(pc.block)) crossesOf.set(pc.block, registrationCrosses(plan, pc.block));
+        for (const [x, y] of crossesOf.get(pc.block)) if (x >= pc.x0 && x <= pc.x0 + pc.w && y >= pc.y0 && y <= pc.y0 + pc.h) cross(x, y);
       }
       ops.push('Q');
     }

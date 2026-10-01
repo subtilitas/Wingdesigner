@@ -171,19 +171,30 @@ export function foamDialog(store, getBuild, notify = () => {}) {
   };
 
   let frame = 0;
+  // Edits recompute in the next animation frame; a download first applies a pending one (flush), so
+  // the files hold the cuts the fields show.
+  let pending = false;
+  const apply = () => {
+    pending = false;
+    const n = normalizeCuts(build, cuts);
+    dropped = n.dropped - n.capped;
+    capped = n.capped;
+    cuts = n.cuts;
+    segments = foamSegments(build, cuts);
+    renderCuts();
+    renderTable();
+    renderSummary();
+    pz.redraw();
+  };
   const update = () => {
     cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(() => {
-      const n = normalizeCuts(build, cuts);
-      dropped = n.dropped - n.capped;
-      capped = n.capped;
-      cuts = n.cuts;
-      segments = foamSegments(build, cuts);
-      renderCuts();
-      renderTable();
-      renderSummary();
-      pz.redraw();
-    });
+    pending = true;
+    frame = requestAnimationFrame(apply);
+  };
+  const flush = () => {
+    if (!pending) return;
+    cancelAnimationFrame(frame);
+    apply();
   };
 
   const pz = new PanZoomCanvas(canvas, {
@@ -221,6 +232,7 @@ export function foamDialog(store, getBuild, notify = () => {}) {
   const file = (suffix, ext) => `${slugFile(name, ext).slice(0, -ext.length - 1)}_${suffix}.${ext}`;
   const save = (what) => {
     try {
+      flush();
       if (what === 'zip') download(file('foam_profiles', 'zip'), profileZip(name, segments), 'application/zip');
       else {
         const layout = templateLayout(name, segments, { kerf: settings.kerf });

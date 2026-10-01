@@ -142,6 +142,19 @@ function lineLength(stations, ya, yb) {
   return L;
 }
 
+/** Span position y in [ya, yb] where the reference line from ya has the length `s` (mm). */
+function yAtLength(stations, ya, yb, s) {
+  const ys = [ya, ...stations.map((q) => q.y).filter((y) => y > ya && y < yb), yb];
+  let walked = 0;
+  for (let i = 1; i < ys.length; i++) {
+    const dy = ys[i] - ys[i - 1];
+    const L = Math.hypot(dy, stationValue(stations, ys[i], 'z') - stationValue(stations, ys[i - 1], 'z'));
+    if (walked + L >= s && L > 0) return ys[i - 1] + ((s - walked) / L) * dy;
+    walked += L;
+  }
+  return yb;
+}
+
 /** Span positions of the sections strictly between root and tip, closer ones merged (minSegment). */
 function sectionCuts(build) {
   const out = [];
@@ -156,7 +169,8 @@ function sectionCuts(build) {
 /**
  * Cuts proposed for cores of at most `maxLength` mm along the reference line: at every section
  * between root and tip (sections closer than FOAM_LIMITS.minSegment merged), and each piece between
- * them split into equal parts in y. Sorted span positions (mm), root and tip excluded. A piece gets at
+ * them split into parts of equal length along the reference line (a curved line, as of Smooth
+ * blending, gets its cuts by arc length). Sorted span positions (mm), root and tip excluded. A piece gets at
  * most as many parts as keep them FOAM_LIMITS.minSegment long in y, and generation stops at
  * FOAM_LIMITS.maxSegments cuts: a steep wing with a short longest core would otherwise build millions
  * of cuts that normalizeCuts drops.
@@ -168,8 +182,10 @@ export function proposeCuts(build, maxLength) {
   for (let i = 1; i < ends.length && cuts.length < cap; i++) {
     const a = ends[i - 1];
     const b = ends[i];
-    const n = Math.min(cap, Math.max(1, Math.floor((b - a) / FOAM_LIMITS.minSegment)), Math.max(1, Math.ceil(lineLength(build.stations, a, b) / maxLength - 1e-9)));
-    for (let k = 1; k < n && cuts.length < cap; k++) cuts.push(a + ((b - a) * k) / n);
+    const L = lineLength(build.stations, a, b);
+    // At most as many parts as keep them minSegment apart in y on a straight panel: (b − a)² / (L · minSegment).
+    const n = Math.min(cap, Math.max(1, Math.floor(((b - a) * (b - a)) / (L * FOAM_LIMITS.minSegment))), Math.max(1, Math.ceil(L / maxLength - 1e-9)));
+    for (let k = 1; k < n && cuts.length < cap; k++) cuts.push(yAtLength(build.stations, a, b, (L * k) / n));
     if (i < ends.length - 1) cuts.push(b);
   }
   return normalizeCuts(build, cuts).cuts;
@@ -351,10 +367,11 @@ function deviationOf(cols, a, up, dIn, dOut, va, vb, P, xRef, hRef, build) {
       }
     }
   }
-  // Span position of the plane of the largest deviation, on the reference line.
+  // Span position of the plane of the largest deviation: where it crosses the reference line (a curved
+  // line, as of Smooth blending, is not linear in y between the cuts).
   const ya = build.rootY + va * (build.tipY - build.rootY);
   const yb = build.rootY + vb * (build.tipY - build.rootY);
-  const y = ya + ((at - dIn) / (dOut - dIn || 1)) * (yb - ya);
+  const y = solveMonotonic((t) => a[1] * t + a[2] * stationValue(build.stations, t, 'z'), at, ya, yb, 1e-9, 200, 1e-12);
   return { max, y };
 }
 
