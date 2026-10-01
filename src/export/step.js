@@ -124,8 +124,8 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
   const part = build.part && !build.part.identity ? build.part : null;
   const place = part ? part.point : (P) => P;
   const placeDir = part ? part.vector : (P) => P;
-  const xf = mirrored ? (P) => turn(mirrorPoint(place(P))) : (P) => turn(place(P));
-  const xv = mirrored ? (v) => turn(mirrorPoint(placeDir(v))) : (v) => turn(placeDir(v));
+  const xf = mirrored ? (part ? (P) => turn(part.leftPoint(P)) : (P) => turn(mirrorPoint(P))) : (P) => turn(place(P));
+  const xv = mirrored ? (part ? (v) => turn(part.leftVector(v)) : (v) => turn(mirrorPoint(v))) : (v) => turn(placeDir(v));
   const [SU, SL] = splitSurfaceU(build.surface, build.uLE);
   const closed = build.closedTE;
 

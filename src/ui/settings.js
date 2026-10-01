@@ -189,6 +189,21 @@ export class SettingsPanel {
           tr('Part roll (°, positive = right tip up)'),
           numberInput({ focusKey: 'set:partRoll', value: s.partRoll, step: 0.5, min: -LIMITS.maxPartAngle, max: LIMITS.maxPartAngle, onCommit: (v) => set((q) => (q.partRoll = Math.min(Math.max(v, -LIMITS.maxPartAngle), LIMITS.maxPartAngle))) }),
         ),
+        h(
+          'label',
+          { class: 'field' },
+          tr('Left half'),
+          select(
+            s.leftHalf,
+            [
+              ['mirror', tr('Mirror image of the turned right half')],
+              ['turned', tr('Turned with the right half (whole wing, as flow5)')],
+            ],
+            (v) => set((q) => (q.leftHalf = v)),
+            tr('Left half'),
+            'leftHalf',
+          ),
+        ),
         pivotNote(s, this.store.project.sections),
       ),
       h(

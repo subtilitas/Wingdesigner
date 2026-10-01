@@ -39,8 +39,8 @@ export default {
   'The roll angle (Rx_angle) of the wing is not a finite number in the file.': 'Der Rollwinkel (Rx_angle) des Flügels ist in der Datei keine endliche Zahl.',
   'Roll angle {angle}° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).':
     'Rollwinkel {angle}° (Rx_angle) wie im flow5-Flugzeug angewendet: Das Teil dreht sich als starrer Körper um den Ursprung des Flügels, vor dem Einstellwinkel (Einstellungen > Rollwinkel des Teils).',
-  "flow5 rolls the whole wing, so its left half turns the other way; Wingdesigner builds the left half as the mirror image of the right half, up to {d} mm from flow5's left half.":
-    'flow5 rollt den ganzen Flügel, seine linke Hälfte dreht sich also in die andere Richtung; Wingdesigner baut die linke Hälfte als Spiegelbild der rechten, bis zu {d} mm von der linken Hälfte in flow5 entfernt.',
+  'flow5 rolls the whole wing as one body, so its left half rolls the other way: Settings > Left half is set to Turned with the right half.':
+    'flow5 rollt den ganzen Flügel als einen Körper, seine linke Hälfte rollt also in die andere Richtung: Einstellungen > Linke Hälfte ist auf Mit der rechten Hälfte gedreht gestellt.',
   'Airfoil "{name}" from a flow5 project; the stored shape.': 'Profil „{name}“ aus einem flow5-Projekt; die gespeicherte Form.',
   'Airfoil "{name}" from flow5 plane "{plane}"; the stored shape.': 'Profil „{name}“ aus dem flow5-Flugzeug „{plane}“; die gespeicherte Form.',
   'Airfoil "{name}" has a trailing-edge flap in flow5 (hinge at {hinge} % chord); flow5 deflects it in its analyses only, and the stored shape is imported.':

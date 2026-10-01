@@ -173,6 +173,62 @@ describe('build and exports of a placed part', () => {
   });
 });
 
+describe('left half turned with the whole wing (settings.leftHalf)', () => {
+  const ROLL = { partTilt: -2, partRoll: 10, partPivot: { x: 40, y: 0, z: 10 } };
+  const flip = (p) => [p[0], -p[1], p[2]];
+
+  it('maps the left half as the turned mirror image; the same as the mirror without roll', () => {
+    const sections = sampleProject().sections;
+    const t = partTransform({ ...ROLL, leftHalf: 'turned' }, sections);
+    const m = partTransform(ROLL, sections);
+    const p = [120, 300, 25];
+    expect(t.turnedLeft).toBe(true);
+    expect(m.turnedLeft).toBe(false);
+    expect(dist(t.leftPoint(p), t.point(flip(p)))).toBeLessThan(1e-12);
+    expect(dist(m.leftPoint(p), flip(m.point(p)))).toBeLessThan(1e-12);
+    // A roll of 10° lifts the right tip and the turned left tip lowers: the halves differ by 2 · 300 · sin 10° in z.
+    expect(t.leftPoint(p)[2] - m.leftPoint(p)[2]).toBeCloseTo(-2 * 300 * Math.cos(2 * DEG) * Math.sin(10 * DEG), 9);
+    const tiltOnly = partTransform({ partTilt: 5, leftHalf: 'turned' }, sections);
+    expect(tiltOnly.turnedLeft).toBe(false);
+  });
+
+  it('turns the left mesh, STEP surfaces and span with the wing', () => {
+    const b = buildWing(placed({ ...ROLL, leftHalf: 'turned' }));
+    expect(b.errors).toEqual([]);
+    const flat = buildWing(sampleProject());
+    const [, l0] = exportMeshes(flat, 'halves');
+    const [right, left] = exportMeshes(b, 'halves');
+    expect(edgeCheck(left.mesh).closed).toBe(true);
+    expect(meshVolume(left.mesh)).toBeCloseTo(meshVolume(right.mesh), 6);
+    for (let i = 0; i < l0.mesh.positions.length; i += 3) {
+      const q = b.part.point([l0.mesh.positions[i], l0.mesh.positions[i + 1], l0.mesh.positions[i + 2]]);
+      for (let k = 0; k < 3; k++) expect(left.mesh.positions[i + k]).toBeCloseTo(q[k], 9);
+    }
+    // STEP: the trailing edge of the tip (a corner of the clamped surface, so a control point) of the
+    // left half lies where the turned wing puts it, not at the mirror image of the turned right half.
+    const tip = surfacePoint(b.surface, 0, 1);
+    const step = wingToStep(b, { mirror: true, timestamp: '2026-01-01T00:00:00' });
+    const points = [...step.matchAll(/CARTESIAN_POINT\('',\(([^)]*)\)\)/g)].map((m) => m[1].split(',').map(Number));
+    expect(points.some((p) => dist(p, b.part.leftPoint(tip)) < 1e-9)).toBe(true);
+    expect(points.some((p) => dist(p, flip(b.part.point(tip))) < 1e-9)).toBe(false);
+    // Span: the tips of a wing rolled 10° as one body lie 2 · 600 mm · cos 10° apart in y; the tilt keeps y.
+    expect(wingStats(b).span).toBeCloseTo(1200 * Math.cos(10 * DEG), 9);
+  });
+
+  it('saves a project with the turned left half as version 4, others as version 3, and drops the key of older files', () => {
+    const turned = placed({ ...ROLL, leftHalf: 'turned' });
+    expect(projectToJson(turned, null).version).toBe(4);
+    expect(projectToJson(placed(ROLL), null).version).toBe(3);
+    const back = projectFromJsonText(JSON.stringify(projectToJson(turned, null)));
+    expect(back.ok).toBe(true);
+    expect(back.project.settings.leftHalf).toBe('turned');
+    const old = JSON.stringify({ ...projectToJson(turned, null), version: 3 });
+    expect(projectFromJsonText(old).project.settings.leftHalf).toBe('mirror');
+    const bad = placed({ leftHalf: 'flipped' });
+    expect(validateProject(bad).errors).toContain('settings.leftHalf must be mirror or turned.');
+  });
+});
+
 describe('upgrade of a folded tilt (project format version 2)', () => {
   /** A version 2 file of `project`. */
   const v2 = (project) => JSON.stringify({ ...projectToJson(project, null), version: 2 });

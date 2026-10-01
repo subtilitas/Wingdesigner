@@ -267,7 +267,7 @@ The checks run:
 | Key | Type | Written | On **Open** |
 | --- | --- | --- | --- |
 | `format` | `"wingdesigner-project"` | always | required, must match |
-| `version` | integer `3` | always | required, 1 to 3. A version 1 file opens with `settings.sectionPlanes` `"vertical"`, the section planes it was designed with. A version 2 file with `foldedTilt` is upgraded (section "Upgrade of version 2 files"). A version 1 or 2 file opens with `partTilt` and `partRoll` 0 and `partPivot` null unless the upgrade of its `foldedTilt` sets them: `partTilt`, `partRoll` and `partPivot` in its settings are unknown keys of that version and are dropped, as the apps of that version drop them. An app that reads version 1 only refuses a version 2 file (`Unsupported project version 2.`) instead of dropping `sectionPlanes` and `foldedTilt`; Wingdesigner 0.3.0 and earlier refuse a version 3 file (`Unsupported project version 3.`) instead of dropping `partTilt`, `partRoll` and `partPivot`. |
+| `version` | integer `3`, or `4` when `settings.leftHalf` is `"turned"` | always | required, 1 to 4. A version 1 file opens with `settings.sectionPlanes` `"vertical"`, the section planes it was designed with. A version 2 file with `foldedTilt` is upgraded (section "Upgrade of version 2 files"). A version 1 or 2 file opens with `partTilt` and `partRoll` 0 and `partPivot` null unless the upgrade of its `foldedTilt` sets them: `partTilt`, `partRoll` and `partPivot` in its settings are unknown keys of that version and are dropped, as the apps of that version drop them. An app that reads version 1 only refuses a version 2 file (`Unsupported project version 2.`) instead of dropping `sectionPlanes` and `foldedTilt`; Wingdesigner 0.3.0 and earlier refuse a version 3 file (`Unsupported project version 3.`) instead of dropping `partTilt`, `partRoll` and `partPivot`. A file of version 1 to 3 opens with `settings.leftHalf` `"mirror"`; a `leftHalf` key in it is dropped. Wingdesigner 0.4.0 and earlier refuse a version 4 file (`Unsupported project version 4.`). |
 | `generator` | `{ "name": "Wingdesigner", "version": "<app version>" }` | always | ignored |
 | `exportedAt` | ISO 8601 time, UTC | always | ignored |
 | `name` | string | always | not a string: `Imported wing` (German interface: `Importierter Flügel`); at most 10,000 characters |
@@ -362,6 +362,7 @@ Ids made by the app:
 | `partTilt` | −180 to 180°; positive = leading edge up | `0` | **Part tilt (°, positive = leading edge up)**: rigid turn of the whole part about the y axis through `partPivot`, after the roll ([[Geometry]], section 3.9) |
 | `partRoll` | −180 to 180°; positive = right tip up | `0` | **Part roll (°, positive = right tip up)**: rigid turn of the whole part about the x axis through `partPivot`, before the tilt |
 | `partPivot` | `null`, or `{ "x": <mm>, "y": <mm>, "z": <mm> }` with each value within ±1,000,000 mm | `null` | none; the line below **Part roll** names it. `null`: the leading edge (x, y, z) of the root section. The XFLR5 import stores the wing origin `{ "x": k·LE_x, "y": 0, "z": k·LE_z }` (section "XFLR5 import", step 3). |
+| `leftHalf` | `"mirror"`, `"turned"` | `"mirror"` | **Left half**: `"mirror"` **Mirror image of the turned right half**; `"turned"` **Turned with the right half (whole wing, as flow5)**: the left half is the mirror image of the unturned right half, turned by `partRoll` and `partTilt` with it ([[Geometry]], section 3.9). The two differ for a part roll other than 0° only. A project with `"turned"` is saved as format version 4. |
 
 Unknown keys inside `settings` are dropped on **Open**. **Save** writes the keys of this table.
 
@@ -1040,7 +1041,7 @@ The section values (`y_position`, `Chord`, `xOffset`, `Dihedral`, `Twist`) mean 
 
 **One-sided wing (fin).** flow5 builds the left half only (local y ≤ 0), with the left-side airfoils, and turns it by `Rx_angle`; a fin carries −90°. The import takes that half: the left-side airfoils, **Part roll** −`Rx_angle` (a fin: 90°) and **Part tilt** 0. The left half of the part, the mirror image of its right half, is then flow5's half; the right half lies on it for a fin at y = 0. Info `A one-sided wing: flow5 builds its left half only, with the left-side airfoils. The part's left half is that half, its right half the mirror image (on top of it for a fin at y = 0); Settings > Show mirrored half and Export > Wing halves > Right half only give one half.` The warning on the left half below does not apply.
 
-flow5 turns the whole wing, both halves, as one body: the left half of a rolled wing turns the other way than its right half. Wingdesigner builds the left half as the mirror image of the turned right half ([[Geometry]], section 3.9). For a rolled wing the report warns with the largest distance between the two left halves, over the leading and trailing edges of the sections: `flow5 rolls the whole wing, so its left half turns the other way; Wingdesigner builds the left half as the mirror image of the right half, up to 62.5 mm from flow5's left half.` (the V-tail of `full.fl5`: 10° roll, 25° dihedral, 180 mm half span).
+**Two-sided rolled wing.** flow5 turns the whole wing, both halves, as one body: the left half of a rolled wing turns the other way than its right half. The import sets **Settings** > **Left half** (`settings.leftHalf`) to `"turned"`, so that the left half turns with the right half ([[Geometry]], section 3.9). Info `flow5 rolls the whole wing as one body, so its left half rolls the other way: Settings > Left half is set to Turned with the right half.` A wing without roll, and a one-sided wing, keep `"mirror"`. The project is then saved as format version 4 (section "Project JSON").
 
 ### Airfoils
 
@@ -1051,14 +1052,16 @@ The airfoil sources are those of the XFLR5 import (section "Airfoils"); order 0 
 
 ### Verification
 
-Measured on the files of `test/fixtures/flow5/` against the thick-surface triangle mesh that flow5 7.57 builds from the same files for its analyses: the mesh nodes of the right half of 8 wings, and of both fins, lie within 0.15 mm of the built surface (`test/flow5-map.test.js`).
+Measured on the files of `test/fixtures/flow5/` against the thick-surface triangle mesh that flow5 7.57 builds from the same files for its analyses: the mesh nodes of the right half of 8 wings, of the left half of both rolled two-sided wings and of both fins lie within 0.15 mm of the built surface (`test/flow5-map.test.js`).
 
 | Wing | Case | Largest distance (mm) |
 | --- | --- | --- |
 | `full.fl5`, "Canard" | tilt 2°, position applied | 0.0031 |
 | `basic.fl5`, "Stab" | tilt −1.5°, position applied | 0.0047 |
-| `full.fl5`, "Vee" | roll 10°, tilt −2°, 25° dihedral | 0.0057 |
-| `full.fl5`, "Tilted other" | roll 30° (a further wing) | 0.0032 |
+| `full.fl5`, "Vee" | roll 10°, tilt −2°, 25° dihedral; right half | 0.0057 |
+| `full.fl5`, "Vee" | the same; left half, **Left half** turned | 0.0061 |
+| `full.fl5`, "Tilted other" | roll 30° (a further wing); right half | 0.0032 |
+| `full.fl5`, "Tilted other" | the same; left half, **Left half** turned | 0.0032 |
 | `full.fl5`, "Fin" | one-sided, roll −90°; the left half of the part against flow5's half | 0.0039 |
 | `basic.fl5`, "Fin" | the same | 0.0047 |
 | `full.fl5`, "Rear" | no dihedral | 0.0104 |
@@ -1066,7 +1069,7 @@ Measured on the files of `test/fixtures/flow5/` against the thick-surface triang
 | `basic.fl5`, "Main" | 3° and 6° dihedral | 0.0796 |
 | `full.fl5`, "Front" | tilt 1°, NACA 2412 to a flapped NACA 2410 along the panel | 0.1469 |
 
-The left half of the rolled "Vee" lies up to 61.3 mm from flow5's left half (the warning computes 62.5 mm from the section edges), that of "Tilted other" 85.7 mm (warning 100.0 mm). flow5's own surface points (`Surface::getSurfacePoint`) put the root airfoil square to the first panel, 0.99 mm (3° dihedral) to 1.90 mm (25° dihedral) off the vertical root plane; the analysis mesh has its root nodes at y = 0, as the import.
+With **Left half** set to mirror, the left half of "Vee" lies up to 61.3 mm from flow5's left half, that of "Tilted other" up to 85.7 mm. flow5's own surface points (`Surface::getSurfacePoint`) put the root airfoil square to the first panel, 0.99 mm (3° dihedral) to 1.90 mm (25° dihedral) off the vertical root plane; the analysis mesh has its root nodes at y = 0, as the import.
 
 ## Bodies per file
 
@@ -1077,7 +1080,7 @@ The left half of the rolled "Vee" lies up to 61.3 mm from flow5's left half (the
 | **Right half only** | 1 solid | 1 closed shell | 1 object: `Wing right` |
 
 - **Full wing** needs the root section at exactly y = 0 mm and **Part roll** 0°. Otherwise STL and 3MF contain 2 shells, as with **Both halves**: a rolled root leaves the plane y = 0.
-- **Part tilt** and **Part roll** (`settings.partTilt`, `partRoll`): every format writes the right half turned about the pivot ([[Geometry]], section 3.9) and the left half as its mirror image at y = 0. The project JSON holds the sections in the frame of the part.
+- **Part tilt** and **Part roll** (`settings.partTilt`, `partRoll`): every format writes the right half turned about the pivot ([[Geometry]], section 3.9) and the left half as **Left half** (`settings.leftHalf`) sets: the mirror image of the turned right half at y = 0, or the mirror image of the unturned right half, turned with it. The project JSON holds the sections in the frame of the part.
 - **Fusion 360 fix: Y up (also SolidWorks)** (STEP, STL, 3MF): off, the export writes the axes of the app (x chordwise towards the TE, y spanwise towards the right tip, z up). On, it writes every point as (x, z, −y) and every direction the same way (`src/export/axes.js`): the upper surface faces +Y, the chord runs along X, `right` lies at Z ≤ 0 and `left` at Z ≥ 0. The turn is a rotation: orientations, closed shells and volumes stay. The STEP world placement (`AXIS2_PLACEMENT_3D` at the origin with z and x directions) stays. The project JSON always holds the axes of the app. Why and when: [[User Guide|User-Guide]], section Export.
 - **Mesh density (STL, 3MF)**: **Normal** or **Fine (4x triangles)**. **Fine** splits every u interval (chordwise) and every v interval (spanwise) of the **Normal** mesh into 2. Measured triangle count: 3.0 to 3.9 times **Normal** (table "File sizes").
 - Mesh construction and triangle counts: [[Geometry|Geometry]], section 5 "Meshes".

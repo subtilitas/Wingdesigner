@@ -602,10 +602,16 @@ T(p) = M (p − P) + P      M = | cos t    sin t sin r    sin t cos r |
 - Signs: a positive tilt raises the leading edge (a point ahead of the pivot, x < P_x, moves up); a
   positive roll raises the right tip (a point outboard of the pivot, y > P_y, moves up).
 - Directions (plane normals, the reference direction x of a cap) turn by M alone.
-- Left half: the mirror image of the turned right half at the plane y = 0. A rolled root does not
-  lie in that plane, so the meshes do not merge the halves (section 5). flow5 turns a two-sided wing
-  by its roll `Rx_angle` as one body, so its left half rolls the other way: the flow5 import warns
-  with the distance between the two left halves ([[File Formats|File-Formats]], section flow5 import).
+- Left half, by **Left half** (`settings.leftHalf`), with S(x, y, z) = (x, −y, z):
+  - `"mirror"` (default): S(T(p)), the mirror image of the turned right half at the plane y = 0.
+  - `"turned"`: T(S(p)), the mirror image of the unturned right half, turned with it: the whole wing
+    turns as one body, as flow5 turns a two-sided wing by its roll `Rx_angle`. The left half then rolls
+    the other way than with `"mirror"`; the flow5 import sets `"turned"` for a rolled two-sided wing
+    ([[File Formats|File-Formats]], section flow5 import).
+  - The two agree when r = 0: a turn about the y axis keeps the plane y = 0.
+  - A rolled root does not lie in the plane y = 0, so the meshes do not merge the halves (section 5).
+  - Span (statistics): 2 |y| of the turned right tip with `"mirror"`; the y distance of the turned
+    tips with `"turned"`.
 - The flow5 import stores `Ry_angle` as t and `Rx_angle` as r: flow5 turns a wing first about x, then
   about y, both about the wing origin, with the same signs.
 - Extent: after the fit, every control point turned by T must lie within ±1,200,000 mm in x, y and z
@@ -695,7 +701,8 @@ Example: **Sport** preset, N = 60, d = 1, open TE: **Mitred** section planes (9 
   1e-9 (relative). Both areas are summed relative to a vertex of the outline, so a wing 1,000,000 mm
   from the origin keeps the strips.
 - Part placement (section 3.9): the vertices of the half wing are turned by T before the mirror.
-- Left half: y → −y, triangle winding reversed.
+- Left half: y → −y, triangle winding reversed. With **Left half** `"turned"` and a part roll, the
+  mirror comes first and T turns the mirrored vertices (section 3.9).
 
 | **Wing halves** | Shells |
 | --- | --- |
@@ -716,7 +723,7 @@ STEP file as defined in ISO 10303 (ISO: International Organization for Standardi
 
 Part placement (section 3.9): every point (control points of surfaces and curves, vertices, the
 origins of the cap planes) is turned by T, every direction (cap normals and reference directions) by
-M; then the left half is mirrored, then the **Fusion 360 fix** turns the axes. Placement and turn are
+M; the left half is mirrored after the turn, or before it with **Left half** `"turned"` (section 3.9); then the **Fusion 360 fix** turns the axes. Placement and turn are
 rotations and keep the orientation flags. The tables below give the normals in the frame of the part.
 
 Split: the surface is split at u_LE by knot insertion (A5.1) up to multiplicity 3 on every v column.
@@ -756,6 +763,10 @@ Orientation flags:
 | `same_sense` of the plane faces | `.T.` | `.T.` |
 | `FACE_OUTER_BOUND` orientation | `.T.` | `.F.` (every loop reversed) |
 | Plane normal | root −y, tip (0, cos φ_tip, sin φ_tip) | mirrored as vectors: root +y, tip (0, −cos φ_tip, sin φ_tip) (outward) |
+
+Part placement: points and directions of the right half turn by T and M; those of the left half by
+S ∘ T or T ∘ S (**Left half**, section 3.9). The flags stay as in the table: the mirror reverses the
+orientation, the turn keeps it.
 
 Validation: `scripts/validate_step.py` reads the files written by `scripts/export-step-cases.mjs`
 with OpenCascade. Cases: the 13 cases of `test/step-cases.js`, 5 of them with **Mitred** section

@@ -372,7 +372,7 @@ Unit tests (Vitest, Node.js):
 | `test/xflr5-xfl.test.js` | 39 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the old formats of `Rascal110.xfl`; the reserved blocks of XFLR5 6.10.01 to 6.10.04; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
 | `test/xflr5-xml.test.js` | 46 | Reader of XML files: fixtures in millimetres, inches and metres; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
 | `test/xflr5-map.test.js` | 67 | Mapping: y and z from developed span and dihedral, twist, position, the tilt angle stored as **Part tilt** (the turned build against XFLR5's construction); section planes of an import (mitred, tilted, fold and stretch fallback, an airfoil switch in one plane, the airfoil frame along a rolled plane with XFLR5's panel angles); clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library, and for library airfoils with an inclined chord line; a file airfoil whose trailing edge crosses its own end; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
-| `test/part.test.js` | 7 of 15 | Version 1 and 2 files: their part placement keys dropped; upgrade of a folded tilt of project format version 2: the same part with **Vertical** section planes (twist pivot 0.25 and 0.5, pointed tip, **Straight panels**) and the shift of the MAC position, the notes with **Mitred** section planes, the fold kept with guide curves or a twist beyond ±360° |
+| `test/part.test.js` | 7 of 18 | Version 1 and 2 files: their part placement keys dropped; upgrade of a folded tilt of project format version 2: the same part with **Vertical** section planes (twist pivot 0.25 and 0.5, pointed tip, **Straight panels**) and the shift of the MAC position, the notes with **Mitred** section planes, the fold kept with guide curves or a twist beyond ±360° |
 | `test/airfoil.test.js` | 1 of 79 | `leadingNacaCode` |
 
 `test/xflr5-writer.js` writes big-endian XFLR5 project files from options with default values, written from the description of the format in `src/import/xfl.js`. Numbers that the reader skips are written as recognizable non-zero values, so a reader that skips too many or too few bytes misreads what follows. `writeProject(options)` returns `{ bytes, marks }`; `marks` lists the offset of every record for the truncation tests. The plane option `spare: 'index'` writes the reserved blocks of the plane and its wings as XFLR5 6.10.01 to 6.10.04 do.
@@ -408,13 +408,13 @@ Unit tests (Vitest, Node.js):
 | --- | ---: | --- |
 | `test/flow5-fl5.test.js` | 9 | Reader of `.fl5` projects: the files of flow5 7.57 and 7.56; every body kind, airfoil analyses and results, mesh planes, the record formats of flow5 7.53 and older layouts from `test/fl5-writer.js`; the sections body with and without its section points; refusals; windows of 1,000 bytes |
 | `test/flow5-xml.test.js` | 9 | Reader of flow5 XML: plane files in millimetres and metres, `.dat` file references, wing files, `Type` and booleans, units, several planes, refusals |
-| `test/flow5-map.test.js` | 8 | Mapping: the wing list and the one-sided wing turned about z, a further wing, a fin as the left half of the part, roll and tilt as part placement with the warning on the mirrored left half, flow5 airfoils and their flaps, `.dat` files matched by name; the right half of 8 wings and both fins within 0.15 mm of flow5's analysis mesh |
+| `test/flow5-map.test.js` | 8 | Mapping: the wing list and the one-sided wing turned about z, a further wing, a fin as the left half of the part, roll and tilt as part placement, a rolled two-sided wing with the left half turned (`settings.leftHalf` `"turned"`), flow5 airfoils and their flaps, `.dat` files matched by name; the right half of 8 wings, the left half of both rolled two-sided wings and both fins within 0.15 mm of flow5's analysis mesh |
 
 `test/fl5-writer.js` writes `.fl5` projects from the same description of the format, with the format number of each record selectable, so that the layouts of flow5 versions without a file at hand are tested.
 
 Browser tests: `e2e/flow5.spec.js`, 3 tests, 6 runs:
 
-- `.fl5` project: plane choice, the wing list, the rolled elevator imported as part roll and tilt, its airfoil from the file, **Undo**.
+- `.fl5` project: plane choice, the wing list, the rolled elevator imported as part roll and tilt with the left half turned (project format version 4), its airfoil from the file, **Undo**.
 - flow5 plane XML with `.dat` file references: **Upload .dat files…** takes both files, each row finds its file by name.
 - `.fl5` project: the fin imported with part roll 90° about the wing origin.
 - The dialog in German (locale `de-DE`).
@@ -430,7 +430,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 607 tests in 21 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 636 tests in 24 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -476,7 +476,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-197 tests in 14 spec files, 394 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+200 tests in 15 spec files, 400 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 

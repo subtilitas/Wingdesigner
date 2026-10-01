@@ -214,6 +214,7 @@ export class Viewer3D {
     this.netMaterial = new THREE.LineBasicMaterial({ color: 0x9a6bd8, transparent: true, opacity: 0.6 });
     this.options = { mirror: true, controlNet: false, sections: true };
     this.partMatrix = new THREE.Matrix4();
+    this.turnedLeft = false;
     this.grid = null;
     this.hasFitted = false;
 
@@ -317,6 +318,7 @@ export class Viewer3D {
     }
     half.add(lines);
     this.partMatrix = partMatrix(build.part);
+    this.turnedLeft = Boolean(build.part?.turnedLeft);
     this.addHalves(this.wingGroup, half, mirror);
     this.origin = origin;
     this.selectionGroup = new THREE.Group();
@@ -361,7 +363,13 @@ export class Viewer3D {
       return g;
     };
     group.add(placed(half));
-    if (mirror) {
+    if (mirror && this.turnedLeft) {
+      // The left half turns with the whole wing: the mirror below the placement of the part.
+      const flipped = new THREE.Group();
+      flipped.scale.set(1, -1, 1);
+      flipped.add(half.clone());
+      group.add(placed(flipped));
+    } else if (mirror) {
       const left = new THREE.Group();
       left.scale.set(1, -1, 1);
       left.add(placed(half.clone()));

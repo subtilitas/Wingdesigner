@@ -14,7 +14,15 @@ export const FORMAT = 'wingdesigner-project';
 // Version 2: settings.sectionPlanes and the stored folded tilt of an XFLR5 import (foldedTilt).
 // Version 3: the rigid placement of the part (settings.partTilt, partRoll, partPivot,
 // src/geom/part.js); version 2 files with a folded tilt are upgraded on Open (src/model/io.js).
-export const VERSION = 3;
+// Version 4: settings.leftHalf 'turned' (the left half turns with the whole wing). A project with the
+// default 'mirror' is saved as version 3, which Wingdesigner 0.4.0 opens (fileVersion).
+export const VERSION = 4;
+
+/** How the left half follows the rigid placement of the part (src/geom/part.js). */
+export const LEFT_HALVES = Object.freeze(['mirror', 'turned']);
+
+/** The version a project file of these settings is saved as: the lowest that holds them. */
+export const fileVersion = (settings) => (settings?.leftHalf === 'turned' ? 4 : 3);
 
 /**
  * Spanwise interpolation: 'linear' blends every section value (leading edge, chord, z, twist, airfoil
@@ -40,6 +48,9 @@ export const DEFAULT_SETTINGS = Object.freeze({
   partTilt: 0,
   partRoll: 0,
   partPivot: null,
+  // The left half: 'mirror' (the mirror image of the turned right half) or 'turned' (the whole wing
+  // turns, as flow5 turns a wing).
+  leftHalf: 'mirror',
 });
 
 // minChord: smallest chord (profile depth) in mm, also the floor of a pointed tip. Below 1 mm the
@@ -298,6 +309,7 @@ export function validateProject(p) {
   for (const k of ['partTilt', 'partRoll']) {
     if (!isNum(st[k]) || Math.abs(st[k]) > LIMITS.maxPartAngle) errors.push(tr('settings.{key} must be a number within ±{max} degrees.', { key: k, max: plain(LIMITS.maxPartAngle) }));
   }
+  if (!LEFT_HALVES.includes(st.leftHalf)) errors.push(tr('settings.leftHalf must be mirror or turned.'));
   const pv = st.partPivot;
   if (pv !== null && !(isObject(pv) && ['x', 'y', 'z'].every((k) => isNum(pv[k]) && Math.abs(pv[k]) <= LIMITS.maxCoordinate))) {
     errors.push(tr('settings.partPivot must be null or an object with the numbers x, y and z within ±{max} mm.', { max: whole(LIMITS.maxCoordinate) }));

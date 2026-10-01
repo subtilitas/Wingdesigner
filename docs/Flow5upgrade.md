@@ -277,7 +277,7 @@ version 3, XFLR5 import) and User Guide (Settings).
 
 | Plan item | As built |
 | --- | --- |
-| Transform | The half wing is built in its own frame and turned as a rigid body: first the roll about the x axis, then the tilt about the y axis, both through the pivot. Positive tilt raises the leading edge, positive roll raises the right tip. The left half is the mirror image of the turned right half |
+| Transform | The half wing is built in its own frame and turned as a rigid body: first the roll about the x axis, then the tilt about the y axis, both through the pivot. Positive tilt raises the leading edge, positive roll raises the right tip. The left half is the mirror image of the turned right half, or with `settings.leftHalf` `"turned"` (project format version 4) the mirror image of the unturned right half, turned with it |
 | Values | `settings.partTilt` and `settings.partRoll` (degrees, ±180, default 0), `settings.partPivot` (`{x, y, z}` mm, or null for the leading edge of the root section); project format version 3 |
 | User interface | **Settings** > **Part tilt** and **Part roll**, with Undo, and a line that names the pivot (owner decision "Editable in Settings", 2026-10-01) |
 | Applied to | STL and 3MF meshes, STEP, the 3D view, the statistics and the **Checks** row 25 % MAC. Sections, section planes, the Sections table, the Planform tab and the foam-cutting wizard stay in the part frame |
@@ -380,7 +380,7 @@ from XFLR5 and flow5, flow5 files).
 | F1 | XML and `.fl5` in one branch, after the XFLR5 import |
 | F2 | Project formats 500750 and 500754; below: `flow5-old` with the advice to save in a current flow5 or export XML; above: `flow5-new` |
 | F3 | Every wing listed and importable (key `wing:<index>` beside `main` and `stab`), fins included; owner request of 2026-10-01 ("Why are other wing2 and fins disabled?") over the planned F3 scope |
-| F4 | Roll `Rx_angle` as `settings.partRoll`, tilt `Ry_angle` as `settings.partTilt`, about the wing origin, for every wing. A one-sided wing (fin) imports as flow5's half: left-side airfoils, roll −`Rx_angle`, so that the left half of the part is flow5's half; with `Ry_angle` ≠ 0 (a turn about z) it is not available. The left half is the mirror image of the turned right half, while flow5 turns both halves as one body: a warning gives the distance (62.5 mm on the 10° rolled V-tail of the tests). |
+| F4 | Roll `Rx_angle` as `settings.partRoll`, tilt `Ry_angle` as `settings.partTilt`, about the wing origin, for every wing. A one-sided wing (fin) imports as flow5's half: left-side airfoils, roll −`Rx_angle`, so that the left half of the part is flow5's half; with `Ry_angle` ≠ 0 (a turn about z) it is not available. flow5 turns both halves of a two-sided wing as one body: a rolled two-sided wing imports with `settings.leftHalf` `"turned"`, the left half turned with the right half. |
 | F5 | Test files written by local builds of flow5 (commit 080d534 and v7.56) from own inputs, in `test/fixtures/flow5/`; drivers and build changes outside the repository; flow5's comment lines kept in the XML files |
 | F6 | **Upload .dat files…**: several files at once, matched to the rows by name (name line, then file name) |
 | Texts | A `{program}` placeholder in the mapping's messages (24 texts); flow5 versions of 9 texts (file descriptions, the elevator label, airfoil notes, metre rounding, wing file); 42 texts of the flow5 area in German |
@@ -389,14 +389,14 @@ from XFLR5 and flow5, flow5 files).
 
 Measured on 2026-10-01:
 
-- The right half of 8 imported wings and both fins against flow5's analysis mesh of the same files: 0.0031 to
-  0.1469 mm (`test/flow5-map.test.js`; wiki page File Formats, section flow5 import, Verification).
+- The right half of 8 imported wings, the left half of both rolled two-sided wings (**Left half** turned) and
+  both fins against flow5's analysis mesh of the same files: 0.0031 to 0.1469 mm (`test/flow5-map.test.js`; wiki page File Formats, section flow5 import, Verification).
 - Readers: the flow5 7.57 and 7.56 files, and test-writer files in the record formats of flow5 7.53 and
   older layouts (line style of 7.12, airfoils without the bunching fields, parts below 500754, mesh
   planes 500001 and 500003), read with the values given to flow5.
-- Size: 1,399 added lines in `src/`, 924 in test code, 237 in the documentation in English (the German
-  pages follow), plus 400,402 bytes of test files. Wall-clock: about 2 h from the cloned sources to the
-  pull request. The estimate of 9 to 12.5 h and 4,500 to 6,300 lines assumed a new mapping and dialog; the
+- Size: 1,461 added lines in `src/`, 1,018 in test code, 242 in the English documentation and as many in
+  the German pages, plus 400,402 bytes of test files. Wall-clock: 2 h from the cloned flow5 sources
+  (20:55 UTC) to the pull request (22:55 UTC). The estimate of 9 to 12.5 h and 4,500 to 6,300 lines assumed a new mapping and dialog; the
   XFLR5 import's mapping and dialog took the flow5 wing list with few changes.
 
 ## 3. flow5 import

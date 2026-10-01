@@ -3,7 +3,9 @@
 // body. Order: the roll about the x axis, then the tilt about the y axis, both through the pivot.
 // Signs: a positive tilt raises the leading edge (x' = x cos t + z sin t, z' = −x sin t + z cos t,
 // relative to the pivot), a positive roll raises the right tip (y' = y cos r − z sin r,
-// z' = y sin r + z cos r). The left half is the mirror image of the turned right half at y = 0.
+// z' = y sin r + z cos r). The left half (settings.leftHalf): 'mirror', the mirror image of the turned
+// right half at y = 0; 'turned', the mirror image of the unturned right half, turned with it: the
+// whole wing turns as one body, as flow5 turns a wing. The two differ for a rolled part only.
 // Pivot: settings.partPivot { x, y, z } when stored (an import stores the wing origin of its plane),
 // else the leading edge of the root section.
 
@@ -20,8 +22,9 @@ export function partPivot(settings, sections) {
 
 /**
  * The rigid transform of the part: { tilt, roll (degrees), pivot: [x, y, z], identity, point(p),
- * vector(v), matrix (3 x 3 rows) }. point() maps a point of the part frame into the plane frame,
- * vector() a direction.
+ * vector(v), matrix (3 x 3 rows), turnedLeft, leftPoint(p), leftVector(v) }. point() maps a point of
+ * the right half from the part frame into the plane frame, vector() a direction; leftPoint() and
+ * leftVector() map a point or direction of the right half to its image on the left half.
  */
 export function partTransform(settings, sections) {
   const tilt = Number.isFinite(settings?.partTilt) ? settings.partTilt : 0;
@@ -45,7 +48,13 @@ export function partTransform(settings, sections) {
         const q = vector([p[0] - pivot[0], p[1] - pivot[1], p[2] - pivot[2]]);
         return [q[0] + pivot[0], q[1] + pivot[1], q[2] + pivot[2]];
       };
-  return { tilt, roll, pivot, identity, point, vector, matrix: M };
+  // The left half turns with the whole wing ('turned') or is the mirror image of the turned right
+  // half ('mirror'); the two agree without roll (a tilt about y keeps the plane y = 0).
+  const turnedLeft = settings?.leftHalf === 'turned' && roll !== 0;
+  const flip = (p) => [p[0], -p[1], p[2]];
+  const leftPoint = turnedLeft ? (p) => point(flip(p)) : (p) => flip(point(p));
+  const leftVector = turnedLeft ? (v) => vector(flip(v)) : (v) => flip(vector(v));
+  return { tilt, roll, pivot, identity, point, vector, matrix: M, turnedLeft, leftPoint, leftVector };
 }
 
 /** Flat positions [x0, y0, z0, x1, …] of a mesh mapped by the transform (a new Float64Array). */

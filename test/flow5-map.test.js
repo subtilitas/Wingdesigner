@@ -116,7 +116,7 @@ describe('flow5 planes: the wing list', () => {
       const r = mapXflr5(file, { plane: planeOf(file, planeName), surface: key, fileName: 'f.fl5' });
       expect(r.project.settings, nodes).toMatchObject({ partRoll: 90, partTilt: 0 });
       expect(r.report.map((l) => l.text).some((t) => t.startsWith('A one-sided wing: flow5 builds its left half only'))).toBe(true);
-      expect(r.report.some((l) => l.text.startsWith('flow5 rolls the whole wing'))).toBe(false);
+      expect([r.project.settings.leftHalf, r.report.some((l) => l.text.startsWith('flow5 rolls the whole wing'))]).toEqual(['mirror', false]);
       expect(rightHalfDistance(r.project, NODES[nodes], 'left'), nodes).toBeLessThan(0.01);
     }
   });
@@ -142,16 +142,20 @@ describe('flow5 planes: geometry', () => {
     }
   });
 
-  it('turns a rolled elevator by its roll and tilt about the wing origin, and warns of the mirrored left half', () => {
+  it('turns a rolled wing as one body, as flow5 does: both halves within 0.01 mm of flow5', () => {
     const r = mapXflr5(FULL, { plane: planeOf(FULL, 'Tandem'), surface: 'stab', fileName: 'full.fl5' });
-    expect(r.project.settings).toMatchObject({ partTilt: -2, partRoll: 10, partPivot: { x: 1000, y: 0, z: 80 }, sectionPlanes: 'mitred' });
-    expect(r.report.slice(0, 1)).toEqual([
-      { severity: 'warning', text: "flow5 rolls the whole wing, so its left half turns the other way; Wingdesigner builds the left half as the mirror image of the right half, up to 62.5 mm from flow5's left half." },
-    ]);
+    expect(r.project.settings).toMatchObject({ partTilt: -2, partRoll: 10, partPivot: { x: 1000, y: 0, z: 80 }, leftHalf: 'turned', sectionPlanes: 'mitred' });
+    expect(r.report.filter((l) => l.severity !== 'info')).toEqual([]);
     expect(r.report.map((l) => l.text)).toContain('Roll angle 10° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).');
+    expect(r.report.map((l) => l.text)).toContain('flow5 rolls the whole wing as one body, so its left half rolls the other way: Settings > Left half is set to Turned with the right half.');
+    for (const side of ['right', 'left']) expect(rightHalfDistance(r.project, NODES['full/Tandem/Vee'], side), side).toBeLessThan(0.01);
+    const other = mapXflr5(FULL, { plane: planeOf(FULL, 'Tandem'), surface: 'wing:4', fileName: 'full.fl5' });
+    for (const side of ['right', 'left']) expect(rightHalfDistance(other.project, NODES['full/Tandem/Tilted other'], side), side).toBeLessThan(0.01);
+    // Without a roll the two kinds of left half are the same; the import keeps the default.
+    expect(mapXflr5(FULL, { plane: planeOf(FULL, 'Tandem'), surface: 'wing:3', fileName: 'full.fl5' }).project.settings.leftHalf).toBe('mirror');
     setLanguage('de');
-    expect(mapXflr5(FULL, { plane: planeOf(FULL, 'Tandem'), surface: 'stab', fileName: 'full.fl5' }).report[0].text).toBe(
-      'flow5 rollt den ganzen Flügel, seine linke Hälfte dreht sich also in die andere Richtung; Wingdesigner baut die linke Hälfte als Spiegelbild der rechten, bis zu 62,5 mm von der linken Hälfte in flow5 entfernt.',
+    expect(mapXflr5(FULL, { plane: planeOf(FULL, 'Tandem'), surface: 'stab', fileName: 'full.fl5' }).report.map((l) => l.text)).toContain(
+      'flow5 rollt den ganzen Flügel als einen Körper, seine linke Hälfte rollt also in die andere Richtung: Einstellungen > Linke Hälfte ist auf Mit der rechten Hälfte gedreht gestellt.',
     );
   });
 

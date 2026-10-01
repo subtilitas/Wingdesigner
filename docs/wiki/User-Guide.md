@@ -194,7 +194,7 @@ The report lists every value that the import changes, converts or leaves out. Er
 - **Plane** lists the planes of the file in its order; flow5 sorts them by name. A plane built from a triangle mesh (STL) has no wing and offers no surface.
 - **Surface to import** lists every wing of the plane in file order: **Main wing**, **Horizontal stabilizer (flow5: Elevator)**, **Fin**, **Other wing**, numbered when a type occurs more than once (**Main wing 1**, **Main wing 2**). Every wing can be imported, except a one-sided wing turned about z, which a part placement cannot reproduce: `A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.`
 - A fin (a one-sided wing) is imported as the half that flow5 builds: the left half of the part, with **Part roll** 90° for a fin at −90°. Its mirrored right half lies on it; **Show mirrored half** off and the export option **Right half only** give one half.
-- The wing's angles become the rigid placement of the part (**Settings** > **Part tilt** and **Part roll**, about the wing origin): `Ry_angle` the tilt, `Rx_angle` the roll. flow5 rolls both halves as one body; Wingdesigner mirrors the right half, and the report warns with the distance (`… up to 62.5 mm from flow5's left half.`).
+- The wing's angles become the rigid placement of the part (**Settings** > **Part tilt** and **Part roll**, about the wing origin): `Ry_angle` the tilt, `Rx_angle` the roll. flow5 rolls both halves of a two-sided wing as one body: for a rolled wing the import sets **Settings** > **Left half** to **Turned with the right half (whole wing, as flow5)**, and the report says so. Both halves of the rolled wings of the test files lie within 0.01 mm of flow5's analysis mesh.
 - A `.fl5` project holds the airfoils (**Found**: **From the file**). An XML file names them, or names `.dat` files next to it: flow5 7.54 and later write one `.dat` file per airfoil next to the XML file. Upload them with **Upload .dat files…**; each row takes the file of its name.
 - Details: [[File Formats|File-Formats]], section flow5 import.
 
@@ -804,6 +804,7 @@ The box **More airfoils (external, not bundled)** links to 3 collections. The ap
 | Geometry | **Trailing-edge thickness (mm)** | ≥ 0, step 0.1 | wizard: 0.2 % of the root chord, at least 0.3; sample wing: 0.5; project file without the value: 0.4 | Shown only with **Fixed thickness in mm** |
 | Geometry | **Part tilt (°, positive = leading edge up)** | −180 to 180, step 0.5 | 0; XFLR5 import: the tilt angle of the wing | Rigid turn of the whole part about the y axis through the pivot. See the list below. |
 | Geometry | **Part roll (°, positive = right tip up)** | −180 to 180, step 0.5 | 0 | Rigid turn of the whole part about the x axis through the pivot, before the tilt. See the list below. |
+| Geometry | **Left half** | **Mirror image of the turned right half**, **Turned with the right half (whole wing, as flow5)** | Mirror image; flow5 import of a rolled two-sided wing: Turned | How the left half follows **Part roll**. See the list below. |
 | Resolution | **Chordwise stations per surface** | 16 to 200, step 4 | 60 | Airfoil resampling: N stations give 2 · N + 1 points per outline (60 → 121) |
 | Resolution | **Spanwise stations per panel with guides, smooth mode or mitred linear panels** | 3 to 40 | 8 | Intervals per panel, cosine spacing; used only with a guide curve on, with Smooth, and in a **Linear** panel between mitred planes of different roll. Fewer intervals only above 5,000,000 loft grid points (section [Guide curves](#guide-curves)). |
 | Resolution | **Profile parametrization** | **Centripetal (recommended)**, **Chord length**, **Uniform** | Centripetal | Parameter spacing of the airfoil NURBS interpolation, in the wing build and in the airfoil preview |
@@ -845,7 +846,8 @@ Section planes:
 
 Part tilt and part roll:
 
-- The part turns as a rigid body: first the roll about the x axis, then the tilt about the y axis, both through the pivot. A positive tilt raises the leading edge, a positive roll raises the right tip. The left half is the mirror image of the turned right half.
+- The part turns as a rigid body: first the roll about the x axis, then the tilt about the y axis, both through the pivot. A positive tilt raises the leading edge, a positive roll raises the right tip.
+- **Left half**: **Mirror image of the turned right half** (default) keeps the wing symmetric about y = 0; a roll lifts both tips. **Turned with the right half (whole wing, as flow5)** turns the whole wing as one body: a positive roll raises the right tip and lowers the left tip. The two are the same without roll. A project with **Turned with the right half** is saved as format version 4, which Wingdesigner 0.4.0 refuses.
 - Below the two fields a line names the pivot. A project of the XFLR5 import turns about the wing origin: `The part turns as a rigid body about x = 650.0 mm, y = 0.0 mm, z = 40.0 mm, the wing origin of the import: first the roll about the x axis, then the tilt about the y axis.` Otherwise the pivot is the leading edge of the root section, here of the **Sport** preset: `The part turns as a rigid body about the leading edge of the root section (x = 0.0 mm, y = 0.0 mm, z = 0.0 mm): first the roll about the x axis, then the tilt about the y axis.`
 - Typed values beyond ±180° are set to −180° or 180°. Each change is one undo step.
 - Turned: the 3D view, STEP, STL and 3MF, and the positions in **Checks** (span, MAC position, 25 % MAC). In the frame of the part: the **Sections** table, the **Planform** tab, the foam-cutting wizard and the project file.
@@ -1087,7 +1089,7 @@ For STEP, the note gives the surface control points in the file and the file siz
 | Project JSON | full project | full project | full project |
 
 - **Full wing** needs the root section at y = 0 and **Part roll** 0°. Otherwise STL and 3MF write 2 bodies, as with **Both halves**: a rolled root leaves the plane y = 0.
-- STEP, STL and 3MF hold the part turned by **Part tilt** and **Part roll**; the project JSON holds the sections in the frame of the part.
+- STEP, STL and 3MF hold the part turned by **Part tilt** and **Part roll**, the left half as **Left half** sets; the project JSON holds the sections in the frame of the part.
 - STEP has no merged body: **Full wing** writes 2 solids.
 - Project JSON holds the full project. Without wing errors it also holds the derived NURBS data: airfoil curves, guide curves, spanwise stations and the wing surface.
 - When the derived NURBS data would take the file above 100 MB, the largest file **Open** reads, **Save** and Project JSON leave it out and show the notice `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`

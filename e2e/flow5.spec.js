@@ -21,7 +21,7 @@ async function openImport(page, name) {
 }
 
 test.describe('flow5 import', () => {
-  test('.fl5 project: the wing list, the rolled elevator as part roll and tilt, then Undo', async ({ page }) => {
+  test('.fl5 project: the wing list, the rolled elevator as part roll and tilt with the left half turned, then Undo', async ({ page }) => {
     await createDesign(page, 'Sport');
     const dlg = await openImport(page, 'full.fl5');
     await expect(dlg.locator('.xflr5-source')).toHaveText('full.fl5 · flow5 project, format 500754 (flow5 7.54 or later)');
@@ -36,12 +36,13 @@ test.describe('flow5 import', () => {
     await dlg.getByRole('radio', { name: /^Horizontal stabilizer \(flow5: Elevator\)/ }).check();
     await expect(airfoilRows(dlg)).toHaveCount(1);
     await expect(foundOf(airfoilRows(dlg).first())).toHaveText('From the file');
-    await expect(reportOf(dlg).first()).toHaveText(/^Warning: flow5 rolls the whole wing, so its left half turns the other way; .* up to 62\.5 mm from flow5's left half\.$/);
+    await expect(reportOf(dlg).filter({ hasText: 'Settings > Left half is set to Turned with the right half.' })).toHaveCount(1);
     await dlg.getByRole('button', { name: 'Import', exact: true }).click();
     await expect(dialogOf(page)).toHaveCount(0);
     await expect(toastOf(page)).toContainText('Imported the horizontal stabilizer "Vee" of "Tandem" from full.fl5: 2 sections, 1 airfoil.');
     const saved = await savedProject(page);
-    expect(saved.settings).toMatchObject({ partTilt: -2, partRoll: 10, partPivot: { x: 1000, y: 0, z: 80 } });
+    expect(saved.settings).toMatchObject({ partTilt: -2, partRoll: 10, partPivot: { x: 1000, y: 0, z: 80 }, leftHalf: 'turned' });
+    expect(saved.version).toBe(4);
     expect(saved.airfoils.map((a) => [a.name, a.source.kind])).toEqual([['NACA 0009', 'flow5']]);
     await openTab(page, 'Airfoils');
     await expect(page.locator('#pane-airfoils')).toContainText('flow5: full.fl5');
@@ -59,7 +60,7 @@ test.describe('flow5 import', () => {
     await expect(reportOf(dlg).filter({ hasText: 'A one-sided wing: flow5 builds its left half only' })).toHaveCount(1);
     await dlg.getByRole('button', { name: 'Import', exact: true }).click();
     await expect(toastOf(page)).toContainText('Imported the wing "Fin" of "Test plane" from basic.fl5: 2 sections, 1 airfoil.');
-    expect((await savedProject(page)).settings).toMatchObject({ partRoll: 90, partTilt: 0, partPivot: { x: 800, y: 0, z: 50 } });
+    expect((await savedProject(page)).settings).toMatchObject({ partRoll: 90, partTilt: 0, partPivot: { x: 800, y: 0, z: 50 }, leftHalf: 'mirror' });
   });
 
   test('plane XML with .dat file references: Upload .dat files… matches both airfoils by name', async ({ page }) => {

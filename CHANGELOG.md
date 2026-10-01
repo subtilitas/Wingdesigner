@@ -23,12 +23,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   - The dialog lists every wing of the plane. Each imports with its roll (`Rx_angle`, as **Part roll**) and tilt
     (`Ry_angle`, as **Part tilt**) about the wing origin. A fin (one-sided wing) imports as the half flow5 builds,
     the left half of the part; a one-sided wing turned about z (`Ry_angle` ≠ 0) is not available.
-  - A rolled wing gets a warning: flow5 rolls both halves as one body, Wingdesigner mirrors the right half (62.5 mm
-    apart at the tips of a 10° rolled V-tail of 180 mm half span).
+  - A rolled two-sided wing turns as one body, as in flow5: the import sets **Settings** > **Left half** to
+    **Turned with the right half**.
   - Airfoils of a `.fl5` project are used with their coordinates (`source.kind` `flow5`); an XML file names the
     airfoils or `.dat` files next to it.
-  - Tested with files that flow5 7.57 and 7.56 write: the right half of 8 imported wings and both fins lie within
-    0.15 mm of the analysis mesh flow5 builds.
+  - Tested with files that flow5 7.57 and 7.56 write: the right half of 8 imported wings, the left half of both
+    rolled two-sided wings and both fins lie within 0.15 mm of the analysis mesh flow5 builds.
+- **Settings** > **Left half**: **Mirror image of the turned right half** (default) or **Turned with the right half
+  (whole wing, as flow5)**. With a part roll, the turned left half rolls the other way than the mirror image. STEP,
+  STL, 3MF, the 3D view and the span in **Checks** follow it. A project with the turned left half is saved as format
+  version 4, which Wingdesigner 0.4.0 refuses; other projects stay version 3.
 - **Upload .dat files…** in the import dialog takes several airfoil files at once and gives each airfoil name the
   file of that name.
 

@@ -225,6 +225,9 @@ export function exportTriangles(build, mode = 'halves', { uRefine = 1, vRefine }
 export function exportMeshes(build, mode = 'halves', { uRefine = 1, vRefine, up = 'z' } = {}) {
   const half = tessellateHalf(build, { uRefine, vRefine });
   const part = build.part;
+  // A left half that turns with the whole wing is the mirror image of the unturned half, then turned.
+  const turnedLeft = part?.turnedLeft ? mirrorMesh(halfWingMesh(half)) : null;
+  if (turnedLeft) turnedLeft.positions = transformPositions(turnedLeft.positions, part);
   if (part && !part.identity) half.positions = transformPositions(half.positions, part);
   const right = halfWingMesh(half);
   let meshes;
@@ -235,7 +238,7 @@ export function exportMeshes(build, mode = 'halves', { uRefine = 1, vRefine, up 
   } else {
     meshes = [
       { name: 'Wing right', mesh: right },
-      { name: 'Wing left', mesh: mirrorMesh(right) },
+      { name: 'Wing left', mesh: turnedLeft ?? mirrorMesh(right) },
     ];
   }
   return meshes.map((m) => ({ ...m, mesh: meshToUpAxis(m.mesh, up) }));

@@ -471,12 +471,12 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
   // Stored within ±180°: an angle of whole turns turns nothing.
   const angle = reduced(tilt);
   const rollAngle = reduced(roll);
-  if (angle !== 0 || rollAngle !== 0) folded = { angle, roll: rollAngle, x: X, z: ZL };
+  if (angle !== 0 || rollAngle !== 0) folded = { angle, roll: rollAngle, x: X, z: ZL, turnedLeft: rollAngle !== 0 && !wing.oneSided };
   if (rollAngle !== 0) {
     add('info', tr('Roll angle {angle}° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).', { angle: num(rollAngle) }));
-    // flow5 turns both halves as one body; the part's left half is the mirror image of its turned right half.
-    // A one-sided wing has one half only, which the part's left half is exactly.
-    if (!wing.oneSided) add('warning', tr('flow5 rolls the whole wing, so its left half turns the other way; Wingdesigner builds the left half as the mirror image of the right half, up to {d} mm from flow5\'s left half.', { d: fixed(leftHalfOffset(kept, angle, rollAngle), 1) }));
+    // flow5 turns both halves as one body: the left half of the part turns with it. A one-sided wing
+    // has one half only, which the left half of the part is exactly (oneSidedAsHalf).
+    if (!wing.oneSided) add('info', tr('flow5 rolls the whole wing as one body, so its left half rolls the other way: Settings > Left half is set to Turned with the right half.'));
   }
   if (angle !== 0) {
     add('info', tr('Tilt angle {angle}° applied as in the {program} plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).', { program, angle: num(angle) }));
@@ -504,27 +504,6 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
   // Values a project cannot hold are reported here, in XFLR5's section numbers.
   if (!withinLimits(sections, add)) return out([]);
   return out(sections);
-}
-
-/**
- * Largest distance (mm) between the left half of a wing that flow5 turns as one body (roll, then tilt,
- * about the wing origin) and the mirror image of the turned right half, over the leading and trailing
- * edges of the sections (`kept`: wing frame, before the position moves them).
- */
-function leftHalfOffset(kept, tilt, roll) {
-  const [ct, st, cr, sr] = [Math.cos(tilt * DEG), Math.sin(tilt * DEG), Math.cos(roll * DEG), Math.sin(roll * DEG)];
-  // Ry(tilt) · Rx(roll), as src/geom/part.js.
-  const turn = ([x, y, z]) => [ct * x + st * sr * y + st * cr * z, cr * y - sr * z, -st * x + ct * sr * y + ct * cr * z];
-  let d = 0;
-  for (const q of kept) {
-    for (const x of [q.x, q.x + q.chord]) {
-      const p = [x, q.y, q.z];
-      const a = turn([p[0], -p[1], p[2]]);
-      const b = turn(p);
-      d = Math.max(d, Math.hypot(a[0] - b[0], a[1] + b[1], a[2] - b[2]));
-    }
-  }
-  return d;
 }
 
 /**
@@ -1373,7 +1352,7 @@ function assemble(name, mapped, rows, add, planes, tilt) {
       mirror: true,
       tip: { mode: 'flat' },
       trailingEdge: { mode: 'asis' },
-      ...(tilt ? { partTilt: r4(tilt.angle), partRoll: r4(tilt.roll), partPivot: { x: r4(tilt.x), y: 0, z: r4(tilt.z) } } : {}),
+      ...(tilt ? { partTilt: r4(tilt.angle), partRoll: r4(tilt.roll), partPivot: { x: r4(tilt.x), y: 0, z: r4(tilt.z) }, leftHalf: tilt.turnedLeft ? 'turned' : 'mirror' } : {}),
     },
   });
 }

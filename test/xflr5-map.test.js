@@ -136,7 +136,7 @@ describe('XFLR5 mapping: geometry', () => {
 
   it('applies the position to the sections and returns the tilt about the wing origin', () => {
     const main = mapSections(FIXTURES.planes[0].wings[0], 1000);
-    expect(main.tilt).toEqual({ angle: 2, roll: 0, x: 0, z: 0 });
+    expect(main.tilt).toEqual({ angle: 2, roll: 0, x: 0, z: 0, turnedLeft: false });
     expect(main.sections.map((q) => q.twist)).toEqual([0, -1, -2.5]);
     expectSections(folded(main), [
       [-0.0366, 0, -2.094, 240, 2],
@@ -145,7 +145,7 @@ describe('XFLR5 mapping: geometry', () => {
     ]);
     expect(texts(main.report, 'info')).toContain('Tilt angle 2° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).');
     const stab = mapSections(FIXTURES.planes[0].wings[2], 1000);
-    expect(stab.tilt).toEqual({ angle: -1.5, roll: 0, x: 650, z: 40 });
+    expect(stab.tilt).toEqual({ angle: -1.5, roll: 0, x: 650, z: 40, turnedLeft: false });
     expectSections(stab.sections, [
       [650, 0, 40, 110, 0],
       [675, 230, 40, 70, 0],
@@ -809,7 +809,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     const w = FIXTURES.planes[0].wings[0];
     const mapped = mapSections(w, 1000);
     // The rows of XFLR5's wing table in the frame of the part; the tilt is returned, not folded in.
-    expect(mapped.tilt).toEqual({ angle: 2, roll: 0, x: 0, z: 0 });
+    expect(mapped.tilt).toEqual({ angle: 2, roll: 0, x: 0, z: 0, turnedLeft: false });
     expectSections(mapped.sections, mapSections(unplaced(w), 1000).sections.map(values));
     // With the tilt folded in, as project format version 2 stored it (spec section 6.7).
     expectSections(folded(mapped), [
