@@ -361,7 +361,7 @@ File names of downloads (**Save**, **Export**, airfoil `.dat`) write German umla
 
 ![Wizard with the Glider preset: presets, 12 inputs including Tip, planform preview and key figures](images/wizard.png)
 
-The wizard builds a complete project from 12 inputs (table below). It generates sections, airfoils, the trailing-edge setting, the wing tip setting and, for an elliptic planform, both guide curves. All values stay editable afterwards.
+The wizard builds a complete project from 12 inputs (table below). It generates sections, airfoils, the trailing-edge setting, the wing tip setting and, for an elliptic planform, both guide curves. With the planform **Panels (table)**, a panel table replaces 4 of the inputs (see Panels below). All values stay editable afterwards.
 
 - Opens on the first visit (title "Start a new wing design") and with **New** (title "New wing design").
 - Preselected preset: **Sport**. A click on a preset card loads its values.
@@ -373,13 +373,13 @@ The wizard builds a complete project from 12 inputs (table below). It generates 
 | Project name | text | Default: preset name. Empty: `<span> mm wing`. Both are made in the current language (section [Language](#language)). |
 | Span (both halves) | 100 to 20,000 mm | Tip-to-tip span, measured along y. With a dihedral δ each half is span / 2 / cos δ long along its panel: 436 mm for 500 mm span at 55°. |
 | Root chord | 10 to 3000 mm | Chord at y = 0 |
-| Taper (tip / root chord) | 0.1 to 1.5 | Tip chord divided by root chord. Elliptic planform with flat tip: below 1. Elliptic planform with pointed tip: not used. |
-| Sweep of the 25 % line | −45 to 60° | Sweep of the quarter-chord line; positive = swept back |
-| Dihedral per half | −60 to 60° | Section z = y · tan(dihedral). A V-tail takes the angle of each half, e.g. 55°; an inverted V-tail a negative angle. 60° is the steepest first panel that **Mitred** section planes build: the vertical root plane stretches the airfoil 1 / cos 60° = 2 times (section [Checks](#checks)). |
-| Tip twist (negative = washout) | −15 to 15° | Twist changes linearly from 0° at the root to this value at the tip |
-| Number of sections | 2 to 8, integer | Sections evenly spaced from root to tip |
-| Planform | **Straight taper**, **Elliptic (guide curves)** | Chord law, see below |
-| Tip | **Flat**, **Pointed (1/200 scale)** | Flat: the wing ends at the tip section. Pointed: tip section chord = 1/200 of the chord at the previous section, at least 1 mm. |
+| Taper (tip / root chord) | 0.1 to 1.5 | Tip chord divided by root chord. Elliptic planform with flat tip: below 1. Elliptic planform with pointed tip: not used. Hidden with **Panels (table)**. |
+| Sweep of the 25 % line | −45 to 60° | Sweep of the quarter-chord line; positive = swept back. Hidden with **Panels (table)**. |
+| Dihedral per half | −60 to 60° | Section z = y · tan(dihedral). A V-tail takes the angle of each half, e.g. 55°; an inverted V-tail a negative angle. 60° is the steepest first panel that **Mitred** section planes build: the vertical root plane stretches the airfoil 1 / cos 60° = 2 times (section [Checks](#checks)). Hidden with **Panels (table)**. |
+| Tip twist (negative = washout) | −15 to 15° | Twist changes linearly with y from 0° at the root to this value at the tip |
+| Number of sections | 2 to 8, integer | Sections evenly spaced from root to tip. Hidden with **Panels (table)**. |
+| Planform | **Straight taper**, **Elliptic (guide curves)**, **Panels (table)** | Chord law, see below; Panels: see Panels below |
+| Tip | **Flat**, **Pointed (1/200 scale)**, **Elliptic (panels only)** | Flat: the wing ends at the tip section. Pointed: tip section chord = 1/200 of the chord at the previous section, at least 1 mm. Elliptic: the last panel ends in a quarter ellipse; planform **Panels (table)** only. |
 | Root airfoil (NACA) | NACA code | Airfoil of every section except the tip |
 | Tip airfoil (NACA) | NACA code | Airfoil of the tip section |
 
@@ -398,19 +398,53 @@ Generated values:
 
 | Value | Rule |
 | --- | --- |
-| Leading-edge x | 0.25 · c_root + y · tan(sweep) − 0.25 · c(η); the quarter-chord points lie on the sweep line |
+| Leading-edge x | **Straight taper** and **Elliptic**: 0.25 · c_root + y · tan(sweep) − 0.25 · c(η); the quarter-chord points lie on the sweep line. **Panels (table)**: see Panels below. |
 | Rounding | 0.01 mm, 0.01° |
 | Trailing edge | **Fixed thickness in mm**: 0.2 % of the root chord, at least 0.3 mm |
-| Wing tip | **Settings** > **Wing tip** = the **Tip** field; tip profile scale 1 : 200 |
+| Wing tip | **Settings** > **Wing tip** = **Flat** for the tip **Flat**, **Pointed** for the tips **Pointed (1/200 scale)** and **Elliptic (panels only)**; tip profile scale 1 : 200 |
+
+Panels: with **Planform** = **Panels (table)**, a table gives the half span as 1 to 24 panels from root to tip. **Taper (tip / root chord)**, **Sweep of the 25 % line**, **Dihedral per half** and **Number of sections** are then hidden and not used; they keep their values for a switch back to another planform.
+
+| Column | Range | Effect |
+| --- | --- | --- |
+| Panel | 1 to 24 | Panel number, counted from the root |
+| Span share (%) | 0.1 to 10,000 % | Share of the panel in the half span. The shares are scaled so that together they fill the half span: 2 panels of 100 % each take 50 % each. |
+| Leading-edge sweep (deg) | −89.9 to 89.9° | Sweep of the leading edge along the panel; positive = swept back |
+| Outer chord (% of root) | 0 to 300 % | Chord at the outer end of the panel, in % of **Root chord** |
+| Dihedral (deg) | −60 to 60° | Dihedral of the panel |
+| × | button | Removes the panel (name "Remove panel n"). Disabled with 1 panel. |
+
+- **Add panel** appends a copy of the last panel. Disabled at 24 panels.
+- The note below the table shows the sum of the shares, e.g. "Shares sum to 200.0 %; they are scaled to the half span."
+- When **Planform** turns to **Panels (table)** and the design has no panel list yet, the table starts with one panel per interval between the sections of the planform it leaves (**Number of sections** − 1 panels, equal shares). Each panel ends at that section's leading edge with its chord: leading-edge sweep and outer chord unrounded (the table shows up to 6 decimals), dihedral = **Dihedral per half**. A straight planform keeps its sections, and a pointed tip its chord (1/200 of the section before); an elliptic planform becomes the polygon through its sections, without guide curves. **Sport**: 1 panel, 2.29061°, 60 %, 1.5°. **Glider** (3 sections): 2 panels, outer chords 89.477651 % and 45 %. A field that holds no number at the switch (an empty **Taper**, say) takes the value of the selected preset. Presets with panels, and a panel list edited earlier in the dialog, keep their panels.
+
+Sections of the planform **Panels (table)** (b = half span; s_i = share of panel i divided by the sum of the shares):
+
+| Value | Rule |
+| --- | --- |
+| Root section | Leading edge at x = 0, y = 0, z = 0; chord c_root |
+| Section at the outer end of panel i | Δy = s_i · b; y = y_prev + Δy; leading-edge x = x_prev + Δy · tan(leading-edge sweep); z = z_prev + Δy · tan(dihedral); chord = outer chord · c_root |
+| Twist | tip twist · y / b |
+| Airfoils | Tip airfoil at the tip section; root airfoil at every other section |
+| Tip **Pointed (1/200 scale)** | Tip section chord = max(c_prev / 200, 1 mm), c_prev = chord of the section before; the tip section keeps its quarter-chord point. |
+| Tip **Elliptic (panels only)** | The last panel ends in a quarter ellipse of 6 sections at t = sin(π k / 12), k = 1 … 6 (t = 1 at k = 6): y = y_in + t · Δy; chord c(t) = c_in · √(1 − t²); the quarter-chord points lie on the straight line from the quarter-chord point of the inner section (y_in, x_in, z_in, chord c_in) at the leading-edge sweep of the panel: x = x_in + 0.25 · c_in + t · Δy · tan(leading-edge sweep) − 0.25 · c(t); z = z_in + t · Δy · tan(dihedral). The outer chord of the last panel is not used. The tip section takes max(c_prev / 200, 1 mm) as for **Pointed**. Example: **Sport** as 1 panel with this tip: 7 sections, the section before the tip 62.1 mm, the tip 1 mm (the floor). |
 
 The preview shows the planform of both halves. The line below it lists wing area (dm²), aspect ratio, MAC with its span position, and tip chord.
 
 The line turns red, lists the problems, and **Create design** is disabled when:
 
 - a value is outside its range (column Range), or its field is empty or holds no number (section [Numbers](#numbers));
-- **Number of sections** is not an integer;
+- **Number of sections** is not an integer (not with **Panels (table)**);
 - a root or tip airfoil is not a valid NACA code;
 - **Elliptic** with **Flat** tip has taper ≥ 1 (`An elliptic planform needs taper < 1.`);
+- the tip is **Elliptic (panels only)** and the planform is not **Panels (table)** (`An elliptic tip needs the planform Panels.`);
+- the panel list has fewer than 1 or more than 24 panels (`The planform Panels needs 1 to 24 panels.`);
+- a panel value is outside its range, e.g. `Panel 2: leading-edge sweep must be between -89.9 and 89.9.` The message names `span share`, `leading-edge sweep`, `outer chord` or `dihedral`; span share and outer chord appear as ratios: 0.001 to 100 and 0 to 3;
+- a panel spans less than 1 mm of the half span after the shares are scaled (`Panel 1 spans 0.0005 mm of the half span; a panel needs at least 1 mm.`);
+- a section ends beyond ±1,000,000 mm in x or z, a pointed or elliptic tip after its move to the quarter-chord point, e.g. a 20,000 mm span with one panel swept 89.9° (`Panel 1 ends at x = 5729572 mm, z = 0 mm, beyond ±1000000 mm.`);
+- an elliptic tip begins at less than 1 mm / cos 75° = 3.8637 mm of chord: its last inner section keeps cos 75° = 0.259 of that chord, below the 1 mm minimum; the message rounds the limit up (`Panel 2: the elliptic tip needs at least 3.87 mm of chord where it begins.`);
+- the outer chord of a panel is below 1 mm (`Panel 1: the outer chord is below 1 mm.`), at every panel end except the last one with the tip **Pointed (1/200 scale)** or **Elliptic (panels only)**;
+- a project built in code (`wizardProject`) has another planform or tip value (`planform must be "straight", "elliptic" or "panels".`, `tip must be "flat", "pointed" or "elliptic".`);
 - the wing has a build error (section [Checks](#checks)). Example: preset **Tail surface** with 100 mm span, 8 sections and 55° dihedral per half. The section plane of the vertical root and that of the next section, 7.1 mm further out in y, turn faster than the airfoils allow, so the surface folds. A larger span, fewer sections or less dihedral builds; from 200 mm span, this preset builds with 2 to 8 sections up to 60°.
 
 | Preset | Span mm | Root chord mm | Taper | Sweep ° | Dihedral ° | Tip twist ° | Sections | Planform | Tip | Root / tip airfoil |
@@ -418,9 +452,37 @@ The line turns red, lists the problems, and **Create design** is disabled when:
 | Trainer | 1400 | 250 | 1 | 0 | 3 | 0 | 2 | straight | flat | 2412 / 2412 |
 | Sport | 1200 | 240 | 0.6 | 0 | 1.5 | −1 | 2 | straight | flat | 2412 / 2410 |
 | Glider | 2000 | 200 | 0.45 | 0 | 4 | −1.5 | 3 | elliptic | flat | 2410 / 2408 |
+| Sailplane | 3000 | 210 | (0.5) | (0) | (2) | −2 | (4) | panels | elliptic | 2410 / 2408 |
+| Delta jet | 900 | 800 | (0.2) | (45) | (0) | 0 | (2) | panels | flat | 0008 / 0006 |
+| Double delta | 1000 | 1000 | (0.24) | (45) | (0) | 0 | (3) | panels | flat | 0008 / 0006 |
+| Batwing | 1000 | 363 | (0.5) | (0) | (0) | 0 | (2) | panels | pointed | 0010 / 0008 |
 | Swept flying wing | 1200 | 280 | 0.45 | 25 | 0 | −4 | 3 | straight | flat | 23112 / 0010 |
 | Plank | 1000 | 220 | 0.8 | 0 | 1 | 0 | 2 | straight | flat | 23112 / 23112 |
 | Tail surface | 500 | 130 | 0.7 | 5 | 0 | 0 | 2 | straight | flat | 0009 / 0009 |
+
+Values in parentheses are hidden with **Panels (table)**; they apply after a switch to **Straight taper** or **Elliptic (guide curves)**.
+
+Panels of the presets **Sailplane** to **Batwing** (dihedral 0° where not listed):
+
+| Preset | Panels: span share % / leading-edge sweep ° / outer chord % of root / dihedral ° |
+| --- | --- |
+| Sailplane | 45 / 0 / 95 / 2; 35 / 1.5 / 75 / 6; 20 / 4 / 50 / 10 |
+| Delta jet | 100 / 54.9 / 20 |
+| Double delta | 30 / 70 / 58.8 (strake); 70 / 45 / 23.8 (outer delta) |
+| Batwing | 15 / 18.4 / 94.8; 10 / 32 / 87.9; 8 / 43.2 / 84.5; 7 / 28.2 / 89.7; 7 / −41.8 / 122.4; 4 / −61.9 / 160.3; 7 / −60.8 / 167.2; 8 / −59.8 / 174.1; 9 / 54.2 / 143.1; 10 / 58.4 / 101.7; 8 / 65.4 / 55.2; 7 / 69.5 / 0 |
+
+| Preset | Sections created | Area dm² | Aspect ratio | MAC mm at y mm | Tip chord mm |
+| --- | --- | --- | --- | --- | --- |
+| Sailplane | 9 | 53.72 | 16.75 | 186.1 at 677 | 1.0 |
+| Delta jet | 2 | 43.20 | 1.88 | 551.1 at 175 | 160 |
+| Double delta | 3 | 52.73 | 1.90 | 606.7 at 196 | 238 |
+| Batwing | 13 | 39.81 | 2.51 | 448.5 at 251 | 1.0 |
+
+- **Sailplane**: polyhedral 2°, 6° and 10°; the elliptic tip ends the last panel in 6 sections. With the tip **Flat** the wing ends at the outer chord of the last panel: 105 mm.
+- **Delta jet**: the leading-edge sweep atan((800 − 160) / 450) = 54.9° puts the trailing edge on a straight line, within 0.3 mm (tip section: leading-edge x 640.29 mm, chord 160 mm).
+- **Double delta**: the strake moves the leading edge 412.1 mm aft over 150 mm; the trailing edge is straight within 0.12 mm.
+- **Batwing**: 12 panels traced from a top view of the Batwing of the 1989 film. The leading edge has a notch beside the fuselage and the forward point of the ear at 66 % of the half span (y = 330 mm, x = −87.6 mm); the trailing edge has a concave scallop and the rear spike at 51 % (y = 255 mm, trailing edge x = 625.7 mm); both meet in the round tip. No twist, no dihedral; the outline is a polygon of straight panels.
+- None of these 4 presets is flown or measured in flight. The **Batwing** has symmetric airfoils without reflex; its pitch stability is not designed.
 
 | Button | Effect |
 | --- | --- |

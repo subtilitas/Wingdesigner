@@ -45,7 +45,7 @@ Browser application for designing wings of radio-controlled (RC) model aircraft.
 | Part placement | **Part tilt (°, positive = leading edge up)** and **Part roll (°, positive = right tip up)** in **Settings** turn the half wing as a rigid body: first the roll about the x axis, then the tilt about the y axis, both through one pivot. Pivot: the wing origin that the XFLR5 import stores, else the leading edge of the root section; **Settings** names it below the two fields. The left half is the mirror image of the turned right half at y = 0. The 3D view, STEP, STL, 3MF and the statistics use the turned part; the **Sections** table, the **Planform** tab and the foam-cutting wizard use the frame of the part. | Tilt and roll −180 to 180°, step 0.5°, default 0°; typed values are clamped. A change is one undo step. Error when a turned control point of the surface lies beyond ±1,200,000 mm. Project file format version 3; Wingdesigner 0.3.0 and earlier refuse such a file (`Unsupported project version 3.`). |
 | Airfoil import | Selig, Lednicer, 3-column table (x, upper y, lower y), XML (Extensible Markup Language), HTML (HyperText Markup Language) pages (coordinates in `<pre>` blocks or tables). Reads decimal commas, percent coordinates, UTF-8 (Unicode Transformation Format, 8-bit) and Windows-1252. Input: dropped files, **Choose files** or pasted text. Shows outline, NURBS curve and check messages before the airfoil is added. Consecutive points closer than 1e-9 chord to the previous point are removed. An airfoil with an error, including a failed NURBS interpolation, cannot be added (**Cannot add (errors)**). The preview (upload and **View**) draws the NURBS curve with the project's profile parametrization. An XFLR5 project or an XFLR5 plane or wing file is refused as an airfoil with the hint to use **Open**; **Check pasted text** does not test for it. | **Choose files** filter: `.dat`, `.txt`, `.cor`, `.xml`, `.htm`, `.html`, `.csv` and plain-text files; dropped files: any extension; 5 to 100,000 points, warning below 20 and above 5000 (`… points (warning above 5,000): the checks and the first build of a wing that uses the airfoil take … s.`); at most 5,000,000 characters; files above 20 MB are rejected before reading, an XFLR5 project with the hint to use **Open**; a name line above 10,000 characters is cut to its first 10,000. Per project: at most 10,000 airfoils and 1,000,000 airfoil points in all; warning above 200 airfoils and above 100,000 airfoil points. Project files: the same point and airfoil limits. At 10,000 airfoils the **Airfoils** tab opens no preview and shows `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.`; an airfoil that takes the project above 1,000,000 points is refused in the same way. |
 | NACA generator | NACA (National Advisory Committee for Aeronautics) 4-digit and 5-digit airfoils from the equations of NACA Report 824. Also reflexed 5-digit airfoils (third digit 1). Open or closed trailing edge. | 17 presets; 81 points per surface |
-| Wizard | Inputs: 7 numbers (see [Wizard inputs](#wizard-inputs)), planform (straight or elliptic), tip (flat or pointed), root and tip NACA code. Output: evenly spaced sections; the elliptic planform adds nose and end guide curves. Last section: tip airfoil; all others: root airfoil. | 6 presets: **Trainer**, **Sport** (preselected), **Glider**, **Swept flying wing**, **Plank**, **Tail surface**. Elliptic with flat tip: taper < 1. Pointed tip: tip chord 1/200 of the second-to-last section chord, at least 1 mm. |
+| Wizard | Inputs: 7 numbers (see [Wizard inputs](#wizard-inputs)), planform (straight, elliptic or panels), tip (flat, pointed or elliptic), root and tip NACA code. Output: straight and elliptic planforms: evenly spaced sections; the elliptic planform adds nose and end guide curves. Panels: a table of 1 to 24 panels from root to tip, each with span share, leading-edge sweep, outer chord and dihedral; a section at every panel end. Last section: tip airfoil; all others: root airfoil. | 10 presets: **Trainer**, **Sport** (preselected), **Glider**, **Sailplane**, **Delta jet**, **Double delta**, **Batwing**, **Swept flying wing**, **Plank**, **Tail surface**; the 4 presets **Sailplane** to **Batwing** use panels. Elliptic with flat tip: taper < 1. Pointed tip: tip chord 1/200 of the second-to-last section chord, at least 1 mm. Elliptic tip: panels only; the last panel ends in a quarter ellipse of 6 sections, pointed at the tip. |
 | Checks | Lists errors and warnings, then info lines. Planform: span, wing area (dm²), aspect ratio, mean aerodynamic chord (MAC), MAC position (y, leading-edge x), 25 % MAC x, root and tip chord. Surface: degrees, control-point counts, trailing edge open or closed. Span = 2 × y of the tip section; for a tilted or rolled part 2 × y of the turned tip leading edge, and MAC position and 25 % MAC x turned with the part (area, MAC and chords in the frame of the part). Area and MAC: 5-point Gauss-Legendre quadrature of the intended planform between root, tip, the sections and every guide-curve knot and control point; an interval is halved while the halves change an integral by more than 1e-10 of its scale, at most 12 times. | Export of STEP, STL and 3MF is blocked while errors exist. Section and guide values beyond the project limits are errors; autosave does not store such a project, and **Open** rejects it. Root section off y = 0: the gap between the halves counts to the span, not to the area. |
 | Project size | Above a warning threshold the wing builds as usual. **Checks** adds one warning: `Large project: …`, listing each size above its threshold with `(warning above …)`, followed by the estimated time and browser memory of each change (`Each change takes … and … of browser memory.`). When the first build (**Open**, restored autosave, a change of **Profile parametrization**) takes at least 1 s longer than a change, the warning adds `Opening it or changing the profile parametrization takes ….`; estimate: time of a change plus 4.4 ms per airfoil that a section uses plus 30 µs per point of these airfoils (Node.js 24; 20,000 linear sections at 16 stations per surface and 10,000 airfoils of 99 points: `about 83 s`). A message shows the same text when an edit, **Open** or the restored autosave takes a size above its threshold. Estimates: linear fits to measurements in Chromium 141 (see Current limitations). | Warning above: 200 sections, 200 airfoils, 5000 points in one airfoil, 100,000 airfoil points in all, 500 points in an enabled guide curve, 60,000 loft grid points, 2,000,000 export triangles or 1,000,000 STEP control points (export dialog), 200 characters in a name. Hard limits, where a desktop browser tab runs out of memory or a change takes about a minute: 20,000 sections, 10,000 airfoils, 100,000 points in one airfoil, 1,000,000 airfoil points in all, 20,000 points per guide curve, 5,000,000 loft grid points, 10,000,000 export triangles, 3,000,000 STEP control points, 10,000 characters in a name, 200 characters in an id, 2000 characters in an airfoil source text, 100 MB per project file. Lists and messages show the first 200 characters of a name followed by `…`. |
 | Input | Mouse, touchscreen, keyboard. 3D view: drag rotates, wheel or pinch zooms, right button or 2 fingers pan. 2D views (planform, previews): drag a point to move it, drag the background to pan, wheel or pinch zooms, 2 fingers pan, double-click fits. | Undo: Ctrl+Z or Cmd+Z; redo: Ctrl+Shift+Z, Cmd+Shift+Z, Ctrl+Y or Cmd+Y. Shortcuts are ignored while an input field has focus or a dialog is open. Undo history: at most 100 steps and at most 64,000,000 characters of serialized project (undo and redo together); a project above 640,000 characters keeps fewer steps, at least 1. One drag forms 1 undo step, however long it pauses; an action that changes nothing adds no undo step. |
@@ -65,6 +65,15 @@ Browser application for designing wings of radio-controlled (RC) model aircraft.
 | **Dihedral per half** | −60 to 60 | ° |
 | **Tip twist (negative = washout)** | −15 to 15 | ° |
 | **Number of sections** | 2 to 8 | — |
+
+With the planform **Panels (table)**, a table replaces **Taper**, **Sweep of the 25 % line**, **Dihedral per half** and **Number of sections**:
+
+| Panel table column | Range | Unit |
+| --- | --- | --- |
+| **Span share (%)** | 0.1 to 10,000; the shares are scaled to the half span | % |
+| **Leading-edge sweep (deg)** | −89.9 to 89.9 | ° |
+| **Outer chord (% of root)** | 0 to 300 | % |
+| **Dihedral (deg)** | −60 to 60 | ° |
 
 ## Coordinates and units
 
@@ -188,7 +197,7 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
    Pick a preset, edit the values, click **Create design**.
    **Skip (open sample wing)** loads "Sport wing 1500": 1500 mm span, 3 sections, NACA 2412 and 2410.
 
-   ![Wizard dialog with the Glider preset selected: 6 preset buttons, input fields, planform preview with area, aspect ratio and mean aerodynamic chord](docs/wiki/images/wizard.png)
+   ![Wizard dialog with the Glider preset selected: 10 preset buttons, input fields, planform preview with area, aspect ratio and mean aerodynamic chord](docs/wiki/images/wizard.png)
 
 2. **Airfoils**: enter a NACA code and click **Preview**, click **Preview** next to a **Library** entry,
    or drop airfoil files on the drop zone or click **Choose files**.
@@ -221,11 +230,11 @@ Version history: [CHANGELOG.md](CHANGELOG.md). Verified state and open items: [R
 npm ci
 npx playwright install chromium   # browser for end-to-end (e2e) tests and screenshots (or set PW_CHROMIUM=/path/to/chrome)
 npm run dev              # development server on http://localhost:5173
-npm test                 # 591 unit tests (Vitest)
+npm test                 # 601 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
-npm run e2e              # production build, then 187 Playwright tests on desktop 1280 x 720 and Pixel 7 (374 runs)
+npm run e2e              # production build, then 195 Playwright tests on desktop 1280 x 720 and Pixel 7 (390 runs)
 npm run coverage         # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage tables into README.md and README.de.md
 npm run coverage:check   # exit code 1 when a README coverage table differs from coverage/
@@ -251,7 +260,7 @@ The Playwright tests run the DOM (Document Object Model) code; its coverage is n
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.3 % | 94.9 % | 98.7 % | 99.0 % |
+| 98.3 % | 94.9 % | 98.6 % | 99.0 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

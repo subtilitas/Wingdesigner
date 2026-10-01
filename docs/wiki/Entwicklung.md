@@ -70,7 +70,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/model/budget.js` | Warnschwellen, Flächengitter, Schätzung von Rechenzeit und Speicher |
 | `src/model/io.js` | Import und Export der Projekt-JSON; `upgradeFoldedTilt` (ein eingerechneter Einstellwinkel einer Datei der Version 2 wird zum **Einstellwinkel des Teils**) |
 | `src/model/edit.js` | Bearbeitungsoperationen |
-| `src/model/wizard.js` | Entwurfstypen und Wertebereiche des Assistenten |
+| `src/model/wizard.js` | Entwurfstypen und Wertebereiche des Assistenten (`RANGES`) und der Felder (`PANEL_RANGES`, höchstens `MAX_PANELS` = 24 Felder); `wizardProject` erzeugt die Schnitte des geraden, des elliptischen und des Feld-Grundrisses und des elliptischen Flügelendes (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` macht aus dem geraden Grundriss 1 Feld |
 | `src/model/defaults.js` | Projekt beim ersten Laden |
 | `src/ui/store.js` | Store mit Rückgängig und Wiederholen |
 | `src/ui/viewer3d.js` | 3D-Ansicht |
@@ -79,7 +79,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/planform.js` | Registerkarte **Grundriss** (Planform) |
 | `src/ui/airfoils.js` | Registerkarte **Profile** (Airfoils), Vorschau beim Hochladen; `readAirfoilFile` (liest eine hochgeladene Datei und lehnt XFLR5-Dateien ab) |
 | `src/ui/settings.js` | Registerkarte **Einstellungen** (Settings) |
-| `src/ui/wizard.js` | Dialog des Assistenten; `drawPlanform` (zeichnet den Grundriss auch im Importdialog) |
+| `src/ui/wizard.js` | Dialog des Assistenten mit der Feldtabelle; `drawPlanform` (zeichnet den Grundriss auch im Importdialog) |
 | `src/ui/xflr5.js` | Importdialog für XFLR5-Dateien: `openXflr5Dialog` |
 | `src/ui/exportui.js` | Dialog **Exportieren** (Export) |
 | `src/ui/foam.js` | Schaumschnitt-Assistent: `foamDialog`; gespeicherte Einstellungen (`storedFoamSettings`, Schlüssel `wingdesigner.foam`) |
@@ -388,7 +388,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 591 Tests in 20 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 601 Tests in 20 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -434,7 +434,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-187 Tests in 13 Spec-Dateien, 374 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+195 Tests in 13 Spec-Dateien, 390 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 
@@ -577,13 +577,13 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | `airfoils.png` | Registerkarte **Profile** (Airfoils), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `upload-preview.png` | Vorschau beim Hochladen einer synthetischen X/Yo/Yu-Prozenttabelle mit Dezimalkomma, geöffnet über dem Entwurfstyp **Segelflugmodell** | 640 x 646 | 640 x 710 |
 | `export-dialog.png` | Dialog **Exportieren** (Export), **Segelflugmodell** | 640 x 548 | 640 x 594 |
-| `settings.png` | Registerkarte **Einstellungen** (Settings), **Segelflugmodell** | 600 x 730 | 600 x 730 |
+| `settings.png` | Registerkarte **Einstellungen** (Settings), **Segelflugmodell** | 650 x 730 | 650 x 730 |
 | `checks.png` | Registerkarte **Prüfungen** (Checks), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `flying-wing-control-net.png` | 3D-Ansicht, **Pfeilnurflügel** (Swept flying wing), **NURBS-Kontrollnetz zeigen** (Show NURBS control net) an | 680 x 730 | 680 x 730 |
 | `mobile-main.png` | Smartphone, Entwurfstyp **Sportmodell** (Sport) | 1082 x 2202 | 1082 x 2202 |
 | `mobile-planform.png` | Smartphone, **Grundriss**, **Sportmodell**, Endlinie eingeschaltet | 1082 x 2202 | 1082 x 2202 |
 | `foam-dialog.png` | Schaumschnitt-Assistent, **Segelflugmodell**, nach **Segmente über der Grenze teilen** (Split segments over the limit), Fenster 1280 x 1400 CSS-Pixel | 960 x 1344 | 960 x 1384 |
-| `xflr5-import.png` | Dialog **Aus XFLR5 importieren** (Import from XFLR5) für `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** geöffnet, Fenster 1280 x 1200 CSS-Pixel | 960 x 966 | 960 x 1042 |
+| `xflr5-import.png` | Dialog **Aus XFLR5 importieren** (Import from XFLR5) für `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** geöffnet, Fenster 1280 x 1200 CSS-Pixel | 960 x 966 | 960 x 1062 |
 
 ### Dokumentationsprüfung
 

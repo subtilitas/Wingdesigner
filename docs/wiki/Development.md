@@ -70,7 +70,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/model/budget.js` | Warning thresholds, loft grid, time and memory estimates |
 | `src/model/io.js` | Project JSON import and export; `upgradeFoldedTilt` (a folded tilt of a version 2 file becomes **Part tilt**) |
 | `src/model/edit.js` | Edit operations |
-| `src/model/wizard.js` | Wizard presets and parameter ranges |
+| `src/model/wizard.js` | Wizard presets, parameter ranges (`RANGES`) and panel ranges (`PANEL_RANGES`, at most `MAX_PANELS` = 24 panels); `wizardProject` builds the sections of the straight, elliptic and panel planforms and the elliptic tip (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` turns the straight planform into 1 panel |
 | `src/model/defaults.js` | Project on first load |
 | `src/ui/store.js` | Store with undo and redo |
 | `src/ui/viewer3d.js` | 3D view |
@@ -79,7 +79,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/ui/planform.js` | **Planform** tab |
 | `src/ui/airfoils.js` | **Airfoils** tab, upload preview; `readAirfoilFile` (reads an uploaded file and refuses XFLR5 files) |
 | `src/ui/settings.js` | **Settings** tab |
-| `src/ui/wizard.js` | Wizard dialog; `drawPlanform` (also draws the planform in the import dialog) |
+| `src/ui/wizard.js` | Wizard dialog with the panel table; `drawPlanform` (also draws the planform in the import dialog) |
 | `src/ui/xflr5.js` | Import dialog for XFLR5 files: `openXflr5Dialog` |
 | `src/ui/exportui.js` | **Export** dialog |
 | `src/ui/foam.js` | Foam-cutting wizard: `foamDialog`; stored settings (`storedFoamSettings`, key `wingdesigner.foam`) |
@@ -388,7 +388,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 591 tests in 20 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 601 tests in 20 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -434,7 +434,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-187 tests in 13 spec files, 374 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+195 tests in 13 spec files, 390 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 
@@ -577,13 +577,13 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `airfoils.png` | **Airfoils** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `upload-preview.png` | Upload preview of a synthetic X/Yo/Yu percent table with decimal commas, opened over the **Glider** | 640 x 646 | 640 x 710 |
 | `export-dialog.png` | **Export** dialog, **Glider** | 640 x 548 | 640 x 594 |
-| `settings.png` | **Settings** tab, **Glider** | 600 x 730 | 600 x 730 |
+| `settings.png` | **Settings** tab, **Glider** | 650 x 730 | 650 x 730 |
 | `checks.png` | **Checks** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 | 680 x 730 |
 | `mobile-main.png` | Phone, **Sport** preset | 1082 x 2202 | 1082 x 2202 |
 | `mobile-planform.png` | Phone, **Planform**, **Sport**, end line on | 1082 x 2202 | 1082 x 2202 |
 | `foam-dialog.png` | Foam-cutting wizard, **Glider**, after **Split segments over the limit**, window 1280 x 1400 CSS px | 960 x 1344 | 960 x 1384 |
-| `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 966 | 960 x 1042 |
+| `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 966 | 960 x 1062 |
 
 ### Documentation check
 

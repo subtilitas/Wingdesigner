@@ -361,7 +361,7 @@ Dateinamen von Downloads (**Speichern** (Save), **Exportieren**, Profil-`.dat`) 
 
 ![Assistent mit dem Entwurfstyp Segelflugmodell: Entwurfstypen, 12 Eingaben einschließlich Flügelende, Grundrissvorschau und Kennwerte](images/de/wizard.png)
 
-Der Assistent erzeugt aus 12 Eingaben (Tabelle unten) ein vollständiges Projekt. Er erzeugt Schnitte, Profile, die Endleisteneinstellung, die Form des Flügelendes und bei elliptischem Grundriss beide Leitkurven. Alle Werte bleiben danach bearbeitbar.
+Der Assistent erzeugt aus 12 Eingaben (Tabelle unten) ein vollständiges Projekt. Er erzeugt Schnitte, Profile, die Endleisteneinstellung, die Form des Flügelendes und bei elliptischem Grundriss beide Leitkurven. Mit dem Grundriss **Felder (Tabelle)** (Panels (table)) ersetzt eine Feldtabelle 4 der Eingaben (siehe Felder unten). Alle Werte bleiben danach bearbeitbar.
 
 - Öffnet sich beim ersten Aufruf mit dem Titel „Neuen Flügelentwurf beginnen“ (Start a new wing design) und mit **Neu** (New) mit dem Titel „Neuer Flügelentwurf“ (New wing design).
 - Vorausgewählter Entwurfstyp: **Sportmodell** (Sport). Ein Klick auf die Karte eines Entwurfstyps lädt dessen Werte.
@@ -373,13 +373,13 @@ Der Assistent erzeugt aus 12 Eingaben (Tabelle unten) ein vollständiges Projekt
 | **Projektname** (Project name) | Text | Vorgabe: Name des Entwurfstyps. Leer: `Flügel <Spannweite> mm`. Beide entstehen in der aktuellen Sprache (Abschnitt [Sprache](#sprache)). |
 | **Spannweite (beide Hälften)** (Span (both halves)) | 100 bis 20 000 mm | Spannweite von Flügelende zu Flügelende, gemessen entlang y. Mit einer V-Form δ ist jede Hälfte entlang ihres Feldes Spannweite / 2 / cos δ lang: 436 mm bei 500 mm Spannweite und 55°. |
 | **Wurzeltiefe** (Root chord) | 10 bis 3000 mm | Profiltiefe bei y = 0 |
-| **Zuspitzung (Randtiefe / Wurzeltiefe)** (Taper (tip / root chord)) | 0,1 bis 1,5 | Randtiefe geteilt durch Wurzeltiefe. Elliptischer Grundriss mit flachem Flügelende: kleiner als 1. Elliptischer Grundriss mit spitzem Flügelende: nicht verwendet. |
-| **Pfeilung der 25-%-Linie** (Sweep of the 25 % line) | −45 bis 60° | Pfeilung der 25-%-Linie; positiv = nach hinten gepfeilt |
-| **V-Form je Hälfte** (Dihedral per half) | −60 bis 60° | z des Schnitts = y · tan(V-Form). Ein V-Leitwerk erhält den Winkel jeder Hälfte, z. B. 55°; ein umgekehrtes V-Leitwerk einen negativen Winkel. 60° ist das steilste erste Feld, das Schnittebenen **Auf Gehrung** bauen: Die senkrechte Wurzelebene streckt das Profil auf das 1 / cos 60° = 2-Fache (Abschnitt [Prüfungen](#prüfungen)). |
-| **Schränkung am Rand (negativ = Nase ab)** (Tip twist (negative = washout)) | −15 bis 15° | Schränkung ändert sich linear von 0° an der Wurzel bis zu diesem Wert am Rand |
-| **Anzahl der Schnitte** (Number of sections) | 2 bis 8, ganzzahlig | Schnitte gleichmäßig verteilt von Wurzel bis Rand |
-| **Grundriss** (Planform) | **Gerade zugespitzt** (Straight taper), **Elliptisch (mit Leitkurven)** (Elliptic (guide curves)) | Tiefenverlauf, siehe unten |
-| **Flügelende** (Tip) | **Flach** (Flat), **Spitz (Maßstab 1/200)** (Pointed (1/200 scale)) | Flach: Der Flügel endet am Randschnitt. Spitz: Profiltiefe des Randschnitts = 1/200 der Profiltiefe am vorletzten Schnitt, mindestens 1 mm. |
+| **Zuspitzung (Randtiefe / Wurzeltiefe)** (Taper (tip / root chord)) | 0,1 bis 1,5 | Randtiefe geteilt durch Wurzeltiefe. Elliptischer Grundriss mit flachem Flügelende: kleiner als 1. Elliptischer Grundriss mit spitzem Flügelende: nicht verwendet. Ausgeblendet bei **Felder (Tabelle)**. |
+| **Pfeilung der 25-%-Linie** (Sweep of the 25 % line) | −45 bis 60° | Pfeilung der 25-%-Linie; positiv = nach hinten gepfeilt. Ausgeblendet bei **Felder (Tabelle)**. |
+| **V-Form je Hälfte** (Dihedral per half) | −60 bis 60° | z des Schnitts = y · tan(V-Form). Ein V-Leitwerk erhält den Winkel jeder Hälfte, z. B. 55°; ein umgekehrtes V-Leitwerk einen negativen Winkel. 60° ist das steilste erste Feld, das Schnittebenen **Auf Gehrung** bauen: Die senkrechte Wurzelebene streckt das Profil auf das 1 / cos 60° = 2-Fache (Abschnitt [Prüfungen](#prüfungen)). Ausgeblendet bei **Felder (Tabelle)**. |
+| **Schränkung am Rand (negativ = Nase ab)** (Tip twist (negative = washout)) | −15 bis 15° | Schränkung ändert sich linear mit y von 0° an der Wurzel bis zu diesem Wert am Rand |
+| **Anzahl der Schnitte** (Number of sections) | 2 bis 8, ganzzahlig | Schnitte gleichmäßig verteilt von Wurzel bis Rand. Ausgeblendet bei **Felder (Tabelle)**. |
+| **Grundriss** (Planform) | **Gerade zugespitzt** (Straight taper), **Elliptisch (mit Leitkurven)** (Elliptic (guide curves)), **Felder (Tabelle)** (Panels (table)) | Tiefenverlauf, siehe unten; Felder: siehe Felder unten |
+| **Flügelende** (Tip) | **Flach** (Flat), **Spitz (Maßstab 1/200)** (Pointed (1/200 scale)), **Elliptisch (nur mit Feldern)** (Elliptic (panels only)) | Flach: Der Flügel endet am Randschnitt. Spitz: Profiltiefe des Randschnitts = 1/200 der Profiltiefe am vorletzten Schnitt, mindestens 1 mm. Elliptisch: Das letzte Feld endet in einer Viertelellipse; nur mit dem Grundriss **Felder (Tabelle)**. |
 | **Wurzelprofil (NACA)** (Root airfoil (NACA)) | NACA-Bezeichnung | Profil aller Schnitte außer dem Randschnitt |
 | **Randprofil (NACA)** (Tip airfoil (NACA)) | NACA-Bezeichnung | Profil des Randschnitts |
 
@@ -398,19 +398,53 @@ Erzeugte Werte:
 
 | Wert | Regel |
 | --- | --- |
-| x der Profilnase | 0,25 · c_root + y · tan(Pfeilung) − 0,25 · c(η); die 25-%-Punkte liegen auf der Pfeilungslinie |
+| x der Profilnase | **Gerade zugespitzt** und **Elliptisch**: 0,25 · c_root + y · tan(Pfeilung) − 0,25 · c(η); die 25-%-Punkte liegen auf der Pfeilungslinie. **Felder (Tabelle)**: siehe Felder unten. |
 | Rundung | 0,01 mm, 0,01° |
 | Endleiste | **Feste Dicke in mm** (Fixed thickness in mm): 0,2 % der Wurzeltiefe, mindestens 0,3 mm |
-| Flügelende | **Einstellungen** (Settings) > **Flügelende** (Wing tip) = Eingabefeld **Flügelende**; Maßstab des Randprofils 1 : 200 |
+| Flügelende | **Einstellungen** (Settings) > **Flügelende** (Wing tip) = **Flach** beim Flügelende **Flach**, **Spitz** bei den Flügelenden **Spitz (Maßstab 1/200)** und **Elliptisch (nur mit Feldern)**; Maßstab des Randprofils 1 : 200 |
+
+Felder: Mit **Grundriss** = **Felder (Tabelle)** gibt eine Tabelle die halbe Spannweite als 1 bis 24 Felder von der Wurzel zum Rand an. **Zuspitzung (Randtiefe / Wurzeltiefe)**, **Pfeilung der 25-%-Linie**, **V-Form je Hälfte** und **Anzahl der Schnitte** sind dann ausgeblendet und werden nicht verwendet; sie behalten ihre Werte für einen Wechsel zurück zu einem anderen Grundriss.
+
+| Spalte | Bereich | Wirkung |
+| --- | --- | --- |
+| **Feld** (Panel) | 1 bis 24 | Nummer des Felds, von der Wurzel an gezählt |
+| **Anteil an der Spannweite (%)** (Span share (%)) | 0,1 bis 10 000 % | Anteil des Felds an der halben Spannweite. Die Anteile werden so umgerechnet, dass sie zusammen die halbe Spannweite füllen: 2 Felder mit je 100 % erhalten je 50 %. |
+| **Pfeilung der Nasenleiste (°)** (Leading-edge sweep (deg)) | −89,9 bis 89,9° | Pfeilung der Nasenleiste entlang des Felds; positiv = nach hinten gepfeilt |
+| **Äußere Profiltiefe (% der Wurzeltiefe)** (Outer chord (% of root)) | 0 bis 300 % | Profiltiefe am äußeren Ende des Felds, in % der **Wurzeltiefe** |
+| **V-Form (°)** (Dihedral (deg)) | −60 bis 60° | V-Form des Felds |
+| × | Schaltfläche | Entfernt das Feld (Name „Feld n entfernen“ (Remove panel n)). Gesperrt bei 1 Feld. |
+
+- **Feld hinzufügen** (Add panel) hängt eine Kopie des letzten Felds an. Gesperrt bei 24 Feldern.
+- Der Hinweis unter der Tabelle nennt die Summe der Anteile, z. B. „Die Anteile ergeben 200,0 %; sie werden auf die halbe Spannweite umgerechnet.“
+- Wechselt **Grundriss** auf **Felder (Tabelle)** und hat der Entwurf noch keine Feldliste, beginnt die Tabelle mit einem Feld je Abschnitt zwischen den Schnitten des bisherigen Grundrisses (**Anzahl der Schnitte** − 1 Felder, gleiche Anteile). Jedes Feld endet an der Nasenleiste dieses Schnitts mit seiner Profiltiefe: Pfeilung der Nasenleiste und äußere Profiltiefe ungerundet (die Tabelle zeigt bis zu 6 Nachkommastellen), V-Form = **V-Form je Hälfte**. Ein gerader Grundriss behält seine Schnitte und ein spitzes Flügelende seine Profiltiefe (1/200 des Schnitts davor); ein elliptischer Grundriss wird zum Polygon durch seine Schnitte, ohne Leitkurven. **Sportmodell**: 1 Feld, 2,29061°, 60 %, 1,5°. **Segelflugmodell** (3 Schnitte): 2 Felder, äußere Profiltiefen 89,477651 % und 45 %. Ein Feld ohne Zahl beim Wechsel (etwa eine leere **Zuspitzung**) nimmt den Wert des gewählten Entwurfstyps. Entwurfstypen mit Feldern und eine zuvor im Dialog bearbeitete Feldliste behalten ihre Felder.
+
+Schnitte des Grundrisses **Felder (Tabelle)** (b = halbe Spannweite; s_i = Anteil des Felds i geteilt durch die Summe der Anteile):
+
+| Wert | Regel |
+| --- | --- |
+| Wurzelschnitt | Profilnase bei x = 0, y = 0, z = 0; Profiltiefe c_root |
+| Schnitt am äußeren Ende von Feld i | Δy = s_i · b; y = y_prev + Δy; x der Profilnase = x_prev + Δy · tan(Pfeilung der Nasenleiste); z = z_prev + Δy · tan(V-Form); Profiltiefe = äußere Profiltiefe · c_root |
+| Schränkung | Schränkung am Rand · y / b |
+| Profile | Randprofil am Randschnitt; Wurzelprofil an allen anderen Schnitten |
+| Flügelende **Spitz (Maßstab 1/200)** | Profiltiefe des Randschnitts = max(c_prev / 200, 1 mm), c_prev = Profiltiefe des Schnitts davor; der Randschnitt behält seinen 25-%-Punkt. |
+| Flügelende **Elliptisch (nur mit Feldern)** | Das letzte Feld endet in einer Viertelellipse aus 6 Schnitten bei t = sin(π k / 12), k = 1 … 6 (t = 1 bei k = 6): y = y_in + t · Δy; Profiltiefe c(t) = c_in · √(1 − t²); die 25-%-Punkte liegen auf der Geraden vom 25-%-Punkt des inneren Schnitts (y_in, x_in, z_in, Profiltiefe c_in) mit der Pfeilung der Nasenleiste des Felds: x = x_in + 0,25 · c_in + t · Δy · tan(Pfeilung der Nasenleiste) − 0,25 · c(t); z = z_in + t · Δy · tan(V-Form). Die äußere Profiltiefe des letzten Felds wird nicht verwendet. Der Randschnitt erhält max(c_prev / 200, 1 mm) wie bei **Spitz**. Beispiel: **Sportmodell** als 1 Feld mit diesem Flügelende: 7 Schnitte, der Schnitt vor dem Rand 62,1 mm, der Rand 1 mm (die Untergrenze). |
 
 Die Vorschau zeigt den Grundriss beider Hälften. Die Zeile darunter nennt Fläche (dm²), Streckung, mittlere aerodynamische Flügeltiefe (MAC) mit ihrer Spannweitenposition und Randtiefe, z. B. `Fläche 33,7 dm², Streckung 11,86, mittlere aerodynamische Flügeltiefe 174,2 mm bei y = 451 mm, Randtiefe 90,0 mm.`
 
 Bei einer der folgenden Bedingungen wird die Zeile rot und nennt die Probleme; **Entwurf anlegen** (Create design) ist dann gesperrt:
 
 - Ein Wert liegt außerhalb seines Bereichs (Spalte Bereich), oder sein Feld ist leer oder enthält keine Zahl (Abschnitt [Zahlen](#zahlen)).
-- **Anzahl der Schnitte** ist nicht ganzzahlig.
+- **Anzahl der Schnitte** ist nicht ganzzahlig (nicht bei **Felder (Tabelle)**).
 - Wurzel- oder Randprofil ist keine gültige NACA-Bezeichnung.
 - **Elliptisch** mit Flügelende **Flach** hat eine Zuspitzung ≥ 1 (`Ein elliptischer Grundriss braucht eine Zuspitzung < 1.`).
+- Das Flügelende ist **Elliptisch (nur mit Feldern)** und der Grundriss nicht **Felder (Tabelle)** (`Ein elliptisches Flügelende braucht den Grundriss Felder.`).
+- Die Feldliste hat weniger als 1 oder mehr als 24 Felder (`Der Grundriss Felder braucht 1 bis 24 Felder.`).
+- Ein Wert eines Felds liegt außerhalb seines Bereichs, z. B. `Feld 2: Pfeilung der Nasenleiste muss zwischen -89,9 und 89,9 liegen.` Die Meldung nennt `Anteil an der Spannweite`, `Pfeilung der Nasenleiste`, `äußere Profiltiefe` oder `V-Form`; Anteil an der Spannweite und äußere Profiltiefe erscheinen als Verhältnis: 0,001 bis 100 und 0 bis 3.
+- Ein Feld überspannt nach dem Umrechnen der Anteile weniger als 1 mm der halben Spannweite (`Feld 1 überspannt 0,0005 mm der halben Spannweite; ein Feld braucht mindestens 1 mm.`);
+- Ein Schnitt liegt außerhalb von ±1 000 000 mm in x oder z, ein spitzes oder elliptisches Flügelende nach seiner Verschiebung auf den Viertelpunkt, z. B. 20 000 mm Spannweite mit einem Feld, 89,9° gepfeilt (`Feld 1 endet bei x = 5.729.572 mm, z = 0 mm, außerhalb von ±1.000.000 mm.`);
+- Ein elliptisches Flügelende beginnt mit weniger als 1 mm / cos 75° = 3,8637 mm Profiltiefe: sein letzter innerer Schnitt behält cos 75° = 0,259 davon, unter dem Minimum von 1 mm; die Meldung rundet die Grenze auf (`Feld 2: das elliptische Flügelende braucht an seinem Anfang mindestens 3,87 mm Profiltiefe.`);
+- Die äußere Profiltiefe eines Felds liegt unter 1 mm (`Feld 1: die äußere Profiltiefe liegt unter 1 mm.`), an jedem Feldende außer dem letzten bei den Flügelenden **Spitz (Maßstab 1/200)** und **Elliptisch (nur mit Feldern)**.
+- Ein im Code erzeugtes Projekt (`wizardProject`) hat einen anderen Wert für Grundriss oder Flügelende (`Grundriss muss "straight", "elliptic" oder "panels" sein.`, `Flügelende muss "flat", "pointed" oder "elliptic" sein.`).
 - Der Flügel hat einen Aufbaufehler (Abschnitt [Prüfungen](#prüfungen)). Beispiel: Entwurfstyp **Leitwerk** mit 100 mm Spannweite, 8 Schnitten und 55° V-Form je Hälfte. Die Schnittebene der senkrechten Wurzel und die des nächsten Schnitts, 7,1 mm weiter außen in y, drehen sich schneller, als die Profile erlauben, sodass sich die Fläche faltet. Eine größere Spannweite, weniger Schnitte oder weniger V-Form bauen; ab 200 mm Spannweite baut dieser Entwurfstyp mit 2 bis 8 Schnitten bis 60°.
 
 | Entwurfstyp | Spannweite mm | Wurzeltiefe mm | Zuspitzung | Pfeilung ° | V-Form ° | Schränkung Rand ° | Schnitte | Grundriss | Flügelende | Wurzel- / Randprofil |
@@ -418,9 +452,37 @@ Bei einer der folgenden Bedingungen wird die Zeile rot und nennt die Probleme; *
 | **Trainer** | 1400 | 250 | 1 | 0 | 3 | 0 | 2 | gerade | flach | 2412 / 2412 |
 | **Sportmodell** | 1200 | 240 | 0,6 | 0 | 1,5 | −1 | 2 | gerade | flach | 2412 / 2410 |
 | **Segelflugmodell** | 2000 | 200 | 0,45 | 0 | 4 | −1,5 | 3 | elliptisch | flach | 2410 / 2408 |
+| **Hochleistungssegler** (Sailplane) | 3000 | 210 | (0,5) | (0) | (2) | −2 | (4) | Felder | elliptisch | 2410 / 2408 |
+| **Delta-Jet** (Delta jet) | 900 | 800 | (0,2) | (45) | (0) | 0 | (2) | Felder | flach | 0008 / 0006 |
+| **Doppeldelta** (Double delta) | 1000 | 1000 | (0,24) | (45) | (0) | 0 | (3) | Felder | flach | 0008 / 0006 |
+| **Batwing** | 1000 | 363 | (0,5) | (0) | (0) | 0 | (2) | Felder | spitz | 0010 / 0008 |
 | **Pfeilnurflügel** (Swept flying wing) | 1200 | 280 | 0,45 | 25 | 0 | −4 | 3 | gerade | flach | 23112 / 0010 |
 | **Brettnurflügel** (Plank) | 1000 | 220 | 0,8 | 0 | 1 | 0 | 2 | gerade | flach | 23112 / 23112 |
 | **Leitwerk** (Tail surface) | 500 | 130 | 0,7 | 5 | 0 | 0 | 2 | gerade | flach | 0009 / 0009 |
+
+Werte in Klammern sind bei **Felder (Tabelle)** ausgeblendet; sie gelten nach einem Wechsel zu **Gerade zugespitzt** oder **Elliptisch (mit Leitkurven)**.
+
+Felder der Entwurfstypen **Hochleistungssegler** bis **Batwing** (V-Form 0°, wo nicht angegeben):
+
+| Entwurfstyp | Felder: Anteil an der Spannweite % / Pfeilung der Nasenleiste ° / äußere Profiltiefe % der Wurzeltiefe / V-Form ° |
+| --- | --- |
+| **Hochleistungssegler** | 45 / 0 / 95 / 2; 35 / 1,5 / 75 / 6; 20 / 4 / 50 / 10 |
+| **Delta-Jet** | 100 / 54,9 / 20 |
+| **Doppeldelta** | 30 / 70 / 58,8 (Strake); 70 / 45 / 23,8 (äußeres Delta) |
+| **Batwing** | 15 / 18,4 / 94,8; 10 / 32 / 87,9; 8 / 43,2 / 84,5; 7 / 28,2 / 89,7; 7 / −41,8 / 122,4; 4 / −61,9 / 160,3; 7 / −60,8 / 167,2; 8 / −59,8 / 174,1; 9 / 54,2 / 143,1; 10 / 58,4 / 101,7; 8 / 65,4 / 55,2; 7 / 69,5 / 0 |
+
+| Entwurfstyp | Erzeugte Schnitte | Fläche dm² | Streckung | MAC mm bei y mm | Randtiefe mm |
+| --- | --- | --- | --- | --- | --- |
+| **Hochleistungssegler** | 9 | 53,72 | 16,75 | 186,1 bei 677 | 1,0 |
+| **Delta-Jet** | 2 | 43,20 | 1,88 | 551,1 bei 175 | 160 |
+| **Doppeldelta** | 3 | 52,73 | 1,90 | 606,7 bei 196 | 238 |
+| **Batwing** | 13 | 39,81 | 2,51 | 448,5 bei 251 | 1,0 |
+
+- **Hochleistungssegler**: Mehrfach-V-Form 2°, 6° und 10°; das elliptische Flügelende beendet das letzte Feld in 6 Schnitten. Mit dem Flügelende **Flach** endet der Flügel an der äußeren Profiltiefe des letzten Felds: 105 mm.
+- **Delta-Jet**: Die Pfeilung der Nasenleiste atan((800 − 160) / 450) = 54,9° legt die Endleiste auf eine Gerade, auf 0,3 mm genau (Randschnitt: x der Profilnase 640,29 mm, Profiltiefe 160 mm).
+- **Doppeldelta**: Der Strake verschiebt die Nasenleiste auf 150 mm um 412,1 mm nach hinten; die Endleiste ist auf 0,12 mm genau gerade.
+- **Batwing**: 12 Felder, abgenommen von einer Draufsicht des Batwing aus dem Film von 1989. Die Nasenleiste hat eine Kerbe neben dem Rumpf und die vordere Spitze des Ohrs bei 66 % der halben Spannweite (y = 330 mm, x = −87,6 mm); die Endleiste hat eine konkave Ausbuchtung und die hintere Spitze bei 51 % (y = 255 mm, x der Endleiste = 625,7 mm); beide treffen sich im runden Randbogen. Keine Schränkung, keine V-Form; der Umriss ist ein Polygon aus geraden Feldern.
+- Keiner dieser 4 Entwurfstypen ist geflogen oder im Flug vermessen. Der **Batwing** hat symmetrische Profile ohne S-Schlag; seine Nickstabilität ist nicht ausgelegt.
 
 | Schaltfläche | Wirkung |
 | --- | --- |

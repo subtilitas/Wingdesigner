@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../src/i18n/index.js';
-import { PRESETS, chordAt, wizardProblems, wizardProject } from '../src/model/wizard.js';
+import { ELLIPTIC_TIP_SECTIONS, MAX_PANELS, PRESETS, chordAt, panelsFromParams, wizardProblems, wizardProject } from '../src/model/wizard.js';
 import { buildWing } from '../src/geom/wing.js';
 import { wingStats } from '../src/geom/stats.js';
 import { LIMITS, airfoilPoints, createProject, limitErrors, validateProject } from '../src/model/project.js';
@@ -408,7 +408,7 @@ describe('wizard tips', () => {
     // Elliptic chord with a pointed tip reaches zero at the tip before scaling.
     expect(chordAt(params, 1)).toBe(0);
     expect(wizardProblems({ ...params, taper: 1 })).toEqual([]);
-    expect(wizardProblems({ ...params, tip: 'round' })).toContain('tip must be "flat" or "pointed".');
+    expect(wizardProblems({ ...params, tip: 'round' })).toContain('tip must be "flat", "pointed" or "elliptic".');
   });
 
   it('puts the quarter chord of a pointed elliptic tip on the sweep line', () => {
@@ -620,8 +620,8 @@ describe('wizard in German', () => {
       'span must be between 100 and 20000.',
       'taper must be between 0.1 and 1.5.',
       'sections must be an integer.',
-      'planform must be "straight" or "elliptic".',
-      'tip must be "flat" or "pointed".',
+      'planform must be "straight", "elliptic" or "panels".',
+      'tip must be "flat", "pointed" or "elliptic".',
       'rootAirfoil must be a NACA 4- or 5-digit designation.',
     ]);
     setLanguage('de');
@@ -629,8 +629,8 @@ describe('wizard in German', () => {
       'Spannweite muss zwischen 100 und 20.000 liegen.',
       'Zuspitzung muss zwischen 0,1 und 1,5 liegen.',
       'Anzahl der Schnitte muss eine ganze Zahl sein.',
-      'Grundriss muss "straight" oder "elliptic" sein.',
-      'Flügelende muss "flat" oder "pointed" sein.',
+      'Grundriss muss "straight", "elliptic" oder "panels" sein.',
+      'Flügelende muss "flat", "pointed" oder "elliptic" sein.',
       'Wurzelprofil muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern sein.',
     ]);
     expect(wizardProblems({ ...PRESETS.glider.params, taper: 1, washout: -20, tipAirfoil: '' })).toEqual([
@@ -783,5 +783,152 @@ describe('edit messages in German', () => {
     expect(insertProblem(beyond, 2)).toBe('A section beyond the tip would lie beyond y = 1000000 mm.');
     setLanguage('de');
     expect(insertProblem(beyond, 2)).toBe('Ein Schnitt weiter außen als der Randschnitt läge jenseits von y = 1.000.000 mm.');
+  });
+});
+
+describe('wizard panels', () => {
+  const at = (p, y) => p.sections.find((q) => Math.abs(q.y - y) < 1e-6);
+
+  it('places a section at the outer end of every panel, with the leading-edge sweep, chord and dihedral of the panel', () => {
+    const params = {
+      ...PRESETS.sport.params,
+      span: 1000,
+      rootChord: 200,
+      washout: -2,
+      planform: 'panels',
+      // Shares 2 : 3 of the 500 mm half span: 200 mm and 300 mm.
+      panels: [
+        { span: 2, sweep: 10, chord: 0.8, dihedral: 0 },
+        { span: 3, sweep: 30, chord: 0.5, dihedral: 5 },
+      ],
+    };
+    expect(wizardProblems(params)).toEqual([]);
+    const p = wizardProject(params);
+    expect(p.sections.map((q) => q.y)).toEqual([0, 200, 500]);
+    const tan = (d) => Math.tan((d * Math.PI) / 180);
+    expect(at(p, 200)).toMatchObject({ chord: 160, z: 0, twist: -0.8 });
+    expect(at(p, 200).x).toBeCloseTo(200 * tan(10), 2);
+    expect(at(p, 500).x).toBeCloseTo(200 * tan(10) + 300 * tan(30), 2);
+    expect(at(p, 500).z).toBeCloseTo(300 * tan(5), 2);
+    expect(at(p, 500)).toMatchObject({ chord: 100, twist: -2 });
+    expect(buildWing(p).errors).toEqual([]);
+  });
+
+  it('turns a straight or elliptic planform into one panel per section interval with the same sections', () => {
+    // Sections are rounded to 0.01 mm.
+    const same = (from) => {
+      const panel = { ...from, planform: 'panels', panels: panelsFromParams(from) };
+      const a = wizardProject(from).sections;
+      const b = wizardProject(panel).sections;
+      expect(b).toHaveLength(a.length);
+      b.forEach((q, i) => {
+        for (const k of ['y', 'chord', 'z', 'twist']) expect(q[k], `${k} ${i}`).toBeCloseTo(a[i][k], 2);
+        expect(Math.abs(q.x - a[i].x), `x ${i}`).toBeLessThanOrEqual(0.01 + 1e-9);
+      });
+    };
+    same({ ...PRESETS.sport.params, sweep: 12 });
+    // A 20,000 mm wing swept 59.97°: a sweep rounded to 0.001° would move the tip 0.36 mm.
+    same({ ...PRESETS.sport.params, span: 20000, rootChord: 3000, taper: 0.5, sweep: 59.97 });
+    // A pointed tip keeps 1/200 of the section before it: 1000 mm root, taper 0.2, 3 sections: 3 mm.
+    const pointed = { ...PRESETS.sport.params, rootChord: 1000, taper: 0.2, sections: 3, tip: 'pointed' };
+    same(pointed);
+    expect(wizardProject({ ...pointed, planform: 'panels', panels: panelsFromParams(pointed) }).sections.at(-1).chord).toBe(3);
+    // An elliptic planform becomes the polygon through its sections (the guide curves are not kept).
+    same({ ...PRESETS.glider.params, sections: 5 });
+    same({ ...PRESETS.glider.params, sections: 4, tip: 'pointed' });
+    expect(panelsFromParams({ ...PRESETS.glider.params, sections: 5 })).toHaveLength(4);
+  });
+
+  it('ends an elliptic tip in a quarter ellipse about the straight 25 % line, pointed at the tip', () => {
+    const p = wizardProject(PRESETS.sailplane.params);
+    // 3 panels, the last replaced by the elliptic tip: root, 2 panel ends, ELLIPTIC_TIP_SECTIONS.
+    expect(p.sections).toHaveLength(3 + ELLIPTIC_TIP_SECTIONS);
+    expect(p.settings.tip.mode).toBe('pointed');
+    const inner = p.sections[2];
+    const tipSpan = 1500 - inner.y;
+    const xq = inner.x + 0.25 * inner.chord;
+    for (const q of p.sections.slice(3, -1)) {
+      const t = (q.y - inner.y) / tipSpan;
+      expect(q.chord).toBeCloseTo(inner.chord * Math.sqrt(1 - t * t), 1);
+      expect(q.x + 0.25 * q.chord).toBeCloseTo(xq + (q.y - inner.y) * Math.tan((4 * Math.PI) / 180), 1);
+    }
+    expect(p.sections.at(-1)).toMatchObject({ y: 1500, chord: 1 });
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(wingStats(b).aspectRatio).toBeCloseTo(16.75, 2);
+    // The flat tip ends at the outer chord of the last panel.
+    const flat = wizardProject({ ...PRESETS.sailplane.params, tip: 'flat' });
+    expect(flat.sections.at(-1)).toMatchObject({ y: 1500, chord: 105 });
+  });
+
+  it('builds the delta presets with a straight trailing edge', () => {
+    for (const key of ['deltaJet', 'doubleDelta']) {
+      const p = wizardProject(PRESETS[key].params);
+      const te = p.sections.map((q) => q.x + q.chord);
+      for (const x of te) expect(Math.abs(x - p.sections[0].chord), key).toBeLessThan(0.5);
+    }
+    const dd = wizardProject(PRESETS.doubleDelta.params).sections;
+    const angle = (a, b) => (Math.atan2(b.x - a.x, b.y - a.y) * 180) / Math.PI;
+    expect(angle(dd[0], dd[1])).toBeCloseTo(70, 1);
+    expect(angle(dd[1], dd[2])).toBeCloseTo(45, 1);
+  });
+
+  it('builds the batwing with its ears ahead and its spikes behind', () => {
+    const p = wizardProject(PRESETS.batwing.params);
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    // Ear: the leading edge farthest forward, at 66 % of the 500 mm half span; spike: the trailing edge
+    // farthest aft, at 51 %.
+    const ear = p.sections.reduce((m, q) => (q.x < m.x ? q : m));
+    const spike = p.sections.reduce((m, q) => (q.x + q.chord > m.x + m.chord ? q : m));
+    expect(ear.y).toBeCloseTo(330, 6);
+    expect(ear.x).toBeLessThan(-80);
+    expect(spike.y).toBeCloseTo(255, 6);
+    expect(spike.x + spike.chord).toBeGreaterThan(600);
+    expect(p.settings.tip.mode).toBe('pointed');
+  });
+
+  it('checks the panel list', () => {
+    const base = { ...PRESETS.deltaJet.params };
+    expect(wizardProblems({ ...base, panels: [] })).toEqual([`The planform Panels needs 1 to ${MAX_PANELS} panels.`]);
+    expect(wizardProblems({ ...base, panels: [{ span: 1, sweep: 95, chord: NaN, dihedral: 0 }] })).toEqual([
+      'Panel 1: leading-edge sweep must be between -89.9 and 89.9.',
+      'Panel 1: outer chord must be between 0 and 3.',
+    ]);
+    // A chord below 1 mm is allowed only at a pointed or elliptic tip.
+    expect(wizardProblems({ ...base, panels: [{ span: 1, sweep: 50, chord: 0, dihedral: 0 }] })).toEqual(['Panel 1: the outer chord is below 1 mm.']);
+    expect(wizardProblems({ ...base, tip: 'pointed', panels: [{ span: 1, sweep: 50, chord: 0, dihedral: 0 }] })).toEqual([]);
+    expect(wizardProblems({ ...PRESETS.sport.params, tip: 'elliptic' })).toEqual(['An elliptic tip needs the planform Panels.']);
+    // Shares 0.001 and 100 of a 100 mm span: the first panel spans 0.0005 mm, below the 0.01 mm rounding
+    // of two distinct sections and the 1 mm of a panel.
+    const tiny = { ...base, span: 100, panels: [{ span: 0.001, sweep: 0, chord: 1, dihedral: 0 }, { span: 100, sweep: 0, chord: 1, dihedral: 0 }] };
+    expect(wizardProblems(tiny)).toEqual(['Panel 1 spans 0.0005 mm of the half span; a panel needs at least 1 mm.']);
+    // An elliptic tip that begins at 1 mm (100 mm root, 1 %) would make sections down to 0.26 mm.
+    const thin = { ...base, rootChord: 100, tip: 'elliptic', panels: [{ span: 1, sweep: 0, chord: 0.01, dihedral: 0 }, { span: 1, sweep: 0, chord: 0.5, dihedral: 0 }] };
+    expect(wizardProblems(thin)).toEqual(['Panel 2: the elliptic tip needs at least 3.87 mm of chord where it begins.']);
+    // The shown minimum passes: 3.87 % of 100 mm (the limit is 1 mm / cos 75° = 3.8637 mm).
+    thin.panels[0].chord = 0.0387;
+    expect(wizardProblems(thin)).toEqual([]);
+    expect(buildWing(wizardProject(thin)).errors).toEqual([]);
+    // 20,000 mm span, one panel at 89.9°: the tip lies at x = 5,729,572 mm.
+    const far = { ...base, span: 20000, panels: [{ span: 1, sweep: 89.9, chord: 0.2, dihedral: 0 }] };
+    expect(wizardProblems(far)).toEqual(['Panel 1 ends at x = 5729572 mm, z = 0 mm, beyond ±1000000 mm.']);
+    // A pointed tip moves to its quarter-chord point: 999,000 mm at the leading edge, 1,001,246 mm
+    // after the move by 0.25 · (9000 − 15) mm (outer chord 3 · 3000 mm, tip 1/200 of the 3000 mm root).
+    const sweep = (Math.atan(999000 / 10000) * 180) / Math.PI;
+    const edge = { ...base, span: 20000, rootChord: 3000, tip: 'pointed', panels: [{ span: 1, sweep, chord: 3, dihedral: 0 }] };
+    expect(wizardProblems(edge)).toEqual(['Panel 1 ends at x = 1001246 mm, z = 0 mm, beyond ±1000000 mm.']);
+    expect(wizardProblems({ ...edge, tip: 'flat' })).toEqual([]);
+    // The extreme straight planform converts to a sweep within the panel range and builds.
+    const extreme = { ...PRESETS.sport.params, span: 100, rootChord: 3000, taper: 0.1, sweep: 60, sections: 8 };
+    expect(buildWing(wizardProject(extreme)).errors).toEqual([]);
+    const converted = { ...extreme, planform: 'panels', panels: panelsFromParams(extreme) };
+    expect(wizardProblems(converted)).toEqual([]);
+    expect(Math.max(...converted.panels.map((q) => Math.abs(q.sweep)))).toBeGreaterThan(80);
+    // Taper, sweep, dihedral and sections are not used with panels.
+    expect(wizardProblems({ ...base, taper: 9, sweep: 99, dihedral: 99, sections: 0.5 })).toEqual([]);
+    setLanguage('de');
+    expect(wizardProblems({ ...base, panels: [{ span: 1, sweep: 95, chord: 0.2, dihedral: 0 }] })).toEqual(['Feld 1: Pfeilung der Nasenleiste muss zwischen -89,9 und 89,9 liegen.']);
+    setLanguage('en');
   });
 });

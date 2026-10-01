@@ -1,4 +1,5 @@
-// New-design wizard: presets, input validation, planform/tip options, skip, New and Cancel.
+// New-design wizard: presets, input validation, planform/tip options, the panel table, skip, New and
+// Cancel.
 import { chordCell, chordNote, createFromWizard, dialogOf, expect, openFirstRun, openTab, pickPreset, saveProject, sectionRows, sectionValues, statusFigures, statusOf, test, toastOf } from './helpers.js';
 
 // Preset parameters as defined in src/model/wizard.js (PRESETS).
@@ -75,6 +76,103 @@ test.describe('new-design wizard', () => {
       await expect(statusOf(page)).toHaveText(fig.text);
     });
   }
+
+  // Panel presets: panels in the table, sections of the created design (an elliptic tip adds 6).
+  const PANEL_PRESETS = [
+    { label: 'Sailplane', span: 3000, rootChord: 210, panels: 3, sections: 9, tip: 'elliptic' },
+    { label: 'Delta jet', span: 900, rootChord: 800, panels: 1, sections: 2, tip: 'flat' },
+    { label: 'Double delta', span: 1000, rootChord: 1000, panels: 2, sections: 3, tip: 'flat' },
+    { label: 'Batwing', span: 1000, rootChord: 363, panels: 12, sections: 13, tip: 'pointed' },
+  ];
+  for (const preset of PANEL_PRESETS) {
+    test(`panel preset "${preset.label}" lists its panels and creates a section at every panel end`, async ({ page }) => {
+      const wizard = await openFirstRun(page);
+      await pickPreset(wizard, preset.label);
+      await expect(wizard.getByRole('combobox', { name: 'Planform', exact: true })).toHaveValue('panels');
+      await expect(wizard.getByRole('combobox', { name: 'Tip', exact: true })).toHaveValue(preset.tip);
+      // The panel table replaces taper, sweep, dihedral and number of sections.
+      await expect(wizard.getByLabel('Taper (tip / root chord)')).toHaveCount(0);
+      await expect(wizard.getByLabel('Number of sections')).toHaveCount(0);
+      const table = wizard.getByRole('table', { name: 'Panels from root to tip' });
+      await expect(table.locator('tbody tr')).toHaveCount(preset.panels);
+      await expect(wizard.getByText('Shares sum to 100.0 %; they are scaled to the half span.')).toBeVisible();
+      const preview = await summaryFigures(wizard);
+      await createFromWizard(page);
+      const fig = await statusFigures(page, preset.span, { clean: true });
+      expect(Math.abs(fig.area - preview.area)).toBeLessThanOrEqual(0.051);
+      expect(fig.arText).toBe(preview.arText);
+      await expect(sectionRows(page)).toHaveCount(preset.sections);
+      expect(await numberValue(chordCell(page, 0).locator('input'))).toBe(preset.rootChord);
+    });
+  }
+
+  test('panels: a straight planform becomes one panel; edits, Add and Remove change the preview and the sections', async ({ page }) => {
+    const wizard = await openFirstRun(page);
+    await pickPreset(wizard, 'Sport');
+    await wizard.getByRole('combobox', { name: 'Planform', exact: true }).selectOption('panels');
+    const rows = wizard.getByRole('table', { name: 'Panels from root to tip' }).locator('tbody tr');
+    await expect(rows).toHaveCount(1);
+    // Sport: taper 0.6 and no sweep of the 25 % line: the leading edge runs 0.25 · 96 mm = 24 mm aft
+    // over 600 mm, 2.29061° (the table shows up to 6 decimals); the outer chord 60 %, the dihedral 1.5°.
+    await expect(wizard.getByLabel('Panel 1: Leading-edge sweep (deg)')).toHaveValue('2.29061');
+    await expect(wizard.getByLabel('Panel 1: Outer chord (% of root)')).toHaveValue('60');
+    await expect(wizard.getByLabel('Panel 1: Dihedral (deg)')).toHaveValue('1.5');
+    expect((await summaryFigures(wizard)).tipChord).toBe(144);
+
+    await wizard.getByLabel('Panel 1: Outer chord (% of root)').fill('50');
+    expect((await summaryFigures(wizard)).tipChord).toBe(120);
+    await wizard.getByRole('button', { name: 'Add panel' }).click();
+    await expect(rows).toHaveCount(2);
+    await expect(wizard.getByText('Shares sum to 200.0 %; they are scaled to the half span.')).toBeVisible();
+    await wizard.getByLabel('Panel 2: Outer chord (% of root)').fill('20');
+    expect((await summaryFigures(wizard)).tipChord).toBe(48);
+    // An outer chord below 1 mm stops Create unless the tip ends in a point.
+    await wizard.getByLabel('Panel 1: Outer chord (% of root)').fill('0');
+    await expect(summaryOf(wizard)).toHaveText('Panel 1: the outer chord is below 1 mm.');
+    await expect(wizard.getByRole('button', { name: 'Create design' })).toBeDisabled();
+    await wizard.getByRole('button', { name: 'Remove panel 1' }).click();
+    await expect(rows).toHaveCount(1);
+    await expect(wizard.getByRole('button', { name: 'Remove panel 1' })).toBeDisabled();
+    expect((await summaryFigures(wizard)).tipChord).toBe(48);
+    await createFromWizard(page);
+    await expect(sectionRows(page)).toHaveCount(2);
+  });
+
+  test('panels: an elliptic planform becomes one panel per section interval with its elliptic chords', async ({ page }) => {
+    const wizard = await openFirstRun(page);
+    await pickPreset(wizard, 'Glider');
+    await wizard.getByRole('combobox', { name: 'Planform', exact: true }).selectOption('panels');
+    // 3 sections: 2 panels. The middle section has the elliptic chord 200 mm · sqrt(1 − (1 − 0.45²) · 0.5²)
+    // = 178.96 mm, 89.477651 % of the root (the straight law would give 72.5 %).
+    await expect(wizard.getByRole('table', { name: 'Panels from root to tip' }).locator('tbody tr')).toHaveCount(2);
+    await expect(wizard.getByLabel('Panel 1: Outer chord (% of root)')).toHaveValue('89.477651');
+    await expect(wizard.getByLabel('Panel 2: Outer chord (% of root)')).toHaveValue('45');
+  });
+
+  test('panels: a source field without a number takes the preset value in the conversion', async ({ page }) => {
+    const wizard = await openFirstRun(page);
+    await pickPreset(wizard, 'Sport');
+    await wizard.getByLabel('Taper (tip / root chord)').fill('');
+    await wizard.getByRole('combobox', { name: 'Planform', exact: true }).selectOption('panels');
+    // The hidden Taper field held no number: the panel takes the Sport taper 0.6.
+    await expect(wizard.getByLabel('Panel 1: Outer chord (% of root)')).toHaveValue('60');
+    await expect(wizard.getByLabel('Panel 1: Leading-edge sweep (deg)')).toHaveValue('2.29061');
+    await expect(wizard.getByRole('button', { name: 'Create design' })).toBeEnabled();
+  });
+
+  test('an elliptic tip needs the planform Panels', async ({ page }) => {
+    const wizard = await openFirstRun(page);
+    await pickPreset(wizard, 'Sport');
+    await wizard.getByRole('combobox', { name: 'Tip', exact: true }).selectOption('elliptic');
+    await expect(summaryOf(wizard)).toHaveText('An elliptic tip needs the planform Panels.');
+    await expect(wizard.getByRole('button', { name: 'Create design' })).toBeDisabled();
+    await wizard.getByRole('combobox', { name: 'Planform', exact: true }).selectOption('panels');
+    // The one panel ends in a quarter ellipse; the section before the tip (t = sin 75°) has
+    // 240 mm · sqrt(1 − 0.966²) = 62.1 mm, 1/200 of it is 0.31 mm: the tip takes the 1 mm floor.
+    expect((await summaryFigures(wizard)).tipChord).toBe(1);
+    await createFromWizard(page);
+    await expect(sectionRows(page)).toHaveCount(7);
+  });
 
   const INVALID = [
     // Status expected for the corrected Sport design (span * (root + tip) / 2, MAC of a trapezoid).

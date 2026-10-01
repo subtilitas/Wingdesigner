@@ -342,7 +342,7 @@ Beispiel: Entwurfstyp **Pfeilnurflügel** (Swept flying wing) mit 3 Schnitten, *
 keine zusätzliche Station.
 
 Spitze elliptische Flügelenden: Im Assistenten stehen **Grundriss** (Planform) auf **Elliptisch (mit Leitkurven)** (Elliptic (guide curves)) und **Flügelende** (Tip) auf
-**Spitz (Maßstab 1/200)** (Pointed (1/200 scale)). Jeder Entwurfstyp ergibt 5 bis 9 zusätzliche Stationen. Größte Abweichung an den
+**Spitz (Maßstab 1/200)** (Pointed (1/200 scale)). Jeder der 6 Entwurfstypen mit geradem oder elliptischem Grundriss (Trainer, Sportmodell, Segelflugmodell, Pfeilnurflügel, Brettnurflügel, Leitwerk) ergibt 5 bis 9 zusätzliche Stationen. Größte Abweichung an den
 Prüfpositionen: 0,077 mm (**Leitwerk** (Tail surface)) bis 0,371 mm (**Pfeilnurflügel**), unter der
 Toleranz; keine Warnung. Nasenlinie und Endlinie enden ein Viertel und drei Viertel der Randtiefe um
 die Pfeillinie, sodass der Randschnitt seinen Viertelpunkt auf dieser Linie behält. Innerhalb von
@@ -1049,5 +1049,5 @@ Abweichung = max über s und u des Abstands von R_s(u) zu W_s     (mm)
   oder mehr über der Grenze wird in der Mitte (in y) geteilt, und die ganze Menge wird neu berechnet;
   das wiederholt sich, bis kein solches Segment übrig ist oder 200 Segmente erreicht sind. Ein Segment
   unter 10 mm wird nicht geteilt.
-- Zeit in Node.js 24 auf einem Server-Prozessor mit 2,1 GHz: 5 bis 19 ms für den Vorschlag der 6 Entwurfstypen
+- Zeit in Node.js 24 auf einem Server-Prozessor mit 2,1 GHz: 5 bis 19 ms für den Vorschlag der 6 Entwurfstypen mit geradem oder elliptischem Grundriss
   des Assistenten, etwa 1 s für 200 Segmente des **Segelflugmodells**.
