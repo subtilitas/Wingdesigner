@@ -441,6 +441,21 @@ test.describe('project upgrade', () => {
     expect([saved.version, saved.foldedTilt]).toEqual([3, undefined]);
     await openTab(page, 'Settings');
     await expect(page.getByRole('spinbutton', { name: /^Part tilt/ })).toHaveValue('3');
+
+    // The same version 2 project restored from browser storage next to the marker of a full storage:
+    // the start message names both, as an error.
+    await page.evaluate(
+      ([key, text]) => {
+        localStorage.setItem(key, text);
+        localStorage.setItem(`${key}.stale`, '2026-09-29 12:00 UTC');
+      },
+      [STORAGE_KEY, JSON.stringify(old)],
+    );
+    await page.reload();
+    await expect(toastOf(page)).toHaveText(
+      'This is the project as last saved; autosave stopped at 2026-09-29 12:00 UTC because browser storage was full, and later edits were not saved. The tilt angle of 3° that the XFLR5 import folded into the sections is a rigid tilt of the whole part (Settings > Part tilt); the sections hold the values of the untilted part.',
+    );
+    await expect(toastOf(page)).toHaveClass(/error/);
   });
 });
 

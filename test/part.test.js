@@ -168,6 +168,8 @@ describe('build and exports of a placed part', () => {
     expect(flat.x25).toBeCloseTo(flat.macXLE + 0.25 * flat.mac, 12);
     // A roll lifts the tip: the span in the plane axes is shorter.
     expect(wingStats(buildWing(placed({ partRoll: 30 }))).span).toBeLessThan(flat.span);
+    // A roll of 180° turns the right tip to y < 0; the tips stay as far apart.
+    expect(wingStats(buildWing(placed({ partRoll: 180 }))).span).toBeCloseTo(flat.span, 9);
   });
 });
 
@@ -233,5 +235,15 @@ describe('upgrade of a folded tilt (project format version 2)', () => {
     expect(p.foldedTilt).toEqual({ angle: -3, x: 0, z: 0 });
     // A version 3 file is not upgraded, and a project without a folded tilt has nothing to do.
     expect(upgradeFoldedTilt(sampleProject())).toEqual([]);
+  });
+
+  it('drops part placement keys of version 1 and 2 files, as the apps of those versions do', () => {
+    for (const version of [1, 2]) {
+      const text = JSON.stringify({ ...projectToJson(sampleProject(), null), version, settings: { ...sampleProject().settings, partTilt: 5, partRoll: 'abc', partPivot: 7 } });
+      const r = projectFromJsonText(text);
+      expect(r.ok, `version ${version}`).toBe(true);
+      expect(r.project.settings).toMatchObject({ partTilt: 0, partRoll: 0, partPivot: null });
+      expect(r.notes).toEqual([]);
+    }
   });
 });

@@ -785,7 +785,7 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 | Row | Content |
 | --- | --- |
 | Error and warning list | Every wing error and warning, then the info lines, or `No errors or warnings.` Info lines do not count in the status bar. |
-| Span | 2 × tip y, in mm; for a tilted or rolled part 2 × y of the turned tip leading edge |
+| Span | 2 × tip y, in mm; for a tilted or rolled part 2 × |y| of the turned tip leading edge |
 | Wing area | both halves, in dm² |
 | Aspect ratio | span² / area |
 | Mean aerodynamic chord (MAC) | mm |

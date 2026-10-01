@@ -106,8 +106,9 @@ export function wingStats(build) {
     const tip = st[st.length - 1];
     tipY = part.point([tip.xLE, tip.y, tip.z])[1];
   }
-  // Full wing (both halves) regardless of the display setting "Show mirrored half".
-  const span = 2 * tipY;
+  // Full wing (both halves) regardless of the display setting "Show mirrored half". A roll beyond 90°
+  // turns the right tip to y < 0; the tips stay 2 |y| apart.
+  const span = 2 * Math.abs(tipY);
   const area = 2 * A;
   return {
     span,

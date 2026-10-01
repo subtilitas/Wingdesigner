@@ -725,6 +725,6 @@ window.addEventListener('keydown', (e) => {
 
 selectTab(activeTab);
 rebuild();
-if (loadProblem) message(loadProblem, true);
-else if (loadNotes.length) message(loadNotes.join(' '));
+// A restored project can carry both: the notice of an older save and the notes of its upgrade.
+if (loadProblem || loadNotes.length) message([loadProblem, ...loadNotes].filter(Boolean).join(' '), Boolean(loadProblem));
 if (!saved) newDesign(true);

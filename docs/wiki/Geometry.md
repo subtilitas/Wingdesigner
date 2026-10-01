@@ -820,7 +820,7 @@ b                  = 2 · Y of T(x_LE, y, z of the tip station)
 AR                 = b² / S
 ```
 
-- With a roll, b = 2 · ((y_tip − P_y) cos r − (z_tip − P_z) sin r + P_y): a roll that lifts the tip shortens the span, e.g. 30° on the sample wing of the unit tests. A tilt keeps b (Y = y without a roll).
+- With a roll, b = 2 · |(y_tip − P_y) cos r − (z_tip − P_z) sin r + P_y|: a roll that lifts the tip shortens the span; beyond 90° the right tip lies at y < 0 and the tips stay 2 |y| apart; e.g. 30° on the sample wing of the unit tests. A tilt keeps b (Y = y without a roll).
 - **MAC position** shows y_MAC' and x_LE,MAC', **25 % MAC (geometric reference)** shows x_25'.
 
 | Planform between 2 neighbouring breakpoints | Quadrature |

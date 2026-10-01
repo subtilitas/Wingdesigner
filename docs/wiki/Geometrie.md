@@ -865,7 +865,7 @@ b                  = 2 · Y von T(x_LE, y, z der Randstation)
 AR                 = b² / S
 ```
 
-- Mit einem Rollwinkel gilt b = 2 · ((y_tip − P_y) cos r − (z_tip − P_z) sin r + P_y): Ein Rollwinkel, der den Rand hebt, verkürzt die Spannweite, z. B. 30° am Beispielflügel der Unit-Tests. Ein Einstellwinkel erhält b (Y = y ohne Rollwinkel).
+- Mit einem Rollwinkel gilt b = 2 · |(y_tip − P_y) cos r − (z_tip − P_z) sin r + P_y|: Ein Rollwinkel, der den Rand hebt, verkürzt die Spannweite; über 90° liegt der rechte Rand bei y < 0, und die Ränder bleiben 2 |y| auseinander; z. B. 30° am Beispielflügel der Unit-Tests. Ein Einstellwinkel erhält b (Y = y ohne Rollwinkel).
 - **Lage der MAC** zeigt y_MAC' und x_LE,MAC', **25 % MAC (geometrischer Bezugspunkt)** zeigt x_25'.
 
 | Grundriss zwischen 2 benachbarten Teilungspunkten | Quadratur |

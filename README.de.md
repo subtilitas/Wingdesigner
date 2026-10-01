@@ -221,7 +221,7 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md). Verifizierter Stand und offene
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 590 Unit-Tests (Vitest)
+npm test                 # 591 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern

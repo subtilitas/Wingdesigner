@@ -791,7 +791,7 @@ Die Registerkarte **Prüfungen** (Checks) trägt die Überschrift **Geometriepr�
 | Zeile | Inhalt |
 | --- | --- |
 | Liste der Fehler und Warnungen | Alle Fehler und Warnungen des Flügels, dann die Info-Zeilen, sonst `Keine Fehler oder Warnungen.` Info-Zeilen zählen in der Statusleiste nicht mit. |
-| **Spannweite** (Span) | 2 × y des Randschnitts, in mm; bei einem gedrehten Teil 2 × y der gedrehten Nasenleiste am Rand |
+| **Spannweite** (Span) | 2 × y des Randschnitts, in mm; bei einem gedrehten Teil 2 × |y| der gedrehten Nasenleiste am Rand |
 | **Flügelfläche** (Wing area) | beide Hälften, in dm² |
 | **Streckung** (Aspect ratio) | Spannweite² / Flügelfläche |
 | **Mittlere aerodynamische Flügeltiefe (MAC)** (Mean aerodynamic chord (MAC)) | mm |

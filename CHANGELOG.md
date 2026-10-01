@@ -41,7 +41,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 ### Changed
 
 - Project format version 3, for the part tilt and roll. Wingdesigner 0.3.0 and earlier refuse a version 3 file.
-  Version 1 and 2 files open with tilt and roll 0°.
+  Version 1 and 2 files open with tilt and roll 0°, except a version 2 file of an XFLR5 import with a folded tilt,
+  which gets that tilt as part tilt (see below).
 - XFLR5 import: the tilt angle of the wing becomes the part tilt about the wing origin instead of being folded into the
   sections, and tilted parts get **Mitred** section planes like untilted ones. On Fixture A (tilt 2°) the trailing
   edges lie within 0.001 mm of XFLR5's construction. Projects of earlier imports (format version 2 with a folded
