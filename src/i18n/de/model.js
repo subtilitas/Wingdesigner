@@ -92,6 +92,8 @@ export default {
   'settings.partPivot must be null or an object with the numbers x, y and z within ±{max} mm.': 'settings.partPivot muss null oder ein Objekt mit den Zahlen x, y und z innerhalb von ±{max} mm sein.',
   'The tilt angle of {angle}° of the XFLR5 import stays folded into the sections: a guide curve is on or edited, and guide curves hold x only.':
     'Der Einstellwinkel von {angle}° des XFLR5-Imports bleibt in die Schnitte eingerechnet: Eine Leitkurve ist eingeschaltet oder bearbeitet, und Leitkurven halten nur x.',
+  'The tilt angle of {angle}° of the XFLR5 import stays folded into the sections: without it a section would lie beyond ±{max} mm.':
+    'Der Einstellwinkel von {angle}° des XFLR5-Imports bleibt in die Schnitte eingerechnet: Ohne ihn läge ein Schnitt außerhalb von ±{max} mm.',
   'The tilt angle of {angle}° of the XFLR5 import stays folded into the sections: without it a twist would lie beyond ±{max}°.':
     'Der Einstellwinkel von {angle}° des XFLR5-Imports bleibt in die Schnitte eingerechnet: Ohne ihn läge eine Schränkung außerhalb von ±{max}°.',
   'The tilt angle of {angle}° that the XFLR5 import folded into the sections is a rigid tilt of the whole part (Settings > Part tilt); the sections hold the values of the untilted part.':

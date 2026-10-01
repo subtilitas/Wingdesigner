@@ -233,6 +233,17 @@ describe('upgrade of a folded tilt (project format version 2)', () => {
     p.foldedTilt = { angle: -3, x: 0, z: 0 };
     expect(upgradeFoldedTilt(p)).toEqual(['The tilt angle of -3° of the XFLR5 import stays folded into the sections: without it a twist would lie beyond ±360°.']);
     expect(p.foldedTilt).toEqual({ angle: -3, x: 0, z: 0 });
+    // Folded sections near the coordinate limit: x = z = 999,000 mm turned back by 45° give
+    // z = 1,412,800 mm, beyond ±1,000,000 mm. The file opens with its fold, as before.
+    const far = sampleProject();
+    far.sections.forEach((q) => Object.assign(q, { x: 999000, z: 999000 }));
+    far.guides = defaultGuides(far.sections);
+    far.foldedTilt = { angle: 45, x: 0, z: 0 };
+    const text = JSON.stringify({ ...projectToJson(far, null), version: 2 });
+    const r = projectFromJsonText(text);
+    expect(r.ok).toBe(true);
+    expect(r.notes).toEqual(['The tilt angle of 45° of the XFLR5 import stays folded into the sections: without it a section would lie beyond ±1000000 mm.']);
+    expect([r.project.foldedTilt, r.project.settings.partTilt]).toEqual([{ angle: 45, x: 0, z: 0 }, 0]);
     // A version 3 file is not upgraded, and a project without a folded tilt has nothing to do.
     expect(upgradeFoldedTilt(sampleProject())).toEqual([]);
   });

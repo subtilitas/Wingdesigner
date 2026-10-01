@@ -456,6 +456,11 @@ test.describe('project upgrade', () => {
       'This is the project as last saved; autosave stopped at 2026-09-29 12:00 UTC because browser storage was full, and later edits were not saved. The tilt angle of 3° that the XFLR5 import folded into the sections is a rigid tilt of the whole part (Settings > Part tilt); the sections hold the values of the untilted part.',
     );
     await expect(toastOf(page)).toHaveClass(/error/);
+    // The upgraded restore is saved at once: the next start reads version 3 and repeats no note.
+    await expect.poll(async () => (await savedProject(page))?.version).toBe(3);
+    await page.reload();
+    await expect(page.getByRole('spinbutton', { name: /^Part tilt/ })).toHaveValue('3');
+    await expect(toastOf(page)).not.toContainText('folded into the sections');
   });
 });
 

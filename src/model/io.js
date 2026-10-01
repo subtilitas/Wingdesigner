@@ -4,7 +4,7 @@
 // and recomputes everything derived.
 
 import { defaultGuides } from '../geom/guide.js';
-import { fixed, plain, tr } from '../i18n/index.js';
+import { fixed, plain, tr, whole } from '../i18n/index.js';
 import { syncGuidesToSpan } from './edit.js';
 import { FORMAT, LIMITS, SOURCE_KEYS, VERSION, resolveSettings, validateProject } from './project.js';
 
@@ -199,15 +199,23 @@ export function upgradeFoldedTilt(project) {
   const tip = sorted[sorted.length - 1];
   // The chord the build uses at the tip of a pointed wing: tip.ratio of the previous section, at least minChord.
   const tipChord = st.tip.mode === 'pointed' && sorted.length > 1 ? Math.max(st.tip.ratio * sorted[sorted.length - 2].chord, LIMITS.minChord) : null;
-  for (const q of project.sections) {
+  const unfolded = project.sections.map((q) => {
     const chord = q === tip && tipChord !== null ? tipChord : q.chord;
     const px = q.x + p * chord - tilt.x;
     const pz = q.z - tilt.z;
     // Inverse of the fold x' = x cos t + z sin t, z' = −x sin t + z cos t.
-    q.x = px * c - pz * s + tilt.x - p * chord;
-    q.z = px * s + pz * c + tilt.z;
-    q.twist -= tilt.angle;
+    return { x: px * c - pz * s + tilt.x - p * chord, z: px * s + pz * c + tilt.z };
+  });
+  // Folded sections near the coordinate limit can lie beyond it unfolded (x = z = 999,000 mm and 45°
+  // give z = 1,412,800 mm); the project then keeps its fold and opens as before.
+  if (unfolded.some((u) => Math.abs(u.x) > LIMITS.maxCoordinate || Math.abs(u.z) > LIMITS.maxCoordinate)) {
+    return [tr('The tilt angle of {angle}° of the XFLR5 import stays folded into the sections: without it a section would lie beyond ±{max} mm.', { angle, max: whole(LIMITS.maxCoordinate) })];
   }
+  project.sections.forEach((q, i) => {
+    q.x = unfolded[i].x;
+    q.z = unfolded[i].z;
+    q.twist -= tilt.angle;
+  });
   project.settings = { ...st, partTilt: tilt.angle, partRoll: 0, partPivot: { x: tilt.x, y: 0, z: tilt.z } };
   delete project.foldedTilt;
   const notes = [tr('The tilt angle of {angle}° that the XFLR5 import folded into the sections is a rigid tilt of the whole part (Settings > Part tilt); the sections hold the values of the untilted part.', { angle })];

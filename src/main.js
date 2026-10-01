@@ -727,4 +727,6 @@ selectTab(activeTab);
 rebuild();
 // A restored project can carry both: the notice of an older save and the notes of its upgrade.
 if (loadProblem || loadNotes.length) message([loadProblem, ...loadNotes].filter(Boolean).join(' '), Boolean(loadProblem));
+// An upgraded restore is saved at once: the next start reads the version 3 project and repeats no note.
+if (saved && loadNotes.length) save(store.project);
 if (!saved) newDesign(true);
