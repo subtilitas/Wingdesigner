@@ -9,10 +9,10 @@ how the owner works with contributors, and what the repository does not hold.
 
 | Item | State on 2026-10-01 |
 | --- | --- |
-| Version | `package.json` holds 0.4.0; the tag `v0.4.0` is not pushed yet. Released: `v0.1.0` on 9faa12b, `v0.2.0` on 3b9a67c and `v0.3.0` on 6580092 (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | 0.4.0 (owner decision, 2026-10-01): `CHANGELOG.md` section 0.4.0 dated 2026-10-01; the owner pushes the tag `v0.4.0` on the merge commit of the release pull request (Development, section Release). |
+| Version | `package.json` holds 0.4.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
+| Next release | Not prepared. The section Unreleased of `CHANGELOG.md` is empty. The steps: Development, section Release. |
 | Release texts | The notes of `v0.2.0` and `v0.3.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
-| `main` | Release 0.3.0 (6580092), the documentation pull requests #11 to #14, the foam-cutting wizard (#15, b8346e1), the rigid part placement (#16, b191975), the wizard panels and presets (#17, d454bd4) and the release pull request of 0.4.0. |
+| `main` | Release 0.4.0 (3dd88cd, pull request #18) and its record. |
 | Unit tests | 601 in 20 files (Vitest). |
 | Browser tests | 195 in 13 spec files, 390 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
 | Export validation | 13 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 11 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
@@ -78,7 +78,7 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
   review reply.
 - Pull requests (standing rule of the owner, 2026-10-01): the contributor opens a pull request for
   each change without asking first.
-- The owner pushes the release tags.
+- The owner pushes the release tags: the git proxy of the cloud session refuses a tag push (tried for `v0.4.0`, 2026-10-01). After the release pull request is merged, the contributor gives the owner the tag command of Development, section Release, with the merge commit.
 - Release texts (owner rule of 2026-10-01): `release.yml` publishes the `CHANGELOG.md` section of a
   version as its release notes, so `CHANGELOG.md` describes the app, its files and its user
   documentation only. The handover, `RECORD.md`, these agreements, continuous integration, tests,
