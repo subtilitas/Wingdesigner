@@ -37,17 +37,14 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
      flow5 builds and the drivers that wrote `test/fixtures/flow5/` are outside the repository (section
      "Not in the repository"). A reader update for a new flow5 format: the notes name every record and
      its format number; `test/fl5-writer.js` takes the format numbers as options.
-3. Question for the owner, not yet asked (`RECORD.md`, Open items): cambered NACA (National Advisory
-   Committee for Aeronautics) sections of the generator get an airfoil frame, although the answer to
-   Q9 reads "NACA and normalized airfoils do not move".
-4. Not measured or not tested, among the Open items of `RECORD.md`: smooth blending with rolled
+3. Not measured or not tested, among the Open items of `RECORD.md`: smooth blending with rolled
    section planes (not built), a rolled or turned STEP file in a CAD (computer-aided design) program
    other than OpenCascade, the 93 real XFLR5 surfaces against XFLR5's STL (stereolithography) with the
    rigid tilt, STL and 3MF float32 precision of rolled caps, how often the fold test fires on real
    wings, the file choosers of Android and iOS, the import dialog with a screen reader, build time and
    memory on phones. The app is tested in Chromium only; Firefox and Safari are not tested (README,
    Limitations).
-5. Known failures (`RECORD.md`, Open items):
+4. Known failures (`RECORD.md`, Open items):
    - The STEP file of `Final Design.xfl`, plane 1, main wing (S1223, closed cusped trailing edge)
      holds one solid that fails the BRepCheck of OpenCascade; with a trailing-edge thickness of 0.4 mm
      both solids are valid. The cause is not analysed. The file is not in the repository.
