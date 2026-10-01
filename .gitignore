@@ -8,3 +8,4 @@ playwright-report/
 __pycache__/
 .venv/
 step-check/
+foam-check/

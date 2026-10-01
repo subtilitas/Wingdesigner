@@ -72,6 +72,33 @@ jobs:
           path: step-check/
           retention-days: 14
 
+  foam:
+    name: Foam-cutting files (ezdxf, pypdf)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: pip-ezdxf-${{ runner.os }}-1.4.4-pypdf-6.19.0
+      - run: npm ci
+      - run: pip install ezdxf==1.4.4 pypdf==6.19.0
+      - run: npm run foam:cases
+      - run: python scripts/validate_foam.py foam-check/cases.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: foam-files
+          path: foam-check/
+          retention-days: 14
+
   e2e:
     name: Browser tests (Playwright)
     runs-on: ubuntu-latest
@@ -119,7 +146,7 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test, step, e2e, build]
+    needs: [test, step, foam, e2e, build]
     runs-on: ubuntu-latest
     permissions:
       pages: write
