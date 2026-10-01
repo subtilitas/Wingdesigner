@@ -71,6 +71,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/model/io.js` | Project JSON import and export; `upgradeFoldedTilt` (a folded tilt of a version 2 file becomes **Part tilt**) |
 | `src/model/edit.js` | Edit operations |
 | `src/model/wizard.js` | Wizard presets, parameter ranges (`RANGES`) and panel ranges (`PANEL_RANGES`, at most `MAX_PANELS` = 24 panels); `wizardProject` builds the sections of the straight, elliptic and panel planforms and the elliptic tip (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` turns the straight planform into 1 panel |
+| `src/model/winglet.js` | Integral winglet: `wingletSections` (blend arc in steps of at most `WINGLET_STEP` = 15°, then the straight part), `wingletProblems`, `addWinglet`, `defaultWinglet`, ranges `WINGLET_RANGES` |
 | `src/model/defaults.js` | Project on first load |
 | `src/ui/store.js` | Store with undo and redo |
 | `src/ui/viewer3d.js` | 3D view |
@@ -83,10 +84,11 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/ui/xflr5.js` | Import dialog for XFLR5 files: `openXflr5Dialog` |
 | `src/ui/exportui.js` | **Export** dialog |
 | `src/ui/foam.js` | Foam-cutting wizard: `foamDialog`; stored settings (`storedFoamSettings`, key `wingdesigner.foam`) |
+| `src/ui/winglet.js` | Winglet dialog of the **Sections** tab: `wingletDialog` |
 | `src/ui/dom.js` | DOM helpers |
 | `src/ui/styles.css` | Styles |
 | `src/i18n/index.js` | Language (`language`, `setLanguage`, `initialLanguage`), `tr()` and the number formats `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`; `index.js` merges them |
+| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`; `index.js` merges them |
 
 ### Scripts
 
@@ -286,8 +288,9 @@ To add a text:
 | `xflxml.js` | `src/import/xflxml.js` |
 | `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` and the texts of the XFLR5 import in `src/main.js` and `src/ui/airfoils.js`: title of **Open**, item in **Help**, count of further warnings, refusal of an XFLR5 file in the upload, `XFLR5: <file>` under an imported airfoil |
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` and the label and title of **Foam** in `src/main.js` |
+| `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` and the **Winglet…** button in `src/ui/sections.js` |
 
-`src/i18n/de/index.js` merges the ten files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 33 and 141 texts.
+`src/i18n/de/index.js` merges the eleven files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 33 and 141 texts.
 
 To add a language:
 
@@ -388,7 +391,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 601 tests in 20 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 607 tests in 21 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -434,7 +437,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-195 tests in 13 spec files, 390 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+197 tests in 14 spec files, 394 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 

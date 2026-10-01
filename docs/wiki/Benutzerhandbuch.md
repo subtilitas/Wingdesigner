@@ -543,6 +543,36 @@ Mit eingeschalteter Leitkurve verwendet der Flügel den Wert der Leitkurve statt
 
 Mit **Einstellungen** > **Flügelende** (Wing tip) = **Spitz** (Pointed) verwendet der Flügel die eingegebene Randtiefe nicht. Die Zelle **Tiefe** der Randzeile zeigt die verwendete Randtiefe mit 2 Nachkommastellen, z. B. `Randtiefe: 1,25`. `(min.)` folgt, wenn die Untergrenze von 1 mm greift, z. B. `Randtiefe: 1,00 (min.)`.
 
+### Winglet
+
+**Winglet …** unter der Tabelle öffnet einen Dialog, der außen am Randschnitt ein integriertes Winglet anfügt. Das Winglet besteht aus gewöhnlichen Schnitten: Die Bezugslinie (Nasenleisten in y und z) dreht sich entlang eines Kreisbogens auf die Neigung und führt dann gerade bis zur Wingletspitze. **Winglet anfügen** (Add winglet) fügt sie als ein Rückgängig-Schritt an.
+
+| Feld | Einheit | Schritt | Grenze | Vorgabe | Wirkung |
+| --- | --- | --- | --- | --- | --- |
+| Höhe entlang des Winglets | mm | 5 | 5 bis 100.000 | größter Wert aus 5 mm, 1/10 der Halbspannweite, Randtiefe | Länge der Bezugslinie vom Randschnitt bis zur Wingletspitze: Übergangsbogen plus gerades Stück |
+| Neigung | ° | 1 | −89 bis 89 | 75 | Winkel des geraden Stücks zur y-Achse; 0 = in der Flügelebene, positiv = nach oben, negativ = nach unten |
+| Übergangsradius | mm | 1 | 0 bis 100.000 | 0,3 × Randtiefe, mindestens 1 mm | Radius des Bogens in der y-z-Ebene; 0 ergibt einen Knick am Randschnitt |
+| Pfeilung der Nasenleiste | ° | 1 | −60 bis 80 | 30 | x wächst um tan(Pfeilung) je mm Bezugslinie |
+| Spitzentiefe | % der Randtiefe | 5 | 5 bis 200 | 60 | Profiltiefe der Wingletspitze; die Tiefe ändert sich linear entlang der Bezugslinie |
+| Anstellung | ° | 0,5 | −15 bis 15 | 0 | Zusätzliche Schränkung an der Wingletspitze, linear entlang der Bezugslinie; positiv = Nasenleiste nach oben |
+| Profil der Wingletspitze | – | – | Profile des Projekts | Profil des Randschnitts | Profil des Schnitts an der Wingletspitze; die Bogenschnitte behalten das Profil des Randschnitts |
+
+- Der Bogen beginnt tangential zum letzten Feld und dreht in Schritten von höchstens 15°; jeder Schritt endet in einem Schnitt. **Sport** mit den Vorgaben: 1,5° bis 75° in 5 Schritten, 6 Schnitte, Wingletspitze 117,7 mm über und 63,4 mm außerhalb des Randschnitts.
+- Ein Bogenschnitt, der in y weniger als 1 mm von seinem Nachbarn entfernt liegt, entfällt.
+- Die Vorschau zeigt die äußeren 60 % der Spannweite von vorn, das Winglet in der Akzentfarbe, und nennt die Zahl der Schnitte und die Lage der Wingletspitze. Ein Baufehler der Vorschau steht stattdessen dort und sperrt **Winglet anfügen**.
+
+**Winglet anfügen** ist gesperrt, mit dem Grund unter der Vorschau, wenn:
+
+- ein Feld außerhalb seiner Grenze liegt oder das Profil nicht im Projekt ist;
+- eine Leitkurve eingeschaltet ist (`Zuerst die Leitkurven ausschalten: …`);
+- **Einstellungen** > **Flügelende** = **Spitz** (`… Ein Winglet braucht ein flaches Flügelende.`);
+- **Einstellungen** > **Schnittebenen** nicht **Auf Gehrung** ist oder die **Interpolation in Spannweitenrichtung** **Glatt** ist;
+- der Übergangsbogen nicht kürzer als die Höhe ist (`Winglet: Der Übergangsbogen ist … mm lang, …`);
+- ein Wingletfeld in y weniger als 1 mm reicht (`Wingletfeld … reicht … mm in y, …`), so bei ±89° ohne Übergangsradius;
+- die Schnitte 20.000 überschreiten, eine Koordinate ±1.000.000 mm überschreitet, eine Profiltiefe 1 bis 100.000 mm verlässt oder eine Schränkung ±360° verlässt.
+
+Konstruktion: [[Geometrie|Geometrie]], Abschnitt 9.
+
 ## Grundriss
 
 ![Grundriss-Editor: Nasenlinie und Endlinie an (elliptischer Grundriss), Tabelle der Leitkurvenpunkte](images/de/planform.png)

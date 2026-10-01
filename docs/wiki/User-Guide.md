@@ -543,6 +543,36 @@ With a guide curve on, the wing uses the guide value instead of the typed one. T
 
 With **Settings** > **Wing tip** = Pointed, the wing does not use the typed tip chord. The Chord cell of the tip row shows the tip chord in use with 2 decimals, e.g. `tip: 1.25`. `(min.)` follows when the 1 mm floor applies, e.g. `tip: 1.00 (min.)`.
 
+### Winglet
+
+**Winglet…** below the table opens a dialog that appends an integral winglet beyond the tip section. The winglet is ordinary sections: the reference line (leading edges in y and z) turns along a circular blend arc to the cant angle, then runs on straight to the winglet tip. **Add winglet** adds them as one undo step.
+
+| Field | Unit | Step | Limit | Default | Effect |
+| --- | --- | --- | --- | --- | --- |
+| Height along the winglet | mm | 5 | 5 to 100,000 | largest of 5 mm, 1/10 of the half span, the tip chord | Length of the reference line from the tip section to the winglet tip: blend arc plus straight part |
+| Cant angle | ° | 1 | −89 to 89 | 75 | Angle of the straight part from the y axis; 0 = in the wing plane, positive = up, negative = down |
+| Blend radius | mm | 1 | 0 to 100,000 | 0.3 × tip chord, at least 1 mm | Radius of the arc in the y-z plane; 0 gives a kink at the tip section |
+| Leading-edge sweep | ° | 1 | −60 to 80 | 30 | x grows by tan(sweep) per mm of reference line |
+| Tip chord | % of the tip chord | 5 | 5 to 200 | 60 | Chord of the winglet tip; the chord changes linearly along the reference line |
+| Toe | ° | 0.5 | −15 to 15 | 0 | Twist added at the winglet tip, linear along the reference line; positive = leading edge up |
+| Winglet tip airfoil | – | – | project airfoils | airfoil of the tip section | Airfoil of the winglet tip section; the arc sections keep the airfoil of the tip section |
+
+- The arc starts tangent to the last panel and turns in steps of at most 15°, each step ending in a section. **Sport** with the defaults: 1.5° to 75° in 5 steps, 6 sections, winglet tip 117.7 mm above and 63.4 mm beyond the tip section.
+- An arc section less than 1 mm in y from its neighbour is left out.
+- The preview draws the outer 60 % of the span from the front, the winglet in the accent colour, and states the number of sections and the position of the winglet tip. A build error of the preview shows instead and disables **Add winglet**.
+
+**Add winglet** is disabled, with the reason below the preview, when:
+
+- a field lies outside its limit or the airfoil is not in the project;
+- a guide curve is on (`Switch the guide curves off first: …`);
+- **Settings** > **Wing tip** = Pointed (`… a winglet needs a flat tip.`);
+- **Settings** > **Section planes** is not Mitred or **Spanwise interpolation** is Smooth;
+- the blend arc is not shorter than the height (`Winglet: the blend arc is … mm long, …`);
+- a winglet panel spans less than 1 mm in y (`Winglet panel … spans … mm in y, …`), which happens near ±89° without a blend radius;
+- the sections would exceed 20,000, a coordinate ±1,000,000 mm, a chord would leave 1 to 100,000 mm, or a twist would leave ±360°.
+
+Construction: [[Geometry|Geometry]], section 9.
+
 ## Planform
 
 ![Planform editor: nose line and end line on (elliptic planform), guide point table](images/planform.png)
