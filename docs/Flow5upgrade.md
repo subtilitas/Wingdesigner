@@ -395,8 +395,8 @@ Measured on 2026-10-01:
   older layouts (line style of 7.12, airfoils without the bunching fields, parts below 500754, mesh
   planes 500001 and 500003), read with the values given to flow5.
 - Size: 1,464 added lines in `src/`, 1,018 in test code, 243 in the English documentation and 224 in the
-  German pages, plus 400,402 bytes of test files. Wall-clock: 2 h from the cloned flow5 sources
-  (20:55 UTC) to the pull request (22:55 UTC). The estimate of 9 to 12.5 h and 4,500 to 6,300 lines assumed a new mapping and dialog; the
+  German pages, plus 400,402 bytes of test files. Wall-clock: 1 h 40 min from the cloned flow5 sources
+  (20:55 UTC) to the pull request (22:35 UTC). The estimate of 9 to 12.5 h and 4,500 to 6,300 lines assumed a new mapping and dialog; the
   XFLR5 import's mapping and dialog took the flow5 wing list with few changes.
 
 ## 3. flow5 import
