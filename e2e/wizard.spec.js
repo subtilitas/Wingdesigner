@@ -113,8 +113,8 @@ test.describe('new-design wizard', () => {
     const rows = wizard.getByRole('table', { name: 'Panels from root to tip' }).locator('tbody tr');
     await expect(rows).toHaveCount(1);
     // Sport: taper 0.6 and no sweep of the 25 % line: the leading edge runs 0.25 · 96 mm = 24 mm aft
-    // over 600 mm, 2.291°; the outer chord 60 %, the dihedral 1.5°.
-    await expect(wizard.getByLabel('Panel 1: Leading-edge sweep (deg)')).toHaveValue('2.291');
+    // over 600 mm, 2.29061° (the table shows up to 6 decimals); the outer chord 60 %, the dihedral 1.5°.
+    await expect(wizard.getByLabel('Panel 1: Leading-edge sweep (deg)')).toHaveValue('2.29061');
     await expect(wizard.getByLabel('Panel 1: Outer chord (% of root)')).toHaveValue('60');
     await expect(wizard.getByLabel('Panel 1: Dihedral (deg)')).toHaveValue('1.5');
     expect((await summaryFigures(wizard)).tipChord).toBe(144);
@@ -143,9 +143,9 @@ test.describe('new-design wizard', () => {
     await pickPreset(wizard, 'Glider');
     await wizard.getByRole('combobox', { name: 'Planform', exact: true }).selectOption('panels');
     // 3 sections: 2 panels. The middle section has the elliptic chord 200 mm · sqrt(1 − (1 − 0.45²) · 0.5²)
-    // = 178.96 mm, 89.4777 % of the root (the straight law would give 72.5 %).
+    // = 178.96 mm, 89.477651 % of the root (the straight law would give 72.5 %).
     await expect(wizard.getByRole('table', { name: 'Panels from root to tip' }).locator('tbody tr')).toHaveCount(2);
-    await expect(wizard.getByLabel('Panel 1: Outer chord (% of root)')).toHaveValue('89.4777');
+    await expect(wizard.getByLabel('Panel 1: Outer chord (% of root)')).toHaveValue('89.477651');
     await expect(wizard.getByLabel('Panel 2: Outer chord (% of root)')).toHaveValue('45');
   });
 

@@ -280,8 +280,8 @@ export function wizardProblems(params) {
  * The straight or elliptic planform of `params` as panels: one per interval between its evenly spaced
  * sections, ending at the section's leading edge with its chord, at the dihedral of `params`. A
  * straight planform keeps its sections and a pointed tip its chord (1/200 of the section before);
- * an elliptic planform becomes the polygon through its sections. Sweep rounded to 0.001°, chord ratio
- * to 1e-6.
+ * an elliptic planform becomes the polygon through its sections. Sweep and chord ratio stay unrounded:
+ * on a 10,000 mm half span, a sweep rounded to 0.001° would move a section 0.36 mm at 60°.
  */
 export function panelsFromParams(params) {
   const n = Math.min(Math.max(Number.isInteger(params.sections) ? params.sections : 2, 2), MAX_PANELS + 1);
@@ -296,9 +296,9 @@ export function panelsFromParams(params) {
   for (let i = 1; i < n; i++) {
     const [a, q] = [at(i - 1), at(i)];
     out.push({
-      span: Math.round(1e6 / (n - 1)) / 1e6,
-      sweep: Math.round((Math.atan2(q.x - a.x, q.y - a.y) * 180000) / Math.PI) / 1000,
-      chord: Math.round((q.chord / c0) * 1e6) / 1e6,
+      span: 1 / (n - 1),
+      sweep: (Math.atan2(q.x - a.x, q.y - a.y) * 180) / Math.PI,
+      chord: q.chord / c0,
       dihedral: params.dihedral,
     });
   }

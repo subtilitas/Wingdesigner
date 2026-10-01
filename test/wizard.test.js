@@ -815,7 +815,7 @@ describe('wizard panels', () => {
   });
 
   it('turns a straight or elliptic planform into one panel per section interval with the same sections', () => {
-    // The sweep is rounded to 0.001°: at most 500 mm · tan 0.0005° = 0.004 mm per panel.
+    // Sections are rounded to 0.01 mm.
     const same = (from) => {
       const panel = { ...from, planform: 'panels', panels: panelsFromParams(from) };
       const a = wizardProject(from).sections;
@@ -823,10 +823,12 @@ describe('wizard panels', () => {
       expect(b).toHaveLength(a.length);
       b.forEach((q, i) => {
         for (const k of ['y', 'chord', 'z', 'twist']) expect(q[k], `${k} ${i}`).toBeCloseTo(a[i][k], 2);
-        expect(Math.abs(q.x - a[i].x), `x ${i}`).toBeLessThan(0.02);
+        expect(Math.abs(q.x - a[i].x), `x ${i}`).toBeLessThanOrEqual(0.01 + 1e-9);
       });
     };
     same({ ...PRESETS.sport.params, sweep: 12 });
+    // A 20,000 mm wing swept 59.97°: a sweep rounded to 0.001° would move the tip 0.36 mm.
+    same({ ...PRESETS.sport.params, span: 20000, rootChord: 3000, taper: 0.5, sweep: 59.97 });
     // A pointed tip keeps 1/200 of the section before it: 1000 mm root, taper 0.2, 3 sections: 3 mm.
     const pointed = { ...PRESETS.sport.params, rootChord: 1000, taper: 0.2, sections: 3, tip: 'pointed' };
     same(pointed);
