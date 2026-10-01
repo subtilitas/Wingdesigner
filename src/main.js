@@ -14,6 +14,7 @@ import { PlanformEditor } from './ui/planform.js';
 import { AirfoilsPanel } from './ui/airfoils.js';
 import { SettingsPanel } from './ui/settings.js';
 import { exportDialog } from './ui/exportui.js';
+import { foamDialog } from './ui/foam.js';
 import { openWizard } from './ui/wizard.js';
 import { openXflr5Dialog } from './ui/xflr5.js';
 import { readXfl, sniffXflr5 } from './import/xfl.js';
@@ -275,6 +276,11 @@ const header = h(
         { text: () => tr('Save'), title: () => tr('Save the project as JSON') },
       ),
       localized(h('button', { type: 'button', class: 'primary', onclick: () => exportDialog(store, currentBuild, VERSION, message) }), { text: () => tr('Export') }),
+      localized(h('button', { type: 'button', onclick: () => foamDialog(store, currentBuild, message) }), {
+        // A short label: the English top bar of eight buttons stays in one row on a phone from 356 px.
+        text: () => tr('Foam'),
+        title: () => tr('Foam cutting: plan foam cores for a hot-wire cutter with cuts, end profiles and 1:1 templates'),
+      }),
       undoBtn,
       redoBtn,
       localized(h('button', { type: 'button', onclick: () => helpDialog() }), { text: () => tr('Help') }),

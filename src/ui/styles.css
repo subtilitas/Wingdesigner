@@ -863,7 +863,27 @@ dialog.xflr5 .issues {
   }
 }
 
-/* Narrow phones (360 px): the seven top-bar buttons stay on one row and scroll sideways if needed. */
+/* Up to 460 px the eight top-bar buttons take 5 px of padding: the English row then stays in one row (at 8 px it
+   wraps from 421 to 457 px). */
+@media (max-width: 460px) {
+  .actions button {
+    padding: 2px 5px;
+  }
+}
+
+/* Up to 402 px the top-bar buttons take 3 px of padding and 2 px gaps: the English row of eight fits a phone
+   from 356 px (5 px of padding needs 402 px). */
+@media (max-width: 402px) {
+  .actions {
+    gap: 2px;
+  }
+
+  .actions button {
+    padding: 2px 3px;
+  }
+}
+
+/* Narrow phones (360 px): the top-bar buttons stay on one row and scroll sideways if needed. */
 @media (max-width: 420px) {
   .actions {
     flex-wrap: nowrap;
@@ -873,7 +893,6 @@ dialog.xflr5 .issues {
 
   .actions button {
     flex: none;
-    padding: 2px 6px;
   }
 
   /* The German top bar (Rückgängig, Wiederholen, Exportieren) is wider than the phone: it wraps to a second row
