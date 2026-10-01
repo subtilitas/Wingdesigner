@@ -38,6 +38,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   and 25 % MAC turn with the part, the span is measured to the turned tip, so a roll shortens it. Geometry, section
   on the part placement.
 
+- Wizard planform **Panels (table)**: the half span as 1 to 24 panels, each with span share, leading-edge sweep
+  (−80 to 80°), outer chord (0 to 300 % of the root chord) and dihedral (−60 to 60°); a section at every panel end.
+  Tip **Elliptic (panels only)**: the last panel ends in a quarter ellipse of 6 sections about its straight 25 % line,
+  pointed at the tip.
+- Wizard presets:
+  - **Sailplane**: 3000 mm span, polyhedral 2°, 6° and 10°, elliptic tip, aspect ratio 16.75.
+  - **Delta jet**: leading edge swept 54.9°, straight trailing edge, aspect ratio 1.88.
+  - **Double delta**: strake swept 70°, outer delta 45°, straight trailing edge, aspect ratio 1.90.
+  - **Batwing**: 12 panels after the planform of the Batwing of the 1989 film, ears ahead, scalloped trailing edge,
+    rear spikes, aspect ratio 2.51.
+
 ### Changed
 
 - Project format version 3, for the part tilt and roll. Wingdesigner 0.3.0 and earlier refuse a version 3 file.
