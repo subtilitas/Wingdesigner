@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tableLinkProblems, tableRows } from '../scripts/check-docs.mjs';
+import { changelogProblems, tableLinkProblems, tableRows } from '../scripts/check-docs.mjs';
 
 const lines = (...l) => l.join('\n');
 const split = (file, line) => `${file}:${line}: wiki link split by the | of a table cell; in tables a wiki link holds only the page title`;
@@ -57,5 +57,51 @@ describe('documentation check: wiki links in tables', () => {
 
   it('accepts page-title links in tables and piped links outside them', () => {
     expect(tableLinkProblems('| [[User Guide]] | a |\n| --- | --- |\n| [[Geometry]] | b |\n\nSee [[Geometry|Geometry]].', 'p.md')).toEqual([]);
+  });
+});
+
+describe('documentation check: release texts in the changelog', () => {
+  const names = (text) => changelogProblems(text, 'C.md').map((p) => p.replace(/;.*$/, ''));
+
+  it('reports contributor material in the version sections and skips the header', () => {
+    const text = lines(
+      '# Changelog', // 1
+      'Handover and RECORD in the header do not count.',
+      '',
+      '## [Unreleased]', // 4
+      '',
+      '## [1.0.0] - 2026-01-01',
+      '',
+      '### Added',
+      '- `docs/Handover.md` and RECORD.md: working agreements.', // 9
+      '- `npm run docs:check` in CI checks `scripts/check-docs.mjs`; 12 unit tests.', // 10
+      '- `FRAME_TOLERANCE` and `tr()` decide it.', // 11
+    );
+    expect(names(text)).toEqual([
+      'C.md:9: release text names the handover (Handover)',
+      'C.md:9: release text names RECORD.md (RECORD)',
+      'C.md:10: release text names an npm script (npm run)',
+      'C.md:10: release text names a path of the repository (scripts/)',
+      'C.md:10: release text names continuous integration (CI)',
+      'C.md:10: release text names tests or coverage (unit tests)',
+      'C.md:11: release text names a constant of the source code (`FRAME_TOLERANCE`)',
+      'C.md:11: release text names a function of the source code (`tr()`)',
+    ]);
+  });
+
+  it('finds a term broken over two lines once, on the line where it starts', () => {
+    expect(names(lines('## [1.0.0]', '- The check runs with npm', '  run and the browser', '  tests.'))).toEqual([
+      'C.md:2: release text names an npm script (npm run)',
+      'C.md:3: release text names tests or coverage (browser tests)',
+    ]);
+  });
+
+  it('accepts the app, its files and its user documentation', () => {
+    const text = lines(
+      '## [1.0.0] - 2026-01-01',
+      '- XFLR5 import: `foldedTilt` in the project JSON; `airfoils/NOTICE.md` in the app folder.',
+      '- Wiki: User Guide and File Formats; the airfoil check `te-crossed`; `LICENSES.txt` in the release zip.',
+    );
+    expect(changelogProblems(text)).toEqual([]);
   });
 });

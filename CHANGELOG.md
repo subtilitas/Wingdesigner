@@ -8,12 +8,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [0.3.0] - 2026-09-30
 
-### Added
-
-- `docs/Handover.md`: where the work stands, the next steps, the working agreements with the owner,
-  the checks before a push and what the repository does not hold. README, RECORD and Development
-  link to it.
-
 ### Changed
 
 - Wizard: **Dihedral per half** accepts −60 to 60° (−15 to 30° in 0.2.0), for V-tails and inverted
@@ -34,9 +28,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - XFLR5 import: every airfoil frame applies exactly. The leading edge of the fitted curve lies up
   to 1e-3 of the chord off the nose point of real files (32 of 64 airfoil entries); 0.2.0 dropped
   such offsets and put sections up to 0.30 mm off XFLR5's placement (NACA 4415, 391 mm chord).
-  Offsets up to 1e-9 of the chord count as round-off. `FRAME_TOLERANCE` (0.1 % of the chord) decides
-  only whether the report names the move. The report line says "scaled" only when its figures show a
-  chord other than 100 %. Against XFLR5's STL of 93 real surfaces, 19 lie closer (NACA 4415 0.094 mm
+  Offsets up to 1e-9 of the chord count as round-off. The import report names a move only above
+  0.1 % of the chord. The report line says "scaled" only when its figures show a chord other than
+  100 %. Against XFLR5's STL of 93 real surfaces, 19 lie closer (NACA 4415 0.094 mm
   instead of 0.325 mm, Clark YS 0.883 mm instead of 1.008 mm) and 32 lie 0.012 to 0.078 mm farther:
   the dropped offset had pointed against XFLR5's straight-segment sag or a construction difference
   (flat wings of `Wing Design and Analysis.xfl` 0.277 mm instead of 0.229 mm). 284 random parts:
@@ -77,11 +71,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   checkbox starts as it was at the last export (browser storage, key `wingdesigner.upAxis`); the
   project JSON keeps the axes of the app.
 - Info lines in the Checks tab, after errors and warnings.
-- `npm run counts:check` also checks the unit tests of one file where a page states them: a table
-  row with the path of a test file and a count or `<n> of <m>`, and the path followed by `(<n>)`.
-- `scripts/validate_step.py` checks that the edges of every planar face (the end caps) lie in the
-  plane within 1e-6 mm. `test/step-cases.js` adds a mitred 35° V-tail (also written with the Fusion
-  360 fix), a mitred 15°/−5° gull and a mitred airfoil switch with a stored panel angle: 12 cases.
 
 ### Changed
 
@@ -117,7 +106,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   window with the 650 px side panel, or a narrow window) then showed the wing smaller after a reload
   than after **New**. The status bar keeps the height of one line from the start.
 - Airfoil check: a crossing of the first and the last outline segment does not count when their free
-  ends lie at most 1e-4 of the chord apart (`TE_CROSS_TOLERANCE`, the limit of `te-crossed`). 19 UIUC
+  ends lie at most 1e-4 of the chord apart (the limit of the check `te-crossed`). 19 UIUC
   files that start at x = 1.00000 and end at x = 1.00001 (`sd7003.dat`, `sd8000.dat` and others)
   and the aerodesign.de copies of `s3021.dat` and `sd7080.dat` load; the main wing of the XFLR5
   project `Gertie.xfl` (airfoil SD8000-089-88) imports.
@@ -149,12 +138,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   row wraps instead of scrolling sideways. File contents, airfoil names, attributions, license
   identifiers and texts typed by the user are not translated. The English text is unchanged,
   with one exception: the `<noscript>` line of `index.html` names both languages, because JavaScript
-  cannot translate it. The browser tests run with the locale `en-US`; `e2e/language.spec.js` (16
-  tests) sets `de-DE` in its block `German browser`.
-- `npm run i18n:check` (in continuous integration, CI): exit code 1 when a text in `src/` has no
-  German entry, a German entry is unused, key and entry differ in their `{placeholders}`, two areas
-  translate one text differently, an entry is neither text nor function, or a `tr()` call does not
-  start with a string literal.
+  cannot translate it.
 - XFLR5 import: **Open** also takes an XFLR5 project (`.xfl`, XFLR5 6.10.01 to 6.62, project formats
   200001 and 200002) and an XFLR5 plane or wing file (`.xml`, Extensible Markup Language, XFLR5 6.11
   to 6.62), and imports one surface from it, the main wing or the horizontal stabilizer (XFLR5 calls
@@ -179,21 +163,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   are skipped. The
   **Airfoils** upload refuses XFLR5 files with a notice. The Airfoils tab shows `XFLR5: <file>`
   under an imported airfoil, the title of **Open** names the import, and Help lists it. German
-  texts: 199 new (areas `xfl`, `xflxml`, `xflr5`). Wiki: User Guide section Import from XFLR5, File
-  Formats section XFLR5 import, the screenshot `xflr5-import.png`. Tests: 145 unit tests in
-  `test/xflr5-xfl.test.js`, `test/xflr5-xml.test.js` and `test/xflr5-map.test.js`, 10 browser tests
-  in `e2e/xflr5.spec.js`.
+  texts: 199 new. Wiki: User Guide section Import from XFLR5, File Formats section XFLR5 import, the
+  screenshot `xflr5-import.png`.
 - Bundled airfoil library: Clark Y, USA 35B, NACA M-6 and NACA 8-H-12 from NACA report tables, RAF 34
   from a Royal Aircraft Establishment table reprinted by NACA, and S9104 (CC BY 4.0, Michael Selig).
-  `public/airfoils/NOTICE.md` gives source, legal basis, conditions and attribution per file; the
-  status outside the United States of the public-domain tables is not established.
-- Documentation in English and German: `README.md`, `README.de.md` and 10 wiki pages (User Guide,
-  Geometry, File Formats, Airfoil Sources, Development, each in both languages). The English pages
-  name the interface elements by their English labels and show English screenshots. The German wiki
-  pages name them by the German labels of the German interface, quote messages in German and show
-  German screenshots. `npm run screenshots` writes 26 images: 13 in `docs/wiki/images/` and 13 in
-  `docs/wiki/images/de/`. `npm run docs:check` (in CI) checks that every page has its counterpart,
-  that wiki links and images resolve, and that both README coverage tables are present.
+  `airfoils/NOTICE.md` in the app folder gives source, legal basis, conditions and attribution per
+  file; the status outside the United States of the public-domain tables is not established.
+- Documentation in English and German: `README.md`, `README.de.md` and the wiki pages User Guide,
+  Geometry, File Formats and Airfoil Sources, each in both languages. The English pages name the
+  interface elements by their English labels and show English screenshots. The German wiki pages
+  name them by the German labels of the German interface, quote messages in German and show German
+  screenshots: 26 screenshots, 13 of the English and 13 of the German interface.
 - Size warnings: above 200 sections, 200 airfoils, 5,000 points in one airfoil, 100,000 airfoil
   points, 500 points in an enabled guide curve, 60,000 loft grid points or 200-character names, one
   warning lists the sizes and the expected time and browser memory of each change; a toast shows it
@@ -205,17 +185,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   memory above 1,000,000 control points; above 3,000,000 **Download** is disabled (3.3 million wrote
   330 MB in 8.4 s, about 5.4 million exceed the 512 MB string limit of the browser).
 - `LICENSES.txt` in the build and the release zip: the license of the app and the license text of
-  every npm package whose code the bundle contains (three.js and fflate, both MIT), derived from the
-  bundle at build time; a bundled package without a license file stops the build. Help links to it.
+  every npm package whose code the bundle contains (three.js and fflate, both MIT). Help links to it.
 - The release zip runs without a web server: `index.html` opened from the file loads the app,
   the bundled airfoil library and the autosave (tested in Chromium 141). The release notes say how
   to use the zip and where the licenses are.
-- `npm run counts:check` (in CI): compares every test count in `README.md`, `README.de.md`,
-  `RECORD.md` and the Development and Geometry wiki pages (English and German) with the suites:
-  unit tests and files from Vitest, browser tests, spec files and runs from the Playwright listing,
-  tests that run on one device only from the report of the CI browser run, and the STEP and 3MF
-  validation cases from `test/step-cases.js`. Exit code 1 on a difference or a missing statement.
-  Playwright writes a JSON report to `playwright-report/results.json`.
 - NURBS core: B-spline basis functions, curve and surface evaluation, global interpolation,
   knot insertion and splitting.
 - Airfoil import for Selig, Lednicer, x/upper/lower tables, XML and HTML tables with sanity checks
@@ -229,8 +202,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - Wing tip modes: flat, or pointed with the tip profile scaled to 1/100 to 1/1000 of the previous
   section chord; wizard tip option.
 - Adaptive spanwise stations where the loft deviates more than 0.5 mm from the intended planform.
-- CI with unit tests, README coverage check, OpenCascade STEP validation, browser smoke test and
-  GitHub Pages deployment; wiki publishing; tagged releases.
+- The app on GitHub Pages, the user documentation in the GitHub wiki, and releases with a zip of
+  the app.
 
 ### Changed
 
@@ -281,7 +254,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   German, `1,500` in English), and show a decimal comma in German. The wizard reads its fields the
   same way; a field that holds no number disables **Create design**.
 - Wiki: links in table rows ([[Label|Page]]) split the table cell at the |; tables link with the page
-  title alone. `npm run docs:check` reports a | inside a wiki link in a table row.
+  title alone.
 - STEP faces of symmetric airfoils: the leading-edge split parameter snaps to an existing knot
   within 1e-10.
 - Airfoil import: Lednicer detection requires the upper surface to start at the leading edge;
@@ -416,7 +389,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   twice; the View preview of a project airfoil offers only Close; undo or redo after "Add point"
   clears the guide-point selection; on phones up to 420 px the top bar stays on one row and the
   Settings pane no longer scrolls sideways.
-- Tests: 121 Playwright tests on desktop and phone replace the single smoke test in CI.
 - Airfoil uploads above 8 MB and project files above 50 MB are rejected before they are read.
 - XML airfoils are read in one pass and reading stops one point past the 5000-point limit.
 - Dragging a leading edge with only the end line enabled evaluates the end line at the new span
@@ -425,8 +397,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   depend on the station count in smooth mode or with guide curves (up to 2 % before).
 - Project import: `guides.*.enabled` must be a boolean; a guide point between neighbours closer than
   1 mm keeps its span position when edited.
-- CI: runs on `main` queue instead of cancelling a running Pages deployment; 3MF files are validated
-  with lib3mf.
 - STEP export keeps knots closer than 1e-12 distinct (a section 1e-10 mm from the root wrote an end
   knot of multiplicity degree + 2); only knots within 4 units in the last place merge.
 - The 3D view draws at most 100,000 control-net segments: above that it keeps every k-th control

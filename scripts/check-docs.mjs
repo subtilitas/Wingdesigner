@@ -1,5 +1,6 @@
 // Documentation check: every English page has its German counterpart, wiki links resolve,
-// referenced images exist, and both READMEs carry the coverage markers.
+// referenced images exist, both READMEs carry the coverage markers, and the release texts in
+// CHANGELOG.md name no contributor material.
 // Usage: node scripts/check-docs.mjs
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -63,8 +64,47 @@ export function tableLinkProblems(text, file) {
   return problems;
 }
 
+/**
+ * Terms of contributor material that release texts leave out. `release.yml` publishes the
+ * `CHANGELOG.md` section of a version as its release notes; they describe the app, its files and
+ * its user documentation.
+ */
+export const INTERNAL_TERMS = [
+  [/handover/gi, 'the handover'],
+  [/\bRECORD\b/g, 'RECORD.md'],
+  [/\bnpm run\b|\bnpx\b/g, 'an npm script'],
+  [/(?<![\w/.-])(?:scripts|test|e2e|src|public|\.github)\//g, 'a path of the repository'],
+  [/\b(?:ci|docs|release)\.yml\b|\bCI\b|continuous integration/gi, 'continuous integration'],
+  [/\b(?:unit|browser) tests?\b|\bVitest\b|\bPlaywright\b|\.spec\.js\b|\bcoverage\b/gi, 'tests or coverage'],
+  [/\bDevelopment\b|\bEntwicklung\b/g, 'the Development page'],
+  [/`[A-Z][A-Z0-9]*_[A-Z0-9_]+`/g, 'a constant of the source code'],
+  [/`[A-Za-z_$][\w$.]*\(\)`/g, 'a function of the source code'],
+];
+
+/**
+ * Lines of the version sections of a changelog (from the first `## ` heading on) that name
+ * contributor material. Each line is read together with the next one, so a term broken over two
+ * lines is found and reported on the line where it starts.
+ */
+export function changelogProblems(text, file = 'CHANGELOG.md') {
+  const lines = text.split('\n');
+  const start = lines.findIndex((l) => l.startsWith('## '));
+  const problems = [];
+  if (start < 0) return problems;
+  for (let i = start; i < lines.length; i++) {
+    const joined = `${lines[i]} ${(lines[i + 1] ?? '').trim()}`;
+    for (const [pattern, what] of INTERNAL_TERMS) {
+      for (const m of joined.matchAll(pattern)) {
+        if (m.index < lines[i].length) problems.push(`${file}:${i + 1}: release text names ${what} (${m[0].trim()}); release notes describe the app, its files and its user documentation`);
+      }
+    }
+  }
+  return problems;
+}
+
 function main() {
   const problems = [];
+  if (existsSync('CHANGELOG.md')) problems.push(...changelogProblems(readFileSync('CHANGELOG.md', 'utf8')));
   for (const [en, de] of PAGE_PAIRS) {
     for (const f of [en, de]) if (!existsSync(f)) problems.push(`missing page ${f}`);
   }
@@ -100,7 +140,7 @@ function main() {
     console.error(problems.join('\n'));
     process.exit(1);
   }
-  console.log(`${files.length} documentation files checked.`);
+  console.log(`${files.length} documentation files and CHANGELOG.md checked.`);
 }
 
 // Runs the check unless Vitest imports the module for test/docs.test.js.

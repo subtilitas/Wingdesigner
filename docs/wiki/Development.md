@@ -379,7 +379,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 543 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 546 tests in 18 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -554,7 +554,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 
 ### Documentation check
 
-`npm run docs:check` checks `docs/wiki/*.md`, `README.md` and `README.de.md`:
+`npm run docs:check` checks `docs/wiki/*.md`, `README.md`, `README.de.md` and the version sections of `CHANGELOG.md`:
 
 | Check | Fails when |
 | --- | --- |
@@ -564,9 +564,10 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | Wiki links in tables | Pages as markdown-it 15 reads them (CommonMark with GitHub tables and HTML; fenced code, block quotes and the end of a table follow the Markdown rules): a table cell holds, outside code spans, an opening double square bracket without the closing one, because the `\|` of a labelled wiki link ended the cell; or a header and delimiter row form no table, because a `\|` in the header gave it more cells. In tables a wiki link holds only the page title, with spaces for the hyphens of the page name (`User Guide` links to `User-Guide`). |
 | Images | An embedded image file does not exist, or its alt text is empty |
 | Relative links | The target of a relative Markdown link does not exist |
+| Release texts | A line of `CHANGELOG.md` from the first `## ` heading on names contributor material (`INTERNAL_TERMS` in `scripts/check-docs.mjs`): the handover, `RECORD`, `npm run` or `npx`, a path under `scripts/`, `test/`, `e2e/`, `src/`, `public/` or `.github/`, a workflow file, `CI` or continuous integration, unit or browser tests, Vitest, Playwright, a `.spec.js` file, coverage, the Development or Entwicklung page, a constant (`UPPER_CASE` in backticks) or a function (`name()` in backticks) of the source code. Each line is read together with the next one, so a term broken over two lines is found. |
 
 Paths resolve against `docs/wiki/` for wiki pages and against the repository root for the READMEs.
-Not checked: language switch line, alt text language, link target language, link anchors (`#…`), external links (`http:`, `https:`, `mailto:`).
+Not checked: language switch line, alt text language, link target language, link anchors (`#…`), external links (`http:`, `https:`, `mailto:`), contributor material in other words than the listed terms.
 
 ### Test count check
 
@@ -636,7 +637,7 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 `<version>`: the version to release, e.g. `0.4.0`. `package.json` holds `0.3.0`.
 
 1. Set the version: `npm version <version> --no-git-tag-version` (updates `package.json` and `package-lock.json`).
-2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`.
+2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`. The section becomes the release notes: it describes the app, its files and its user documentation (README, User Guide, Geometry, File Formats, Airfoil Sources) and leaves out the handover, `RECORD.md`, the working agreements, continuous integration, tests, scripts, this page and the names of the source code. `npm run docs:check` reports the terms it knows (Documentation check).
 3. Commit and merge to `main`. Wait until `ci.yml` passes.
 4. Tag the merge commit of the release pull request `<number>` and push the tag. The tag names that commit, not the tip of `main`, which can hold later changes. The pull request page on GitHub shows the same commit.
 

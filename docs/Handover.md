@@ -11,8 +11,9 @@ how the owner works with contributors, and what the repository does not hold.
 | --- | --- |
 | Version | `package.json` holds 0.3.0. Released: `v0.1.0` on 9faa12b, `v0.2.0` on 3b9a67c and `v0.3.0` on 6580092 (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
 | Next release | Not prepared: the section Unreleased of `CHANGELOG.md` is empty. The steps: Development, section Release. |
+| Release texts | The notes of `v0.1.0`, `v0.2.0` and `v0.3.0` on GitHub hold contributor material that `CHANGELOG.md` no longer holds; the owner replaces them by hand (`RECORD.md`, Open items). |
 | `main` | Release 0.3.0 (6580092, the merge of pull request #10) and the record of that release in `RECORD.md`, on this page and in Development, section Release. |
-| Unit tests | 543 in 18 files (Vitest). |
+| Unit tests | 546 in 18 files (Vitest). |
 | Browser tests | 179 in 12 spec files, 358 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
 | Export validation | 12 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. |
 | Documentation | `README.md`, `README.de.md`, wiki pages in English and German in `docs/wiki/` (mirrored to the GitHub wiki by `docs.yml`), `RECORD.md`, `CHANGELOG.md`, `docs/Flow5upgrade.md`, this page. |
@@ -71,6 +72,11 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
   (`copilot-pull-request-reviewer`) can also review a commit; its findings count like those of Codex.
   Each finding is reproduced first, then fixed or answered on its thread.
 - The owner pushes the release tags.
+- Release texts (owner rule of 2026-10-01): `release.yml` publishes the `CHANGELOG.md` section of a
+  version as its release notes, so `CHANGELOG.md` describes the app, its files and its user
+  documentation only. The handover, `RECORD.md`, these agreements, continuous integration, tests,
+  scripts, the Development page and the names of the source code stay out; `npm run docs:check`
+  reports the terms it knows. Changes of that kind go into git and the pull request text only.
 - Commit messages and pull request texts state the change and its effect, in imperative mood. No link
   to a chat session goes into a commit, a pull request, a comment or any other text on GitHub. Claude
   Code appends such a link to pull request texts by default; check the text after creating the pull
@@ -103,9 +109,10 @@ npm run screenshots
   drift (`coverage:check`).
 - `npm run docs:check` checks that the 6 English–German page pairs exist, that both READMEs carry the
   coverage markers, and, in `docs/wiki/*.md` and both READMEs, that wiki links, relative links and
-  images resolve, that every image has alt text, and 2 table errors (Development, section
+  images resolve, that every image has alt text, 2 table errors, and that the version sections of
+  `CHANGELOG.md` name no contributor material from its list of terms (Development, section
   Documentation check). It does not compare the contents of the two languages and does not read this
-  page, `docs/Flow5upgrade.md`, `RECORD.md` or `CHANGELOG.md`.
+  page, `docs/Flow5upgrade.md` or `RECORD.md`.
 - `npm run i18n:check` checks that every interface text has a German translation (739 texts).
 - `npm run e2e` took 5.4 min for 358 runs in the cloud container.
 - `npm run screenshots` regenerates 26 images. An image that differs only by rendering noise is
