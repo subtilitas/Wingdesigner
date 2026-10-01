@@ -30,7 +30,7 @@ The interface speaks English or German (section [Language](#language)). This pag
 | Top bar button | Effect |
 | --- | --- |
 | **New** | Opens the wizard (section [Wizard](#wizard)). |
-| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Opens the import dialog for an XFLR5 file (extension `.xfl` or `.xml`; XML: Extensible Markup Language; section [Import from XFLR5](#import-from-xflr5)). The file chooser lists `.json`, `.xfl`, `.xml`, `.wpa` and `.fl5` files. Rejects JSON and XML files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` A file the browser cannot read (removed drive, revoked permission) shows `Cannot open <file>: the browser could not read the file (NotReadableError).` and keeps the current design. Rejects invalid JSON files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. |
+| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Opens the import dialog for an XFLR5 file (extension `.xfl` or `.xml`; XML: Extensible Markup Language; section [Import from XFLR5](#import-from-xflr5)). The file chooser lists `.json`, `.xfl`, `.xml`, `.wpa` and `.fl5` files. Rejects JSON and XML files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` A file the browser cannot read (removed drive, revoked permission) shows `Cannot open <file>: the browser could not read the file (NotReadableError).` and keeps the current design. Rejects invalid JSON files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. A project file of format version 2 whose tilt angle the XFLR5 import folded into the sections opens with that angle as **Part tilt**; the notice after `Opened <file>.` says so (section [Storage](#storage)). |
 | **Save** | Downloads the project JSON. Same file as **Export** > Project JSON. When the derived NURBS data would take the file above 100 MB, the file leaves it out (section [Export](#export)). A failure shows the red notice `Save failed: <reason>.` |
 | **Export** | Opens the export dialog (section [Export](#export)). |
 | **Foam** | Opens the foam-cutting wizard (section [Foam cutting](#foam-cutting)). |
@@ -156,10 +156,10 @@ The report lists every value that the import changes, converts or leaves out. Er
 | --- | --- | --- |
 | Error | An airfoil name without a usable airfoil. A wing that cannot be mapped: fewer than 2 sections, `y_position` decreasing, chord 0 or below, a value that is no number, values beyond the limits of a project. More airfoils than a project holds. | `Airfoil "E423" (sections 1–2) is missing: upload a .dat file or pick an airfoil.` |
 | Warning | A warning of the airfoil checks, once per airfoil in use. An airfoil found by a similar name. An airfoil that moves its sections by more than 2 % of the chord. A flap of an airfoil not at 0° (imported undeflected). A library airfoil with an inclined chord line. A panel with more than 10° dihedral in a part imported with **Vertical** section planes. Sections at one y, moved apart. A chord raised to 1 mm. Different airfoils left and right. An airfoil of the file that fails the check when another source is used. Airfoils of an `.xfl` that could not be read. Build warnings of the wing. Warnings of the XML reader. | `Airfoil "Clark Y" (sections 1–2) has its leading edge at x = 0 %, y = 3.55 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.` |
-| Info | What is converted or applied: dihedral, tilt angle, position, a root gap, whole turns of twist, length units, the section planes. An airfoil that moves its sections by at most 2 % of the chord. A flap at 0°. A library airfoil whose coordinates lie off (0, 0), also as an airfoil of the current project. An airfoil of the current project from an XFLR5 import or an upload. An unusable uploaded file that no row has picked. An inclined chord line of any other airfoil. Surfaces that are not imported. Data that is not used. The trailing edge. | `Tilt angle 2° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.` |
+| Info | What is converted or applied: dihedral, tilt angle, position, a root gap, whole turns of twist, length units, the section planes. An airfoil that moves its sections by at most 2 % of the chord. A flap at 0°. A library airfoil whose coordinates lie off (0, 0), also as an airfoil of the current project. An airfoil of the current project from an XFLR5 import or an upload. An unusable uploaded file that no row has picked. An inclined chord line of any other airfoil. Surfaces that are not imported. Data that is not used. The trailing edge. | `Tilt angle 2° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).` |
 
 - With two sections at one y XFLR5 changes the airfoil abruptly. Wingdesigner needs strictly increasing y: the inner section moves min(0.5 mm, ¼ of the inner panel) inwards, with the warning `Sections 3 and 4 share y = 250 mm; section 3 was moved 0.5 mm inwards.` With **Mitred** section planes both sections share the bisector plane of the panels around them, as in XFLR5.
-- A part imported with **Vertical** section planes (a tilted part, or one whose mitred planes would fold) gets for a panel with a dihedral above 10° `The panel from section 2 to 3 has 35° dihedral: the vertical sections are 82 % as thick across the panel as in XFLR5.` XFLR5 builds the sections in mitred planes, Wingdesigner then vertically: the thickness across the panel is cos(dihedral) of XFLR5's. With **Mitred** section planes the thickness is XFLR5's, and the warning does not appear.
+- A part imported with **Vertical** section planes (one whose mitred planes would fold the surface or stretch an airfoil more than 2 times) gets for a panel with a dihedral above 10° `The panel from section 2 to 3 has 35° dihedral: the vertical sections are 82 % as thick across the panel as in XFLR5.` XFLR5 builds the sections in mitred planes, Wingdesigner then vertically: the thickness across the panel is cos(dihedral) of XFLR5's. With **Mitred** section planes the thickness is XFLR5's, and the warning does not appear.
 - Every line with its condition, and the mapping of the values: [[File Formats|File-Formats]], section XFLR5 import.
 - The last info lines of every report: `Not used: VLM panel counts and distributions, colours, masses, the body and the analyses.` (VLM: vortex lattice method, one of the analysis methods of XFLR5) and `The trailing edge is built as in the airfoils; Settings > Trailing edge can close it or give it a thickness.`
 
@@ -173,7 +173,8 @@ The report lists every value that the import changes, converts or leaves out. Er
 | Airfoils | Every airfoil in use. Equal airfoils of several rows merge. An airfoil of an `.xfl` project shows `XFLR5: <file name>` under its name in the Airfoils tab, or its attribution, and the project file keeps a note with the origin, e.g. `Airfoil "Clark Y" from XFLR5 plane "Fixture A"; base shape without flap deflection.` Uploaded, library, NACA and current-project airfoils keep their own source. |
 | **Twist pivot (fraction of chord)** | 0.25, the point about which XFLR5 twists a section |
 | **Spanwise interpolation** | **Straight panels (straight lines between sections, as XFLR5)** |
-| **Section planes** | **Mitred (square to the panels, as XFLR5)**. **Vertical (y = const)** for a tilted part, which keeps its tilt angle exact, and where mitred planes would fold the surface or stretch an airfoil more than 2 times. The report says which and why: `Section planes: …` ([[File Formats]], section XFLR5 import, step 6). |
+| **Section planes** | **Mitred (square to the panels, as XFLR5)**, also for a tilted part. **Vertical (y = const)** where mitred planes would fold the surface or stretch an airfoil more than 2 times. The report says which and why: `Section planes: …` ([[File Formats]], section XFLR5 import, step 6). |
+| **Part tilt (°, positive = leading edge up)** | the tilt angle of the wing in the XFLR5 plane, reduced by whole turns to −180 to 180°; the part turns about the wing origin, as XFLR5 turns it. The sections hold the values of the untilted part, moved by the position of the wing in the plane. **Part roll (°, positive = right tip up)**: 0. |
 | **Trailing edge** | **As in the airfoil files** |
 | **Wing tip** | **Flat (cut at the tip section)** |
 | **Show mirrored half (y < 0)** | on |
@@ -215,6 +216,8 @@ The **Airfoils** tab refuses XFLR5 files as airfoils, with the red notice `<file
 - When the browser refuses the project (browsers keep about 5,000,000 characters per site), the red notice `Autosave is off: browser storage refused the project (… characters; browsers keep about 5,000,000 per site). Use Save to keep it.` shows once. The status bar shows `Autosave off: use Save` until an autosave succeeds again; then the notice `Autosave works again.` shows.
 - While autosave fails, the key `wingdesigner.project.v1.stale` holds the time of the first failure. The next visit restores the last stored project and shows `This is the project as last saved; autosave stopped at … because browser storage was full, and later edits were not saved.` When the restored project brings the `Large project` warning, both texts show in one notice in the error colour.
 - The undo history is not stored.
+- A stored project of format version 2 whose tilt angle the XFLR5 import folded into the sections is restored with that angle as **Part tilt** and the notice `The tilt angle of 3° that the XFLR5 import folded into the sections is a rigid tilt of the whole part (Settings > Part tilt); the sections hold the values of the untilted part.` **Open** of such a file adds the same text after `Opened <file>.`. With **Mitred** section planes the notice adds `With mitred section planes the shape changes: the folded tilt was exact for vertical planes only, the rigid tilt places the part as XFLR5 does.`
+- The fold stays when a guide curve is on or edited: `The tilt angle of 3° of the XFLR5 import stays folded into the sections: a guide curve is on or edited, and guide curves hold x only.` It also stays when a twist would lie beyond ±360° without it: `The tilt angle of 3° of the XFLR5 import stays folded into the sections: without it a twist would lie beyond ±360°.` Such a project keeps the warning of section [Checks](#checks) with **Mitred** section planes. Rules: [[File Formats|File-Formats]], section Project JSON, Upgrade of version 2 files.
 
 ## Language
 
@@ -695,6 +698,8 @@ The box **More airfoils (external, not bundled)** links to 3 collections. The ap
 | Geometry | **Wing tip** | **Flat (cut at the tip section)**, **Pointed (tip profile scaled down)** | Flat; wizard: its **Tip** field | Flat: the wing ends at the tip section. Pointed: see the list below. |
 | Geometry | **Tip profile scale 1 : N of the previous section chord** | N = 100 to 1000, step 50 | 200 | Shown only with **Pointed** |
 | Geometry | **Trailing-edge thickness (mm)** | ≥ 0, step 0.1 | wizard: 0.2 % of the root chord, at least 0.3; sample wing: 0.5; project file without the value: 0.4 | Shown only with **Fixed thickness in mm** |
+| Geometry | **Part tilt (°, positive = leading edge up)** | −180 to 180, step 0.5 | 0; XFLR5 import: the tilt angle of the wing | Rigid turn of the whole part about the y axis through the pivot. See the list below. |
+| Geometry | **Part roll (°, positive = right tip up)** | −180 to 180, step 0.5 | 0 | Rigid turn of the whole part about the x axis through the pivot, before the tilt. See the list below. |
 | Resolution | **Chordwise stations per surface** | 16 to 200, step 4 | 60 | Airfoil resampling: N stations give 2 · N + 1 points per outline (60 → 121) |
 | Resolution | **Spanwise stations per panel with guides, smooth mode or mitred linear panels** | 3 to 40 | 8 | Intervals per panel, cosine spacing; used only with a guide curve on, with Smooth, and in a **Linear** panel between mitred planes of different roll. Fewer intervals only above 5,000,000 loft grid points (section [Guide curves](#guide-curves)). |
 | Resolution | **Profile parametrization** | **Centripetal (recommended)**, **Chord length**, **Uniform** | Centripetal | Parameter spacing of the airfoil NURBS interpolation, in the wing build and in the airfoil preview |
@@ -734,6 +739,15 @@ Section planes:
 - The twist turns each section in its plane. Seen along x, a section rolled 35° with 2° twist meets the flow at 1.64°.
 - Computation: [[Geometry|Geometry]], section 3.8.
 
+Part tilt and part roll:
+
+- The part turns as a rigid body: first the roll about the x axis, then the tilt about the y axis, both through the pivot. A positive tilt raises the leading edge, a positive roll raises the right tip. The left half is the mirror image of the turned right half.
+- Below the two fields a line names the pivot. A project of the XFLR5 import turns about the wing origin: `The part turns as a rigid body about x = 650.0 mm, y = 0.0 mm, z = 40.0 mm, the wing origin of the import: first the roll about the x axis, then the tilt about the y axis.` Otherwise the pivot is the leading edge of the root section, here of the **Sport** preset: `The part turns as a rigid body about the leading edge of the root section (x = 0.0 mm, y = 0.0 mm, z = 0.0 mm): first the roll about the x axis, then the tilt about the y axis.`
+- Typed values beyond ±180° are set to −180° or 180°. Each change is one undo step.
+- Turned: the 3D view, STEP, STL and 3MF, and the positions in **Checks** (span, MAC position, 25 % MAC). In the frame of the part: the **Sections** table, the **Planform** tab, the foam-cutting wizard and the project file.
+- A turned part beyond ±1,200,000 mm is an error (section [Checks](#checks)).
+- Computation: [[Geometry|Geometry]], section 3.9.
+
 Pointed tip (**Wing tip** = Pointed):
 
 - Tip chord = max(c_prev / N, 1 mm). c_prev is the chord in use at the section before the tip.
@@ -771,12 +785,12 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 | Row | Content |
 | --- | --- |
 | Error and warning list | Every wing error and warning, then the info lines, or `No errors or warnings.` Info lines do not count in the status bar. |
-| Span | 2 × tip y, in mm |
+| Span | 2 × tip y, in mm; for a tilted or rolled part 2 × y of the turned tip leading edge |
 | Wing area | both halves, in dm² |
 | Aspect ratio | span² / area |
 | Mean aerodynamic chord (MAC) | mm |
-| MAC position | span position y of the MAC, and x of its leading edge |
-| 25 % MAC (geometric reference) | x of the point at 25 % of the MAC |
+| MAC position | span position y of the MAC, and x of its leading edge; for a tilted or rolled part both turned with the part |
+| 25 % MAC (geometric reference) | x of the point at 25 % of the MAC; for a tilted or rolled part turned with the part |
 | Root / tip chord | mm |
 | Surface | NURBS degree (chordwise × spanwise) and control point count |
 | Trailing edge | `closed` or `open` |
@@ -784,6 +798,7 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 - Area, MAC and MAC position: 5-point Gauss-Legendre quadrature of the intended planform (chord and leading edge over y) in each interval between neighbouring breakpoints: root, tip, sections and every knot and control point of a guide curve that is on. Exact for straight panels, and for **Smooth** with a flat tip and without guide curves.
 - With guide curves, quadrature error of the wing area against the midpoint rule with 200,000 intervals: −2.2 × 10⁻¹⁰ % (Glider preset), −2.1 × 10⁻⁹ % (Glider preset, pointed tip). Other values: [[Geometry|Geometry]].
 - Root section off y = 0: the gap between the halves counts to the span, not to the area.
+- A tilted or rolled part: wing area, MAC and root and tip chord in the frame of the part; span, MAC position and 25 % MAC in the axes of the plane, with the MAC leading edge turned at the height z of the stations. A roll that lifts the tip shortens the span.
 - The 25 % MAC point is a geometric reference. It is not a neutral-point or centre-of-gravity calculation.
 
 | Message | Severity | Condition |
@@ -819,7 +834,8 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 | Pointed tip: nose line and end line end … mm apart, so the tip chord is … mm instead of … mm; … | warning | pointed tip, both guide curves on, gap at the tip more than 0.5 mm wider than the scaled tip chord |
 | Trailing-edge thickness … mm exceeds 5 % of the chord at … station(s); it is limited to 5 % there. | warning | fixed thickness above 5 % of the local chord |
 | The trailing edge is closed on some stations and open on others; … station(s) were opened to 0.01 mm. | warning | not every station closed, and at least one station with a trailing-edge gap below 0.01 mm |
-| The tilt angle of …° of the XFLR5 import is folded into the section values, which is exact for vertical section planes only: with mitred planes the part lies up to about … mm off XFLR5's (0.75 · chord · sin(tilt angle) · sin(roll)). Settings > Section planes Vertical keeps the import exact. | warning | a tilted part of an XFLR5 import set to **Mitred**, with a section plane that is not vertical ([[File Formats]], section XFLR5 import) |
+| The tilt angle of …° of the XFLR5 import is folded into the section values, which is exact for vertical section planes only: with mitred planes the part lies up to about … mm off XFLR5's (0.75 · chord · sin(tilt angle) · sin(roll)). Settings > Section planes Vertical keeps the import exact. | warning | a project of format version 2 from the XFLR5 import whose tilt angle stays folded into the sections (a guide curve on or edited, or a twist beyond ±360° without it; section [Storage](#storage)), set to **Mitred**, with a section plane that is not vertical ([[File Formats]], section XFLR5 import) |
+| The tilted or rolled part reaches x = … mm, y = … mm, z = … mm, beyond ±1200000 mm; reduce the part tilt or roll, or move the part towards its pivot. | error | **Part tilt** or **Part roll** not 0, and a control point of the surface turned with the part lies beyond ±1,200,000 mm in x, y or z |
 | Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels. | info | **Smooth** with **Mitred** on a wing with dihedral |
 | Sections … and …: at y = … mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical. | error | **Mitred**, **Linear**: along a panel the planes turn with the roll; at y a point of the airfoil moves backwards across the plane of its station, e.g. a thick airfoil on a short panel between large dihedral changes. At a section both panels next to it are tested |
 | The loft deviates up to … mm from the intended surface at y = … mm after … added station(s); raise the spanwise stations per panel. | warning | deviation from the intended profile (leading edge, upper trailing-edge point, every k-th chord station per surface, k = **Chordwise stations per surface** / 6, rounded down: 5 at 60) above 0.5 mm (or 10 % of the local chord, if smaller) at a checked span position remains after the added stations (at most 32 in 6 rounds, 1 round above 60,000 loft grid points). The message gives the fit that the build keeps (the smallest largest deviation relative to the tolerance) and its added stations ([Guide curves](#guide-curves)). |
@@ -966,7 +982,8 @@ For STEP, the note gives the surface control points in the file and the file siz
 | 3MF | 2 objects: `Wing right`, `Wing left` | 1 object: `Wing` | 1 object: `Wing right` |
 | Project JSON | full project | full project | full project |
 
-- **Full wing** needs the root section at y = 0. Otherwise STL and 3MF write 2 bodies, as with **Both halves**.
+- **Full wing** needs the root section at y = 0 and **Part roll** 0°. Otherwise STL and 3MF write 2 bodies, as with **Both halves**: a rolled root leaves the plane y = 0.
+- STEP, STL and 3MF hold the part turned by **Part tilt** and **Part roll**; the project JSON holds the sections in the frame of the part.
 - STEP has no merged body: **Full wing** writes 2 solids.
 - Project JSON holds the full project. Without wing errors it also holds the derived NURBS data: airfoil curves, guide curves, spanwise stations and the wing surface.
 - When the derived NURBS data would take the file above 100 MB, the largest file **Open** reads, **Save** and Project JSON leave it out and show the notice `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.`

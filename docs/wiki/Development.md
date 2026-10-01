@@ -47,7 +47,8 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/geom/wing.js` | Wing loft: `buildWing`; `mitredPlaneProblem` (stretch and fold checks without the loft, for the XFLR5 import); profile cache |
 | `src/geom/mesh.js` | Tessellation, mirror, mesh volume, area and edge check |
 | `src/geom/triangulate.js` | End-cap triangulation: strip of upper and lower point pairs (linear time); ear clipping as fallback |
-| `src/geom/stats.js` | Planform statistics |
+| `src/geom/stats.js` | Planform statistics; for a tilted or rolled part the MAC position, 25 % MAC and span in the plane axes |
+| `src/geom/part.js` | Rigid placement of the part (**Part tilt**, **Part roll**): `partPivot` (stored pivot, else the leading edge of the root section), `partTransform` (roll about x, then tilt about y, through the pivot: `point`, `vector`, `matrix`), `transformPositions` (mesh vertices) |
 | `src/geom/foam.js` | Foam cores: proposed cuts (`proposeCuts`), cut list rules (`normalizeCuts`), segments with end profiles, wedges and deviation (`foamSegments`), splitting above a deviation limit (`splitOverTolerance`); limits `FOAM_LIMITS` |
 | `src/geom/sampling.js` | Span samples for drawing, shared by the 3D view and the planform: `refine`, `thinParams`, `edgeParams`, `MAX_EDGE_SAMPLES` (20,000) |
 | `src/airfoil/parse.js` | Airfoil file parser; `cleanPoints` cleans a point list from another format (the airfoils of an XFLR5 project) by the rules of a parsed file |
@@ -67,7 +68,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/import/xflr5.js` | Mapping of one XFLR5 wing to a project: surfaces of a plane (`planeSurfaces`), sections (`mapSections`), airfoil table, report and project (`mapXflr5`), airfoil checks in steps (`checkSteps`), airfoil uploads (`readAirfoilUpload`) |
 | `src/model/project.js` | Project model, defaults, limits, validation |
 | `src/model/budget.js` | Warning thresholds, loft grid, time and memory estimates |
-| `src/model/io.js` | Project JSON import and export |
+| `src/model/io.js` | Project JSON import and export; `upgradeFoldedTilt` (a folded tilt of a version 2 file becomes **Part tilt**) |
 | `src/model/edit.js` | Edit operations |
 | `src/model/wizard.js` | Wizard presets and parameter ranges |
 | `src/model/defaults.js` | Project on first load |
@@ -111,7 +112,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
    Consecutive updates with the same key, each less than 800 ms after the one before, form one undo step. With `session: true` (planform drags) updates with the same key form one step however long the pauses, until the drag ends on pointer release or cancel (`lastKey` reset); undo and redo also reset it, so a drag in progress continues as a new step.
 2. The store notifies its subscribers.
    `main.js` schedules at most 1 rebuild in the next animation frame; further notifications before that frame share it.
-3. The rebuild runs `buildWing(project)`.
+3. The rebuild runs `buildWing(project)`. The build stays in the frame of the part; `build.part` holds the rigid placement (`src/geom/part.js`), which the 3D view, the mesh and STEP exports and the statistics apply.
    It updates the 3D view, **Sections**, **Planform**, **Checks** and the status bar.
    **Airfoils** and **Settings** re-render on every change except a selection change.
 4. After a change other than a selection change, the rebuild saves the project to browser local storage when `validateProject` accepts it.
@@ -137,7 +138,7 @@ The import reads an XFLR5 file and builds a project from one wing of one plane i
 3. `readXfl(file)` and `readXflr5Xml(text)` return the same object, `XflrFile`: `kind` (`xfl` or `xml`), `format`, `lengthUnit` (millimetres per length unit of the file; 1000 for `.xfl`), `unitName`, `wingOnly`, `planes`, `foils`, `foilError` and `warnings`. A plane has a `name` and `wings`, the 4 XFLR5 wing slots main wing, second wing, elevator (horizontal stabilizer) and fin; a slot that the plane lacks is `null`. `foils` (`.xfl` only) maps an airfoil name to its base coordinates and flap settings. Wing sections keep the values of the file: the length unit of the file and degrees.
 4. `readXfl` reads a project through windows of 4,194,304 bytes (`WINDOW_SIZE`, `Blob.slice`). The record readers are generator functions. One yields when its next read lies outside the window; `readXfl` loads the window that starts there and resumes it. A skip only moves the offset. The analyses and the analysis results, which make up most of a project of 96.7 MB, are skipped by their counts. Reading ends after the airfoils. `readXflBytes` reads a file held in memory as one window. A file damaged after the planes gives its planes without airfoils (`foilError` and a warning).
 5. `readXflr5Xml` is a pull tokenizer without a tree, linear in the length of the text. A missing or garbled number stays NaN (not a number) and gives a warning; XFLR5 reads such text as 0.
-6. `mapXflr5(file, options)` (`src/import/xflr5.js`) is a pure function. `options` holds `plane`, `surface` (`main` or `stab`), `fileName`, `name`, `project` (the current project), `library` (bundled library entries), `uploads` (read `.dat` files) and `choices` (the option key picked per XFLR5 airfoil name: `file:<name>`, `upload:<i>`, `project:<id>`, `library:<id>` or `naca:<code>`). The result holds `rows` (the airfoil table), `options` (the entries of the airfoil lists), `report` (lines with the severity `error`, `warning` or `info`), `errors`, `project` (`null` while the report holds an error) and `summary`. The steps: `mapSections` (y and z from the developed span and the dihedral, clean-up of sections at one y and of chords below 1 mm, fold of the tilt angle and the position); one airfoil per name (file, uploads, current project, library, NACA generator, similar name); the airfoil frame (`placeAirfoil`; a NACA airfoil of the current project whose points are the generated or checked section of its code gets the frame of that generated section, `checkProjectAirfoil`); `createProject` and `validateProject`. Check results are cached per airfoil object and language (`WeakMap`), because the dialog maps again after every choice.
+6. `mapXflr5(file, options)` (`src/import/xflr5.js`) is a pure function. `options` holds `plane`, `surface` (`main` or `stab`), `fileName`, `name`, `project` (the current project), `library` (bundled library entries), `uploads` (read `.dat` files) and `choices` (the option key picked per XFLR5 airfoil name: `file:<name>`, `upload:<i>`, `project:<id>`, `library:<id>` or `naca:<code>`). The result holds `rows` (the airfoil table), `options` (the entries of the airfoil lists), `report` (lines with the severity `error`, `warning` or `info`), `errors`, `project` (`null` while the report holds an error) and `summary`. The steps: `mapSections` (y and z from the developed span and the dihedral, clean-up of sections at one y and of chords below 1 mm, the position; the tilt angle is returned, and the project stores it as `settings.partTilt` with `partRoll` 0 and the wing origin as `partPivot`); one airfoil per name (file, uploads, current project, library, NACA generator, similar name); the airfoil frame (`placeAirfoil`; a NACA airfoil of the current project whose points are the generated or checked section of its code gets the frame of that generated section, `checkProjectAirfoil`); `createProject` and `validateProject`. Check results are cached per airfoil object and language (`WeakMap`), because the dialog maps again after every choice.
 7. `openXflr5Dialog(file, { fileName, project, library })` calls `mapXflr5` after every choice and draws the result. The first mapping follows `checkSteps`, a generator with one step per airfoil name. The dialog runs it in slices of 50 ms (`SLICE_MS`), so that clicks, Escape and scrolling work meanwhile. A change of plane or surface runs `checkSteps` of the new wing at once for up to 50 ms; when it has not ended by then, the dialog turns **Import** off, empties the airfoil table, the preview, the stats line and the untyped project name of the previous wing, and runs the rest in slices, as for the first mapping. The candidate project is built with `buildWing` for the preview; a project above a size warning is not built, and the preview draws straight panels. The errors and warnings of the build become report lines (`buildNotes`) that do not block **Import**. The promise resolves with `{ project, summary, warnings }`, or with `null` after **Cancel**.
 8. `main.js` calls `replaceProject` (`store.replace`, one undo step), opens the **Sections** tab and shows the summary and the first warning as a message.
 
@@ -357,7 +358,8 @@ Unit tests (Vitest, Node.js):
 | --- | ---: | --- |
 | `test/xflr5-xfl.test.js` | 39 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the old formats of `Rascal110.xfl`; the reserved blocks of XFLR5 6.10.01 to 6.10.04; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
 | `test/xflr5-xml.test.js` | 46 | Reader of XML files: fixtures in millimetres, inches and metres; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
-| `test/xflr5-map.test.js` | 67 | Mapping: y and z from developed span and dihedral, twist, fold of tilt angle and position; section planes of an import (mitred, tilted, fold and stretch fallback, an airfoil switch in one plane, the airfoil frame along a rolled plane with XFLR5's panel angles); clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library, and for library airfoils with an inclined chord line; a file airfoil whose trailing edge crosses its own end; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
+| `test/xflr5-map.test.js` | 67 | Mapping: y and z from developed span and dihedral, twist, position, the tilt angle stored as **Part tilt** (the turned build against XFLR5's construction); section planes of an import (mitred, tilted, fold and stretch fallback, an airfoil switch in one plane, the airfoil frame along a rolled plane with XFLR5's panel angles); clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library, and for library airfoils with an inclined chord line; a file airfoil whose trailing edge crosses its own end; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
+| `test/part.test.js` | 6 of 14 | Upgrade of a folded tilt of project format version 2: the same part with **Vertical** section planes (twist pivot 0.25 and 0.5, pointed tip, **Straight panels**) and the shift of the MAC position, the notes with **Mitred** section planes, the fold kept with guide curves or a twist beyond ±360° |
 | `test/airfoil.test.js` | 1 of 79 | `leadingNacaCode` |
 
 `test/xflr5-writer.js` writes big-endian XFLR5 project files from options with default values, written from the description of the format in `src/import/xfl.js`. Numbers that the reader skips are written as recognizable non-zero values, so a reader that skips too many or too few bytes misreads what follows. `writeProject(options)` returns `{ bytes, marks }`; `marks` lists the offset of every record for the truncation tests. The plane option `spare: 'index'` writes the reserved blocks of the plane and its wings as XFLR5 6.10.01 to 6.10.04 do.
@@ -386,14 +388,14 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 576 tests in 19 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 590 tests in 20 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit code 1 when a README table differs from `coverage/coverage-summary.json`; exit code 2 when that file or a marker is missing |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 12 STEP files, 12 3MF files and `cases.json` in `step-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 13 STEP files, 13 3MF files and `cases.json` in `step-check/` |
 | `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 11 test wings and `cases.json` in `foam-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Portable Network Graphics (PNG) files: 14 in `docs/wiki/images/` (English) and 14 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
@@ -432,7 +434,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-184 tests in 13 spec files, 368 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+187 tests in 13 spec files, 374 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 
@@ -505,6 +507,7 @@ x and z: position of the leading edge.
 | `mitred-vtail-35-y-up` | As `mitred-vtail-35`, written with the **Fusion 360 fix** (Y up): every point as (x, z, −y) | 2 |
 | `mitred-gull-15-5` | z 80.3848 mm at section 2 and 54.1382 mm at the tip (panels of 15° and −5°); **Mitred** section planes (rolls 0°, 5°, −5°), linear blending with 8 stations per panel | 2 |
 | `mitred-switch-short-panel` | Not the base wing: NACA 2412 at y 0 and 299.5 mm (chords 200 and 180 mm), NACA 0012 at y 300 and 600 mm (chords 180 and 120 mm, tip z 52.8981 mm, twist −2°); **Straight panels**, **Mitred** section planes: the 0.5 mm panel counts as none, both switch sections roll 5.25°; the outer panel stores a panel angle of 10.5° (tip roll 10.5°) | 2 |
+| `part-tilt-roll` | As `mitred-gull-15-5`, with **Part tilt** 8° and **Part roll** 12° about the pivot (50, 0, −20) mm: turned surfaces, edge curves, cap planes and the mirror of a placed part | 2 |
 
 ### Foam-cutting file validation
 
@@ -516,7 +519,7 @@ npm run foam:cases
 python scripts/validate_foam.py foam-check/cases.json
 ```
 
-`scripts/export-foam-cases.mjs` takes the wings of `test/step-cases.js` without `mitred-vtail-35-y-up` (11 cases). Cuts: the proposal for a longest core of 300 mm. Kerf 1 mm for `guided-elliptic`, paper A3 for `pointed-tip` and Letter for `mitred-gull-15-5`, else no kerf and A4. `cases.json` holds per case the name, the 4 files, the segment count, the points per profile, the kerf, the vertex count of each profile polyline, the page count, the page size and the paper size.
+`scripts/export-foam-cases.mjs` takes the wings of `test/step-cases.js` without `mitred-vtail-35-y-up` and `part-tilt-roll` (11 cases): the first differs from its case in the STEP axes only, the cores of the second lie in the frame of the part, as those of `mitred-gull-15-5`. Cuts: the proposal for a longest core of 300 mm. Kerf 1 mm for `guided-elliptic`, paper A3 for `pointed-tip` and Letter for `mitred-gull-15-5`, else no kerf and A4. `cases.json` holds per case the name, the 4 files, the segment count, the points per profile, the kerf, the vertex count of each profile polyline, the page count, the page size and the paper size.
 
 | Check per case (`validate_foam.py`) | Pass condition |
 | --- | --- |

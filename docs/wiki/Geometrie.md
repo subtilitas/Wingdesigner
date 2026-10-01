@@ -50,6 +50,8 @@ Bezeichner (x_LE, x_norm).
 | 7. Grundrisskennwerte | `src/geom/stats.js`, `src/geom/wing.js` (`planformAt`) | – |
 | 8. Schaumkerne | `src/geom/foam.js` | A3.5 (je Spaltenkurve) |
 
+Die starre Lage des Teils (Abschnitt 3.9, `src/geom/part.js`) dreht das Ergebnis der Schritte 3 und 4 für die Schritte 5 bis 7.
+
 ## 1. Profil als NURBS-Kurve
 
 Eingabe: Profilpunkte in Selig-Reihenfolge (obere Endleiste → Profilnase → untere Endleiste), die die
@@ -598,7 +600,56 @@ Drehpunkt und die Endleiste gemeinsam haben. Ihre Aufwärtsrichtung ist (0, −s
 - Projektdateien des Formats Version 1 enthalten keine Einstellung der Schnittebenen und öffnen mit
   **Senkrecht** ([[Dateiformate|Dateiformate]]).
 
-**Schnitte aus einem XFLR5-Import.** XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln. Der Import setzt **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (f_pivot) auf 0,25, den Punkt, um den XFLR5 einen Schnitt schränkt, **Interpolation in Spannweitenrichtung** auf **Gerade Felder**, die Bauweise der Felder von XFLR5 (Abschnitt 3.1), und **Schnittebenen** auf **Auf Gehrung**, die Ebenen von XFLR5. Ein Teil mit Einstellwinkel und ein Teil, dessen Gehrungsebenen sich falten würden, werden mit Schnittebenen **Senkrecht** importiert. Außerdem wendet er eine Regel der Profillage an. XFLR5 zeichnet die Koordinaten eines Profils, wie sie sind; der Aufbau legt die Profilnase der Kurve (Abschnitt 1.3) auf den Schnittursprung und skaliert das Profil auf die Profiltiefe 1 (Abschnitt 2). Sind die Koordinaten bekannt, die XFLR5 verwendet hat (ein Profil der `.xfl`-Datei, eine hochgeladene `.dat`-Datei, ein NACA-Schnitt), verschiebt und skaliert der Import den Schnitt um den Unterschied, sodass das Profil dort liegt, wo XFLR5 es zeichnet. Jeder Unterschied wird angewendet; der Bericht nennt die über 0,1 % der Profiltiefe. Die Verschiebung dreht ein Feld, dessen beide Schnitte sich verschieden verschieben (zwei Profile oder ein Profil mit zwei Schränkungen). Ein solcher Schnitt speichert die V-Form von XFLR5 als seinen Feldwinkel, wenn sie um mehr als 0,001° von der V-Form der verschobenen Schnitte abweicht; so bleiben die Ebenen und Dickenstreckungen die von XFLR5. Schnitte mit einem Bibliotheksprofil oder einem anderen Profil des aktuellen Projekts behalten die Werte der Datei. Wie der Import die Schnitte, den Drehpunkt und die Interpolation setzt, mit Regeln und Formeln: [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import, Unterabschnitt Abbildung auf Schnitte.
+**Schnitte aus einem XFLR5-Import.** XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln. Der Import setzt **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (f_pivot) auf 0,25, den Punkt, um den XFLR5 einen Schnitt schränkt, **Interpolation in Spannweitenrichtung** auf **Gerade Felder**, die Bauweise der Felder von XFLR5 (Abschnitt 3.1), und **Schnittebenen** auf **Auf Gehrung**, die Ebenen von XFLR5. Ein Teil, dessen Gehrungsebenen sich falten würden, wird mit Schnittebenen **Senkrecht** importiert. Der Einstellwinkel des Flügels im XFLR5-Flugzeug wird zum **Einstellwinkel des Teils** um den Ursprung des Flügels (Abschnitt 3.9). Außerdem wendet er eine Regel der Profillage an. XFLR5 zeichnet die Koordinaten eines Profils, wie sie sind; der Aufbau legt die Profilnase der Kurve (Abschnitt 1.3) auf den Schnittursprung und skaliert das Profil auf die Profiltiefe 1 (Abschnitt 2). Sind die Koordinaten bekannt, die XFLR5 verwendet hat (ein Profil der `.xfl`-Datei, eine hochgeladene `.dat`-Datei, ein NACA-Schnitt), verschiebt und skaliert der Import den Schnitt um den Unterschied, sodass das Profil dort liegt, wo XFLR5 es zeichnet. Jeder Unterschied wird angewendet; der Bericht nennt die über 0,1 % der Profiltiefe. Die Verschiebung dreht ein Feld, dessen beide Schnitte sich verschieden verschieben (zwei Profile oder ein Profil mit zwei Schränkungen). Ein solcher Schnitt speichert die V-Form von XFLR5 als seinen Feldwinkel, wenn sie um mehr als 0,001° von der V-Form der verschobenen Schnitte abweicht; so bleiben die Ebenen und Dickenstreckungen die von XFLR5. Schnitte mit einem Bibliotheksprofil oder einem anderen Profil des aktuellen Projekts behalten die Werte der Datei. Wie der Import die Schnitte, den Drehpunkt und die Interpolation setzt, mit Regeln und Formeln: [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import, Unterabschnitt Abbildung auf Schnitte.
+
+### 3.9 Starre Lage des Teils
+
+**Einstellungen** > **Einstellwinkel des Teils (°, positiv = Nasenleiste hoch)** (Part tilt; t,
+`settings.partTilt`) und **Rollwinkel des Teils (°, positiv = rechter Randbogen hoch)** (Part roll; r,
+`settings.partRoll`) drehen den ganzen Halbflügel als starren Körper (`src/geom/part.js`). Beide
+liegen innerhalb von ±180°, Vorgabe 0°. Die Abschnitte 3.1 bis 3.8, die Fläche aus Abschnitt 4 und die
+Prüfungen beim Aufbau arbeiten im Koordinatensystem des Teils; die Transformation T wirkt auf die
+angepasste Fläche.
+
+Drehpunkt P = (P_x, P_y, P_z): `settings.partPivot`, wenn gespeichert (der XFLR5-Import speichert den
+Ursprung des Flügels mit P_y = 0), sonst die Nasenleiste (x, y, z) des Wurzelschnitts. **Einstellungen**
+nennt ihn unter den beiden Feldern.
+
+```
+erst der Rollwinkel r um die x-Achse durch P:
+  x1 = x − P_x
+  y1 = (y − P_y) cos r − (z − P_z) sin r
+  z1 = (y − P_y) sin r + (z − P_z) cos r
+dann der Einstellwinkel t um die y-Achse durch P:
+  X = x1 cos t + z1 sin t + P_x
+  Y = y1 + P_y
+  Z = −x1 sin t + z1 cos t + P_z
+
+T(p) = M (p − P) + P      M = | cos t    sin t sin r    sin t cos r |
+                              | 0        cos r          −sin r      |
+                              | −sin t   cos t sin r    cos t cos r |
+```
+
+- Vorzeichen: Ein positiver Einstellwinkel hebt die Nasenleiste (ein Punkt vor dem Drehpunkt, x < P_x,
+  wandert nach oben); ein positiver Rollwinkel hebt den rechten Randbogen (ein Punkt außerhalb des
+  Drehpunkts, y > P_y, wandert nach oben).
+- Richtungen (Normalen von Ebenen, die Bezugsrichtung x einer Abschlussfläche) drehen sich nur mit M.
+- Linke Hälfte: das Spiegelbild der gedrehten rechten Hälfte an der Ebene y = 0. Eine gerollte Wurzel
+  liegt nicht in dieser Ebene, daher fügen die Dreiecksnetze die Hälften nicht zusammen (Abschnitt 5).
+- Ausdehnung: Nach der Anpassung muss jeder mit T gedrehte Kontrollpunkt in x, y und z innerhalb von
+  ±1 200 000 mm liegen (`LIMITS.maxExtent`); die Fläche liegt in der konvexen Hülle ihrer
+  Kontrollpunkte. Sonst bricht der Aufbau ab mit:
+  `Das gedrehte Teil reicht bis x = … mm, y = … mm, z = … mm, außerhalb von ±1.200.000 mm; Einstellwinkel oder Rollwinkel des Teils verkleinern oder das Teil näher an seinen Drehpunkt legen.`
+- Gedreht: die 3D-Ansicht (`partMatrix` in `src/ui/viewer3d.js`), die Dreiecksnetze für STL und 3MF
+  (Abschnitt 5), die STEP-Volumenkörper (Abschnitt 6) und die Positionen der Kennwerte (Abschnitt 7). Im
+  Koordinatensystem des Teils: die Tabelle der Registerkarte **Schnitte**, die Registerkarte
+  **Grundriss**, die Projektdatei und die Schaumkerne (Abschnitt 8).
+- Eine Drehung um y erhält Ebenen y = konst. Mit Schnittebenen **Senkrecht** baut ein in die
+  Schnittwerte eingerechneter Einstellwinkel (jeder Drehpunkt der Schränkung um P gedreht, t zu jeder
+  Schränkung addiert) dasselbe Teil wie der starre Einstellwinkel: innerhalb von 1e-6 mm in den
+  Unit-Tests der Aktualisierung von Dateien der Version 2 ([[Dateiformate|Dateiformate]], Abschnitt
+  Projekt-JSON). Mit Ebenen **Auf Gehrung** dreht nur der starre Einstellwinkel die Ebenen mit dem Teil,
+  wie XFLR5.
 
 ## 4. Fläche
 
@@ -616,7 +667,7 @@ Ablauf:
 2. Jede Spalte der erhaltenen Kontrollpunkte entlang v interpolieren (Band-LU, Abschnitt 1.2).
 3. y der Kontrollpunkte bei v = 0 auf y_root setzen und die Kontrollpunkte bei v = 1 auf die Randebene
    projizieren (y = y_tip bei φ = 0). Das entfernt Rundungsfehler des Lösers: Die Zeilen an Wurzel und
-   Rand liegen in ihren Ebenen (12 STEP-Fälle: innerhalb von 3e-13 mm, Abschnitt 6).
+   Rand liegen in ihren Ebenen (13 STEP-Fälle: innerhalb von 3e-13 mm, Abschnitt 6).
 
 Eigenschaften:
 
@@ -677,12 +728,13 @@ Beispiel: Entwurfstyp **Sportmodell** (Sport), N = 60, d = 1, offene Endleiste: 
   Dreiecksflächen um mehr als 1e-9 (relativ) von der Konturfläche abweichen. Beide Flächen werden relativ
   zu einem Eckpunkt der Kontur summiert, sodass ein Flügel 1 000 000 mm vom Ursprung entfernt die
   Streifen behält.
+- Lage des Teils (Abschnitt 3.9): Die Eckpunkte des Halbflügels werden vor der Spiegelung mit T gedreht.
 - Linker Halbflügel: y → −y, Umlaufsinn der Dreiecke umgekehrt.
 
 | **Flügelhälften** (Wing halves) | Hüllen |
 | --- | --- |
 | **Beide Hälften als getrennte Körper** (Both halves as separate bodies) | 2 geschlossene Hüllen, Abschlussflächen an der Wurzel enthalten |
-| **Ganzer Flügel als ein Körper (Netzformate, Wurzel bei y = 0)** (Full wing as one body (mesh formats, root at y = 0)) | Wurzel bei genau y = 0 mm: 1 geschlossene Hülle, die Hälften teilen die Wurzelpunkte, keine Abschlussflächen an der Wurzel; sonst 2 Hüllen |
+| **Ganzer Flügel als ein Körper (Netzformate, Wurzel bei y = 0)** (Full wing as one body (mesh formats, root at y = 0)) | Wurzel bei genau y = 0 mm und **Rollwinkel des Teils** 0°: 1 geschlossene Hülle, die Hälften teilen die Wurzelpunkte, keine Abschlussflächen an der Wurzel; sonst 2 Hüllen |
 | **Nur rechte Hälfte** (Right half only) | 1 geschlossene Hülle |
 
 ## 6. STEP-Topologie
@@ -696,6 +748,12 @@ Toleranz: [[Dateiformate|Dateiformate]].
 | --- | --- |
 | **Nur rechte Hälfte** (Right half only) | 1 |
 | beide anderen Optionen | 2 (im STEP-Export werden die Hälften nie zusammengefügt) |
+
+Lage des Teils (Abschnitt 3.9): Jeder Punkt (Kontrollpunkte von Flächen und Kurven, Eckpunkte, die
+Ursprünge der Ebenen der Abschlussflächen) wird mit T gedreht, jede Richtung (Normalen der
+Abschlussflächen und Bezugsrichtungen) mit M; danach wird die linke Hälfte gespiegelt, danach dreht die
+**Fusion-360-Korrektur** die Achsen. Lage und Drehung sind Rotationen und erhalten die
+Orientierungsflags. Die Tabellen unten geben die Normalen im Koordinatensystem des Teils an.
 
 Teilung: Die Fläche wird bei u_LE durch Knoteneinfügen (A5.1) bis zur Vielfachheit 3 in jeder v-Spalte
 geteilt. Ein Teilungsparameter näher als 1e-10 an einem vorhandenen Knoten wird auf diesen Knoten
@@ -736,11 +794,14 @@ Orientierungsflags:
 | Normale der Ebene | Wurzel −y, Rand (0, cos φ_tip, sin φ_tip) | als Vektoren gespiegelt: Wurzel +y, Rand (0, −cos φ_tip, sin φ_tip) (nach außen) |
 
 Prüfung: `scripts/validate_step.py` liest die von `scripts/export-step-cases.mjs` geschriebenen Dateien
-mit OpenCascade. Fälle: die 12 Fälle aus `test/step-cases.js`, 4 davon mit Schnittebenen **Auf Gehrung**
+mit OpenCascade. Fälle: die 13 Fälle aus `test/step-cases.js`, 5 davon mit Schnittebenen **Auf Gehrung**
 (ein 35°-V-Leitwerk mit **Gerade Felder**, einmal ohne und einmal mit **Fusion-360-Korrektur** (Y nach
-oben) geschrieben, ein Möwenflügel mit 15°/−5° mit **Linear** und ein Profilwechsel mit **Gerade
+oben) geschrieben, ein Möwenflügel mit 15°/−5° mit **Linear**, ein Profilwechsel mit **Gerade
 Felder**: zwei Schnitte 0,5 mm auseinander in y in einer Ebene zwischen Feldern mit 0° und 10°, das
-äußere Feld mit einem gespeicherten Feldwinkel von 10,5°).
+äußere Feld mit einem gespeicherten Feldwinkel von 10,5°, und `part-tilt-roll`: der Möwenflügel mit
+**Einstellwinkel des Teils** 8° und **Rollwinkel des Teils** 12° um den Drehpunkt (50, 0, −20) mm). Bei
+`part-tilt-roll` sind beide Volumenkörper gültig und geschlossen, das Volumen liegt innerhalb von
+3,2e-5 des Netzvolumens und die Kanten der Abschlussflächen innerhalb von 1,9e-13 mm von ihren Ebenen.
 
 **Fusion-360-Korrektur** des Exports (Dateiformate, Abschnitt „Körper je Datei“): Jeder Punkt und jede
 Richtung des Teils wird als (x, z, −y) geschrieben. Die Drehung ist eine Rotation, daher
@@ -779,7 +840,7 @@ MAC      = ∫ c² dy     / S_half
 y_MAC    = ∫ c y dy    / S_half
 x_LE,MAC = ∫ c x_LE dy / S_half
 x_25     = x_LE,MAC + 0.25 · MAC
-b        = 2 · y_tip
+b        = 2 · y_tip           (Koordinatensystem des Teils; gedrehtes Teil: unten)
 S        = 2 · S_half
 AR       = b² / S
 
@@ -791,6 +852,21 @@ halbiere [a, b], solange |I_left + I_right − I_whole| > 1e-10 · max(s, 1) · 
                    höchstens 12-mal
 s        = c_max, c_max², c_max · y_max, c_max · max(|x_LE| + c)   (je Integral, über die Stationen)
 ```
+
+Ein gedrehtes Teil (Abschnitt 3.9) ergibt die Positionen in den Achsen des Flugzeugs: Die Profilnase
+der MAC und der Punkt bei 25 % MAC drehen sich mit dem Teil, in der Höhe z der Stationen. S, MAC,
+Wurzel- und Randtiefe und die Quadratur bleiben im Koordinatensystem des Teils.
+
+```
+z_MAC              = z bei y_MAC, linear zwischen benachbarten Stationen
+y_MAC', x_LE,MAC'  = Y und X von T(x_LE,MAC, y_MAC, z_MAC)
+x_25'              = X von T(x_LE,MAC + 0.25 · MAC, y_MAC, z_MAC)
+b                  = 2 · Y von T(x_LE, y, z der Randstation)
+AR                 = b² / S
+```
+
+- Mit einem Rollwinkel gilt b = 2 · ((y_tip − P_y) cos r − (z_tip − P_z) sin r + P_y): Ein Rollwinkel, der den Rand hebt, verkürzt die Spannweite, z. B. 30° am Beispielflügel der Unit-Tests. Ein Einstellwinkel erhält b (Y = y ohne Rollwinkel).
+- **Lage der MAC** zeigt y_MAC' und x_LE,MAC', **25 % MAC (geometrischer Bezugspunkt)** zeigt x_25'.
 
 | Grundriss zwischen 2 benachbarten Teilungspunkten | Quadratur |
 | --- | --- |
@@ -838,7 +914,8 @@ Profilnase x 6,5 mm, **25 % MAC (geometrischer Bezugspunkt)** x 50,0 mm, **Wurze
 
 Der Schaumschnitt-Assistent ([[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Schaumschnitt) teilt den Halbflügel in
 Segmente. Jedes Segment ist ein Schaumkern. Ein Heißdraht schneidet ihn als Regelfläche: gerade Linien
-zwischen zwei Endprofilen. Code: `src/geom/foam.js`.
+zwischen zwei Endprofilen. Code: `src/geom/foam.js`. Die Kerne liegen im Koordinatensystem des Teils:
+**Einstellwinkel des Teils** und **Rollwinkel des Teils** (Abschnitt 3.9) ändern sie nicht.
 
 ### 8.1 Schnitte
 

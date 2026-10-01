@@ -48,6 +48,8 @@ Derivatives are written dx/du and d²x/du². Subscripts are point indices (Q_k, 
 | 7. Planform statistics | `src/geom/stats.js`, `src/geom/wing.js` (`planformAt`) | – |
 | 8. Foam cores | `src/geom/foam.js` | A3.5 (per column curve) |
 
+The rigid placement of the part (section 3.9, `src/geom/part.js`) turns the result of steps 3 and 4 for steps 5 to 7.
+
 ## 1. Airfoil to NURBS curve
 
 Input: airfoil points in Selig order (upper TE → leading edge → lower TE) that pass the sanity checks
@@ -569,7 +571,51 @@ With φ = 0 and m = 1 the section lies in the plane Y = y.
 - Project files of format version 1 hold no section-plane setting and open with **Vertical**
   ([[File Formats|File-Formats]]).
 
-**Sections written by an XFLR5 import.** XFLR5 is a program for the analysis of airfoils and wings. The import sets **Twist pivot (fraction of chord)** (f_pivot) to 0.25, the point about which XFLR5 twists a section, **Spanwise interpolation** to **Straight panels**, the construction of XFLR5's panels (section 3.1), and **Section planes** to **Mitred**, XFLR5's planes. A tilted part and a part whose mitred planes would fold import with **Vertical** section planes. It also applies a frame rule. XFLR5 draws the coordinates of an airfoil as they are; the build puts the leading edge of the airfoil curve (section 1.3) at the section origin and scales the airfoil to chord 1 (section 2). Where the coordinates that XFLR5 used are known (an airfoil of the `.xfl` file, an uploaded `.dat` file, a NACA section), the import moves and scales the section by the difference, so that the airfoil lies where XFLR5 draws it. Every difference applies; the report names those above 0.1 % of the chord. The move turns a panel whose two sections move differently (two airfoils, or one airfoil at two twists). Such a section stores XFLR5's dihedral as its panel angle when it differs by more than 0.001° from the dihedral of the moved sections, so the planes and stretches stay XFLR5's. Sections with a library airfoil or another airfoil of the current project keep the values of the file. How the import sets the sections, the pivot and the interpolation, with the rules and formulas: [[File Formats|File-Formats]], section XFLR5 import, subsection Mapping to sections.
+**Sections written by an XFLR5 import.** XFLR5 is a program for the analysis of airfoils and wings. The import sets **Twist pivot (fraction of chord)** (f_pivot) to 0.25, the point about which XFLR5 twists a section, **Spanwise interpolation** to **Straight panels**, the construction of XFLR5's panels (section 3.1), and **Section planes** to **Mitred**, XFLR5's planes. A part whose mitred planes would fold imports with **Vertical** section planes. The tilt angle of the wing in the XFLR5 plane becomes **Part tilt** about the wing origin (section 3.9). It also applies a frame rule. XFLR5 draws the coordinates of an airfoil as they are; the build puts the leading edge of the airfoil curve (section 1.3) at the section origin and scales the airfoil to chord 1 (section 2). Where the coordinates that XFLR5 used are known (an airfoil of the `.xfl` file, an uploaded `.dat` file, a NACA section), the import moves and scales the section by the difference, so that the airfoil lies where XFLR5 draws it. Every difference applies; the report names those above 0.1 % of the chord. The move turns a panel whose two sections move differently (two airfoils, or one airfoil at two twists). Such a section stores XFLR5's dihedral as its panel angle when it differs by more than 0.001° from the dihedral of the moved sections, so the planes and stretches stay XFLR5's. Sections with a library airfoil or another airfoil of the current project keep the values of the file. How the import sets the sections, the pivot and the interpolation, with the rules and formulas: [[File Formats|File-Formats]], section XFLR5 import, subsection Mapping to sections.
+
+### 3.9 Rigid placement of the part
+
+**Settings** > **Part tilt (°, positive = leading edge up)** (t, `settings.partTilt`) and **Part roll
+(°, positive = right tip up)** (r, `settings.partRoll`) turn the whole half wing as a rigid body
+(`src/geom/part.js`). Both lie within ±180°, default 0°. Sections 3.1 to 3.8, the surface of section 4
+and the build checks work in the frame of the part; the transform T applies to the fitted surface.
+
+Pivot P = (P_x, P_y, P_z): `settings.partPivot` when stored (the XFLR5 import stores the wing origin
+with P_y = 0), else the leading edge (x, y, z) of the root section. **Settings** names it below the
+two fields.
+
+```
+first the roll r about the x axis through P:
+  x1 = x − P_x
+  y1 = (y − P_y) cos r − (z − P_z) sin r
+  z1 = (y − P_y) sin r + (z − P_z) cos r
+then the tilt t about the y axis through P:
+  X = x1 cos t + z1 sin t + P_x
+  Y = y1 + P_y
+  Z = −x1 sin t + z1 cos t + P_z
+
+T(p) = M (p − P) + P      M = | cos t    sin t sin r    sin t cos r |
+                              | 0        cos r          −sin r      |
+                              | −sin t   cos t sin r    cos t cos r |
+```
+
+- Signs: a positive tilt raises the leading edge (a point ahead of the pivot, x < P_x, moves up); a
+  positive roll raises the right tip (a point outboard of the pivot, y > P_y, moves up).
+- Directions (plane normals, the reference direction x of a cap) turn by M alone.
+- Left half: the mirror image of the turned right half at the plane y = 0. A rolled root does not
+  lie in that plane, so the meshes do not merge the halves (section 5).
+- Extent: after the fit, every control point turned by T must lie within ±1,200,000 mm in x, y and z
+  (`LIMITS.maxExtent`); the surface lies in the convex hull of its control points. Otherwise the
+  build stops with:
+  `The tilted or rolled part reaches x = … mm, y = … mm, z = … mm, beyond ±1200000 mm; reduce the part tilt or roll, or move the part towards its pivot.`
+- Turned: the 3D view (`partMatrix` in `src/ui/viewer3d.js`), the STL and 3MF meshes (section 5), the
+  STEP solids (section 6) and the positions of the statistics (section 7). In the frame of the part:
+  the **Sections** table, the **Planform** tab, the project file and the foam cores (section 8).
+- A tilt about y keeps planes y = const. With **Vertical** section planes a tilt folded into the
+  section values (each twist pivot point turned about P, t added to every twist) builds the same part
+  as the rigid tilt: within 1e-6 mm in the unit tests of the upgrade of version 2 files
+  ([[File Formats|File-Formats]], section Project JSON). With **Mitred** planes only the rigid tilt turns the
+  planes with the part, as XFLR5 does.
 
 ## 4. Surface
 
@@ -587,7 +633,7 @@ Procedure:
 2. Interpolate each column of the resulting control points along v (band LU, section 1.2).
 3. Set y of the control points at v = 0 to y_root, and project the control points at v = 1 onto the
    tip plane (y = y_tip for φ = 0). This removes solver round-off: the root and tip rows lie in their
-   planes (12 STEP cases: within 3e-13 mm, section 6).
+   planes (13 STEP cases: within 3e-13 mm, section 6).
 
 Properties:
 
@@ -644,12 +690,13 @@ Example: **Sport** preset, N = 60, d = 1, open TE: **Mitred** section planes (9 
   either diagonal. It also applies when the triangle areas differ from the outline area by more than
   1e-9 (relative). Both areas are summed relative to a vertex of the outline, so a wing 1,000,000 mm
   from the origin keeps the strips.
+- Part placement (section 3.9): the vertices of the half wing are turned by T before the mirror.
 - Left half: y → −y, triangle winding reversed.
 
 | **Wing halves** | Shells |
 | --- | --- |
 | **Both halves as separate bodies** | 2 closed shells, root caps included |
-| **Full wing as one body (mesh formats, root at y = 0)** | root at exactly y = 0 mm: 1 closed shell, the halves share the root vertices, no root caps; otherwise 2 shells |
+| **Full wing as one body (mesh formats, root at y = 0)** | root at exactly y = 0 mm and **Part roll** 0°: 1 closed shell, the halves share the root vertices, no root caps; otherwise 2 shells |
 | **Right half only** | 1 closed shell |
 
 ## 6. STEP topology
@@ -662,6 +709,11 @@ STEP file as defined in ISO 10303 (ISO: International Organization for Standardi
 | --- | --- |
 | **Right half only** | 1 |
 | both other options | 2 (the halves are never merged in STEP) |
+
+Part placement (section 3.9): every point (control points of surfaces and curves, vertices, the
+origins of the cap planes) is turned by T, every direction (cap normals and reference directions) by
+M; then the left half is mirrored, then the **Fusion 360 fix** turns the axes. Placement and turn are
+rotations and keep the orientation flags. The tables below give the normals in the frame of the part.
 
 Split: the surface is split at u_LE by knot insertion (A5.1) up to multiplicity 3 on every v column.
 A split parameter within 1e-10 of an existing knot snaps to that knot. Both parts get knot vectors
@@ -702,11 +754,13 @@ Orientation flags:
 | Plane normal | root −y, tip (0, cos φ_tip, sin φ_tip) | mirrored as vectors: root +y, tip (0, −cos φ_tip, sin φ_tip) (outward) |
 
 Validation: `scripts/validate_step.py` reads the files written by `scripts/export-step-cases.mjs`
-with OpenCascade. Cases: the 12 cases of `test/step-cases.js`, 4 of them with **Mitred** section
+with OpenCascade. Cases: the 13 cases of `test/step-cases.js`, 5 of them with **Mitred** section
 planes (a 35° V-tail with **Straight panels**, written once without and once with the **Fusion 360
-fix** (Y up), a 15°/−5° gull with **Linear**, and an airfoil switch with **Straight panels**: two
+fix** (Y up), a 15°/−5° gull with **Linear**, an airfoil switch with **Straight panels**: two
 sections 0.5 mm apart in y in one plane between panels of 0° and 10°, the outer panel with a stored
-panel angle of 10.5°).
+panel angle of 10.5°, and `part-tilt-roll`: the gull with **Part tilt** 8° and **Part roll** 12°
+about the pivot (50, 0, −20) mm). On `part-tilt-roll` both solids are valid and closed, the volume
+lies within 3.2e-5 of the mesh volume and the cap edges within 1.9e-13 mm of their planes.
 
 **Fusion 360 fix** of the export (File Formats, section "Bodies per file"): every point and direction
 of the part is written as (x, z, −y). The turn is a rotation, so the orientation flags stay.
@@ -741,7 +795,7 @@ MAC      = ∫ c² dy     / S_half
 y_MAC    = ∫ c y dy    / S_half
 x_LE,MAC = ∫ c x_LE dy / S_half
 x_25     = x_LE,MAC + 0.25 · MAC
-b        = 2 · y_tip
+b        = 2 · y_tip           (frame of the part; turned part: below)
 S        = 2 · S_half
 AR       = b² / S
 
@@ -753,6 +807,21 @@ halve [a, b] while |I_left + I_right − I_whole| > 1e-10 · max(s, 1) · (b −
                    at most 12 halvings
 s        = c_max, c_max², c_max · y_max, c_max · max(|x_LE| + c)   (per integral, over the stations)
 ```
+
+A tilted or rolled part (section 3.9) gives the positions in the plane axes: the MAC leading edge
+and the 25 % MAC point turn with the part, at the height z of the stations. S, MAC, the root and tip
+chord and the quadrature stay in the frame of the part.
+
+```
+z_MAC              = z at y_MAC, linear between neighbouring stations
+y_MAC', x_LE,MAC'  = Y and X of T(x_LE,MAC, y_MAC, z_MAC)
+x_25'              = X of T(x_LE,MAC + 0.25 · MAC, y_MAC, z_MAC)
+b                  = 2 · Y of T(x_LE, y, z of the tip station)
+AR                 = b² / S
+```
+
+- With a roll, b = 2 · ((y_tip − P_y) cos r − (z_tip − P_z) sin r + P_y): a roll that lifts the tip shortens the span, e.g. 30° on the sample wing of the unit tests. A tilt keeps b (Y = y without a roll).
+- **MAC position** shows y_MAC' and x_LE,MAC', **25 % MAC (geometric reference)** shows x_25'.
 
 | Planform between 2 neighbouring breakpoints | Quadrature |
 | --- | --- |
@@ -799,7 +868,8 @@ x 50.0 mm, **Root / tip chord** 200.0 / 90.0 mm, **Surface** degree 3 × 3, 121 
 
 The foam-cutting wizard ([[User Guide|User-Guide]], section Foam cutting) splits the half wing into
 segments. Each segment is one foam core. A hot wire cuts it as a ruled surface: straight lines
-between two end profiles. Code: `src/geom/foam.js`.
+between two end profiles. Code: `src/geom/foam.js`. The cores lie in the frame of the part: **Part
+tilt** and **Part roll** (section 3.9) do not change them.
 
 ### 8.1 Cuts
 
