@@ -1018,12 +1018,11 @@ A flow5 plane holds any number of wings, each with a type: main wing, elevator (
 
 | Wing | Offered | Reason when not |
 | --- | --- | --- |
-| the first main wing, the first elevator | yes, with their roll (`Rx_angle`) | – |
-| a further two-sided wing: a second main wing, a canard, another wing | yes, when it is not rolled | `Rolled 30° about x: only the first main wing and the first horizontal stabilizer are imported with a roll.` |
-| a fin | no | `Fins are not imported.` |
-| a one-sided wing (`Two_Sided` false) | no | `A one-sided wing: flow5 builds only its left half. Only two-sided wings are imported.` |
+| a two-sided wing of any type: main wings, elevators, other wings (a canard) | yes, with its roll (`Rx_angle`) and tilt (`Ry_angle`) | – |
+| a one-sided wing (`Two_Sided` false, a fin) | yes, as the half that flow5 builds (section "Mapping to sections") | – |
+| a one-sided wing with `Ry_angle` other than 0 | no: flow5 turns a one-sided wing by `Ry_angle` about the z axis, a part only about x and y | `A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.` |
 
-- The first available wing is preselected.
+- The first available wing is preselected: the first main wing when the plane has one.
 - The report lists the other wings of the plane: `Not imported: Main wing 2 "Rear", Fin "Fin". One surface per import; open the file again for another one.`
 - Toast for a further wing: `Imported the wing "Canard" of "Tandem" from full.fl5: 2 sections, 1 airfoil.`
 
@@ -1037,7 +1036,9 @@ The section values (`y_position`, `Chord`, `xOffset`, `Dihedral`, `Twist`) mean 
 | `Rx_angle` | **Part roll**, about the wing origin, before the tilt ([[Geometry]], section 3.9). Positive: right tip up. Info `Roll angle 10° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).` |
 | `Position` x and z | moves the sections (step 3); the wing origin is `partPivot` |
 | `Position` y | not used: info `Position y 20 mm is not used, as in flow5.` |
-| left-side airfoils | not used, as for XFLR5 |
+| left-side airfoils | not used, as for XFLR5; for a one-sided wing the left-side airfoils are the only ones |
+
+**One-sided wing (fin).** flow5 builds the left half only (local y ≤ 0), with the left-side airfoils, and turns it by `Rx_angle`; a fin carries −90°. The import takes that half: the left-side airfoils, **Part roll** −`Rx_angle` (a fin: 90°) and **Part tilt** 0. The left half of the part, the mirror image of its right half, is then flow5's half; the right half lies on it for a fin at y = 0. Info `A one-sided wing: flow5 builds its left half only, with the left-side airfoils. The part's left half is that half, its right half the mirror image (on top of it for a fin at y = 0); Settings > Show mirrored half and Export > Wing halves > Right half only give one half.` The warning on the left half below does not apply.
 
 flow5 turns the whole wing, both halves, as one body: the left half of a rolled wing turns the other way than its right half. Wingdesigner builds the left half as the mirror image of the turned right half ([[Geometry]], section 3.9). For a rolled wing the report warns with the largest distance between the two left halves, over the leading and trailing edges of the sections: `flow5 rolls the whole wing, so its left half turns the other way; Wingdesigner builds the left half as the mirror image of the right half, up to 62.5 mm from flow5's left half.` (the V-tail of `full.fl5`: 10° roll, 25° dihedral, 180 mm half span).
 
@@ -1050,19 +1051,22 @@ The airfoil sources are those of the XFLR5 import (section "Airfoils"); order 0 
 
 ### Verification
 
-Measured on the files of `test/fixtures/flow5/` against the thick-surface triangle mesh that flow5 7.57 builds from the same files for its analyses: the mesh nodes of the right half of 7 wings lie within 0.15 mm of the built surface (`test/flow5-map.test.js`).
+Measured on the files of `test/fixtures/flow5/` against the thick-surface triangle mesh that flow5 7.57 builds from the same files for its analyses: the mesh nodes of the right half of 8 wings, and of both fins, lie within 0.15 mm of the built surface (`test/flow5-map.test.js`).
 
 | Wing | Case | Largest distance (mm) |
 | --- | --- | --- |
 | `full.fl5`, "Canard" | tilt 2°, position applied | 0.0031 |
 | `basic.fl5`, "Stab" | tilt −1.5°, position applied | 0.0047 |
 | `full.fl5`, "Vee" | roll 10°, tilt −2°, 25° dihedral | 0.0057 |
+| `full.fl5`, "Tilted other" | roll 30° (a further wing) | 0.0032 |
+| `full.fl5`, "Fin" | one-sided, roll −90°; the left half of the part against flow5's half | 0.0039 |
+| `basic.fl5`, "Fin" | the same | 0.0047 |
 | `full.fl5`, "Rear" | no dihedral | 0.0104 |
 | `full.fl5`, "Wing2" | 5° dihedral at the tip panel, position y 20 mm taken off | 0.0766 |
 | `basic.fl5`, "Main" | 3° and 6° dihedral | 0.0796 |
 | `full.fl5`, "Front" | tilt 1°, NACA 2412 to a flapped NACA 2410 along the panel | 0.1469 |
 
-The left half of the rolled "Vee" lies up to 61.3 mm from flow5's left half (the warning computes 62.5 mm from the section edges). flow5's own surface points (`Surface::getSurfacePoint`) put the root airfoil square to the first panel, 0.99 mm (3° dihedral) to 1.90 mm (25° dihedral) off the vertical root plane; the analysis mesh has its root nodes at y = 0, as the import.
+The left half of the rolled "Vee" lies up to 61.3 mm from flow5's left half (the warning computes 62.5 mm from the section edges), that of "Tilted other" 85.7 mm (warning 100.0 mm). flow5's own surface points (`Surface::getSurfacePoint`) put the root airfoil square to the first panel, 0.99 mm (3° dihedral) to 1.90 mm (25° dihedral) off the vertical root plane; the analysis mesh has its root nodes at y = 0, as the import.
 
 ## Bodies per file
 

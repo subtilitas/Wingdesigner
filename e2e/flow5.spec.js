@@ -1,5 +1,5 @@
-// flow5 import through Open: a .fl5 project (wing list with fins and rolled wings not available, the
-// rolled elevator as part roll and tilt, airfoils from the file) and a flow5 plane XML file whose
+// flow5 import through Open: a .fl5 project (the wing list, the rolled elevator as part roll and tilt,
+// airfoils from the file, a fin as the left half of the part) and a flow5 plane XML file whose
 // airfoils are .dat files next to it (Upload .dat files… matches several at once by name).
 // Input files: test/fixtures/flow5/ (written by flow5 from Wingdesigner's own inputs; SOURCE.md).
 import { fileURLToPath } from 'node:url';
@@ -31,8 +31,7 @@ test.describe('flow5 import', () => {
     await planeSelect.selectOption({ label: 'Tandem' });
     const radios = dlg.getByRole('radio');
     await expect(radios).toHaveCount(6);
-    await expect(dlg.getByRole('radio', { name: /^Fin Fins are not imported\./ })).toBeDisabled();
-    await expect(dlg.getByRole('radio', { name: /^Other wing 2 Rolled 30° about x/ })).toBeDisabled();
+    for (const radio of await radios.all()) await expect(radio).toBeEnabled();
     await expect(dlg.getByRole('radio', { name: /^Main wing 1 / })).toBeChecked();
     await dlg.getByRole('radio', { name: /^Horizontal stabilizer \(flow5: Elevator\)/ }).check();
     await expect(airfoilRows(dlg)).toHaveCount(1);
@@ -51,6 +50,16 @@ test.describe('flow5 import', () => {
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(sectionRows(page)).toHaveCount(2);
     await expect.poll(async () => (await savedProject(page)).name).toBe('Sport');
+  });
+
+  test('.fl5 project: a fin imports as the half flow5 builds, standing up by part roll 90°', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const dlg = await openImport(page, 'basic.fl5');
+    await dlg.getByRole('radio', { name: /^Fin / }).check();
+    await expect(reportOf(dlg).filter({ hasText: 'A one-sided wing: flow5 builds its left half only' })).toHaveCount(1);
+    await dlg.getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(toastOf(page)).toContainText('Imported the wing "Fin" of "Test plane" from basic.fl5: 2 sections, 1 airfoil.');
+    expect((await savedProject(page)).settings).toMatchObject({ partRoll: 90, partTilt: 0, partPivot: { x: 800, y: 0, z: 50 } });
   });
 
   test('plane XML with .dat file references: Upload .dat files… matches both airfoils by name', async ({ page }) => {

@@ -26,10 +26,9 @@ export default {
   'Fin {n}': 'Seitenleitwerk {n}',
   'Other wing {n}': 'Weiterer Flügel {n}',
   'Other wing': 'Weiterer Flügel',
-  'Fins are not imported.': 'Seitenleitwerke werden nicht importiert.',
-  'A one-sided wing: flow5 builds only its left half. Only two-sided wings are imported.': 'Ein einseitiger Flügel: flow5 baut nur seine linke Hälfte. Nur zweiseitige Flügel werden importiert.',
-  'Rolled {angle}° about x: only the first main wing and the first horizontal stabilizer are imported with a roll.':
-    'Um {angle}° um x gerollt: Nur die erste Tragfläche und das erste Höhenleitwerk werden mit Rollwinkel importiert.',
+  'A one-sided wing turned {angle}° about z (Ry_angle): a part turns about x and y only.': 'Ein einseitiger Flügel, um {angle}° um z gedreht (Ry_angle): Ein Teil dreht sich nur um x und y.',
+  "A one-sided wing: flow5 builds its left half only, with the left-side airfoils. The part's left half is that half, its right half the mirror image (on top of it for a fin at y = 0); Settings > Show mirrored half and Export > Wing halves > Right half only give one half.":
+    'Ein einseitiger Flügel: flow5 baut nur seine linke Hälfte, mit den Profilen der linken Seite. Die linke Hälfte des Teils ist diese Hälfte, seine rechte Hälfte das Spiegelbild (bei einem Seitenleitwerk bei y = 0 deckungsgleich); Einstellungen > Gespiegelte Hälfte zeigen und Exportieren > Flügelhälften > Nur rechte Hälfte ergeben eine Hälfte.',
   'flow5 project, format {format} (flow5 7.50 to 7.53)': 'flow5-Projekt, Format {format} (flow5 7.50 bis 7.53)',
   'flow5 project, format {format} (flow5 7.54 or later)': 'flow5-Projekt, Format {format} (flow5 7.54 oder neuer)',
   'flow5 wing file (XML), lengths in {unit}': 'flow5-Flügeldatei (XML), Längeneinheit: {unit}',

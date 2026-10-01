@@ -225,10 +225,10 @@ export function planeSurfaces(file, planeIndex = 0) {
 const reduced = (a) => zero(a - 360 * Math.round(a / 360));
 
 /**
- * The surfaces of a flow5 plane: one per wing, in file order. The first main wing ('main') and the
- * first elevator ('stab') import with their roll (Rx_angle, the part roll); every other two-sided wing
- * ('wing:<index>': a second main wing, a canard, another wing) imports when it is not rolled. Fins and
- * one-sided wings, of which flow5 builds the left half only, are listed as not available.
+ * The surfaces of a flow5 plane: one per wing, in file order: the first main wing ('main'), the first
+ * elevator ('stab'), every other wing ('wing:<index>': a second main wing, a canard, a fin, another
+ * wing), each with its roll (Rx_angle) and tilt (Ry_angle) as the part placement. A one-sided wing (a
+ * fin) is the left half only and imports as that half; turned about z (its Ry_angle) it is not available.
  */
 function flow5Surfaces(file, plane) {
   const k = file.lengthUnit;
@@ -253,14 +253,23 @@ function flow5Surfaces(file, plane) {
   };
   const surfaces = plane.wings.map((wing, i) => {
     const key = i === firstMain ? 'main' : i === firstStab ? 'stab' : `wing:${i}`;
-    const rolled = Number.isFinite(wing.roll) && reduced(wing.roll) !== 0;
-    let reason = null;
-    if (wing.type === 'fin') reason = tr('Fins are not imported.');
-    else if (!wing.twoSided) reason = tr('A one-sided wing: flow5 builds only its left half. Only two-sided wings are imported.');
-    else if (rolled && key !== 'main' && key !== 'stab') reason = tr('Rolled {angle}° about x: only the first main wing and the first horizontal stabilizer are imported with a roll.', { angle: num(wing.roll) });
+    // flow5 turns a one-sided wing by Ry_angle about z, which a part placement (tilt and roll) cannot.
+    const yawed = !wing.twoSided && Number.isFinite(wing.tilt) && reduced(wing.tilt) !== 0;
+    const reason = yawed ? tr('A one-sided wing turned {angle}° about z (Ry_angle): a part turns about x and y only.', { angle: num(wing.tilt) }) : null;
     return { key, slot: i, label: label(wing.type), available: reason === null, reason, wing, ...outline(wing, k) };
   });
   return { surfaces, others: [] };
+}
+
+/**
+ * A flow5 wing as the half wing of a part. A one-sided wing is flow5's left half: with its left-side
+ * airfoils and the opposite roll, the part's right half is its mirror image and the part's left half
+ * is flow5's half itself (mirroring turns a roll about x into the opposite roll). Its Ry_angle turns
+ * about z and is 0 here (flow5Surfaces).
+ */
+function oneSidedAsHalf(wing) {
+  if (!wing || wing.twoSided !== false) return wing;
+  return { ...wing, oneSided: true, roll: -wing.roll, tilt: 0, sections: wing.sections.map((s) => ({ ...s, rightFoil: s.leftFoil })) };
 }
 
 /** The surface a dialog selects first: the main wing, or the stabilizer when it is the only one. */
@@ -466,7 +475,8 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
   if (rollAngle !== 0) {
     add('info', tr('Roll angle {angle}° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).', { angle: num(rollAngle) }));
     // flow5 turns both halves as one body; the part's left half is the mirror image of its turned right half.
-    add('warning', tr('flow5 rolls the whole wing, so its left half turns the other way; Wingdesigner builds the left half as the mirror image of the right half, up to {d} mm from flow5\'s left half.', { d: fixed(leftHalfOffset(kept, angle, rollAngle), 1) }));
+    // A one-sided wing has one half only, which the part's left half is exactly.
+    if (!wing.oneSided) add('warning', tr('flow5 rolls the whole wing, so its left half turns the other way; Wingdesigner builds the left half as the mirror image of the right half, up to {d} mm from flow5\'s left half.', { d: fixed(leftHalfOffset(kept, angle, rollAngle), 1) }));
   }
   if (angle !== 0) {
     add('info', tr('Tilt angle {angle}° applied as in the {program} plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).', { program, angle: num(angle) }));
@@ -943,7 +953,7 @@ export function* checkSteps(file, { plane: planeIndex = 0, surface, fileName = '
   const plane = file.planes[planeIndex];
   if (!plane) return;
   const key = surface ?? defaultSurface(file, planeIndex);
-  const wing = planeSurfaces(file, planeIndex).surfaces.find((s) => s.key === key && s.available)?.wing;
+  const wing = oneSidedAsHalf(planeSurfaces(file, planeIndex).surfaces.find((s) => s.key === key && s.available)?.wing);
   if (!wing) return;
   const names = [...new Set(wing.sections.map((s) => s.rightFoil))];
   if (names.length > LIMITS.maxAirfoils || fileAirfoilPoints(file, names, {}) > LIMITS.maxAirfoilPoints) return;
@@ -1047,7 +1057,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
   const key = surface ?? defaultSurface(file, planeIndex);
   const chosen = surfaces.find((s) => s.key === key);
   if (!chosen) throw new RangeError(`unknown surface ${key}`);
-  const wing = chosen.available ? chosen.wing : null;
+  const wing = chosen.available ? oneSidedAsHalf(chosen.wing) : null;
   // The XML reader's warnings concern the whole file (another plane, too): marked for the caller. The
   // .xfl reader's warnings concern the airfoils, which this wing uses as well.
   const report = file.warnings.map((text) => (file.kind === 'xml' ? { severity: 'warning', text, reader: true } : { severity: 'warning', text }));
@@ -1207,6 +1217,9 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     if (file.wingOnly) {
       add('info', program === 'flow5' ? tr('A wing file holds no position or angles: the part is built in its own frame.') : tr('A wing file holds no position or tilt angle: the part is built in its own frame.'));
     }
+  }
+  if (wing?.oneSided) {
+    add('info', tr('A one-sided wing: flow5 builds its left half only, with the left-side airfoils. The part\'s left half is that half, its right half the mirror image (on top of it for a fin at y = 0); Settings > Show mirrored half and Export > Wing halves > Right half only give one half.'));
   }
   add('info', tr('Not used: VLM panel counts and distributions, colours, masses, the body and the analyses.'));
   add('info', tr('The trailing edge is built as in the airfoils; Settings > Trailing edge can close it or give it a thickness.'));

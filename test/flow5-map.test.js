@@ -51,14 +51,15 @@ function toTriangle(p, a, b, c) {
 }
 
 /**
- * Largest distance (mm) of flow5's mesh nodes of the right half from the right half that the import
- * builds. The right half: y >= 0 in flow5's wing frame (before Ry, Rx and the position); the position y,
+ * Largest distance (mm) of flow5's mesh nodes of one half (`side`) from that half as the import
+ * builds it. The right half: y >= 0 in flow5's wing frame (before Ry, Rx and the position); the position y,
  * which the import does not use, is taken off.
  */
-function rightHalfDistance(project, wing) {
-  const right = exportMeshes(buildWing(project), 'right')[0].mesh;
-  const P = right.positions;
-  const I = right.indices;
+function rightHalfDistance(project, wing, side = 'right') {
+  const [right, left] = exportMeshes(buildWing(project), 'halves').map((m) => m.mesh);
+  const half = side === 'right' ? right : left;
+  const P = half.positions;
+  const I = half.indices;
   const D = Math.PI / 180;
   const [px, py, pz] = wing.pos.map((v) => v * 1000);
   const [rx, ry] = [wing.rx * D, wing.ry * D];
@@ -67,7 +68,8 @@ function rightHalfDistance(project, wing) {
     // y in the wing frame: Ry undone (z only), then Rx undone.
     const [x, y, z] = [q[0] - px, q[1] - py, q[2] - pz];
     const zr = x * Math.sin(ry) + z * Math.cos(ry);
-    if (y * Math.cos(rx) + zr * Math.sin(rx) < -1e-6) continue;
+    const yLocal = y * Math.cos(rx) + zr * Math.sin(rx);
+    if (side === 'right' ? yLocal < -1e-6 : yLocal > 1e-6) continue;
     const p = [q[0], q[1] - py, q[2]];
     let best = Infinity;
     for (let t = 0; t < I.length; t += 3) {
@@ -80,21 +82,21 @@ function rightHalfDistance(project, wing) {
 }
 
 describe('flow5 planes: the wing list', () => {
-  it('lists every wing in file order; fins, one-sided wings and rolled further wings are not available', () => {
+  it('lists every wing in file order; a one-sided wing turned about z is not available', () => {
     const { surfaces } = planeSurfaces(FULL, planeOf(FULL, 'Tandem'));
     expect(surfaces.map((s) => [s.key, s.label, s.available, s.reason, s.detail])).toEqual([
       ['main', 'Main wing 1', true, null, '"Front": 2 sections, span 999 mm, root chord 200 mm'],
       ['wing:1', 'Main wing 2', true, null, '"Rear": 2 sections, span 900 mm, root chord 180 mm'],
       ['stab', 'Horizontal stabilizer (flow5: Elevator)', true, null, '"Vee": 2 sections, span 326 mm, root chord 100 mm'],
       ['wing:3', 'Other wing 1', true, null, '"Canard": 2 sections, span 300 mm, root chord 80 mm'],
-      ['wing:4', 'Other wing 2', false, 'Rolled 30° about x: only the first main wing and the first horizontal stabilizer are imported with a roll.', '"Tilted other": 2 sections, span 200 mm, root chord 80 mm'],
-      ['wing:5', 'Fin', false, 'Fins are not imported.', '"Fin": 2 sections, span 240 mm, root chord 100 mm'],
+      ['wing:4', 'Other wing 2', true, null, '"Tilted other": 2 sections, span 200 mm, root chord 80 mm'],
+      ['wing:5', 'Fin', true, null, '"Fin": 2 sections, span 240 mm, root chord 100 mm'],
     ]);
-    const r = mapXflr5(FULL, { plane: planeOf(FULL, 'Tandem'), surface: 'wing:5', fileName: 'full.fl5' });
-    expect([r.project, r.report.filter((l) => l.severity === 'error').map((l) => l.text)]).toEqual([null, ['Fins are not imported.']]);
-    const oneSided = structuredClone(BASIC);
-    oneSided.planes[0].wings[2].type = 'other';
-    expect(planeSurfaces(oneSided).surfaces[2].reason).toBe('A one-sided wing: flow5 builds only its left half. Only two-sided wings are imported.');
+    const yawed = structuredClone(BASIC);
+    yawed.planes[0].wings[2].tilt = 3;
+    expect(planeSurfaces(yawed).surfaces[2]).toMatchObject({ available: false, reason: 'A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.' });
+    const r = mapXflr5(yawed, { surface: 'wing:2', fileName: 'basic.fl5' });
+    expect([r.project, r.report.filter((l) => l.severity === 'error').map((l) => l.text)]).toEqual([null, ['A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.']]);
     expect(describeFile(FULL)).toBe('flow5 project, format 500754 (flow5 7.54 or later)');
     expect(describeFile(readFlow5Xml(text('full-plane.xml')))).toBe('flow5 plane file (XML), lengths in millimetres');
   });
@@ -104,6 +106,19 @@ describe('flow5 planes: the wing list', () => {
     expect(r.summary).toBe('Imported the wing "Canard" of "Tandem" from full.fl5: 2 sections, 1 airfoil.');
     expect(r.report.map((l) => l.text)).toContain('Not imported: Main wing 1 "Front", Main wing 2 "Rear", Horizontal stabilizer (flow5: Elevator) "Vee", Other wing 2 "Tilted other", Fin "Fin". One surface per import; open the file again for another one.');
     expect(r.project.settings).toMatchObject({ partTilt: 2, partRoll: 0, partPivot: { x: -300, y: 0, z: 20 } });
+  });
+
+  it('imports a fin as the half flow5 builds: the left half of the part, with the opposite roll', () => {
+    for (const [file, planeName, key, nodes] of [
+      [BASIC, 'Test plane', 'wing:2', 'basic/Test plane/Fin'],
+      [FULL, 'Tandem', 'wing:5', 'full/Tandem/Fin'],
+    ]) {
+      const r = mapXflr5(file, { plane: planeOf(file, planeName), surface: key, fileName: 'f.fl5' });
+      expect(r.project.settings, nodes).toMatchObject({ partRoll: 90, partTilt: 0 });
+      expect(r.report.map((l) => l.text).some((t) => t.startsWith('A one-sided wing: flow5 builds its left half only'))).toBe(true);
+      expect(r.report.some((l) => l.text.startsWith('flow5 rolls the whole wing'))).toBe(false);
+      expect(rightHalfDistance(r.project, NODES[nodes], 'left'), nodes).toBeLessThan(0.01);
+    }
   });
 });
 
@@ -118,6 +133,7 @@ describe('flow5 planes: geometry', () => {
       [FULL, 'Tandem', 'stab', 'full/Tandem/Vee', 0.006],
       [FULL, 'Tandem', 'wing:3', 'full/Tandem/Canard', 0.004],
       [FULL, 'Second', 'main', 'full/Second/Wing2', 0.08],
+      [FULL, 'Tandem', 'wing:4', 'full/Tandem/Tilted other', 0.01],
     ];
     for (const [file, planeName, surface, key, tolerance] of cases) {
       const r = mapXflr5(file, { plane: planeOf(file, planeName), surface, fileName: 'f.fl5' });

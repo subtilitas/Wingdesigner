@@ -298,7 +298,7 @@ To add a text:
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` and the label and title of **Foam** in `src/main.js` |
 | `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` and the **Winglet…** button in `src/ui/sections.js` |
 
-`src/i18n/de/index.js` merges the twelve files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 34 and 146 texts, the file of the flow5 import 43.
+`src/i18n/de/index.js` merges the twelve files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 34 and 146 texts, the file of the flow5 import 42.
 
 To add a language:
 
@@ -400,7 +400,7 @@ Files in `test/fixtures/flow5/`, written by local builds of flow5 from Wingdesig
 | `v756.fl5` | 85,968 | flow5 7.56: a sections body with its section points |
 | `basic-plane.xml`, `basic-wing.xml`, `full-plane.xml`, `full-plane-files.xml` | 3,094 to 31,093 | flow5 7.57: plane and wing XML export in metres and millimetres, airfoils by name and by `.dat` file |
 | `NACA 2412.dat`, `NACA 0009.dat`, `Flapped 2410.dat` | 2,782 to 2,785 | flow5 7.57: the airfoil files of the XML export |
-| `mesh-nodes.json` | 104,898 | flow5 7.57: the analysis mesh nodes of 7 wings, the reference of the geometry test |
+| `mesh-nodes.json` | 132,240 | flow5 7.57: the analysis mesh nodes of 10 wings (8 two-sided, 2 fins), the reference of the geometry test |
 
 Unit tests (Vitest, Node.js):
 
@@ -408,14 +408,15 @@ Unit tests (Vitest, Node.js):
 | --- | ---: | --- |
 | `test/flow5-fl5.test.js` | 9 | Reader of `.fl5` projects: the files of flow5 7.57 and 7.56; every body kind, airfoil analyses and results, mesh planes, the record formats of flow5 7.53 and older layouts from `test/fl5-writer.js`; the sections body with and without its section points; refusals; windows of 1,000 bytes |
 | `test/flow5-xml.test.js` | 9 | Reader of flow5 XML: plane files in millimetres and metres, `.dat` file references, wing files, `Type` and booleans, units, several planes, refusals |
-| `test/flow5-map.test.js` | 7 | Mapping: the wing list with its reasons, a further wing, roll and tilt as part placement with the warning on the mirrored left half, flow5 airfoils and their flaps, `.dat` files matched by name; the right half of 7 wings within 0.15 mm of flow5's analysis mesh |
+| `test/flow5-map.test.js` | 8 | Mapping: the wing list and the one-sided wing turned about z, a further wing, a fin as the left half of the part, roll and tilt as part placement with the warning on the mirrored left half, flow5 airfoils and their flaps, `.dat` files matched by name; the right half of 8 wings and both fins within 0.15 mm of flow5's analysis mesh |
 
 `test/fl5-writer.js` writes `.fl5` projects from the same description of the format, with the format number of each record selectable, so that the layouts of flow5 versions without a file at hand are tested.
 
-Browser tests: `e2e/flow5.spec.js`, 2 tests, 4 runs:
+Browser tests: `e2e/flow5.spec.js`, 3 tests, 6 runs:
 
-- `.fl5` project: plane choice, the wing list with a fin and a rolled further wing disabled, the rolled elevator imported as part roll and tilt, its airfoil from the file, **Undo**.
+- `.fl5` project: plane choice, the wing list, the rolled elevator imported as part roll and tilt, its airfoil from the file, **Undo**.
 - flow5 plane XML with `.dat` file references: **Upload .dat files…** takes both files, each row finds its file by name.
+- `.fl5` project: the fin imported with part roll 90° about the wing origin.
 - The dialog in German (locale `de-DE`).
 
 ## Commands
