@@ -58,15 +58,18 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
 
 ## Working with the owner
 
-- One pull request per change, from a branch. The owner merges, or asks for the merge. After a merge
-  the next change starts from `main` in a new pull request; a merged pull request takes no further
-  commits.
+- One pull request per change, from a branch. After a merge the next change starts from `main` in a
+  new pull request; a merged pull request takes no further commits.
+- Merge (standing rule of the owner, 2026-10-01): the contributor merges a pull request, with a merge
+  commit, once `ci.yml` passes on the head commit and the bot reviews of that commit are clean: no
+  open finding, no unresolved thread. Otherwise the pull request waits for the owner.
 - Before a merge: `ci.yml` passes on the head commit, and the Codex bot has reviewed that commit.
   Codex runs a code review and a security review on each push. Its pull request comment "Codex Review
   Summary" names the reviewed commit and the status of both. Findings come as a review with inline
   comments; a review without findings leaves only a 👍 reaction. When the summary does not name the
-  head commit, the comment `@codex review` starts a review. Each finding is reproduced first, then
-  fixed or answered on its thread.
+  head commit, the comment `@codex review` starts a review. The Copilot reviewer
+  (`copilot-pull-request-reviewer`) can also review a commit; its findings count like those of Codex.
+  Each finding is reproduced first, then fixed or answered on its thread.
 - The owner pushes the release tags.
 - Commit messages and pull request texts state the change and its effect, in imperative mood. No link
   to a chat session goes into a commit, a pull request, a comment or any other text on GitHub. Claude
