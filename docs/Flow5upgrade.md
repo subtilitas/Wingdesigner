@@ -2,7 +2,8 @@
 
 This page records the plan and the owner's decisions for three planned changes to Wingdesigner:
 mitred section planes, a rigid tilt of the whole part, and an import of flow5 planes. Status on
-2026-09-30: step 1 is implemented (section "Step 1 as built"); steps 2 and 3 are planned. The text of
+2026-10-01: steps 1 and 2 are implemented (sections "Step 1 as built" and "Step 2 as built"); step 3
+is planned. The text of
 the sections below describes the plan as decided. Every effort, size, review and time figure is an estimate
 scaled from the history of this repository, not measured on these changes. The section-plane figures
 are scaled from the XFLR5 import, counted as 9,444 added lines in 12.1 h wall-clock, research
@@ -266,6 +267,45 @@ Options not taken:
 - With the prototype, 16 of 348 browser test runs fail on 84d4e5e; the independent check does not
   rerun the full browser suite.
 
+## Step 2 as built
+
+Code: `src/geom/part.js` (pivot and transform), `src/geom/wing.js` (`build.part`, extent check of the
+turned control points), `src/geom/mesh.js`, `src/export/step.js`, `src/ui/viewer3d.js` (the turned
+part), `src/geom/stats.js` (plane axes), `src/model/io.js` (`upgradeFoldedTilt`), `src/import/xflr5.js`
+(tilt stored, not folded). User-facing description: wiki pages Geometry, File Formats (project format
+version 3, XFLR5 import) and User Guide (Settings).
+
+| Plan item | As built |
+| --- | --- |
+| Transform | The half wing is built in its own frame and turned as a rigid body: first the roll about the x axis, then the tilt about the y axis, both through the pivot. Positive tilt raises the leading edge, positive roll raises the right tip. The left half is the mirror image of the turned right half |
+| Values | `settings.partTilt` and `settings.partRoll` (degrees, ±180, default 0), `settings.partPivot` (`{x, y, z}` mm, or null for the leading edge of the root section); project format version 3 |
+| User interface | **Settings** > **Part tilt** and **Part roll**, with Undo, and a line that names the pivot (owner decision "Editable in Settings", 2026-10-01) |
+| Applied to | STL and 3MF meshes, STEP, the 3D view, the statistics and the **Checks** row 25 % MAC. Sections, section planes, the Sections table, the Planform tab and the foam-cutting wizard stay in the part frame |
+| Statistics | Plane axes (owner decision, 2026-10-01): MAC position and 25 % MAC turned with the part; span from the turned tip leading edge, so a roll shortens it; area, MAC length and chords in the part frame |
+| Extent check | After the fit, the turned control points must stay within ±1,200,000 mm, else a build error names the coordinates |
+| Merged mesh | **Full wing as one body** merges the halves only without a roll: a rolled root leaves the plane y = 0 |
+| XFLR5 import | The tilt angle is stored as the part tilt about the wing origin, not folded; tilted parts import mitred like untilted ones. No new `foldedTilt` |
+| Upgrade | Version 2 files with `foldedTilt` are unfolded on Open and on restore from browser storage, with a note. Kept folded, with a note: an enabled guide, a disabled edited guide, or a twist that would leave ±360° |
+| flow5 roll (F4) | Applied rigidly, as `partRoll` (owner decision "Apply roll rigidly", 2026-10-01); used by step 3 |
+
+Measured on 2026-10-01:
+
+- Fixture A main wing (tilt 2°), imported mitred and turned: the trailing edges of sections 1 and 2
+  lie within 1e-3 mm of XFLR5's construction (`test/xflr5-map.test.js`).
+- Upgrade of version 2 projects with vertical planes (twist pivot 0.25 and 0.5, pointed tip, straight
+  panels): the upgraded project builds the same part as the folded one within 1e-6 mm
+  (`test/part.test.js`). MAC position and 25 % MAC move by 0.105 mm at 3° tilt: the plane axes turn
+  the leading edge itself.
+- STEP and 3MF case `part-tilt-roll` (the mitred gull with tilt 8°, roll 12°, pivot (50, 0, −20) mm):
+  OpenCascade: both solids valid and closed, volume within 3.2e-5 of the mesh volume, cap edges within
+  1.9e-13 mm of their planes; lib3mf passes.
+
+### Open points
+
+- The comparison against XFLR5's STL for 93 surfaces of 15 real projects is not rerun with the rigid
+  tilt; the 4 tilted 35° V-tails (2.87 mm with vertical planes) are not measured mitred and turned.
+- Not tested: a turned STEP file in a CAD program.
+
 ## 2. Rigid tilt of the whole part
 
 An imported wing or stabilizer sits as in the XFLR5 plane: today the tilt is folded into the section
@@ -312,9 +352,9 @@ tilt can be mitred at the upgrade. Its fold is not exact (0.45 to 7.5 mm, table 
 upgrade changes its shape towards XFLR5's and reports the change. The test of such a project checks
 the report, not an unchanged geometry.
 
-Not decided: the statistics of a part with a rigid tilt are given in the plane axes (the upgrade
-keeps the MAC position and 25 % MAC) or in the part's own axes (the upgrade moves them, about 5 mm on
-a 35° V-tail with 3° tilt, estimated, and reports it). The migration tests compare these values too.
+Statistics of a part with a rigid tilt: plane axes (owner decision, 2026-10-01; not taken: the
+part's own axes, which move the MAC position about 5 mm on a 35° V-tail with 3° tilt, estimated). The
+migration tests compare these values too.
 
 A part tilt is a new project value. An app with step 1 only would drop it without a message
 (`resolveSettings` and the loader in `src/model/io.js` keep only known keys). Format rule:
@@ -361,7 +401,7 @@ breaks that the XFLR5 import also has.
 | F1 | Scope and order | Option C: flow5 XML and `.fl5` in one branch, after the XFLR5 import is merged. |
 | F2 | Which `.fl5` files | Project format 500750 and later (flow5 7.50 on), up to the newest layout the reader knows (project format 500754, Part format 500757). A higher format number in any record is refused with a message, not read. Older files get a message: open and save the project in a current flow5, or export the plane as XML. |
 | F3 | Which wings | The first main wing and the first elevator (F4 applies to them), and further two-sided, unrolled wings: a second main wing, a canard, "other" wings. One surface per import; a wing that cannot be built is listed as disabled, with its reason. |
-| F4 | A rolled (`rx` ≠ 0) or one-sided main wing or elevator | Rolled: built without the roll, with a warning (the shape is exact, the roll is lost). One-sided: refused with a reason. |
+| F4 | A rolled (`rx` ≠ 0) or one-sided main wing or elevator | Rolled: the roll applied rigidly as the part roll of step 2 (owner decision, 2026-10-01; replaces "built without the roll, with a warning"). One-sided: refused with a reason. |
 | F5 | Test files (flow5 is GPL-3.0) | Files that flow5 writes from Wingdesigner's own inputs (script mode or a local driver) are committed; the drivers and build changes stay out of the repository, as for the XFLR5 test files. flow5's fixed comment lines stay in committed XML. flow5's own sample files are not committed. |
 | F6 | Airfoil upload in the import dialog | A button "Upload .dat files…" takes several files and matches them to the airfoil rows by name (for flow5 XML and XFLR5 XML). |
 
@@ -419,7 +459,7 @@ Defaults without a question, as for the XFLR5 import:
 - No file of flow5 7.50 to 7.52 is available to read or write; their layout is inferred from the
   current loader. Tags v7.53 to v7.55 are not built, and the official 7.57 binaries are not tried.
 - Whether the file choosers of Android and iOS list `.fl5` files is unknown.
-- F4 builds a rolled wing without its roll. Once step 2 exists, the roll could be applied by the same
-  rigid transform; this is not decided.
+- F4 applies the roll of a flow5 wing rigidly as the part roll of step 2 (owner decision,
+  2026-10-01), not built without roll and a warning.
 - Whether the XFLR5 import also offers its second wing once the wings form a typed list is not
   decided; F3 covers flow5 only.
