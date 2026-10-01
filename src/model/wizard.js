@@ -275,15 +275,32 @@ export function wizardProblems(params) {
 }
 
 /**
- * The straight planform of `params` as one panel: the leading-edge sweep that puts the tip where the
- * swept 25 % line puts it, the taper as outer chord, the dihedral. Elliptic planforms give the same.
+ * The straight or elliptic planform of `params` as panels: one per interval between its evenly spaced
+ * sections, ending at the section's leading edge with its chord, at the dihedral of `params`. A
+ * straight planform keeps its sections and a pointed tip its chord (1/200 of the section before);
+ * an elliptic planform becomes the polygon through its sections. Sweep rounded to 0.001°, chord ratio
+ * to 1e-6.
  */
 export function panelsFromParams(params) {
+  const n = Math.min(Math.max(Number.isInteger(params.sections) ? params.sections : 2, 2), MAX_PANELS + 1);
   const b = params.span / 2;
   const c0 = params.rootChord;
-  const ct = c0 * params.taper;
-  const xTip = 0.25 * (c0 - ct) + b * Math.tan((params.sweep * Math.PI) / 180);
-  return [{ span: 1, sweep: Math.round((Math.atan2(xTip, b) * 1800) / Math.PI) / 10, chord: params.taper, dihedral: params.dihedral }];
+  const at = (i) => {
+    const eta = i / (n - 1);
+    const chord = chordAt(params, eta);
+    return { y: eta * b, x: leadingEdgeX(params, eta * b, chord), chord };
+  };
+  const out = [];
+  for (let i = 1; i < n; i++) {
+    const [a, q] = [at(i - 1), at(i)];
+    out.push({
+      span: Math.round(1e6 / (n - 1)) / 1e6,
+      sweep: Math.round((Math.atan2(q.x - a.x, q.y - a.y) * 180000) / Math.PI) / 1000,
+      chord: Math.round((q.chord / c0) * 1e6) / 1e6,
+      dihedral: params.dihedral,
+    });
+  }
+  return out;
 }
 
 /** Problems of the panel list of a 'panels' planform. */

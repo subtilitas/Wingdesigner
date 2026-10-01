@@ -193,9 +193,9 @@ export function openWizard({ firstRun = false } = {}) {
         'select',
         {
           onchange: (e) => {
+            // The first switch to panels starts from the sections of the planform it leaves.
+            if (e.target.value === 'panels' && !params.panels?.length) params.panels = panelsFromParams(params);
             params.planform = e.target.value;
-            // The first switch to panels starts from the straight planform of the current numbers.
-            if (params.planform === 'panels' && !params.panels?.length) params.panels = panelsFromParams(params);
             renderFields();
             refresh();
           },

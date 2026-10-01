@@ -814,14 +814,27 @@ describe('wizard panels', () => {
     expect(buildWing(p).errors).toEqual([]);
   });
 
-  it('turns a straight planform into one panel with the same tip', () => {
-    const straight = { ...PRESETS.sport.params, sweep: 12 };
-    const panel = { ...straight, planform: 'panels', panels: panelsFromParams(straight) };
-    const a = wizardProject(straight).sections.at(-1);
-    const b = wizardProject(panel).sections.at(-1);
-    // The leading-edge sweep is rounded to 0.1°: 600 mm · tan 0.05° = 0.52 mm at most.
-    expect(Math.abs(a.x - b.x)).toBeLessThan(0.53);
-    expect([b.y, b.chord, b.z]).toEqual([a.y, a.chord, a.z]);
+  it('turns a straight or elliptic planform into one panel per section interval with the same sections', () => {
+    // The sweep is rounded to 0.001°: at most 500 mm · tan 0.0005° = 0.004 mm per panel.
+    const same = (from) => {
+      const panel = { ...from, planform: 'panels', panels: panelsFromParams(from) };
+      const a = wizardProject(from).sections;
+      const b = wizardProject(panel).sections;
+      expect(b).toHaveLength(a.length);
+      b.forEach((q, i) => {
+        for (const k of ['y', 'chord', 'z', 'twist']) expect(q[k], `${k} ${i}`).toBeCloseTo(a[i][k], 2);
+        expect(Math.abs(q.x - a[i].x), `x ${i}`).toBeLessThan(0.02);
+      });
+    };
+    same({ ...PRESETS.sport.params, sweep: 12 });
+    // A pointed tip keeps 1/200 of the section before it: 1000 mm root, taper 0.2, 3 sections: 3 mm.
+    const pointed = { ...PRESETS.sport.params, rootChord: 1000, taper: 0.2, sections: 3, tip: 'pointed' };
+    same(pointed);
+    expect(wizardProject({ ...pointed, planform: 'panels', panels: panelsFromParams(pointed) }).sections.at(-1).chord).toBe(3);
+    // An elliptic planform becomes the polygon through its sections (the guide curves are not kept).
+    same({ ...PRESETS.glider.params, sections: 5 });
+    same({ ...PRESETS.glider.params, sections: 4, tip: 'pointed' });
+    expect(panelsFromParams({ ...PRESETS.glider.params, sections: 5 })).toHaveLength(4);
   });
 
   it('ends an elliptic tip in a quarter ellipse about the straight 25 % line, pointed at the tip', () => {
