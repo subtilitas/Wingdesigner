@@ -6,7 +6,7 @@
 import { defaultGuides } from '../geom/guide.js';
 import { fixed, plain, tr, whole } from '../i18n/index.js';
 import { syncGuidesToSpan } from './edit.js';
-import { FORMAT, LIMITS, SOURCE_KEYS, VERSION, resolveSettings, validateProject } from './project.js';
+import { FORMAT, LIMITS, SOURCE_KEYS, VERSION, fileVersion, resolveSettings, validateProject } from './project.js';
 
 // Derived numbers keep full double precision (JSON writes the shortest string that reads back to
 // the same double): rounding merged distinct span parameters and knots of close sections.
@@ -24,7 +24,7 @@ function curveJson(c) {
 export function projectToJson(project, build, meta = {}) {
   const out = {
     format: FORMAT,
-    version: VERSION,
+    version: fileVersion(project.settings),
     generator: { name: 'Wingdesigner', version: meta.generatorVersion ?? '0.0.0' },
     exportedAt: meta.exportedAt ?? new Date().toISOString(),
     name: project.name,
@@ -246,6 +246,11 @@ export function projectFromJsonText(text) {
       for (const k of ['partTilt', 'partRoll', 'partPivot']) delete data.settings[k];
     }
     if (data.version < 2) delete data.foldedTilt;
+  }
+  // settings.leftHalf came with version 4: an older file's key is unknown and dropped.
+  if (isObject(data) && typeof data.version === 'number' && data.version < 4 && isObject(data.settings) && 'leftHalf' in data.settings) {
+    data = { ...data, settings: { ...data.settings } };
+    delete data.settings.leftHalf;
   }
   const v = validateProject(data);
   if (!v.ok) return { ok: false, errors: v.errors };

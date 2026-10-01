@@ -578,7 +578,7 @@ describe('project JSON', () => {
     v1.version = 1;
     delete v1.settings.sectionPlanes;
     const old = projectFromJsonText(JSON.stringify(v1));
-    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 3, 'vertical']);
+    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 4, 'vertical']);
     expect(buildWing(old.project).surface).toEqual(buildWing(sampleProject()).surface);
     // A version 2 file without the setting takes the default, and one with it keeps it.
     const bare = structuredClone(v2);
@@ -586,7 +586,7 @@ describe('project JSON', () => {
     expect(projectFromJsonText(JSON.stringify(bare)).project.settings.sectionPlanes).toBe('mitred');
     expect(projectFromJsonText(JSON.stringify({ ...v2, settings: { ...v2.settings, sectionPlanes: 'vertical' } })).project.settings.sectionPlanes).toBe('vertical');
     // A later format is refused rather than opened without its values.
-    expect(projectFromJsonText(JSON.stringify({ ...v3, version: 4 })).errors).toEqual(['Unsupported project version 4.']);
+    expect(projectFromJsonText(JSON.stringify({ ...v3, version: 5 })).errors).toEqual(['Unsupported project version 5.']);
     // A version 3 file keeps a folded tilt with its three numbers only (an upgrade that kept the fold).
     const tilted = projectFromJsonText(JSON.stringify({ ...v3, foldedTilt: { angle: 2, x: 10, z: -5, note: 'x' } }));
     expect([tilted.project.foldedTilt, tilted.notes]).toEqual([{ angle: 2, x: 10, z: -5 }, []]);

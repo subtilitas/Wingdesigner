@@ -124,8 +124,8 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
   const part = build.part && !build.part.identity ? build.part : null;
   const place = part ? part.point : (P) => P;
   const placeDir = part ? part.vector : (P) => P;
-  const xf = mirrored ? (P) => turn(mirrorPoint(place(P))) : (P) => turn(place(P));
-  const xv = mirrored ? (v) => turn(mirrorPoint(placeDir(v))) : (v) => turn(placeDir(v));
+  const xf = mirrored ? (part ? (P) => turn(part.leftPoint(P)) : (P) => turn(mirrorPoint(P))) : (P) => turn(place(P));
+  const xv = mirrored ? (part ? (v) => turn(part.leftVector(v)) : (v) => turn(mirrorPoint(v))) : (v) => turn(placeDir(v));
   const [SU, SL] = splitSurfaceU(build.surface, build.uLE);
   const closed = build.closedTE;
 
@@ -232,7 +232,7 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
  * @param {{mirror?: boolean, name?: string, timestamp?: string, author?: string, up?: 'z'|'y'}} [options]
  *   up: the up axis of the file (src/export/axes.js)
  */
-export function wingToStep(build, { mirror = true, name = 'Wing', timestamp, author = '', up = 'z' } = {}) {
+export function wingToStep(build, { mirror = true, right = true, name = 'Wing', timestamp, author = '', up = 'z' } = {}) {
   if (!build.surface) throw new Error(tr('The wing has no surface; fix the reported errors first.'));
   const w = new StepWriter();
   const appCtx = w.add(`APPLICATION_CONTEXT('core data for automotive mechanical design processes')`);
@@ -252,7 +252,8 @@ export function wingToStep(build, { mirror = true, name = 'Wing', timestamp, aut
     `(GEOMETRIC_REPRESENTATION_CONTEXT(3)GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((${unc}))GLOBAL_UNIT_ASSIGNED_CONTEXT((${mm},${rad},${sr}))REPRESENTATION_CONTEXT('Context #1','3D Context with UNIT and UNCERTAINTY'))`,
   );
   const origin = w.add(`AXIS2_PLACEMENT_3D('',${w.point([0, 0, 0])},${w.direction([0, 0, 1])},${w.direction([1, 0, 0])})`);
-  const solids = [writeHalfWing(w, build, `${name} right`, false, up)];
+  // right: the right half; mirror: the left half (right false and mirror true: the left half alone).
+  const solids = right ? [writeHalfWing(w, build, `${name} right`, false, up)] : [];
   if (mirror) solids.push(writeHalfWing(w, build, `${name} left`, true, up));
   const rep = w.add(`ADVANCED_BREP_SHAPE_REPRESENTATION(${stepString(name)},(${[origin, ...solids].join(',')}),${ctx})`);
   w.add(`SHAPE_DEFINITION_REPRESENTATION(${pds},${rep})`);

@@ -267,7 +267,7 @@ Die Prüfungen laufen:
 | Schlüssel | Typ | Geschrieben | Bei **Öffnen** |
 | --- | --- | --- | --- |
 | `format` | `"wingdesigner-project"` | immer | Pflicht, muss übereinstimmen |
-| `version` | ganze Zahl `3` | immer | Pflicht, 1 bis 3. Eine Datei der Version 1 öffnet mit `settings.sectionPlanes` `"vertical"`, den Schnittebenen, mit denen sie entworfen wurde. Eine Datei der Version 2 mit `foldedTilt` wird aktualisiert (Abschnitt „Aktualisierung von Dateien der Version 2“). Eine Datei der Version 1 oder 2 öffnet mit `partTilt` und `partRoll` 0 und `partPivot` null, außer die Aktualisierung ihres `foldedTilt` setzt sie: `partTilt`, `partRoll` und `partPivot` in ihren Einstellungen sind unbekannte Schlüssel dieser Version und entfallen, wie die Apps dieser Version sie verwerfen. Eine App, die nur Version 1 liest, lehnt eine Datei der Version 2 ab (`Nicht unterstützte Projektversion 2.`), statt `sectionPlanes` und `foldedTilt` zu verwerfen; Wingdesigner 0.3.0 und älter lehnen eine Datei der Version 3 ab (`Nicht unterstützte Projektversion 3.`), statt `partTilt`, `partRoll` und `partPivot` zu verwerfen. |
+| `version` | ganze Zahl `3`, oder `4`, wenn `settings.leftHalf` `"turned"` ist | immer | Pflicht, 1 bis 4. Eine Datei der Version 1 öffnet mit `settings.sectionPlanes` `"vertical"`, den Schnittebenen, mit denen sie entworfen wurde. Eine Datei der Version 2 mit `foldedTilt` wird aktualisiert (Abschnitt „Aktualisierung von Dateien der Version 2“). Eine Datei der Version 1 oder 2 öffnet mit `partTilt` und `partRoll` 0 und `partPivot` null, außer die Aktualisierung ihres `foldedTilt` setzt sie: `partTilt`, `partRoll` und `partPivot` in ihren Einstellungen sind unbekannte Schlüssel dieser Version und entfallen, wie die Apps dieser Version sie verwerfen. Eine App, die nur Version 1 liest, lehnt eine Datei der Version 2 ab (`Nicht unterstützte Projektversion 2.`), statt `sectionPlanes` und `foldedTilt` zu verwerfen; Wingdesigner 0.3.0 und älter lehnen eine Datei der Version 3 ab (`Nicht unterstützte Projektversion 3.`), statt `partTilt`, `partRoll` und `partPivot` zu verwerfen. Eine Datei der Version 1 bis 3 öffnet mit `settings.leftHalf` `"mirror"`; ein Schlüssel `leftHalf` darin entfällt. Wingdesigner 0.4.0 und älter lehnen eine Datei der Version 4 ab (`Nicht unterstützte Projektversion 4.`). |
 | `generator` | `{ "name": "Wingdesigner", "version": "<App-Version>" }` | immer | ignoriert |
 | `exportedAt` | Zeitpunkt nach ISO 8601, UTC | immer | ignoriert |
 | `name` | Zeichenkette | immer | keine Zeichenkette: „Importierter Flügel“ (englische Oberfläche: `Imported wing`); höchstens 10 000 Zeichen |
@@ -362,6 +362,7 @@ Von der App erzeugte IDs:
 | `partTilt` | −180 bis 180°; positiv = Nasenleiste hoch | `0` | **Einstellwinkel des Teils (°, positiv = Nasenleiste hoch)** (Part tilt (°, positive = leading edge up)): starre Drehung des ganzen Teils um die y-Achse durch `partPivot`, nach dem Rollwinkel ([[Geometrie]], Abschnitt 3.9) |
 | `partRoll` | −180 bis 180°; positiv = rechter Randbogen hoch | `0` | **Rollwinkel des Teils (°, positiv = rechter Randbogen hoch)** (Part roll (°, positive = right tip up)): starre Drehung des ganzen Teils um die x-Achse durch `partPivot`, vor dem Einstellwinkel |
 | `partPivot` | `null` oder `{ "x": <mm>, "y": <mm>, "z": <mm> }` mit jedem Wert innerhalb von ±1 000 000 mm | `null` | keines; die Zeile unter **Rollwinkel des Teils** nennt ihn. `null`: die Nasenleiste (x, y, z) des Wurzelschnitts. Der XFLR5-Import speichert den Ursprung des Flügels `{ "x": k·LE_x, "y": 0, "z": k·LE_z }` (Abschnitt „XFLR5-Import“, Schritt 3). |
+| `leftHalf` | `"mirror"`, `"turned"` | `"mirror"` | **Linke Hälfte** (Left half): `"mirror"` **Spiegelbild der gedrehten rechten Hälfte** (Mirror image of the turned right half); `"turned"` **Mit der rechten Hälfte gedreht (ganzer Flügel, wie flow5)** (Turned with the right half (whole wing, as flow5)): Die linke Hälfte ist das Spiegelbild der ungedrehten rechten Hälfte, mit ihr um `partRoll` und `partTilt` gedreht ([[Geometrie]], Abschnitt 3.9). Die beiden unterscheiden sich nur bei einem Rollwinkel des Teils ungleich 0°. Ein Projekt mit `"turned"` wird im Format Version 4 gespeichert. |
 
 Unbekannte Schlüssel in `settings` entfallen bei **Öffnen**. **Speichern** schreibt die Schlüssel dieser Tabelle.
 
@@ -532,7 +533,7 @@ englische Texte; die Sprache ändert sie nicht.
 | Eigenschaft | Wert |
 | --- | --- |
 | Schlüssel | `wingdesigner.project.v1` |
-| Gespeicherte Schlüssel | wie im Projekt-JSON, ohne `generator`, `exportedAt`, `coordinateSystem` und `derived` |
+| Gespeicherte Schlüssel | wie im Projekt-JSON, ohne `generator`, `exportedAt`, `coordinateSystem` und `derived`; `version` wie in einer gespeicherten Datei (3, oder 4 mit `settings.leftHalf` `"turned"`) |
 
 | Ereignis | Verhalten |
 | --- | --- |
@@ -567,8 +568,6 @@ Eine abgelehnte Datei zeigt die rote Meldung `<file> kann nicht geöffnet werden
 | Code | Datei | Meldung |
 | --- | --- | --- |
 | `wpa` | `.wpa`-Projekt (XFLR5 6.02 bis 6.09) | `Die Datei ist ein .wpa-Projekt von XFLR5 6.09 oder älter: in XFLR5 6.62 öffnen und als .xfl speichern.` |
-| `flow5` | flow5-Projekt (`.fl5`, flow5 7.x): erste Zahl 500000 bis 509999 | `Die Datei ist ein flow5-Projekt (.fl5); nur XFLR5-Dateien können importiert werden.` |
-| `flow5` | flow5-XML-Datei: Wurzelelement `xflplane`, `xflwing`, `xflfuse`, `xflboat` oder `xflsail`, in beliebiger Groß- und Kleinschreibung | `Die Datei ist eine flow5-XML-Datei (Wurzelelement „xflplane“); nur XFLR5-Dateien können importiert werden.` |
 | `not-xflr5` | Binärdatei, deren erste Zahl nicht 200001 oder 200002 ist | `Die Datei ist kein XFLR5-Projekt (sie beginnt mit 7b 22 66 6f).` Die Bytes sind die ersten 4 Byte der Datei in hexadezimaler Schreibweise. |
 | `not-xflr5` | leere Datei | `Die Datei ist leer und kein XFLR5-Projekt.` |
 | `no-plane` | `.xfl`-Projekt ohne Flugzeug: ein reines Profilprojekt, jede `.xfl`-Datei, die flow5 speichert | `Das Projekt enthält kein Flugzeug (reine Profilprojekte und von flow5 gespeicherte .xfl-Dateien haben keines).` |
@@ -588,12 +587,12 @@ Eine abgelehnte Datei zeigt die rote Meldung `<file> kann nicht geöffnet werden
 
 | Eigenschaft | Regel |
 | --- | --- |
-| Filter der Dateiauswahl | `.json` `.xfl` `.xml` `.wpa` `.fl5` `application/json`; `.wpa`- und `.fl5`-Dateien stehen darin, damit **Öffnen** den Grund der Abweisung nennen kann. Ob die Dateiauswahlen von Android und iOS `.xfl`-Dateien mit diesem Filter anzeigen, ist unbekannt; nicht getestet. |
+| Filter der Dateiauswahl | `.json` `.xfl` `.xml` `.wpa` `.fl5` `application/json`; `.wpa`-Dateien stehen darin, damit **Öffnen** den Grund der Abweisung nennen kann. Ob die Dateiauswahlen von Android und iOS `.xfl`- und `.fl5`-Dateien mit diesem Filter anzeigen, ist unbekannt; nicht getestet. |
 | Dateiendung | wird in Kleinbuchstaben verglichen: `.XFL` gilt als `.xfl` |
-| Endung `.xfl`, `.wpa`, `.fl5` | der `.xfl`-Projektleser. Er erkennt `.wpa`- und `.fl5`-Dateien und lehnt sie mit eigener Meldung ab (Abschnitt „Abgelehnte Dateien“). |
-| Endung `.xml` | XML-Leser |
+| Endung `.xfl`, `.wpa`, `.fl5` | Die ersten 4 Byte entscheiden: Eine Zahl von 500000 bis 509999, Big-Endian gelesen, geht an den flow5-Projektleser (Abschnitt „flow5-Import“); jede andere an den `.xfl`-Projektleser, der `.wpa`-Dateien erkennt und mit eigener Meldung ablehnt (Abschnitt „Abgelehnte Dateien“). |
+| Endung `.xml` | XML-Leser: Das Wurzelelement `explane` geht an den XFLR5-Leser, `xflplane`, `xflwing`, `xflfuse`, `xflboat` und `xflsail` (in beliebiger Groß- und Kleinschreibung) an den flow5-Leser |
 | Endung `.json` | Projekt-JSON (Abschnitt „Projekt-JSON“) |
-| Andere Endung oder keine | Die ersten 4 Byte entscheiden: eine ganze Zahl 200001 oder 200002, Big-Endian gelesen (`.xfl`), 500000 bis 509999 (flow5) oder, Little-Endian gelesen, 100000 bis 100100 (`.wpa`): der `.xfl`-Projektleser. Eine Datei, die mit einer UTF-16-Bytereihenfolgemarke (`FF FE` oder `FE FF`) beginnt, geht an den XML-Leser. Sonst wird die Datei als Text gelesen: Text, der nach Leerraum mit `<?xml`, `<!` oder `<explane` beginnt, geht an den XML-Leser; jeder andere Text wird als Projekt-JSON gelesen. |
+| Andere Endung oder keine | Die ersten 4 Byte entscheiden: eine ganze Zahl 200001 oder 200002, Big-Endian gelesen (`.xfl`), 500000 bis 509999 (flow5) oder, Little-Endian gelesen, 100000 bis 100100 (`.wpa`): der `.xfl`-Projektleser. Eine Datei, die mit einer UTF-16-Bytereihenfolgemarke (`FF FE` oder `FE FF`) beginnt, geht an den XML-Leser. Sonst wird die Datei als Text gelesen: Text, der nach Leerraum mit `<?xml`, `<!`, `<explane`, `<xflplane` oder `<xflwing` (in beliebiger Groß- und Kleinschreibung) beginnt, geht an den XML-Leser; jeder andere Text wird als Projekt-JSON gelesen. |
 | Größe | `.xfl`: höchstens 2000 MB (2 000 000 000 Byte). Jede andere Datei: höchstens 100 MB (100 000 000 Byte), wie beim Projekt-JSON; größer: `<file> kann nicht geöffnet werden: <size> MB; Projektdateien sind auf 100 MB begrenzt.` |
 | Lesen einer `.xfl` | Durch Fenster von 4 194 304 Byte der Datei (`Blob.slice`); eine Datei, die größer als ein Fenster ist, liegt nie ganz im Speicher. Echte Projekte mit Analyseergebnissen erreichen 96,7 MB (gemessen). Die Analysen und ihre Ergebnisse werden übersprungen, ohne sie zu dekodieren; gelesen werden nur die Flugzeuge und die Profile. |
 | Zeichenkodierung von XML | UTF-16 (16-Bit Unicode Transformation Format) nach einer Byte-Order-Mark; sonst UTF-8 mit oder ohne BOM; eine Datei, die kein gültiges UTF-8 ist, wird als Windows-1252 gelesen. |
@@ -630,7 +629,7 @@ XFLR5 hat 4 Flügelplätze je Flugzeug.
 - XML-Flügel ohne bekanntes `<Type>` (Dateien von XFLR5 6.11 schreiben keines): Der Flügel ist ein Seitenleitwerk, wenn `<isFin>` den Wert `true` hat. Sonst ist der als zweiter gelesene `<wing>` der Elevator und jeder andere `<wing>` die Tragfläche. XFLR5 zählt alle `<wing>`-Elemente, Seitenleitwerke eingeschlossen. Je Flugzeug werden höchstens 4 Flügel gelesen; mehr: Warnung `Das Flugzeug „<plane>“ hat mehr als 4 Flügel; XFLR5 liest die ersten 4, dieser Import ebenso.`
 - Ein späterer Flügel für einen belegten Platz ersetzt den früheren, wie in XFLR5: Warnung `Das Flugzeug „<plane>“ hat mehr als eine Tragfläche: „<name>“ ersetzt wie in XFLR5 „<previous>“.`
 - XML-Flügeldatei (ein `<wing>` auf oberster Ebene, kein `<Plane>`): Das `<Type>` bestimmt die Fläche. `ELEVATOR`: Höhenleitwerk. `FIN` oder `<isFin>true</isFin>`: abgelehnt. Jeder andere Typ: Tragfläche. Position und Einstellwinkel sind 0. Mehrere Flügel auf oberster Ebene: Nur der letzte wird gelesen, mit einer Warnung. Flügel auf oberster Ebene in einer Flugzeugdatei werden mit einer Warnung ignoriert.
-- Mehrere Flugzeuge: Der Dialog zeigt die Auswahlliste **Flugzeug** (Plane) nur bei mehr als einem Flugzeug. Das erste Flugzeug ist vorgewählt. Ein Flugzeug ohne Namen steht als `Flugzeug <n>` in der Liste.
+- Mehrere Flugzeuge: Der Dialog zeigt die Auswahlliste **Flugzeug** (Plane) nur bei mehr als einem Flugzeug. Das erste Flugzeug ist vorgewählt; bei einer flow5-Datei das erste Flugzeug mit einem Flügel zum Importieren. Ein Flugzeug ohne Namen steht als `Flugzeug <n>` in der Liste.
 - Der Dialog bietet **Tragfläche** (Main wing) und **Höhenleitwerk (XFLR5: Elevator)** (Horizontal stabilizer (XFLR5: Elevator)) unter **Zu importierende Fläche** (Surface to import). Jede Option zeigt `„<wing name>“: <n> Schnitte, Spannweite <span> mm, Wurzeltiefe <chord> mm`. Die Spannweite ist das Doppelte des y des letzten Schnitts (Y_(n−1) aus Schritt 1 im Abschnitt „Abbildung auf Schnitte“), beide Hälften. Eine Option, die das Flugzeug nicht hat, ist mit ihrem Grund abgeschaltet: `Dieses Flugzeug hat keine Tragfläche.`, `Dieses Flugzeug hat kein Höhenleitwerk.`, `Der Flügel in dieser Datei ist ein Höhenleitwerk (Typ ELEVATOR).` oder `Der Flügel in dieser Datei ist kein Höhenleitwerk (Typ ELEVATOR).`
 - Der zweite Flügel, das Seitenleitwerk und die andere Fläche werden nicht importiert; der Bericht sagt es (Abschnitt „Bericht“). Es wird jeweils eine Fläche importiert; wird die Datei erneut geöffnet, steht die andere zur Wahl.
 
@@ -733,7 +732,7 @@ chord' = c·cT            Schränkung unverändert
 - Mit l_x = 0 und cT = 1 verschiebt sich der Schnitt um c · m · l_y entlang der Aufwärtsrichtung seines geschränkten Profils, (sin t, cos t) in x und der Aufwärtsrichtung (0, −sin φ, cos φ) seiner Ebene.
 - Jeder Profilpunkt liegt dann dort, wo eine starre Drehung des Profils um den Viertelpunkt der Profiltiefe ihn hinsetzt; das Netz von XFLR5 selbst weicht geringfügig ab (Abschnitt „Unterschiede zu XFLR5“).
 - Die Tabelle in der Registerkarte **Schnitte** (Sections) weicht dann von der Flügeltabelle von XFLR5 um diese Verschiebung ab: 8,53 mm an der Wurzel des Rechenbeispiels.
-- Eine Profillage mit |l_x| oder |l_y| über 0,1 oder cT außerhalb von 0,5 … 2 (`FRAME_LIMIT`) ist nicht in Einheiten der Profiltiefe (etwa eine Datei in Millimetern): XFLR5 würde das Profil viele Profiltiefen lang zeichnen. Ein Profil einer `.xfl` besteht dann die Prüfung nicht (`Die Koordinaten sind nicht in Einheiten der Profiltiefe angegeben (Profilnase bei x = <x>, y = <y>; Endleiste bei x = <te>).`), und die anderen Quellen des Abschnitts „Profile“ werden versucht. Ein Upload wird ohne Profillage verwendet, auf die Profiltiefe 1 skaliert, mit einer Warnung: `Die Koordinaten sind nicht in Einheiten der Profiltiefe angegeben (Profilnase bei x = <x>, y = <y>; Endleiste bei x = <te>): So kann XFLR5 sie nicht gezeichnet haben; das Profil wird auf die Profiltiefe 1 skaliert, und seine Schnitte behalten die Werte der Datei.`
+- Eine Profillage mit |l_x| oder |l_y| über 0,1 oder cT außerhalb von 0,5 … 2 (`FRAME_LIMIT`) ist nicht in Einheiten der Profiltiefe (etwa eine Datei in Millimetern): XFLR5 würde das Profil viele Profiltiefen lang zeichnen. Ein Profil einer `.xfl` besteht dann die Prüfung nicht (`Die Koordinaten sind nicht in Einheiten der Profiltiefe angegeben (Profilnase bei x = <x>, y = <y>; Endleiste bei x = <te>).`), und die anderen Quellen des Abschnitts „Profile“ werden versucht. Ein Upload wird ohne Profillage verwendet, auf die Profiltiefe 1 skaliert, mit einer Warnung: `Die Koordinaten sind nicht in Einheiten der Profiltiefe angegeben (Profilnase bei x = <x>, y = <y>; Endleiste bei x = <te>): So können XFLR5 und flow5 sie nicht gezeichnet haben; das Profil wird auf die Profiltiefe 1 skaliert, und seine Schnitte behalten die Werte der Datei.`
 - Der Profilparser teilt Koordinaten durch 100, wenn das größte x über 5 und höchstens 110 liegt. Eine Datei in Millimetern oder Zoll mit einer Profiltiefe von 50 bis 110 wird ebenfalls durch 100 geteilt. Eine als Prozent gelesene Datei zählt nur dann als in Einheiten der Profiltiefe, wenn cT innerhalb von 0,02 um 1 liegt; eine echte Prozentdatei endet bei x = 100.
 
 **5. Runden.** Das Projekt hält Schnittwerte auf 4 Nachkommastellen (1e-4 mm, 1e-4 °). Das entfernt Rauschen der Einheitenumrechnung wie eine Profiltiefe von 400,04999999999995 mm. Die Schnitt-IDs lauten `s1`, `s2` … in der Reihenfolge von der Wurzel zum Rand.
@@ -792,7 +791,7 @@ Jeder verschiedene Name eines Profils der rechten Seite der Fläche ist eine Zei
 
 | Reihenfolge | Quelle | Treffer |
 | --- | --- | --- |
-| 0 | das Profil des `.xfl`-Projekts (nur `.xfl`) | der genaue Name; ein leerer Name findet nichts |
+| 0 | das Profil des `.xfl`- oder `.fl5`-Projekts (nicht in XML-Dateien) | der genaue Name; ein leerer Name findet nichts |
 | 1 | eine im Dialog hochgeladene `.dat`-Datei | ihre Namenszeile, genau, dann gekürzt; dann ihr Dateiname ohne Endung, genau, dann gekürzt |
 | 2 | ein Profil des aktuellen Projekts | sein Name, genau, dann gekürzt (die ID, wenn der Name leer ist) |
 | 3 | ein Profil der mitgelieferten Bibliothek (Clark Y, NACA 8-H-12, NACA M-6, RAF 34, S9104, USA 35B) | sein Name, genau, dann gekürzt |
@@ -801,6 +800,7 @@ Jeder verschiedene Name eines Profils der rechten Seite der Fläche ist eine Zei
 
 - Die Profilprüfung ist die der Registerkarte **Profile** (Airfoils) (Bereinigung durch den Parser, Plausibilitätsprüfungen). Zusätzlich darf die angepasste Profilkurve sich nicht selbst kreuzen und nicht in x zurücklaufen (`curve-shape`, **Parametrisierung der Profile** (Profile parametrization) zentripetal).
 - Warnungen der Prüfung erscheinen einmal je verwendetem Profil, mit seinen Schnitten: `Profil „Clark Y“ (Schnitte 1–2): <message>`. Der Upload wird mit seinem Dateinamen genannt, wie die Auswahlliste ihn zeigt: `Profil „TEST 12 (test12.dat)“ (Schnitt 2): …`. Eine geneigte Profilsehne (`rotated`) ist eine Info, weil XFLR5 dieselben Koordinaten zeichnet: `Profil „Clark Y“ (Schnitte 1–2): Die Linie von der Profilnase zur Endleiste ist um -1,97 Grad geneigt; die Koordinaten bleiben erhalten, daher bezieht sich die Schränkung auf die x-Achse der Datei.` Ein Bibliotheksprofil erhält stattdessen eine Warnung (Abschnitt „Bericht“).
+- **.dat-Dateien hochladen …** (Upload .dat files…) über der Tabelle nimmt mehrere Dateien auf einmal; jede Zeile findet ihre Datei nach den Regeln der Reihenfolge 1. Ein Screenreader hört `<n> Dateien hochgeladen; <m> Profilnamen verwenden sie.`
 - Besteht kein Kandidat: Die Zeile zeigt **Fehlt** (Missing) in der Spalte **Gefunden** (Found), und **Importieren** bleibt abgeschaltet (`Importieren (2 Profile fehlen)`). Der Fehler nennt den ersten Kandidaten, der durchfiel, z. B. `Profil „NACA 5128“ (Schnitte 1–2): Das passende Profil (NACA-Generator: NACA 5128) besteht die Prüfung nicht: … Eine .dat-Datei hochladen oder ein Profil wählen.` Erzeugte Schnitte mit großer Wölbung und Dicke laufen bei 11 bis 13 % der Profiltiefe in x zurück und bestehen die Prüfung nicht, etwa NACA 5128, 5130, 6130, 8130 und 9130.
 - Die Nutzerin oder der Nutzer kann jede Zeile ändern: jedes Profil der Liste (Profile der Datei, Uploads, aktuelles Projekt, Bibliothek, NACA-Vorgaben) oder **.dat hochladen** für diese Zeile. Ein gewähltes Profil ersetzt die automatische Wahl.
 - Ohne Namen (ein leerer Profilname in der Datei): Fehler `XFLR5 nennt für <sections> kein Profil: eine .dat-Datei hochladen oder ein Profil wählen.`
@@ -846,7 +846,7 @@ Die verworfenen Daten: das Seitenleitwerk, der zweite Flügel, die andere Fläch
 | Profil, das Schnitte in l_x, l_y oder cT − 1 um mehr als `FRAME_TOLERANCE` (0,1 % der Profiltiefe) verschiebt | verschoben (und skaliert) | Info; Warnung, wenn eine Abweichung 2 % der Profiltiefe übersteigt (`FRAME_WARN` = 0,02) | `Profil „Clark Y“ (Schnitte 1–2) hat in seinen eigenen Koordinaten die Profilnase bei x = 0 %, y = 3,55 % und die Endleiste bei x = 100 % der Profiltiefe; diese Schnitte wurden so verschoben, dass das Profil wie in XFLR5 liegt.` Zahlen in % der Profiltiefe mit 2 Nachkommastellen. Bei einem Schnitt: `dieser Schnitt wurde so verschoben`. Wenn die Zahlen eine andere Profiltiefe als 100 % zeigen (Endleiste minus Profilnase): `verschoben und skaliert`; die 0,0016 % des Clark Y fallen beim Runden weg und gelten ohne Wort. Eine Profillage innerhalb von `FRAME_TOLERANCE` gilt ohne Zeile. Wo die Profillage gilt, entfällt der Hinweis der Prüfung auf das Skalieren auf die Profiltiefe 1. |
 | Bibliotheksprofil oder ein aus der Bibliothek übernommenes Profil des aktuellen Projekts (`source.kind` `library`, dieselben Punkte), bei dem x oder y der Profilnase in den eigenen Koordinaten mehr als 2 % der Profiltiefe von 0 entfernt liegt oder die Profiltiefe mehr als 2 % von 1 abweicht; mitgeliefert: Clark Y 3,55 %, USA 35B 2,87 % | Tabellenwerte beibehalten | Info | `Das Bibliotheksprofil „Clark Y“ (Schnitte 1–2) hat in seinen eigenen Koordinaten die Profilnase bei x = 0 %, y = 3,55 % der Profiltiefe. Hat XFLR5 diese Koordinaten verwendet, zeichnet es diese Schnitte so weit von den Tabellenwerten entfernt; die .dat-Datei hochladen, die XFLR5 verwendet hat, um sie wie in XFLR5 zu setzen.` |
 | Bibliotheksprofil oder ein aus der Bibliothek übernommenes Profil des aktuellen Projekts, dessen Profilsehne (von der Profilnase der angepassten Kurve zur Endleistenmitte) um mehr als 0,5° geneigt ist (`rotationDeg` der Profilprüfung); mitgeliefert: Clark Y 2,00° und USA 35B 1,57° mit der Nase nach oben | Winkel beibehalten, die Schränkung bezieht sich auf seine x-Achse | Warnung | `Das Bibliotheksprofil „Clark Y“ (Schnitte 1–2) hat in seinen eigenen Koordinaten eine Profilsehne, die 2,00° mit der Nase nach oben geneigt ist, und die gebauten Schnitte behalten diesen Winkel. Ist die Profilsehne des Profils, das XFLR5 verwendet hat, waagrecht, stehen diese Schnitte 2,00° weiter mit der Nase nach oben als in XFLR5, die Endleiste 8,4 mm tiefer bei 240 mm Profiltiefe; die .dat-Datei hochladen, die XFLR5 verwendet hat, um sie wie in XFLR5 zu setzen.` Der Abstand ist die größte Profiltiefe dieser Schnitte mal sin(Winkel). Die UIUC-Datei `clarky.dat` (Namenszeile `CLARK Y AIRFOIL`) hat eine waagrechte Profilsehne. `nach unten` und `höher` für eine Endleiste über der Profilnase. |
-| Profil des aktuellen Projekts aus einem XFLR5-Import oder einem Upload (`source.kind` `xflr5` oder `upload`): auf die Profiltiefe 1 skaliert gespeichert, seine eigenen Koordinaten sind nicht gespeichert | Tabellenwerte beibehalten | Info | `Profil „Clark Y“ (Schnitte 1–2) des aktuellen Projekts ist auf die Profiltiefe 1 skaliert gespeichert, mit der Profilnase bei (0, 0); diese Schnitte behalten daher die Tabellenwerte. Legen die Koordinaten, die XFLR5 verwendet hat, die Profilnase anderswohin, zeichnet XFLR5 diese Schnitte so weit von den Tabellenwerten entfernt; die .dat-Datei hochladen, die XFLR5 verwendet hat, um sie wie in XFLR5 zu setzen.` |
+| Profil des aktuellen Projekts aus einem XFLR5- oder flow5-Import oder einem Upload (`source.kind` `xflr5`, `flow5` oder `upload`): auf die Profiltiefe 1 skaliert gespeichert, seine eigenen Koordinaten sind nicht gespeichert | Tabellenwerte beibehalten | Info | `Profil „Clark Y“ (Schnitte 1–2) des aktuellen Projekts ist auf die Profiltiefe 1 skaliert gespeichert, mit der Profilnase bei (0, 0); diese Schnitte behalten daher die Tabellenwerte. Legen die Koordinaten, die XFLR5 verwendet hat, die Profilnase anderswohin, zeichnet XFLR5 diese Schnitte so weit von den Tabellenwerten entfernt; die .dat-Datei hochladen, die XFLR5 verwendet hat, um sie wie in XFLR5 zu setzen.` |
 | Warnungen der Profilprüfung | beibehalten | Warnung; geneigte Profilsehne: Info (Bibliotheksprofil: stattdessen die Zeile oben) | `Profil „Clark Y“ (Schnitte 1–2): <message>` |
 | Klappe | Grundform | Info bei 0°, sonst Warnung | siehe „Klappen“ oben |
 | Profil der Datei besteht die Prüfung nicht, eine andere Quelle besteht | die andere Quelle verwendet | Warnung | `Profil „<name>“ aus der Datei besteht die Prüfung nicht: <problem> Stattdessen wird „<match>“ verwendet.` |
@@ -861,7 +861,7 @@ Die verworfenen Daten: das Seitenleitwerk, der zweite Flügel, die andere Fläch
 
 | Grenze | Wert | Meldung oder Ergebnis |
 | --- | --- | --- |
-| Größe einer `.xfl`-Datei | 2000 MB | `Die Datei hat <size> MB; XFLR5-Projekte über 2.000 MB werden nicht gelesen.` |
+| Größe einer `.xfl`-Datei | 2000 MB | `Die Datei hat <size> MB; XFLR5-Projekte über 2.000 MB werden nicht gelesen.` (`.fl5`: `flow5-Projekte`) |
 | XML und andere Dateien | 100 MB | Abschnitt „Wahl des Lesers durch Öffnen“ |
 | Flugzeuge je Datei | 10 000 | `.xfl`: beschädigt (in der Liste der Flugzeuge). XML: `Die XML-Datei enthält mehr als 10.000 Flugzeuge.` |
 | Schnitte je Flügel | 20 000 (`LIMITS.maxSections`) | `Ein Flügel der Datei hat <n> Schnitte; höchstens 20.000 können gelesen werden.` XML: `Ein Flügel der XML-Datei hat mehr als 20.000 Schnitte.` |
@@ -972,6 +972,109 @@ Der Elevator hat ebenfalls einen Einstellwinkel: Schnittebenen **Auf Gehrung**, 
 
 Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1 und 2, Schnitt 2 um 1° geneigt): Schnitt 1 wandert von x 50, z 10 (Schritte 1 bis 3) nach x 50,3674, z 20,6573, Schnitt 2 von x 110, y 250, z 10 nach x 110,1572, y 249,8387, z 19,2405. Die Schränkungen bleiben 2° und 1°. Das Projekt speichert `partTilt` 1 und `partPivot` `{ "x": 50, "y": 0, "z": 10 }`.
 
+## flow5-Import
+
+**Öffnen** (Open) liest ein flow5-Projekt (`.fl5`) oder eine flow5-Flugzeug- oder -Flügeldatei (`.xml`) und importiert daraus einen Flügel. flow5 ist der Nachfolger von XFLR5 (Version 7), seit dem 01.01.2026 quelloffen unter der GNU General Public License (GPL) 3.0. Die Leseroutinen sind nach einer Beschreibung der Formate geschrieben, nicht nach dem Code von flow5. Der Import verwendet den Dialog, die Abbildung auf Schnitte, die Profilquellen, den Bericht und das Ergebnis des XFLR5-Imports (Abschnitt „XFLR5-Import“); dieser Abschnitt nennt, was abweicht. Die Meldungen sagen `flow5`, wo der XFLR5-Import `XFLR5` sagt.
+
+### Unterstützte Dateien
+
+| Datei | Geschrieben von | Inhalt | Import |
+| --- | --- | --- | --- |
+| `.fl5`-Projekt, Format 500750 | flow5 7.50 bis 7.53 | Flugzeuge in Metern; Profile mit Koordinaten | ja |
+| `.fl5`-Projekt, Format 500754 | flow5 7.54 bis 7.57 | dasselbe; bis zum Ende der Flugzeuge dieselben Bytes wie 500750 | ja |
+| XML-Flugzeugdatei: `<xflplane version="1.0">` mit `<Plane>` | flow5 7.50 und neuer (der Aufbau der Elemente ist von 7.53 bis 7.57 gleich) | Flügel in der Längeneinheit, die flow5 anzeigt; Profilnamen oder Namen von `.dat`-Dateien, keine Koordinaten | ja |
+| XML-Flügeldatei: `<xflwing version="1.0">` mit `<wing>` | flow5 7.50 und neuer | ein Flügel; Position und Winkel 0 | ja |
+
+- Getestete Dateien: geschrieben von flow5 7.57 und 7.56 (`test/fixtures/flow5/`, Herkunft in ihrer `SOURCE.md`). Dateien von flow5 7.50 bis 7.53 waren nicht verfügbar; der Aufbau ihrer Datensätze (Projektformat 500750) ist mit Dateien des Testschreibers `test/fl5-writer.js` getestet.
+- Ein `.fl5`-Projekt enthält Flugzeuge zweier Arten: Flugzeuge aus Flügeln und Rümpfen und Flugzeuge aus einem Dreiecksnetz (aus einer STL-Datei), die keinen Flügel enthalten. Beide werden gelistet; ein Netzflugzeug bietet keine Fläche an, und sein Bericht enthält den Fehler `Flugzeug „<Name>“ hat keinen Flügel zum Importieren.` Der Dialog öffnet mit dem ersten Flugzeug, das einen Flügel zum Importieren hat.
+
+### Abgelehnte Dateien
+
+| Code | Datei | Meldung |
+| --- | --- | --- |
+| `flow5-old` | `.fl5`-Projekt eines Formats unter 500750 (flow5 7.01 bis 7.26) | `Die Datei ist ein flow5-Projekt im Format 500006, geschrieben von flow5 7.26 oder älter: in einem aktuellen flow5 öffnen und speichern oder das Flugzeug als XML exportieren.` |
+| `flow5-unknown` | `.fl5`-Projekt eines Formats von 500751 bis 500753 (kein bekannter Aufbau) | `Die Datei ist ein flow5-Projekt im Format 500752, das dieser Import nicht liest (Formate 500750, 500754): das Flugzeug in flow5 als XML exportieren.` |
+| `flow5-new` | `.fl5`-Projekt eines Formats über 500754 | `Die Datei ist ein flow5-Projekt im Format 500755, neuer als dieser Import liest (bis 500754, flow5 7.54 bis 7.57): das Flugzeug in flow5 als XML exportieren.` |
+| `no-plane` | `.fl5`-Projekt ohne Flugzeug | `Das Projekt enthält kein Flugzeug.` |
+| `damaged` | `.fl5`-Projekt, vor dem Ende der Flugzeuge abgeschnitten oder widersprüchlich; eine Flugzeugart außer 0 und 1; eine Rumpfart außer 100001 bis 100006 | `Die Datei ist bei Byte <n> beschädigt oder abgeschnitten (<part>).` `Flugzeug 1 der Datei ist von einer Art, die dieser Import nicht liest (Art -1).` |
+| `not-plane-xml` | flow5-XML-Datei eines Rumpfs, Boots, Segels oder einer Analyse (`xflfuse`, `xflboat`, `xflsail`, `xflpolar`, `xflplanepolar`, `xflboatpolar`) | `Die Datei ist eine flow5-XML-Datei ohne Flugzeug oder Flügel (Wurzelelement „xflfuse“).` |
+| `not-plane-xml` | Wurzelelement `xflplane` in anderer Groß- und Kleinschreibung (flow5 vergleicht es mit Groß- und Kleinschreibung) oder eine `version` außer `1.0` | `Die Datei ist keine flow5-Flugzeug- oder -Flügeldatei (Wurzelelement „<root>“, Version „<version>“).` |
+| `damaged` | XML-Datei mit `meter_to_length_unit` (oder `length_unit_to_meter`) unter 1e-6 oder über 1000 oder keiner Zahl | `Die Längeneinheit der XML-Datei ist ungültig: meter_to_length_unit ist „<value>“.` |
+
+Die übrigen Ablehnungen von XML-Dateien (beschädigtes XML, weder Flugzeug noch Flügel, Grenzen) sind die des XFLR5-Imports.
+
+### Einlesen der Datei
+
+| Eigenschaft | Regel |
+| --- | --- |
+| Aufbau einer `.fl5` | Ein Qt-`QDataStream` wie das `.xfl`-Projekt: Big-Endian, ein C++-`float` als 8-Byte-Double, eine Zeichenkette als ihre Byteanzahl (0xFFFFFFFF: Null-Zeichenkette) und UTF-16BE. Die Datensätze haben kein Längenpräfix: Der Leser geht Feld für Feld durch den Kopf (eine Standard-Profilanalyse, eine Standard-Flugzeuganalyse, eine Zeichenkette, 5 Splines), die Profile, die Profilanalysen und ihre gespeicherten Ergebnisse bis zu den Flugzeugen und hört nach dem letzten Flugzeug auf. Flugzeuganalysen, ihre Ergebnisse und Boote folgen und werden nicht gelesen. Gelesen durch Fenster von 4 194 304 Byte, wie eine `.xfl`. |
+| Formate der Datensätze | Jeder Datensatz beginnt mit seiner Formatnummer; der Leser folgt den Aufbauten von flow5 7.50 bis 7.57: Linienstile von 7.12 und neuer, Profile mit und ohne die Felder der Punktverdichtung (Format 500753), Teile mit und ohne die Netzgrößen (500754), Rümpfe von 6 Arten. Ein Rumpf aus Schnitten von flow5 7.56 und älter enthält seine Schnittpunkte nach seinen Spanten; 7.57 schreibt keine. Das Teileformat des Rumpfs (500757 ab 7.57) unterscheidet die beiden. |
+| Längeneinheit | `.fl5`: Meter. XML: `<Units><meter_to_length_unit>`; trotz seines Namens ist der Wert Meter je Dateieinheit, wie `length_unit_to_meter` von XFLR5, das flow5 ebenfalls liest: mm 0,001, cm 0,01, dm 0,1, m 1, in 0,0254, ft 0,3048. Ohne `<Units>`: Meter. `<Units>` gilt nur für das, was ihm folgt, mit einer Warnung, wenn es nach einem Flugzeug oder Flügel steht. |
+| Winkel | Grad |
+| Genauigkeit von XML-Dateien | flow5 schreibt die Längen der Schnitte mit 3 Nachkommastellen in der Dateieinheit, `Position` mit 5 signifikanten Stellen und die Winkel mit 3 Nachkommastellen. Eine Datei in Metern rundet auf 1 mm: Info `flow5 rundet Längen in XML-Dateien in Metern auf 1 mm; die .fl5-Projektdatei behält die volle Genauigkeit.` |
+| XML-Werte | Wie im XFLR5-Leser, außer: Ein fehlender Wert ist 0, wie in flow5 (auch `y_position` und `Chord`). Ein Wert, der keine Zahl ist, bleibt fehlend, mit der Warnung des XFLR5-Imports; flow5 liest ihn als 0. Wahrheitswerte: `true` in beliebiger Groß- und Kleinschreibung ist wahr, anderer Text falsch; ein leeres Element behält die Vorgabe (flow5 liest es als falsch). `Type`: `MAINWING`, `ELEVATOR` und `FIN` ohne Beachtung der Groß- und Kleinschreibung, aber nicht gekürzt, wie flow5 sie vergleicht; alles andere, auch `SECONDWING`, ist ein weiterer Flügel. |
+| XML-Struktur | Unbekannte Elemente werden übersprungen, auch vor einem `<Plane>`, wo flow5 das Lesen beendet. Mehrere `<Plane>`-Elemente werden gelistet (flow5 behält das letzte). Eine Flügeldatei mit mehreren Flügeln: der letzte, mit der Warnung `Die Datei enthält 2 Flügel außerhalb eines Flugzeugs; flow5 liest nur den letzten, „<name>“, und dieser Import ebenso.` |
+| Profildateien in XML | `Left_Side_Foil_File` und `Right_Side_Foil_File` nennen eine `.dat`-Datei neben der XML-Datei. Der Profilname ist der Dateiname ohne seinen Ordner und seine Endung `.dat`. Der Browser kann den Ordner nicht lesen: Der Dialog fragt nach den Dateien (**.dat-Dateien hochladen …**, Upload .dat files…). flow5 7.54 und neuer schreibt in der Vorgabe die Profilnamen und je Profil eine Datei `<name>.dat` neben die XML-Datei, und die Dateiverweise, wenn die Option zum Einschließen der Profile eingeschaltet ist. |
+| Profile einer `.fl5` | Name, Klappeneinstellungen und Koordinaten (höchstens 10 000 Punkte je Profil). flow5 7.50 und neuer speichert die Form selbst: Eine Klappe wird nur in den Analysen von flow5 ausgeschlagen. Ein späteres Profil gleichen Namens ersetzt das frühere; ein leerer Name findet kein Profil. |
+
+### Flügel und Flächen
+
+Ein flow5-Flugzeug enthält beliebig viele Flügel, jeder mit einem Typ: Tragfläche, Elevator (Höhenleitwerk), Seitenleitwerk oder weiterer Flügel. Der Dialog listet jeden Flügel in der Reihenfolge der Datei. Die Bezeichnungen nummerieren die Flügel eines Typs, wenn es mehrere gibt: **Tragfläche 1** (Main wing 1), **Tragfläche 2**, **Höhenleitwerk (flow5: Elevator)** (Horizontal stabilizer (flow5: Elevator)), **Weiterer Flügel 1** (Other wing 1), **Seitenleitwerk** (Fin).
+
+| Flügel | Angeboten | Grund, wenn nicht |
+| --- | --- | --- |
+| ein zweiseitiger Flügel jedes Typs: Tragflächen, Elevators, weitere Flügel (ein Canard) | ja, mit seinem Rollwinkel (`Rx_angle`) und Einstellwinkel (`Ry_angle`) | – |
+| ein einseitiger Flügel (`Two_Sided` false, ein Seitenleitwerk) | ja, als die Hälfte, die flow5 baut (Abschnitt „Abbildung auf Schnitte“ unten) | – |
+| ein einseitiger Flügel mit `Ry_angle` ungleich 0 | nein: flow5 dreht einen einseitigen Flügel um `Ry_angle` um die z-Achse, ein Teil dreht sich nur um x und y | `Ein einseitiger Flügel, um 3° um z gedreht (Ry_angle): Ein Teil dreht sich nur um x und y.` |
+
+- Die erste Tragfläche ist vorgewählt; ein Flugzeug ohne verfügbare Tragfläche wählt seinen ersten verfügbaren Flügel in der Reihenfolge der Datei vor, ein Flugzeug ohne verfügbaren Flügel seinen ersten Flügel, dessen Grund der Bericht als Fehler nennt.
+- Der Bericht nennt die übrigen Flügel des Flugzeugs: `Nicht importiert: Tragfläche 2 „Rear“, Seitenleitwerk „Fin“. Eine Fläche je Import; für eine weitere die Datei erneut öffnen.`
+- Meldung für einen weiteren Flügel: `Flügel „Canard“ von „Tandem“ aus full.fl5 importiert: 2 Schnitte, 1 Profil.`
+
+### Abbildung auf Schnitte
+
+Die Werte der Schnitte (`y_position`, `Chord`, `xOffset`, `Dihedral`, `Twist`) bedeuten dasselbe wie in XFLR5, und die Abbildung ist die des XFLR5-Imports (Abschnitt „Abbildung auf Schnitte“, Schritte 1 bis 6). flow5 dreht einen Flügel erst um `Rx_angle` um die x-Achse, dann um `Ry_angle` um die y-Achse, beide um den Ursprung des Flügels, und verschiebt ihn dann um `Position`.
+
+| flow5-Wert | Import |
+| --- | --- |
+| `Ry_angle` | **Einstellwinkel des Teils** (Part tilt), um den Ursprung des Flügels, wie der Einstellwinkel von XFLR5 (Schritt 3). Positiv: Nasenleiste hoch. |
+| `Rx_angle` | **Rollwinkel des Teils** (Part roll), um den Ursprung des Flügels, vor dem Einstellwinkel ([[Geometrie]], Abschnitt 3.9). Positiv: rechter Randbogen hoch. Info `Rollwinkel 10° (Rx_angle) wie im flow5-Flugzeug angewendet: Das Teil dreht sich als starrer Körper um den Ursprung des Flügels, vor dem Einstellwinkel (Einstellungen > Rollwinkel des Teils).` |
+| `Position` x und z | verschiebt die Schnitte (Schritt 3); der Ursprung des Flügels ist `partPivot` |
+| `Position` y | nicht verwendet: Info `Die Position y 20 mm wird wie in flow5 nicht verwendet.` |
+| Profile der linken Seite | nicht verwendet, wie bei XFLR5; bei einem einseitigen Flügel sind die Profile der linken Seite die einzigen |
+
+**Einseitiger Flügel (Seitenleitwerk).** flow5 baut nur die linke Hälfte (lokal y ≤ 0), mit den Profilen der linken Seite, und dreht sie um `Rx_angle`; ein Seitenleitwerk hat −90°. Der Import übernimmt diese Hälfte: die Profile der linken Seite, **Rollwinkel des Teils** −`Rx_angle` (ein Seitenleitwerk: 90°) und **Einstellwinkel des Teils** 0. Die linke Hälfte des Teils, das Spiegelbild seiner rechten Hälfte, ist dann die Hälfte von flow5; bei einem Seitenleitwerk bei y = 0 liegt die rechte Hälfte deckungsgleich darauf. Info `Ein einseitiger Flügel: flow5 baut nur seine linke Hälfte, mit den Profilen der linken Seite. Die linke Hälfte des Teils ist diese Hälfte, seine rechte Hälfte das Spiegelbild (bei einem Seitenleitwerk bei y = 0 deckungsgleich); Exportieren > Flügelhälften > Nur linke Hälfte exportiert allein die Hälfte von flow5.` Bei einem einseitigen Flügel mit einem Rollwinkel ungleich ±90° ist die rechte Hälfte ein zweiter Flügel, den flow5 nicht baut; **Nur linke Hälfte** schreibt allein die Hälfte von flow5. Die folgende Regel für die linke Hälfte gilt nicht.
+
+**Gerollter zweiseitiger Flügel.** flow5 dreht den ganzen Flügel, beide Hälften, als einen Körper: Die linke Hälfte eines gerollten Flügels dreht sich in die andere Richtung als seine rechte Hälfte. Der Import stellt **Einstellungen** > **Linke Hälfte** (Left half; `settings.leftHalf`) auf `"turned"`, sodass sich die linke Hälfte mit der rechten Hälfte dreht ([[Geometrie]], Abschnitt 3.9). Info `flow5 rollt den ganzen Flügel als einen Körper, seine linke Hälfte rollt also in die andere Richtung: Einstellungen > Linke Hälfte ist auf Mit der rechten Hälfte gedreht gestellt.` Ein Flügel ohne Rollwinkel und ein einseitiger Flügel behalten `"mirror"`. Das Projekt wird dann im Format Version 4 gespeichert (Abschnitt „Projekt-JSON“).
+
+### Profile
+
+Die Profilquellen sind die des XFLR5-Imports (Abschnitt „Profile“); Reihenfolge 0 ist das Profil des `.fl5`-Projekts. XML-Dateien nennen nur die Profilnamen.
+
+- Profile eines `.fl5`-Projekts erhalten `source.kind` `"flow5"`, `source.file` den Dateinamen und `source.note` `Profil „<name>“ aus dem flow5-Flugzeug „<plane>“; die gespeicherte Form.` (ohne Flugzeugnamen: `Profil „<name>“ aus einem flow5-Projekt; die gespeicherte Form.`). Die Registerkarte **Profile** (Airfoils) zeigt `flow5: <file>` unter einem solchen Profil.
+- Klappen eines `.fl5`-Profils: Info `Profil „<name>“ hat in flow5 eine Klappe an der Endleiste (Drehachse bei <x> % der Profiltiefe); flow5 schlägt sie nur in seinen Analysen aus, importiert wird die gespeicherte Form.` (und ebenso mit „Nasenleiste“).
+
+### Überprüfung
+
+Gemessen an den Dateien von `test/fixtures/flow5/` gegen das Dreiecksnetz der dicken Fläche, das flow5 7.57 aus denselben Dateien für seine Analysen baut: Die Netzknoten der rechten Hälfte von 8 Flügeln, der linken Hälfte beider gerollter zweiseitiger Flügel und beider Seitenleitwerke liegen innerhalb von 0,15 mm an der gebauten Fläche (`test/flow5-map.test.js`).
+
+| Flügel | Fall | Größter Abstand (mm) |
+| --- | --- | --- |
+| `full.fl5`, „Canard“ | Einstellwinkel 2°, Position angewendet | 0,0031 |
+| `basic.fl5`, „Stab“ | Einstellwinkel −1,5°, Position angewendet | 0,0047 |
+| `full.fl5`, „Vee“ | Rollwinkel 10°, Einstellwinkel −2°, 25° V-Form; rechte Hälfte | 0,0057 |
+| `full.fl5`, „Vee“ | dasselbe; linke Hälfte, **Linke Hälfte** gedreht | 0,0061 |
+| `full.fl5`, „Tilted other“ | Rollwinkel 30° (ein weiterer Flügel); rechte Hälfte | 0,0032 |
+| `full.fl5`, „Tilted other“ | dasselbe; linke Hälfte, **Linke Hälfte** gedreht | 0,0032 |
+| `full.fl5`, „Fin“ | einseitig, Rollwinkel −90°; die linke Hälfte des Teils gegen die Hälfte von flow5 | 0,0039 |
+| `basic.fl5`, „Fin“ | dasselbe | 0,0047 |
+| `full.fl5`, „Rear“ | keine V-Form | 0,0104 |
+| `full.fl5`, „Wing2“ | 5° V-Form im Randfeld, Position y 20 mm abgezogen | 0,0766 |
+| `basic.fl5`, „Main“ | 3° und 6° V-Form | 0,0796 |
+| `full.fl5`, „Front“ | Einstellwinkel 1°, NACA 2412 zu einem NACA 2410 mit Klappe entlang des Felds | 0,1469 |
+
+Mit **Linke Hälfte** auf Spiegelbild liegt die linke Hälfte von „Vee“ bis zu 61,3 mm von der linken Hälfte von flow5 entfernt, die von „Tilted other“ bis zu 85,7 mm. Die eigenen Flächenpunkte von flow5 (`Surface::getSurfacePoint`) legen das Wurzelprofil rechtwinklig zum ersten Feld, 0,99 mm (3° V-Form) bis 1,90 mm (25° V-Form) neben der senkrechten Wurzelebene; das Analysenetz hat seine Wurzelknoten bei y = 0, wie der Import.
+
 ## Körper je Datei
 
 | Option **Flügelhälften** (Wing halves) | STEP | STL | 3MF |
@@ -979,9 +1082,10 @@ Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1
 | **Beide Hälften als getrennte Körper** (Both halves as separate bodies) | 2 Volumenkörper | 1 Datei, 2 geschlossene Hüllen | 2 Objekte: `Wing right`, `Wing left` |
 | **Ganzer Flügel als ein Körper (Netzformate, Wurzel bei y = 0)** (Full wing as one body (mesh formats, root at y = 0)) | 2 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing` |
 | **Nur rechte Hälfte** (Right half only) | 1 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing right` |
+| **Nur linke Hälfte** (Left half only) | 1 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing left` |
 
 - **Ganzer Flügel als ein Körper** (Full wing as one body) setzt den Wurzelschnitt bei genau y = 0 mm und den **Rollwinkel des Teils** 0° voraus. Sonst enthalten STL und 3MF 2 Hüllen, wie bei **Beide Hälften als getrennte Körper**: Eine gerollte Wurzel verlässt die Ebene y = 0.
-- **Einstellwinkel des Teils** und **Rollwinkel des Teils** (`settings.partTilt`, `partRoll`): Jedes Format schreibt die rechte Hälfte um den Drehpunkt gedreht ([[Geometrie]], Abschnitt 3.9) und die linke Hälfte als ihr Spiegelbild an y = 0. Die Projekt-JSON enthält die Schnitte im Koordinatensystem des Teils.
+- **Einstellwinkel des Teils** und **Rollwinkel des Teils** (`settings.partTilt`, `partRoll`): Jedes Format schreibt die rechte Hälfte um den Drehpunkt gedreht ([[Geometrie]], Abschnitt 3.9) und die linke Hälfte so, wie **Linke Hälfte** (`settings.leftHalf`) sie einstellt: das Spiegelbild der gedrehten rechten Hälfte an y = 0 oder das Spiegelbild der ungedrehten rechten Hälfte, mit ihr gedreht. Die Projekt-JSON enthält die Schnitte im Koordinatensystem des Teils.
 - **Fusion-360-Korrektur: Y nach oben (auch SolidWorks)** (Fusion 360 fix: Y up (also SolidWorks)) (STEP, STL, 3MF): Ausgeschaltet schreibt der Export die Achsen der App (x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende, z nach oben). Eingeschaltet schreibt er jeden Punkt als (x, z, −y) und jede Richtung ebenso (`src/export/axes.js`): Die Oberseite zeigt nach +Y, die Profiltiefe verläuft entlang X, `right` liegt bei Z ≤ 0 und `left` bei Z ≥ 0. Die Drehung ist eine Rotation: Orientierungen, geschlossene Hüllen und Volumen bleiben. Die Weltlage der STEP-Datei (`AXIS2_PLACEMENT_3D` im Ursprung mit z- und x-Richtung) bleibt. Die Projekt-JSON enthält immer die Achsen der App. Warum und wann: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Export.
 - **Netzdichte (STL, 3MF)** (Mesh density (STL, 3MF)): **Normal** oder **Fein (4-fache Dreiecksanzahl)** (Fine (4x triangles)). **Fein** (Fine) teilt jedes u-Intervall (Profiltiefenrichtung) und jedes v-Intervall (Spannweitenrichtung) des **Normal**-Netzes in 2. Gemessene Dreieckszahl: 3,0- bis 3,9-fach gegenüber **Normal** (Tabelle „Dateigrößen“).
 - Aufbau der Dreiecksnetze und Dreieckszahlen: [[Geometrie|Geometrie]], Abschnitt 5 „Dreiecksnetze“.

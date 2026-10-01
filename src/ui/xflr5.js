@@ -1,9 +1,10 @@
-// XFLR5 import dialog. Open reads the file (src/import/xfl.js, src/import/xflxml.js); here the user
+// XFLR5 and flow5 import dialog. Open reads the file (src/import/xfl.js, src/import/xflxml.js,
+// src/import/fl5.js, src/import/fl5xml.js); here the user
 // picks the plane, the surface (main wing or horizontal stabilizer) and an airfoil for every XFLR5
 // airfoil name. The mapping (src/import/xflr5.js) runs again after every choice; its report, the
 // planform of the candidate project and the Import button follow it.
 
-import { buildNotes, bySeverity, checkSteps, defaultSurface, describeFile, mapSections, mapXflr5, planeSurfaces, readAirfoilUpload, refusedUpload, sectionsText } from '../import/xflr5.js';
+import { buildNotes, bySeverity, checkSteps, defaultSurface, describeFile, mapSections, mapXflr5, planeSurfaces, programOf, readAirfoilUpload, refusedUpload, sectionsText } from '../import/xflr5.js';
 import { buildWing } from '../geom/wing.js';
 import { wingStats } from '../geom/stats.js';
 import { bundledLibrary } from '../airfoil/bundled.js';
@@ -52,8 +53,8 @@ function shownRows(rows) {
 const straight = (sections) => sections.map((q) => ({ y: q.y, xLE: q.x, chord: q.chord }));
 
 /**
- * Opens the import dialog for a read XFLR5 file.
- * @param {object} file XflrFile of readXfl / readXflr5Xml
+ * Opens the import dialog for a read XFLR5 or flow5 file.
+ * @param {object} file the file of readXfl, readXflr5Xml, readFl5 or readFlow5Xml
  * @param {{fileName?: string, project?: object|null, library?: object[]}} [options]
  *   project: the current project, whose airfoils are offered; library: bundled library entries
  * @returns {Promise<{project: object, summary: string, warnings: string[]}|null>} the new project, the
@@ -65,7 +66,8 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
     // An error of the first mapping, which runs after the dialog has opened.
     let failed = null;
     try {
-      let plane = 0;
+      // The first plane with a wing to import (a flow5 plane of a triangle mesh has none).
+      let plane = Math.max(0, file.planes.findIndex((_, i) => planeSurfaces(file, i).surfaces.some((s) => s.available)));
       let surface = defaultSurface(file, plane);
       // The surface the user chose: a plane without it falls back to its default, and the choice
       // comes back with a plane that has it.
@@ -93,6 +95,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
         if (ready) recheck();
       };
 
+      const program = programOf(file);
       const map = () =>
         mapXflr5(file, { plane, surface, fileName, project, library, uploads, choices, name: nameEdited ? nameInput.value.trim() : undefined });
 
@@ -146,6 +149,34 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
         },
       });
 
+      // Several .dat files at once: each row finds its file by name (the name in the file, else the file name).
+      const filesInput = h('input', {
+        type: 'file',
+        accept: AIRFOIL_ACCEPT,
+        multiple: true,
+        style: { display: 'none' },
+        onchange: async (e) => {
+          const files = [...e.target.files];
+          e.target.value = '';
+          if (!files.length) return;
+          uploading++;
+          importBtn.disabled = true;
+          const read = [];
+          try {
+            for (const f of files) read.push(await readUpload(f));
+          } finally {
+            uploading--;
+          }
+          if (!dialog.open) return;
+          const first = uploads.length;
+          uploads.push(...read);
+          refresh();
+          const keys = new Set(read.map((u, i) => `upload:${first + i}`));
+          const used = result.rows.filter((row) => keys.has(row.key)).length;
+          announce.textContent = tr('{files} files uploaded; {rows} airfoil names use them.', { files: count(read.length), rows: count(used) });
+        },
+      });
+
       const planeSelect =
         file.planes.length > 1
           ? h(
@@ -158,7 +189,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
                   changed();
                 },
               },
-              file.planes.map((p, i) => h('option', { value: String(i) }, p.name.trim() ? displayName(p.name) : tr('Plane {n}', { n: plain(i + 1) }))),
+              file.planes.map((p, i) => h('option', { value: String(i), selected: i === plane }, p.name.trim() ? displayName(p.name) : tr('Plane {n}', { n: plain(i + 1) }))),
             )
           : null;
 
@@ -266,7 +297,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
             h(
               'thead',
               {},
-              h('tr', {}, h('th', {}, tr('XFLR5 airfoil')), h('th', {}, tr('Found')), h('th', {}, tr('Airfoil used')), h('th', {}, h('span', { class: 'visually-hidden' }, tr('Actions')))),
+              h('tr', {}, h('th', {}, tr('{program} airfoil', { program })), h('th', {}, tr('Found')), h('th', {}, tr('Airfoil used')), h('th', {}, h('span', { class: 'visually-hidden' }, tr('Actions')))),
             ),
             h(
               'tbody',
@@ -342,7 +373,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
           outline = build.stations;
         } else if (result.wing) {
           // Airfoils still missing: the planform of the mapped sections shows which wing this is.
-          outline = straight(mapSections(result.wing, file.lengthUnit).sections);
+          outline = straight(mapSections(result.wing, file.lengthUnit, programOf(file)).sections);
         }
         report = [...result.report, ...(build ? buildNotes(build) : [])].sort(bySeverity);
         if (!nameEdited) nameInput.value = result.name;
@@ -396,13 +427,20 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
               if (e.key === 'Enter' && e.target.type === 'radio') e.preventDefault();
             },
           },
-          h('h2', {}, tr('Import from XFLR5')),
+          h('h2', {}, tr('Import from {program}', { program })),
           h('p', { class: 'small muted xflr5-source' }, fileName ? `${displayName(fileName)} · ${source}` : source),
           planeSelect ? h('label', { class: 'field' }, tr('Plane'), planeSelect) : null,
           surfaceBox,
           h('h3', {}, tr('Airfoils')),
+          h(
+            'div',
+            { class: 'row' },
+            h('button', { type: 'button', onclick: () => filesInput.click() }, tr('Upload .dat files…')),
+            h('span', { class: 'small muted' }, tr('Each airfoil name takes the file whose airfoil or file name matches it.')),
+          ),
           airfoilBox,
           fileInput,
+          filesInput,
           h(
             'div',
             { class: 'wizard-body' },

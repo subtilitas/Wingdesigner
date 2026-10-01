@@ -209,12 +209,12 @@ export function exportTriangles(build, mode = 'halves', { uRefine = 1, vRefine }
   const M = (build.paramsU.length - 1) * uRefine + 1;
   const V = (build.paramsV.length - 1) * (vRefine ?? (build.surface.degreeV === 1 ? 1 : 3)) + 1;
   const half = 2 * (M - 1) * (V - 1) + (build.closedTE ? 0 : 2 * (V - 1)) + 2 * M;
-  return mode === 'right' ? half : 2 * half;
+  return mode === 'right' || mode === 'left' ? half : 2 * half;
 }
 
 /**
  * Meshes for export.
- * mode 'right': the right half as one closed shell.
+ * mode 'right': the right half as one closed shell; mode 'left': the left half alone.
  * mode 'halves': right and left halves as two closed shells (root caps included).
  * mode 'merged': one closed shell for the full wing when the root lies exactly on y = 0, otherwise like 'halves'.
  * The rigid placement of the part (build.part, src/geom/part.js) turns the half wing before the
@@ -225,17 +225,21 @@ export function exportTriangles(build, mode = 'halves', { uRefine = 1, vRefine }
 export function exportMeshes(build, mode = 'halves', { uRefine = 1, vRefine, up = 'z' } = {}) {
   const half = tessellateHalf(build, { uRefine, vRefine });
   const part = build.part;
+  // A left half that turns with the whole wing is the mirror image of the unturned half, then turned.
+  const turnedLeft = part?.turnedLeft ? mirrorMesh(halfWingMesh(half)) : null;
+  if (turnedLeft) turnedLeft.positions = transformPositions(turnedLeft.positions, part);
   if (part && !part.identity) half.positions = transformPositions(half.positions, part);
   const right = halfWingMesh(half);
   let meshes;
   if (mode === 'right') meshes = [{ name: 'Wing right', mesh: right }];
+  else if (mode === 'left') meshes = [{ name: 'Wing left', mesh: turnedLeft ?? mirrorMesh(right) }];
   else if (mode === 'merged' && build.rootY === 0 && !(part?.roll)) {
     const full = fullWingMesh(half, build.rootY);
     meshes = [{ name: 'Wing', mesh: { positions: full.positions, indices: full.indices } }];
   } else {
     meshes = [
       { name: 'Wing right', mesh: right },
-      { name: 'Wing left', mesh: mirrorMesh(right) },
+      { name: 'Wing left', mesh: turnedLeft ?? mirrorMesh(right) },
     ];
   }
   return meshes.map((m) => ({ ...m, mesh: meshToUpAxis(m.mesh, up) }));

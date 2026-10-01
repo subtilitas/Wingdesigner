@@ -40,6 +40,7 @@ const panelStations = (page) => page.getByRole('spinbutton', { name: /^Spanwise 
 const twistPivot = (page) => page.getByRole('spinbutton', { name: /^Twist pivot/ });
 const partTilt = (page) => page.getByRole('spinbutton', { name: /^Part tilt/ });
 const partRoll = (page) => page.getByRole('spinbutton', { name: /^Part roll/ });
+const leftHalf = (page) => page.getByRole('combobox', { name: 'Left half', exact: true });
 const pivotLine = (page) => page.locator('#pane-settings p.small').filter({ hasText: /^The part turns/ });
 const parametrization = (page) => page.getByRole('combobox', { name: 'Profile parametrization', exact: true });
 const mirror = (page) => page.getByRole('checkbox', { name: 'Show mirrored half (y < 0)' });
@@ -603,6 +604,7 @@ test.describe('Settings tab', () => {
     await mirror(page).uncheck();
     await commit(partTilt(page), 2.5);
     await commit(partRoll(page), -1);
+    await choose(leftHalf(page), 'turned');
 
     const expected = {
       spanwise: 'smooth',
@@ -617,6 +619,7 @@ test.describe('Settings tab', () => {
       partTilt: 2.5,
       partRoll: -1,
       partPivot: null,
+      leftHalf: 'turned',
     };
     await expect.poll(async () => (await savedProject(page))?.settings).toEqual(expected);
     await expect.poll(async () => (await savedProject(page))?.name).toBe('Persist test');
@@ -645,6 +648,7 @@ test.describe('Settings tab', () => {
     await expect(mirror(page)).not.toBeChecked();
     await expect(partTilt(page)).toHaveValue('2.5');
     await expect(partRoll(page)).toHaveValue('-1');
+    await expect(leftHalf(page)).toHaveValue('turned');
     expect((await savedProject(page)).settings).toEqual(expected);
 
     // The rebuilt wing uses them: same figures, same surface, closed edge, tip note 240 / 150.

@@ -48,8 +48,8 @@ export default {
   'Plane "{plane}", wing "{wing}", section {n}: {element} "{text}" is not a number.': 'Flugzeug „{plane}“, Flügel „{wing}“, Schnitt {n}: {element} „{text}“ ist keine Zahl.',
   'Wing "{wing}", section {n}: {element} "{text}" is not a number.': 'Flügel „{wing}“, Schnitt {n}: {element} „{text}“ ist keine Zahl.',
   'Plane "{plane}", wing "{wing}": {element} "{text}" is not a number.': 'Flugzeug „{plane}“, Flügel „{wing}“: {element} „{text}“ ist keine Zahl.',
-  'Plane "{plane}", wing "{wing}": Position "{text}" holds fewer than 3 values; the wing is placed at 0, 0, 0 as in XFLR5.':
-    'Flugzeug „{plane}“, Flügel „{wing}“: Position „{text}“ enthält weniger als 3 Werte; der Flügel wird wie in XFLR5 bei 0, 0, 0 platziert.',
+  'Plane "{plane}", wing "{wing}": Position "{text}" holds fewer than 3 values; the wing is placed at 0, 0, 0 as in {program}.':
+    'Flugzeug „{plane}“, Flügel „{wing}“: Position „{text}“ enthält weniger als 3 Werte; der Flügel wird wie in {program} bei 0, 0, 0 platziert.',
   'Plane "{plane}", wing "{wing}": further values missing or not numbers: {count}.':
     'Flugzeug „{plane}“, Flügel „{wing}“: weitere fehlende oder nichtnumerische Werte: {count}.',
   'Wing "{wing}": further values missing or not numbers: {count}.': 'Flügel „{wing}“: weitere fehlende oder nichtnumerische Werte: {count}.',

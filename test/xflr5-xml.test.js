@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { XflrError } from '../src/import/errors.js';
-import { MAX_ATTRIBUTES, MAX_DEPTH, MAX_ELEMENTS, readXflr5Xml } from '../src/import/xflxml.js';
+import { readXflr5Xml } from '../src/import/xflxml.js';
+import { MAX_ATTRIBUTES, MAX_DEPTH, MAX_ELEMENTS } from '../src/import/xmlscan.js';
 import { decodeText } from '../src/airfoil/parse.js';
 import { MAX_PLANES } from '../src/import/xfl.js';
 import { setLanguage } from '../src/i18n/index.js';

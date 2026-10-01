@@ -88,6 +88,7 @@ export function wingStats(build) {
   let macXLE = A > 0 ? CX / A : 0;
   let x25 = macXLE + 0.25 * mac;
   let tipY = st.length ? st[st.length - 1].y : 0;
+  let leftTipY = null;
   // A part with a rigid placement (build.part): positions in the plane axes, the MAC leading edge and
   // the 25 % MAC point turned with the part at the height of the stations; chords, area and MAC in
   // the part's own frame.
@@ -105,10 +106,12 @@ export function wingStats(build) {
     macY = le[1];
     const tip = st[st.length - 1];
     tipY = part.point([tip.xLE, tip.y, tip.z])[1];
+    // A left half that turns with the whole wing ends elsewhere than at −tipY.
+    if (part.turnedLeft) leftTipY = part.leftPoint([tip.xLE, tip.y, tip.z])[1];
   }
   // Full wing (both halves) regardless of the display setting "Show mirrored half". A roll beyond 90°
   // turns the right tip to y < 0; the tips stay 2 |y| apart.
-  const span = 2 * Math.abs(tipY);
+  const span = leftTipY === null ? 2 * Math.abs(tipY) : Math.abs(tipY - leftTipY);
   const area = 2 * A;
   return {
     span,

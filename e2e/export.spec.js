@@ -107,7 +107,8 @@ test.describe('export dialog', () => {
 
     const both = await exportFile(page, 'step', { half: 'halves' });
     const right = await exportFile(page, 'step', { half: 'right' });
-    for (const f of [both, right]) {
+    const left = await exportFile(page, 'step', { half: 'left' });
+    for (const f of [both, right, left]) {
       expect(f.name).toBe('Sport.step');
       const text = f.bytes.toString('latin1');
       expect(text.startsWith('ISO-10303-21;')).toBe(true);
@@ -121,6 +122,11 @@ test.describe('export dialog', () => {
     expect(r.solids).toBe(1);
     expect(b.names).toEqual(['Sport right', 'Sport left']);
     expect(r.names).toEqual(['Sport right']);
+    // Left half only: the mirrored half alone.
+    const l = stepSummary(left.bytes.toString('latin1'));
+    expect([l.solids, l.names, l.faces]).toEqual([1, ['Sport left'], r.faces]);
+    expect(Math.abs(l.minY + r.maxY)).toBeLessThan(1e-6);
+    expect(l.maxY).toBeLessThanOrEqual(1e-9);
     expect([b.shells, r.shells]).toEqual([2, 1]);
     // Open trailing edge (0.48 mm): upper, lower, trailing-edge, root and tip face per half.
     expect(r.faces).toBe(5);

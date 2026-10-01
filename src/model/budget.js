@@ -58,11 +58,11 @@ const EXPORT = Object.freeze({
   step: { s: 2.5e-6, mb: 620e-6, fileMB: 98e-6 },
 });
 
-/** Surface control points a STEP export writes: the half-wing surface, twice with the left half. */
+/** Surface control points a STEP export writes: the half-wing surface, twice with both halves. */
 export function stepPoints(build, half) {
   const S = build?.surface;
   if (!S) return 0;
-  return (half === 'right' ? 1 : 2) * S.points.length * S.points[0].length;
+  return (half === 'right' || half === 'left' ? 1 : 2) * S.points.length * S.points[0].length;
 }
 
 /**

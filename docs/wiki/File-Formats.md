@@ -267,7 +267,7 @@ The checks run:
 | Key | Type | Written | On **Open** |
 | --- | --- | --- | --- |
 | `format` | `"wingdesigner-project"` | always | required, must match |
-| `version` | integer `3` | always | required, 1 to 3. A version 1 file opens with `settings.sectionPlanes` `"vertical"`, the section planes it was designed with. A version 2 file with `foldedTilt` is upgraded (section "Upgrade of version 2 files"). A version 1 or 2 file opens with `partTilt` and `partRoll` 0 and `partPivot` null unless the upgrade of its `foldedTilt` sets them: `partTilt`, `partRoll` and `partPivot` in its settings are unknown keys of that version and are dropped, as the apps of that version drop them. An app that reads version 1 only refuses a version 2 file (`Unsupported project version 2.`) instead of dropping `sectionPlanes` and `foldedTilt`; Wingdesigner 0.3.0 and earlier refuse a version 3 file (`Unsupported project version 3.`) instead of dropping `partTilt`, `partRoll` and `partPivot`. |
+| `version` | integer `3`, or `4` when `settings.leftHalf` is `"turned"` | always | required, 1 to 4. A version 1 file opens with `settings.sectionPlanes` `"vertical"`, the section planes it was designed with. A version 2 file with `foldedTilt` is upgraded (section "Upgrade of version 2 files"). A version 1 or 2 file opens with `partTilt` and `partRoll` 0 and `partPivot` null unless the upgrade of its `foldedTilt` sets them: `partTilt`, `partRoll` and `partPivot` in its settings are unknown keys of that version and are dropped, as the apps of that version drop them. An app that reads version 1 only refuses a version 2 file (`Unsupported project version 2.`) instead of dropping `sectionPlanes` and `foldedTilt`; Wingdesigner 0.3.0 and earlier refuse a version 3 file (`Unsupported project version 3.`) instead of dropping `partTilt`, `partRoll` and `partPivot`. A file of version 1 to 3 opens with `settings.leftHalf` `"mirror"`; a `leftHalf` key in it is dropped. Wingdesigner 0.4.0 and earlier refuse a version 4 file (`Unsupported project version 4.`). |
 | `generator` | `{ "name": "Wingdesigner", "version": "<app version>" }` | always | ignored |
 | `exportedAt` | ISO 8601 time, UTC | always | ignored |
 | `name` | string | always | not a string: `Imported wing` (German interface: `Importierter Flügel`); at most 10,000 characters |
@@ -362,6 +362,7 @@ Ids made by the app:
 | `partTilt` | −180 to 180°; positive = leading edge up | `0` | **Part tilt (°, positive = leading edge up)**: rigid turn of the whole part about the y axis through `partPivot`, after the roll ([[Geometry]], section 3.9) |
 | `partRoll` | −180 to 180°; positive = right tip up | `0` | **Part roll (°, positive = right tip up)**: rigid turn of the whole part about the x axis through `partPivot`, before the tilt |
 | `partPivot` | `null`, or `{ "x": <mm>, "y": <mm>, "z": <mm> }` with each value within ±1,000,000 mm | `null` | none; the line below **Part roll** names it. `null`: the leading edge (x, y, z) of the root section. The XFLR5 import stores the wing origin `{ "x": k·LE_x, "y": 0, "z": k·LE_z }` (section "XFLR5 import", step 3). |
+| `leftHalf` | `"mirror"`, `"turned"` | `"mirror"` | **Left half**: `"mirror"` **Mirror image of the turned right half**; `"turned"` **Turned with the right half (whole wing, as flow5)**: the left half is the mirror image of the unturned right half, turned by `partRoll` and `partTilt` with it ([[Geometry]], section 3.9). The two differ for a part roll other than 0° only. A project with `"turned"` is saved as format version 4. |
 
 Unknown keys inside `settings` are dropped on **Open**. **Save** writes the keys of this table.
 
@@ -529,7 +530,7 @@ Counts in this file: 161 points per airfoil, 165 profile knots, 17 stations (8 p
 | Property | Value |
 | --- | --- |
 | Key | `wingdesigner.project.v1` |
-| Stored keys | same as the project JSON, without `generator`, `exportedAt`, `coordinateSystem` and `derived` |
+| Stored keys | same as the project JSON, without `generator`, `exportedAt`, `coordinateSystem` and `derived`; `version` as a saved file has it (3, or 4 with `settings.leftHalf` `"turned"`) |
 
 | Event | Behaviour |
 | --- | --- |
@@ -564,8 +565,6 @@ A refused file shows the red notice `Cannot open <file>: <message>`. The design 
 | Code | File | Message |
 | --- | --- | --- |
 | `wpa` | `.wpa` project (XFLR5 6.02 to 6.09) | `The file is a .wpa project of XFLR5 6.09 or older: open it in XFLR5 6.62 and save it as .xfl.` |
-| `flow5` | flow5 project (`.fl5`, flow5 7.x): first number 500000 to 509999 | `The file is a flow5 project (.fl5); only XFLR5 files can be imported.` |
-| `flow5` | flow5 XML file: root element `xflplane`, `xflwing`, `xflfuse`, `xflboat` or `xflsail`, in any case | `The file is a flow5 XML file (root element "xflplane"); only XFLR5 files can be imported.` |
 | `not-xflr5` | binary file whose first number is not 200001 or 200002 | `The file is not an XFLR5 project (it starts with 7b 22 66 6f).` The bytes are the first 4 bytes of the file in hexadecimal. |
 | `not-xflr5` | empty file | `The file is empty, not an XFLR5 project.` |
 | `no-plane` | `.xfl` project without a plane: an airfoil-only project, every `.xfl` file that flow5 saves | `The project holds no plane (airfoil-only projects and .xfl files saved by flow5 have none).` |
@@ -585,12 +584,12 @@ A refused file shows the red notice `Cannot open <file>: <message>`. The design 
 
 | Property | Rule |
 | --- | --- |
-| File picker filter | `.json` `.xfl` `.xml` `.wpa` `.fl5` `application/json`; `.wpa` and `.fl5` files are listed so that Open can name the reason it refuses them. Whether the file pickers of Android and iOS list `.xfl` files with this filter is unknown; untested. |
+| File picker filter | `.json` `.xfl` `.xml` `.wpa` `.fl5` `application/json`; `.wpa` files are listed so that Open can name the reason it refuses them. Whether the file pickers of Android and iOS list `.xfl` and `.fl5` files with this filter is unknown; untested. |
 | File extension | compared in lower case: `.XFL` counts as `.xfl` |
-| Extension `.xfl`, `.wpa`, `.fl5` | the `.xfl` project reader. It recognizes `.wpa` and `.fl5` files and refuses them with their own message (section "Refused files"). |
-| Extension `.xml` | XML reader |
+| Extension `.xfl`, `.wpa`, `.fl5` | The first 4 bytes decide: a number from 500000 to 509999, read big-endian, goes to the flow5 project reader (section "flow5 import"); any other to the `.xfl` project reader, which recognizes `.wpa` files and refuses them with their own message (section "Refused files"). |
+| Extension `.xml` | XML reader: the root element `explane` goes to the XFLR5 reader, `xflplane`, `xflwing`, `xflfuse`, `xflboat` and `xflsail` (in any case) to the flow5 reader |
 | Extension `.json` | project JSON (section "Project JSON") |
-| Another extension, or none | The first 4 bytes decide: an integer 200001 or 200002, read big-endian (`.xfl`), 500000 to 509999 (flow5) or, read little-endian, 100000 to 100100 (`.wpa`): the `.xfl` project reader. A file that starts with a UTF-16 byte order mark (`FF FE` or `FE FF`) goes to the XML reader. Otherwise the file is read as text: text that starts, after white space, with `<?xml`, `<!` or `<explane` goes to the XML reader; any other text is read as project JSON. |
+| Another extension, or none | The first 4 bytes decide: an integer 200001 or 200002, read big-endian (`.xfl`), 500000 to 509999 (flow5) or, read little-endian, 100000 to 100100 (`.wpa`): the `.xfl` project reader. A file that starts with a UTF-16 byte order mark (`FF FE` or `FE FF`) goes to the XML reader. Otherwise the file is read as text: text that starts, after white space, with `<?xml`, `<!`, `<explane`, `<xflplane` or `<xflwing` (in any case) goes to the XML reader; any other text is read as project JSON. |
 | Size | `.xfl`: at most 2,000 MB (2,000,000,000 bytes). Every other file: at most 100 MB (100,000,000 bytes), as for project JSON; larger: `Cannot open <file>: <size> MB; project files are limited to 100 MB.` |
 | Reading an `.xfl` | Through windows of 4,194,304 bytes of the file (`Blob.slice`); a file larger than one window is never in memory as a whole. Real projects with analysis results reach 96.7 MB (measured). The analyses and their results are skipped without decoding; only the planes and the airfoils are read. |
 | Text encoding of XML | UTF-16 (16-bit Unicode Transformation Format) after a byte order mark; otherwise UTF-8 with or without BOM; a file that is not valid UTF-8 is read as Windows-1252. |
@@ -627,7 +626,7 @@ XFLR5 has 4 wing slots per plane.
 - XML wing without a known `<Type>` (XFLR5 6.11 files write none): the wing is a fin when `<isFin>` is `true`. Otherwise the second `<wing>` read is the elevator and every other `<wing>` is the main wing. XFLR5 counts all `<wing>` elements, fins included. At most 4 wings are read per plane; more: warning `Plane "<plane>" has more than 4 wings; XFLR5 reads the first 4, and so does this import.`
 - A later wing for a slot that is taken replaces the earlier one, as in XFLR5: warning `Plane "<plane>" has more than one main wing: "<name>" replaces "<previous>", as in XFLR5.`
 - XML wing file (a top-level `<wing>`, no `<Plane>`): the `<Type>` gives the surface. `ELEVATOR`: horizontal stabilizer. `FIN` or `<isFin>true</isFin>`: refused. Every other type: wing. Position and tilt angle are 0. Several top-level wings: only the last is read, with a warning. Top-level wings in a plane file are ignored, with a warning.
-- Several planes: the dialog shows the **Plane** select only for more than one plane. The first plane is preselected. A plane without a name is listed as `Plane <n>`.
+- Several planes: the dialog shows the **Plane** select only for more than one plane. The first plane is preselected; for a flow5 file the first plane with a wing to import. A plane without a name is listed as `Plane <n>`.
 - The dialog offers **Main wing** and **Horizontal stabilizer (XFLR5: Elevator)**. Each option shows `"<wing name>": <n> sections, span <span> mm, root chord <chord> mm`. The span is twice the y of the last section (Y_(n−1) of step 1 in section "Mapping to sections"), both halves. An option that the plane lacks is disabled with its reason: `This plane has no main wing.`, `This plane has no elevator.`, `The wing in this file is a horizontal stabilizer (type ELEVATOR).` or `The wing in this file is not a horizontal stabilizer (type ELEVATOR).`
 - The second wing, the fin and the other surface are not imported; the report says so (section "Report"). One surface is imported at a time; opening the file again offers the other.
 
@@ -730,7 +729,7 @@ chord' = c·cT            twist unchanged
 - With l_x = 0 and cT = 1 the section moves by c · m · l_y along the up direction of its twisted airfoil, (sin t, cos t) in x and the up direction (0, −sin φ, cos φ) of its plane.
 - Every airfoil point then lies where a rigid rotation of the airfoil about the quarter chord puts it; XFLR5's own mesh differs slightly (section "Differences from XFLR5").
 - The Sections table then differs from XFLR5's wing table by this move: 8.53 mm at the root of the worked example.
-- A frame with |l_x| or |l_y| above 0.1, or cT outside 0.5 … 2 (`FRAME_LIMIT`), is not in chord units (a file in millimetres, say): XFLR5 would draw the airfoil many chords long. An airfoil of an `.xfl` then fails the check (`The coordinates are not in chord units (leading edge at x = <x>, y = <y>; trailing edge at x = <te>).`) and the other sources of section "Airfoils" are tried. An upload is used without a frame, scaled to chord 1, with a warning: `The coordinates are not in chord units (leading edge at x = <x>, y = <y>; trailing edge at x = <te>): XFLR5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file.`
+- A frame with |l_x| or |l_y| above 0.1, or cT outside 0.5 … 2 (`FRAME_LIMIT`), is not in chord units (a file in millimetres, say): XFLR5 would draw the airfoil many chords long. An airfoil of an `.xfl` then fails the check (`The coordinates are not in chord units (leading edge at x = <x>, y = <y>; trailing edge at x = <te>).`) and the other sources of section "Airfoils" are tried. An upload is used without a frame, scaled to chord 1, with a warning: `The coordinates are not in chord units (leading edge at x = <x>, y = <y>; trailing edge at x = <te>): XFLR5 and flow5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file.`
 - The airfoil parser divides coordinates by 100 when the largest x lies above 5 and at most 110. A file in millimetres or inches with a chord of 50 to 110 gets there too. A file read as percent counts as in chord units only when cT lies within 0.02 of 1; a true percent file ends at x = 100.
 
 **5. Rounding.** The project holds section values to 4 decimals (1e-4 mm, 1e-4 °). This drops noise of the unit conversion such as a chord of 400.04999999999995 mm. The section ids are `s1`, `s2` … in root-to-tip order.
@@ -789,7 +788,7 @@ Each distinct right-side airfoil name of the surface is one row of the airfoil t
 
 | Order | Source | Match |
 | --- | --- | --- |
-| 0 | the airfoil of the `.xfl` project (`.xfl` only) | the exact name; an empty name finds nothing |
+| 0 | the airfoil of the `.xfl` or `.fl5` project (not in XML files) | the exact name; an empty name finds nothing |
 | 1 | a `.dat` file uploaded in the dialog | its name line, exactly, then trimmed; then its file name without extension, exactly, then trimmed |
 | 2 | an airfoil of the current project | its name, exactly, then trimmed (the id when the name is blank) |
 | 3 | a bundled library airfoil (Clark Y, NACA 8-H-12, NACA M-6, RAF 34, S9104, USA 35B) | its name, exactly, then trimmed |
@@ -798,6 +797,7 @@ Each distinct right-side airfoil name of the surface is one row of the airfoil t
 
 - The airfoil check is the one of the **Airfoils** tab (parser clean-up, sanity checks). In addition the fitted profile curve must not cross itself or run back in x (`curve-shape`, **Profile parametrization** centripetal).
 - Warnings of the check appear once per airfoil in use, with its sections: `Airfoil "Clark Y" (sections 1–2): <message>`. The upload is named with its file name, as the select shows it: `Airfoil "TEST 12 (test12.dat)" (section 2): …`. An inclined chord line (`rotated`) is info, because XFLR5 draws the same coordinates: `Airfoil "Clark Y" (sections 1–2): The line from the leading edge to the trailing edge is inclined by -1.97 degrees; the coordinates are kept, so twist refers to the file's x axis.` A library airfoil gets a warning instead (section "Report").
+- **Upload .dat files…** above the table takes several files at once; each row finds its file by the rules of order 1. A screen reader hears `<n> files uploaded; <m> airfoil names use them.`
 - No candidate passes: the row shows **Missing** in the column **Found**, and **Import** stays disabled (`Import (2 airfoils missing)`). The error names the first candidate that failed, e.g. `Airfoil "NACA 5128" (sections 1–2): the matching airfoil (NACA generator: NACA 5128) fails the check: … Upload a .dat file or pick an airfoil.` Generated sections with high camber and thickness run back in x at 11 to 13 % of the chord and fail the check, for example NACA 5128, 5130, 6130, 8130 and 9130.
 - The user can change every row: any airfoil of the list (airfoils of the file, uploads, current project, library, NACA presets), or **Upload .dat** for that row. A picked airfoil replaces the automatic choice.
 - Without a name (an empty airfoil name in the file): error `XFLR5 names no airfoil at <sections>: upload a .dat file or pick an airfoil.`
@@ -843,7 +843,7 @@ The dropped data: the fin, the second wing, the other surface, the body, masses,
 | airfoil that moves its sections by more than `FRAME_TOLERANCE` (0.1 % of the chord) in l_x, l_y or cT − 1 | moved (and scaled) | info; warning when any offset exceeds 2 % of the chord (`FRAME_WARN` = 0.02) | `Airfoil "Clark Y" (sections 1–2) has its leading edge at x = 0 %, y = 3.55 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.` Figures in % of the chord with 2 decimals. For one section: `this section was moved`. When the figures show a chord other than 100 % (trailing edge minus leading edge): `moved and scaled`; the 0.0016 % of the Clark Y rounds away and applies without a word. A frame within `FRAME_TOLERANCE` applies without a line. Where the frame applies, the check's note on scaling to chord 1 is left out. |
 | library airfoil, or a current-project airfoil taken from the Library (`source.kind` `library`, the same points), whose own coordinates put x or y of the leading edge more than 2 % of the chord from 0, or the chord more than 2 % from 1; bundled: Clark Y 3.55 %, USA 35B 2.87 % | table values kept | info | `Library airfoil "Clark Y" (sections 1–2) has its leading edge at x = 0 %, y = 3.55 % of chord in its own coordinates. If XFLR5 used these coordinates, it draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.` |
 | library airfoil, or a current-project airfoil taken from the Library, whose chord line (from the leading edge of the fitted curve to the trailing-edge midpoint) is inclined more than 0.5° (`rotationDeg` of the airfoil check); bundled: Clark Y 2.00° and USA 35B 1.57° nose up | angle kept, twist refers to its x axis | warning | `Library airfoil "Clark Y" (sections 1–2) has its chord line inclined 2.00° nose up in its own coordinates, and the built sections keep this angle. If the airfoil that XFLR5 used has a level chord line, these sections sit 2.00° more nose up than in XFLR5, the trailing edge 8.4 mm lower at 240 mm chord; upload the .dat file that XFLR5 used to place them as in XFLR5.` The distance is the largest chord of these sections times sin(angle). The UIUC file `clarky.dat` (name line `CLARK Y AIRFOIL`) has a level chord line. `nose down` and `higher` for a trailing edge above the leading edge. |
-| current-project airfoil of an XFLR5 import or an upload (`source.kind` `xflr5` or `upload`): stored at chord 1, its own coordinates are not stored | table values kept | info | `Airfoil "Clark Y" (sections 1–2) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. If the coordinates that XFLR5 used put the leading edge elsewhere, XFLR5 draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.` |
+| current-project airfoil of an XFLR5 or flow5 import or an upload (`source.kind` `xflr5`, `flow5` or `upload`): stored at chord 1, its own coordinates are not stored | table values kept | info | `Airfoil "Clark Y" (sections 1–2) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. If the coordinates that XFLR5 used put the leading edge elsewhere, XFLR5 draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.` |
 | warnings of the airfoil check | kept | warning; inclined chord line: info (library airfoil: the row above instead) | `Airfoil "Clark Y" (sections 1–2): <message>` |
 | flap | base shape | info at 0°, warning otherwise | see "Flaps" above |
 | file airfoil fails the check, another source passes | the other source used | warning | `Airfoil "<name>" from the file fails the check: <problem> "<match>" is used instead.` |
@@ -858,7 +858,7 @@ The dropped data: the fin, the second wing, the other surface, the body, masses,
 
 | Limit | Value | Message or result |
 | --- | --- | --- |
-| `.xfl` file size | 2,000 MB | `The file is <size> MB; XFLR5 projects above 2000 MB are not read.` |
+| `.xfl` file size | 2,000 MB | `The file is <size> MB; XFLR5 projects above 2000 MB are not read.` (`.fl5`: `flow5 projects`) |
 | XML and other files | 100 MB | section "How Open chooses the reader" |
 | planes per file | 10,000 | `.xfl`: damaged (in the list of planes). XML: `The XML file holds more than 10,000 planes.` |
 | sections per wing | 20,000 (`LIMITS.maxSections`) | `A wing of the file has <n> sections; at most 20,000 can be read.` XML: `A wing of the XML file has more than 20,000 sections.` |
@@ -969,6 +969,109 @@ The elevator is tilted too: **Mitred** section planes, `partTilt` −1.5, `partP
 
 Fixture B (tilt angle 1°, position 50, 0, 10 mm; Clark Y at sections 1 and 2, section 2 rolled 1°): section 1 moves from x 50, z 10 (steps 1 to 3) to x 50.3674, z 20.6573, section 2 from x 110, y 250, z 10 to x 110.1572, y 249.8387, z 19.2405. The twists stay 2° and 1°. The project stores `partTilt` 1 and `partPivot` `{ "x": 50, "y": 0, "z": 10 }`.
 
+## flow5 import
+
+**Open** reads a flow5 project (`.fl5`) or a flow5 plane or wing file (`.xml`) and imports one wing from it. flow5 is the successor of XFLR5 (version 7), open source under the GNU General Public License (GPL) 3.0 since 2026-01-01. The readers are written from a description of the formats, not from flow5's code. The import uses the dialog, the section mapping, the airfoil sources, the report and the result of the XFLR5 import (section "XFLR5 import"); this section names what differs. The messages say `flow5` where the XFLR5 import says `XFLR5`.
+
+### Supported files
+
+| File | Written by | Content | Import |
+| --- | --- | --- | --- |
+| `.fl5` project, format 500750 | flow5 7.50 to 7.53 | planes in metres; airfoils with coordinates | yes |
+| `.fl5` project, format 500754 | flow5 7.54 to 7.57 | the same; up to the end of the planes the same bytes as 500750 | yes |
+| XML plane file: `<xflplane version="1.0">` with `<Plane>` | flow5 7.50 and later (the element layout is the same from 7.53 to 7.57) | wings in the length unit that flow5 displays; airfoil names or `.dat` file names, no coordinates | yes |
+| XML wing file: `<xflwing version="1.0">` with `<wing>` | flow5 7.50 and later | one wing; position and angles 0 | yes |
+
+- Tested files: written by flow5 7.57 and 7.56 (`test/fixtures/flow5/`, origin in its `SOURCE.md`). Files of flow5 7.50 to 7.53 were not available; the layout of their records (project format 500750) is tested with files of the test writer `test/fl5-writer.js`.
+- A `.fl5` project holds planes of two kinds: planes of wings and bodies, and triangle-mesh planes (from an STL file), which hold no wing. Both are listed; a mesh plane offers no surface, and its report holds the error `Plane "<name>" has no wing to import.` The dialog opens on the first plane with a wing to import.
+
+### Refused files
+
+| Code | File | Message |
+| --- | --- | --- |
+| `flow5-old` | `.fl5` project of a format below 500750 (flow5 7.01 to 7.26) | `The file is a flow5 project of format 500006, written by flow5 7.26 or older: open it in a current flow5 and save it, or export the plane as XML.` |
+| `flow5-unknown` | `.fl5` project of a format from 500751 to 500753 (no known layout) | `The file is a flow5 project of format 500752, which this import does not read (formats 500750, 500754): export the plane as XML in flow5.` |
+| `flow5-new` | `.fl5` project of a format above 500754 | `The file is a flow5 project of format 500755, newer than this import reads (up to 500754, flow5 7.54 to 7.57): export the plane as XML in flow5.` |
+| `no-plane` | `.fl5` project without a plane | `The project holds no plane.` |
+| `damaged` | `.fl5` project cut off or inconsistent before the end of the planes; a plane kind other than 0 and 1; a body kind other than 100001 to 100006 | `The file is damaged or cut off at byte <n> (in <part>).` `Plane 1 of the file is of a kind this import does not read (kind -1).` |
+| `not-plane-xml` | flow5 XML file of a body, boat, sail or analysis (`xflfuse`, `xflboat`, `xflsail`, `xflpolar`, `xflplanepolar`, `xflboatpolar`) | `The file is a flow5 XML file without a plane or wing (root element "xflfuse").` |
+| `not-plane-xml` | root element `xflplane` in another case (flow5 compares it with case) or a `version` other than `1.0` | `The file is not a flow5 plane or wing file (root element "<root>", version "<version>").` |
+| `damaged` | XML file with `meter_to_length_unit` (or `length_unit_to_meter`) below 1e-6 or above 1000, or not a number | `The length unit of the XML file is not valid: meter_to_length_unit is "<value>".` |
+
+The other refusals of XML files (damaged XML, no plane and no wing, limits) are those of the XFLR5 import.
+
+### How the file is read
+
+| Property | Rule |
+| --- | --- |
+| `.fl5` layout | A Qt `QDataStream` as the `.xfl` project: big-endian, a C++ `float` as an 8-byte double, a string as its byte count (0xFFFFFFFF: null string) and UTF-16BE. The records have no length prefix: the reader walks the header (a default airfoil analysis, a default plane analysis, a string, 5 splines), the airfoils, the airfoil analyses and their saved results field by field to the planes, and stops after the last plane. Plane analyses, their results and boats follow and are not read. Read through windows of 4,194,304 bytes, as an `.xfl`. |
+| Record formats | Every record starts with its format number; the reader follows the layouts of flow5 7.50 to 7.57: line styles of 7.12 and later, airfoils with and without the bunching fields (format 500753), parts with and without the mesh sizes (500754), bodies of 6 kinds. A "sections" body of flow5 7.56 and older holds its section points after its frames; 7.57 writes none. The part format of the body (500757 from 7.57 on) tells the two apart. |
+| Length unit | `.fl5`: metres. XML: `<Units><meter_to_length_unit>`; despite its name, the value is metres per file unit, as XFLR5's `length_unit_to_meter`, which flow5 also reads: mm 0.001, cm 0.01, dm 0.1, m 1, in 0.0254, ft 0.3048. Without `<Units>`: metres. `<Units>` applies only to what follows it, with a warning when it comes after a plane or wing. |
+| Angles | degrees |
+| Precision of XML files | flow5 writes the section lengths with 3 decimals in the file unit, `Position` with 5 significant digits and the angles with 3 decimals. A metre file rounds to 1 mm: info `flow5 rounds lengths in metre XML files to 1 mm; the .fl5 project file keeps full precision.` |
+| XML values | As in the XFLR5 reader, except: a missing value is 0, as in flow5 (`y_position` and `Chord` too). A value that is not a number stays missing, with the warning of the XFLR5 import; flow5 reads it as 0. Booleans: `true` in any case is true, other text false; an empty element keeps the default (flow5 reads it as false). `Type`: `MAINWING`, `ELEVATOR` and `FIN` without case but not trimmed, as flow5 compares them; anything else, `SECONDWING` too, is another wing. |
+| XML structure | Unknown elements are skipped, also before a `<Plane>`, where flow5 stops reading. Several `<Plane>` elements are listed (flow5 keeps the last). A wing file with several wings: the last one, with the warning `The file holds 2 wings outside a plane; flow5 reads only the last one, "<name>", and so does this import.` |
+| Airfoil files in XML | `Left_Side_Foil_File` and `Right_Side_Foil_File` name a `.dat` file next to the XML file. The airfoil name is the file name without its folder and its `.dat` extension. The browser cannot read the folder: the dialog asks for the files (**Upload .dat files…**). flow5 7.54 and later write the airfoil names and one `<name>.dat` file per airfoil next to the XML file by default, and the file references when the option to include the airfoils is on. |
+| `.fl5` airfoils | name, flap settings and coordinates (at most 10,000 points per airfoil). flow5 7.50 and later store the shape itself: a flap is deflected only in flow5's analyses. A later airfoil of the same name replaces the earlier one; an empty name finds no airfoil. |
+
+### Wings and surfaces
+
+A flow5 plane holds any number of wings, each with a type: main wing, elevator (horizontal stabilizer), fin, or other wing. The dialog lists every wing in file order. The labels number the wings of one type when there are several: **Main wing 1**, **Main wing 2**, **Horizontal stabilizer (flow5: Elevator)**, **Other wing 1**, **Fin**.
+
+| Wing | Offered | Reason when not |
+| --- | --- | --- |
+| a two-sided wing of any type: main wings, elevators, other wings (a canard) | yes, with its roll (`Rx_angle`) and tilt (`Ry_angle`) | – |
+| a one-sided wing (`Two_Sided` false, a fin) | yes, as the half that flow5 builds (section "Mapping to sections") | – |
+| a one-sided wing with `Ry_angle` other than 0 | no: flow5 turns a one-sided wing by `Ry_angle` about the z axis, a part only about x and y | `A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.` |
+
+- The first main wing is preselected; a plane without an available main wing preselects its first available wing in file order, and a plane without any available wing its first wing, whose reason the report gives as an error.
+- The report lists the other wings of the plane: `Not imported: Main wing 2 "Rear", Fin "Fin". One surface per import; open the file again for another one.`
+- Toast for a further wing: `Imported the wing "Canard" of "Tandem" from full.fl5: 2 sections, 1 airfoil.`
+
+### Mapping to sections
+
+The section values (`y_position`, `Chord`, `xOffset`, `Dihedral`, `Twist`) mean what they mean in XFLR5, and the mapping is the XFLR5 import's (section "Mapping to sections", steps 1 to 6). flow5 turns a wing first by `Rx_angle` about the x axis, then by `Ry_angle` about the y axis, both about the wing origin, and then moves it by `Position`.
+
+| flow5 value | Import |
+| --- | --- |
+| `Ry_angle` | **Part tilt**, about the wing origin, as the tilt angle of XFLR5 (step 3). Positive: leading edge up. |
+| `Rx_angle` | **Part roll**, about the wing origin, before the tilt ([[Geometry]], section 3.9). Positive: right tip up. Info `Roll angle 10° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).` |
+| `Position` x and z | moves the sections (step 3); the wing origin is `partPivot` |
+| `Position` y | not used: info `Position y 20 mm is not used, as in flow5.` |
+| left-side airfoils | not used, as for XFLR5; for a one-sided wing the left-side airfoils are the only ones |
+
+**One-sided wing (fin).** flow5 builds the left half only (local y ≤ 0), with the left-side airfoils, and turns it by `Rx_angle`; a fin carries −90°. The import takes that half: the left-side airfoils, **Part roll** −`Rx_angle` (a fin: 90°) and **Part tilt** 0. The left half of the part, the mirror image of its right half, is then flow5's half; the right half lies on it for a fin at y = 0. Info `A one-sided wing: flow5 builds its left half only, with the left-side airfoils. The part's left half is that half, its right half the mirror image (on top of it for a fin at y = 0); Export > Wing halves > Left half only exports flow5's half alone.` On a one-sided wing whose roll is not ±90° the right half is a second wing that flow5 does not build; **Left half only** writes flow5's half alone. The rule for the left half below does not apply.
+
+**Two-sided rolled wing.** flow5 turns the whole wing, both halves, as one body: the left half of a rolled wing turns the other way than its right half. The import sets **Settings** > **Left half** (`settings.leftHalf`) to `"turned"`, so that the left half turns with the right half ([[Geometry]], section 3.9). Info `flow5 rolls the whole wing as one body, so its left half rolls the other way: Settings > Left half is set to Turned with the right half.` A wing without roll, and a one-sided wing, keep `"mirror"`. The project is then saved as format version 4 (section "Project JSON").
+
+### Airfoils
+
+The airfoil sources are those of the XFLR5 import (section "Airfoils"); order 0 is the airfoil of the `.fl5` project. XML files name the airfoils only.
+
+- Airfoils of a `.fl5` project get `source.kind` `"flow5"`, `source.file` the file name and `source.note` `Airfoil "<name>" from flow5 plane "<plane>"; the stored shape.` (without a plane name: `Airfoil "<name>" from a flow5 project; the stored shape.`). The **Airfoils** tab shows `flow5: <file>` under such an airfoil.
+- Flaps of a `.fl5` airfoil: info `Airfoil "<name>" has a trailing-edge flap in flow5 (hinge at <x> % chord); flow5 deflects it in its analyses only, and the stored shape is imported.` (and the same with `leading-edge`).
+
+### Verification
+
+Measured on the files of `test/fixtures/flow5/` against the thick-surface triangle mesh that flow5 7.57 builds from the same files for its analyses: the mesh nodes of the right half of 8 wings, of the left half of both rolled two-sided wings and of both fins lie within 0.15 mm of the built surface (`test/flow5-map.test.js`).
+
+| Wing | Case | Largest distance (mm) |
+| --- | --- | --- |
+| `full.fl5`, "Canard" | tilt 2°, position applied | 0.0031 |
+| `basic.fl5`, "Stab" | tilt −1.5°, position applied | 0.0047 |
+| `full.fl5`, "Vee" | roll 10°, tilt −2°, 25° dihedral; right half | 0.0057 |
+| `full.fl5`, "Vee" | the same; left half, **Left half** turned | 0.0061 |
+| `full.fl5`, "Tilted other" | roll 30° (a further wing); right half | 0.0032 |
+| `full.fl5`, "Tilted other" | the same; left half, **Left half** turned | 0.0032 |
+| `full.fl5`, "Fin" | one-sided, roll −90°; the left half of the part against flow5's half | 0.0039 |
+| `basic.fl5`, "Fin" | the same | 0.0047 |
+| `full.fl5`, "Rear" | no dihedral | 0.0104 |
+| `full.fl5`, "Wing2" | 5° dihedral at the tip panel, position y 20 mm taken off | 0.0766 |
+| `basic.fl5`, "Main" | 3° and 6° dihedral | 0.0796 |
+| `full.fl5`, "Front" | tilt 1°, NACA 2412 to a flapped NACA 2410 along the panel | 0.1469 |
+
+With **Left half** set to mirror, the left half of "Vee" lies up to 61.3 mm from flow5's left half, that of "Tilted other" up to 85.7 mm. flow5's own surface points (`Surface::getSurfacePoint`) put the root airfoil square to the first panel, 0.99 mm (3° dihedral) to 1.90 mm (25° dihedral) off the vertical root plane; the analysis mesh has its root nodes at y = 0, as the import.
+
 ## Bodies per file
 
 | **Wing halves** option | STEP | STL | 3MF |
@@ -976,9 +1079,10 @@ Fixture B (tilt angle 1°, position 50, 0, 10 mm; Clark Y at sections 1 and 2, s
 | **Both halves as separate bodies** | 2 solids | 1 file, 2 closed shells | 2 objects: `Wing right`, `Wing left` |
 | **Full wing as one body (mesh formats, root at y = 0)** | 2 solids | 1 closed shell | 1 object: `Wing` |
 | **Right half only** | 1 solid | 1 closed shell | 1 object: `Wing right` |
+| **Left half only** | 1 solid | 1 closed shell | 1 object: `Wing left` |
 
 - **Full wing** needs the root section at exactly y = 0 mm and **Part roll** 0°. Otherwise STL and 3MF contain 2 shells, as with **Both halves**: a rolled root leaves the plane y = 0.
-- **Part tilt** and **Part roll** (`settings.partTilt`, `partRoll`): every format writes the right half turned about the pivot ([[Geometry]], section 3.9) and the left half as its mirror image at y = 0. The project JSON holds the sections in the frame of the part.
+- **Part tilt** and **Part roll** (`settings.partTilt`, `partRoll`): every format writes the right half turned about the pivot ([[Geometry]], section 3.9) and the left half as **Left half** (`settings.leftHalf`) sets: the mirror image of the turned right half at y = 0, or the mirror image of the unturned right half, turned with it. The project JSON holds the sections in the frame of the part.
 - **Fusion 360 fix: Y up (also SolidWorks)** (STEP, STL, 3MF): off, the export writes the axes of the app (x chordwise towards the TE, y spanwise towards the right tip, z up). On, it writes every point as (x, z, −y) and every direction the same way (`src/export/axes.js`): the upper surface faces +Y, the chord runs along X, `right` lies at Z ≤ 0 and `left` at Z ≥ 0. The turn is a rotation: orientations, closed shells and volumes stay. The STEP world placement (`AXIS2_PLACEMENT_3D` at the origin with z and x directions) stays. The project JSON always holds the axes of the app. Why and when: [[User Guide|User-Guide]], section Export.
 - **Mesh density (STL, 3MF)**: **Normal** or **Fine (4x triangles)**. **Fine** splits every u interval (chordwise) and every v interval (spanwise) of the **Normal** mesh into 2. Measured triangle count: 3.0 to 3.9 times **Normal** (table "File sizes").
 - Mesh construction and triangle counts: [[Geometry|Geometry]], section 5 "Meshes".

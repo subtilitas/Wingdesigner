@@ -49,7 +49,7 @@ const MAX_TEXT_BYTES = 1 << 20;
 // Decoded names and descriptions of the whole file together, in bytes.
 const MAX_TEXT_TOTAL = 64_000_000;
 
-const COLOR = 11; // QColor: i8 spec, u16 ×5
+export const COLOR = 11; // QColor: i8 spec, u16 ×5
 const STYLE_OLD = 21; // i32 stipple, i32 width, color, bool visible, i8 point style
 const STYLE_XFL = 24; // i32 stipple, i32 width, i32 point style, color, bool visible
 const SPARE = 20 * 4 + 50 * 8; // i32 ×20, f64 ×50 reserved at the end of most records
@@ -57,7 +57,7 @@ const SECTION_BYTES = 4 + 4 + 5 * 8 + 4 * 4; // the smallest wing section: two n
 const UTF16 = new TextDecoder('utf-16be');
 
 /** XflrError 'damaged' at byte `offset`; `what` names the part being read (see the cases below). */
-function damaged(what, offset) {
+export function damaged(what, offset) {
   const n = whole(offset);
   let message;
   switch (what) {
@@ -101,7 +101,7 @@ function damaged(what, offset) {
 }
 
 /** Big-endian reader over a window of the file; the generator methods yield when the window must move. */
-class Reader {
+export class Reader {
   constructor(size) {
     this.size = size;
     this.o = 0;
@@ -433,7 +433,7 @@ function* readFoil(r) {
 const hex = (bytes) => [...bytes].map((b) => b.toString(16).padStart(2, '0')).join(' ');
 
 /** First big-endian i32 of a flow5 7.x project (.fl5): 500001 to 500754 so far. */
-const isFlow5 = (first) => first >= 500_000 && first < 510_000;
+export const isFlow5 = (first) => first >= 500_000 && first < 510_000;
 
 /** First little-endian i32 of a .wpa project of XFLR5 6.09 and older: its format, 100000 to 100013. */
 const isWpa = (little) => little >= 100_000 && little <= 100_100;

@@ -121,6 +121,7 @@ export default {
   'Both halves as separate bodies': 'Beide Hälften als getrennte Körper',
   'Full wing as one body (mesh formats, root at y = 0)': 'Ganzer Flügel als ein Körper (Netzformate, Wurzel bei y = 0)',
   'Right half only': 'Nur rechte Hälfte',
+  'Left half only': 'Nur linke Hälfte',
   'Mesh density (STL, 3MF)': 'Netzdichte (STL, 3MF)',
   Normal: 'Normal',
   'Fine (4x triangles)': 'Fein (4-fache Dreiecksanzahl)',
