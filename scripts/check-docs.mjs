@@ -76,10 +76,10 @@ export const INTERNAL_TERMS = [
   [/(?<![\w/.-])(?:\.\/)?(?:scripts|test|e2e|src|public|\.github)\/|\/(?:blob|tree)\/[^/\s]+\/(?:scripts|test|e2e|src|public|\.github)\//g, 'a path of the repository'],
   [/\b(?:ci|docs|release)\.yml\b|\bcontinuous\s+integration\b/gi, 'continuous integration'],
   [/\bCI\b/g, 'continuous integration'],
-  [/\b(?:unit|browser)\s+tests?\b|\bVitest\b|\bPlaywright\b|\.spec\.js\b/gi, 'tests'],
+  [/\b(?:unit|browser|end-to-end|e2e|integration|regression|smoke|snapshot|component|acceptance|automated)\s+tests?\b|\btest\s+(?:suites?|runs?|cases?|files?|counts?)\b|\bVitest\b|\bPlaywright\b|\.spec\.js\b/gi, 'tests'],
   [/\b(?:test|code|line|branch|statement|V8)\s+coverage\b|\bcoverage\s+(?:check|table|report|markers?)\b/gi, 'test coverage'],
   [/\[\[(?:Development|Entwicklung)\b|\b(?:Development|Entwicklung)(?:\s+(?:page|wiki)\b|,\s+section\b|\s+\/\s+Entwicklung\b)/g, 'the Development page'],
-  [/`[A-Za-z_$][\w$.]*\(\)`/g, 'a function of the source code'],
+  [/`[A-Za-z_$][\w$.]*\([^`]*\)`/g, 'a function of the source code'],
 ];
 
 /** Upper-case names with an underscore that the JavaScript files under `dir` declare with `const`, `let` or `var`. */

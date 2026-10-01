@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-09-30
+## [0.3.0] - 2026-10-01
 
 ### Changed
 

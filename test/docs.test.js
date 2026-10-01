@@ -74,8 +74,8 @@ describe('documentation check: release texts in the changelog', () => {
       '',
       '### Added',
       '- `docs/Handover.md` and RECORD.md: working agreements.', // 9
-      '- `npm run docs:check` in CI checks `./scripts/check-docs.mjs`; 12 unit tests, test coverage.', // 10
-      '- `FRAME_TOLERANCE` and `tr()` decide it; `npm test` and `npm ci`; see the Development page and', // 11
+      '- `npm run docs:check` in CI checks `./scripts/check-docs.mjs`; 12 unit tests, 3 end-to-end tests, test coverage.', // 10
+      '- `FRAME_TOLERANCE`, `tr()` and `buildWing(project)` decide it; `npm test` and `npm ci`; see the Development page and', // 11
       '  [wing.js](https://github.com/o/r/blob/main/src/geom/wing.js).', // 12
     );
     expect(names(text, new Set(['FRAME_TOLERANCE']))).toEqual([
@@ -85,11 +85,13 @@ describe('documentation check: release texts in the changelog', () => {
       'C.md:10: release text names a path of the repository (./scripts/)',
       'C.md:10: release text names continuous integration (CI)',
       'C.md:10: release text names tests (unit tests)',
+      'C.md:10: release text names tests (end-to-end tests)',
       'C.md:10: release text names test coverage (test coverage)',
       'C.md:11: release text names an npm command (npm test)',
       'C.md:11: release text names an npm command (npm ci)',
       'C.md:11: release text names the Development page (Development page)',
       'C.md:11: release text names a function of the source code (`tr()`)',
+      'C.md:11: release text names a function of the source code (`buildWing(project)`)',
       'C.md:11: release text names a constant of the source code (`FRAME_TOLERANCE`)',
       'C.md:12: release text names a path of the repository (/blob/main/src/)',
     ]);
