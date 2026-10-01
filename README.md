@@ -246,6 +246,10 @@ The Playwright tests run the DOM (Document Object Model) code; its coverage is n
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->
 
+## Authors
+
+Julian (subtilitas) created Wingdesigner, with Claude (Anthropic) as co-creator.
+
 ## License
 
 MIT License (named after the Massachusetts Institute of Technology), see [LICENSE](LICENSE). Airfoil coordinate data keeps the terms of its source.

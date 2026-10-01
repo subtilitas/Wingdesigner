@@ -246,6 +246,10 @@ Die Playwright-Tests führen den DOM-Code (Document Object Model) aus; seine Abd
 Unit-Tests (Vitest, V8-Coverage) über `src/`, ohne den DOM-Code in `src/ui/` und `src/main.js`.
 <!-- coverage:end -->
 
+## Autoren
+
+Julian (subtilitas) hat Wingdesigner erstellt, mit Claude (Anthropic) als Mitentwickler.
+
 ## Lizenz
 
 MIT License (benannt nach dem Massachusetts Institute of Technology), siehe [LICENSE](LICENSE). Profilkoordinaten behalten die Bedingungen ihrer Quelle.
