@@ -61,7 +61,7 @@ describe('documentation check: wiki links in tables', () => {
 });
 
 describe('documentation check: release texts in the changelog', () => {
-  const names = { functions: new Set(['buildWing', 'sectionPlanes']), constants: new Set(['FRAME_TOLERANCE', 'LIMITS']) };
+  const names = { functions: new Set(['buildWing', 'updateLabels', 'sectionPlanes']), constants: new Set(['FRAME_TOLERANCE', 'LIMITS']) };
   const keys = new Set(['sectionPlanes', 'panelAngle']);
   const found = (text) => changelogProblems(text, 'C.md', names, keys).map((p) => p.replace(/;.*$/, ''));
 
@@ -76,28 +76,32 @@ describe('documentation check: release texts in the changelog', () => {
       '',
       '### Added',
       '- `docs/Handover.md` and RECORD.md: working agreements.', // 9
-      '- `npm run docs:check` in CI checks `./scripts/check-docs.mjs`; 12 unit tests, 3 end-to-end tests, test coverage.', // 10
-      '- `FRAME_TOLERANCE`, `LIMITS`, `tr()`, `mapXflr5(file)` and `buildWing` decide it; `npm test`, `npm ci`; see the Development page and', // 11
-      '  [wing.js](https://github.com/o/r/blob/feature/foo/src/geom/wing.js).', // 12
+      '- `npm run docs:check` in CI and GitHub Actions checks `./scripts/check-docs.mjs`; 12 unit tests, 3 end-to-end tests, test coverage.', // 10
+      '- `FRAME_TOLERANCE`, `LIMITS`, `tr()`, `mapXflr5(file)`, `updateLabels` and `buildWing(', // 11
+      '  project)` decide it; `npm test`, `npm ci`; see the Development page and', // 12
+      '  [wing.js](https://github.com/o/r/blob/feature/foo/src/geom/wing.js).', // 13
     );
     expect(found(text)).toEqual([
       'C.md:9: release text names the handover (Handover)',
+      'C.md:9: release text names the working agreements (working agreements)',
       'C.md:9: release text names RECORD.md (RECORD)',
       'C.md:10: release text names an npm command (npm run)',
       'C.md:10: release text names a path of the repository (./scripts/)',
+      'C.md:10: release text names continuous integration (GitHub Actions)',
       'C.md:10: release text names continuous integration (CI)',
       'C.md:10: release text names tests (unit tests)',
       'C.md:10: release text names tests (end-to-end tests)',
       'C.md:10: release text names test coverage (test coverage)',
-      'C.md:11: release text names an npm command (npm test)',
-      'C.md:11: release text names an npm command (npm ci)',
-      'C.md:11: release text names the Development page (Development page)',
+      'C.md:12: release text names an npm command (npm test)',
+      'C.md:12: release text names an npm command (npm ci)',
+      'C.md:12: release text names the Development page (Development page)',
+      'C.md:13: release text names a path of the repository (/blob/feature/foo/src/)',
       'C.md:11: release text names a constant of the source code (`FRAME_TOLERANCE`)',
       'C.md:11: release text names a constant of the source code (`LIMITS`)',
       'C.md:11: release text names a function of the source code (`tr()`)',
       'C.md:11: release text names a function of the source code (`mapXflr5(file)`)',
-      'C.md:11: release text names a function of the source code (`buildWing`)',
-      'C.md:12: release text names a path of the repository (/blob/feature/foo/src/)',
+      'C.md:11: release text names a function of the source code (`updateLabels`)',
+      'C.md:11: release text names a function of the source code (`buildWing( project)`)',
     ]);
   });
 
@@ -114,7 +118,7 @@ describe('documentation check: release texts in the changelog', () => {
     const text = lines(
       '## [1.0.0] - 2026-01-01',
       '- XFLR5 import: `foldedTilt` in the project JSON; `airfoils/NOTICE.md` in the app folder.',
-      '- Settings: `settings.sectionPlanes` `"vertical"`; `panelAngle`; `sectionPlanes`.',
+      '- Settings: `settings.sectionPlanes` `"vertical"`; `panelAngle`; `sectionPlanes`; ``a ` b``.',
       '- Wiki: User Guide and File Formats; the airfoil check `te-crossed`; `LICENSES.txt` in the release zip.',
       '- STEP export: one `MANIFOLD_SOLID_BREP` per half; `FILE_NAME` holds the project name.',
       '- Development of the upper skin; the mesh coverage of the tip cap; Cirrus and ci words; every npm package of the bundle.',

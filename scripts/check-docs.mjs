@@ -71,10 +71,11 @@ export function tableLinkProblems(text, file) {
  */
 export const INTERNAL_TERMS = [
   [/handover/gi, 'the handover'],
+  [/\bworking\s+agreements?\b|\bagreements?\s+with\s+the\s+owner\b/gi, 'the working agreements'],
   [/\bRECORD\b/g, 'RECORD.md'],
   [/\bnpm\s+(?:run|test|ci|install|i|exec|start|version|publish)\b|\bnpx\b/g, 'an npm command'],
   [/(?<![\w/.-])(?:\.\/)?(?:scripts|test|e2e|src|public|\.github)\/|\/(?:blob|tree)\/\S*?\/(?:scripts|test|e2e|src|public|\.github)\//g, 'a path of the repository'],
-  [/\b(?:ci|docs|release)\.yml\b|\bcontinuous\s+integration\b/gi, 'continuous integration'],
+  [/\b(?:ci|docs|release)\.yml\b|\bcontinuous\s+integration\b|\bGitHub\s+Actions\b|\bworkflow\s+runs?\b/gi, 'continuous integration'],
   [/\bCI\b/g, 'continuous integration'],
   [/\b(?:unit|browser|end-to-end|e2e|integration|regression|smoke|snapshot|component|acceptance|automated)\s+tests?\b|\btest\s+(?:suites?|runs?|cases?|files?|counts?)\b|\bVitest\b|\bPlaywright\b|\.spec\.js\b/gi, 'tests'],
   [/\b(?:test|code|line|branch|statement|V8)\s+coverage\b|\bcoverage\s+(?:check|table|report|markers?)\b/gi, 'test coverage'],
@@ -82,8 +83,8 @@ export const INTERNAL_TERMS = [
 ];
 
 /**
- * Names that the JavaScript files under `dir` declare: `functions` holds function and class names
- * in camelCase or PascalCase, `constants` upper-case names of 3 or more characters declared with
+ * Names that the JavaScript files under `dir` declare: `functions` holds function, method and class
+ * names in camelCase or PascalCase, `constants` upper-case names of 3 or more characters declared with
  * `const`, `let` or `var`.
  */
 export function sourceNames(dir = 'src') {
@@ -96,6 +97,7 @@ export function sourceNames(dir = 'src') {
       ...text.matchAll(/\bfunction\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/g),
       ...text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:function\b|\([^()]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/g),
       ...text.matchAll(/\bclass\s+([A-Za-z_$][\w$]*)/g),
+      ...text.matchAll(/^\s+(?:static\s+)?(?:async\s+)?(?:get\s+|set\s+)?\*?([A-Za-z_$][\w$]*)\s*\([^()]*\)\s*\{/gm),
     ];
     for (const m of declared) if (/^[a-z_$][\w$]*[A-Z]|^[A-Z][a-z]/.test(m[1])) functions.add(m[1]);
     for (const m of text.matchAll(/\b(?:const|let|var)\s+([A-Z][A-Z0-9_]{2,})\b/g)) constants.add(m[1]);
@@ -131,12 +133,19 @@ export function changelogProblems(text, file = 'CHANGELOG.md', names = {}, keys 
     for (const [pattern, what] of INTERNAL_TERMS) {
       for (const m of joined.matchAll(pattern)) if (m.index < line.length) report(i, what, m[0].replace(/\s+/g, ' '));
     }
-    for (const m of line.matchAll(/`([A-Za-z_$][\w$.]*)(\([^`]*\))?`/g)) {
-      const name = m[1].split('.').pop();
-      if (keys.has(name)) continue;
-      if (constants.has(name)) report(i, 'a constant of the source code', m[0]);
-      else if (m[2] || functions.has(name)) report(i, 'a function of the source code', m[0]);
-    }
+  }
+  // Code spans, paired over the whole text as Markdown pairs them: a span may wrap to the next line.
+  const body = lines.slice(start).join('\n');
+  const lineOf = (index) => start + body.slice(0, index).split('\n').length - 1;
+  for (const m of body.matchAll(/(?<!`)(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g)) {
+    if (/\n\s*\n/.test(m[2])) continue;
+    const call = /^\s*([A-Za-z_$][\w$.]*)\s*(\([\s\S]*\))?\s*$/.exec(m[2]);
+    if (!call) continue;
+    const name = call[1].split('.').pop();
+    const span = m[0].replace(/\s+/g, ' ');
+    if (keys.has(name)) continue;
+    if (constants.has(name)) report(lineOf(m.index), 'a constant of the source code', span);
+    else if (call[2] || functions.has(name)) report(lineOf(m.index), 'a function of the source code', span);
   }
   return problems;
 }
