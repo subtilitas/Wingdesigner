@@ -63,7 +63,11 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
   new pull request; a merged pull request takes no further commits.
 - Merge (standing rule of the owner, 2026-10-01): the contributor merges a pull request, with a merge
   commit, once `ci.yml` passes on the head commit and the bot reviews of that commit are clean: no
-  open finding, no unresolved thread. Otherwise the pull request waits for the owner.
+  open finding, no unresolved thread. Otherwise the pull request waits for the owner. A finding that
+  only names another wording of a kind of material the release-text check already covers (owner
+  decision of 2026-10-01) is a known limit of a word-list check: its thread is resolved, the pull
+  request text lists it, and it does not block the merge. Defects of the check (a crash, a false
+  report on user-facing text, wrong documentation) are fixed.
 - Before a merge: `ci.yml` passes on the head commit, and the Codex bot has reviewed that commit.
   Codex runs a code review and a security review on each push. Its pull request comment "Codex Review
   Summary" names the reviewed commit and the status of both. Findings come as a review with inline
