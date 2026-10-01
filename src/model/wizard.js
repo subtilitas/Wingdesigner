@@ -327,26 +327,13 @@ function panelProblems(params) {
       if (w < 1) out.push(tr('Panel {n} spans {w} mm of the half span; a panel needs at least 1 mm.', { n: i + 1, w: plain(Number(w.toPrecision(3))) }));
     });
   }
-  // Every panel end stays within the coordinate limit: a long span at a steep sweep or dihedral
-  // (20,000 mm at 89.9°) would put the tip millions of mm away.
-  if (Number.isFinite(params.span)) {
-    let x = 0;
-    let z = 0;
-    list.forEach((q, i) => {
-      const dy = (q.span / total) * (params.span / 2);
-      x += dy * Math.tan((q.sweep * Math.PI) / 180);
-      z += dy * Math.tan((q.dihedral * Math.PI) / 180);
-      if (Math.abs(x) > LIMITS.maxCoordinate || Math.abs(z) > LIMITS.maxCoordinate) {
-        out.push(tr('Panel {n} ends at x = {x} mm, z = {z} mm, beyond ±{max} mm.', { n: i + 1, x: whole(Math.round(x)), z: whole(Math.round(z)), max: whole(LIMITS.maxCoordinate) }));
-      }
-    });
-  }
   // An elliptic tip keeps cos(π (m − 1) / (2 m)) of its entry chord at its last inner section
   // (m = ELLIPTIC_TIP_SECTIONS: cos 75° = 0.259), which must reach the smallest chord: 3.86 mm.
   if (params.tip === 'elliptic' && Number.isFinite(params.rootChord)) {
     const entry = list.length > 1 ? list[list.length - 2].chord * params.rootChord : params.rootChord;
     const need = LIMITS.minChord / Math.cos((Math.PI * (ELLIPTIC_TIP_SECTIONS - 1)) / (2 * ELLIPTIC_TIP_SECTIONS));
-    if (entry < need) out.push(tr('Panel {n}: the elliptic tip needs at least {min} mm of chord where it begins.', { n: list.length, min: plain(Number(need.toPrecision(3))) }));
+    // The limit as shown is rounded up (3.87 mm), so that a chord of the shown value passes.
+    if (entry < need) out.push(tr('Panel {n}: the elliptic tip needs at least {min} mm of chord where it begins.', { n: list.length, min: plain(Math.ceil(need * 100) / 100) }));
   }
   // Every section but a pointed or elliptic tip keeps at least the smallest chord.
   const last = list.length - 1;
@@ -355,6 +342,18 @@ function panelProblems(params) {
     if (i === last && endsInPoint) return;
     if (Number.isFinite(params.rootChord) && q.chord * params.rootChord < LIMITS.minChord) out.push(tr('Panel {n}: the outer chord is below {min} mm.', { n: i + 1, min: plain(LIMITS.minChord) }));
   });
+  // Every station stays within the coordinate limit, the tip after its move to the quarter-chord point:
+  // a long span at a steep sweep or dihedral (20,000 mm at 89.9°) puts the tip millions of mm away.
+  if (!out.length && Number.isFinite(params.span) && Number.isFinite(params.rootChord)) {
+    const reported = new Set();
+    panelStations(params).forEach((q, i) => {
+      // The sections of an elliptic tip belong to the last panel.
+      const n = Math.min(i, list.length);
+      if (reported.has(n) || (Math.abs(q.x) <= LIMITS.maxCoordinate && Math.abs(q.z) <= LIMITS.maxCoordinate)) return;
+      reported.add(n);
+      out.push(tr('Panel {n} ends at x = {x} mm, z = {z} mm, beyond ±{max} mm.', { n, x: whole(Math.round(q.x)), z: whole(Math.round(q.z)), max: whole(LIMITS.maxCoordinate) }));
+    });
+  }
   return out;
 }
 
@@ -432,22 +431,16 @@ export function wizardProject(params, name) {
   return project;
 }
 
-/** Sections of a 'panels' planform: one at the root and one at the outer end of every panel. */
-function panelProject(params, name) {
+/**
+ * Stations of a 'panels' planform along the half span, { y, x (leading edge), z, chord } in mm: the
+ * root, every panel end, the sections of an elliptic tip, and a pointed or elliptic tip with its
+ * scaled chord at its quarter-chord point.
+ */
+function panelStations(params) {
   const b = params.span / 2;
   const c0 = params.rootChord;
   const total = params.panels.reduce((sum, q) => sum + q.span, 0);
-  const airfoils = [];
-  const idOf = (code) => {
-    const id = `naca${parseNacaCode(code).code}`;
-    if (!airfoils.some((a) => a.id === id)) airfoils.push({ id, ...nacaEntry(code) });
-    return id;
-  };
-  const rootId = idOf(params.rootAirfoil);
-  const tipId = idOf(params.tipAirfoil);
-  const r = (v) => Math.round(v * 100) / 100;
   const tan = (deg) => Math.tan((deg * Math.PI) / 180);
-  // Stations along the half span: { y, x (leading edge), z, chord }.
   const pts = [{ y: 0, x: 0, z: 0, chord: c0 }];
   params.panels.forEach((q, i) => {
     const prev = pts[pts.length - 1];
@@ -477,6 +470,24 @@ function panelProject(params, name) {
     tip.x += 0.25 * (tip.chord - tipChord);
     tip.chord = tipChord;
   }
+  return pts;
+}
+
+/** Sections of a 'panels' planform: one at the root and one at the outer end of every panel. */
+function panelProject(params, name) {
+  const b = params.span / 2;
+  const c0 = params.rootChord;
+  const airfoils = [];
+  const idOf = (code) => {
+    const id = `naca${parseNacaCode(code).code}`;
+    if (!airfoils.some((a) => a.id === id)) airfoils.push({ id, ...nacaEntry(code) });
+    return id;
+  };
+  const rootId = idOf(params.rootAirfoil);
+  const tipId = idOf(params.tipAirfoil);
+  const r = (v) => Math.round(v * 100) / 100;
+  const pts = panelStations(params);
+  const n = pts.length;
   const sections = pts.map((q, i) => ({
     id: `s${i + 1}`,
     airfoil: i === n - 1 ? tipId : rootId,

@@ -905,13 +905,20 @@ describe('wizard panels', () => {
     expect(wizardProblems(tiny)).toEqual(['Panel 1 spans 0.0005 mm of the half span; a panel needs at least 1 mm.']);
     // An elliptic tip that begins at 1 mm (100 mm root, 1 %) would make sections down to 0.26 mm.
     const thin = { ...base, rootChord: 100, tip: 'elliptic', panels: [{ span: 1, sweep: 0, chord: 0.01, dihedral: 0 }, { span: 1, sweep: 0, chord: 0.5, dihedral: 0 }] };
-    expect(wizardProblems(thin)).toEqual(['Panel 2: the elliptic tip needs at least 3.86 mm of chord where it begins.']);
+    expect(wizardProblems(thin)).toEqual(['Panel 2: the elliptic tip needs at least 3.87 mm of chord where it begins.']);
+    // The shown minimum passes: 3.87 % of 100 mm (the limit is 1 mm / cos 75° = 3.8637 mm).
     thin.panels[0].chord = 0.0387;
     expect(wizardProblems(thin)).toEqual([]);
     expect(buildWing(wizardProject(thin)).errors).toEqual([]);
     // 20,000 mm span, one panel at 89.9°: the tip lies at x = 5,729,572 mm.
     const far = { ...base, span: 20000, panels: [{ span: 1, sweep: 89.9, chord: 0.2, dihedral: 0 }] };
     expect(wizardProblems(far)).toEqual(['Panel 1 ends at x = 5729572 mm, z = 0 mm, beyond ±1000000 mm.']);
+    // A pointed tip moves to its quarter-chord point: 999,000 mm at the leading edge, 1,001,246 mm
+    // after the move by 0.25 · (9000 − 15) mm (outer chord 3 · 3000 mm, tip 1/200 of the 3000 mm root).
+    const sweep = (Math.atan(999000 / 10000) * 180) / Math.PI;
+    const edge = { ...base, span: 20000, rootChord: 3000, tip: 'pointed', panels: [{ span: 1, sweep, chord: 3, dihedral: 0 }] };
+    expect(wizardProblems(edge)).toEqual(['Panel 1 ends at x = 1001246 mm, z = 0 mm, beyond ±1000000 mm.']);
+    expect(wizardProblems({ ...edge, tip: 'flat' })).toEqual([]);
     // The extreme straight planform converts to a sweep within the panel range and builds.
     const extreme = { ...PRESETS.sport.params, span: 100, rootChord: 3000, taper: 0.1, sweep: 60, sections: 8 };
     expect(buildWing(wizardProject(extreme)).errors).toEqual([]);
