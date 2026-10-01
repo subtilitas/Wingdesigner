@@ -39,7 +39,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   on the part placement.
 
 - Wizard planform **Panels (table)**: the half span as 1 to 24 panels, each with span share, leading-edge sweep
-  (−80 to 80°), outer chord (0 to 300 % of the root chord) and dihedral (−60 to 60°); a section at every panel end.
+  (−89.9 to 89.9°), outer chord (0 to 300 % of the root chord) and dihedral (−60 to 60°); a section at every panel end.
   Tip **Elliptic (panels only)**: the last panel ends in a quarter ellipse of 6 sections about its straight 25 % line,
   pointed at the tip.
 - Wizard presets:

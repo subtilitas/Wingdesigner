@@ -71,7 +71,7 @@ Mit dem Grundriss **Felder (Tabelle)** (Panels (table)) ersetzt eine Tabelle **Z
 | Spalte der Feldtabelle | Bereich | Einheit |
 | --- | --- | --- |
 | **Anteil an der Spannweite (%)** (Span share (%)) | 0,1 bis 10 000; die Anteile werden auf die halbe Spannweite umgerechnet | % |
-| **Pfeilung der Nasenleiste (°)** (Leading-edge sweep (deg)) | −80 bis 80 | ° |
+| **Pfeilung der Nasenleiste (°)** (Leading-edge sweep (deg)) | −89,9 bis 89,9 | ° |
 | **Äußere Profiltiefe (% der Wurzeltiefe)** (Outer chord (% of root)) | 0 bis 300 | % |
 | **V-Form (°)** (Dihedral (deg)) | −60 bis 60 | ° |
 
@@ -260,7 +260,7 @@ Die Playwright-Tests führen den DOM-Code (Document Object Model) aus; seine Abd
 <!-- coverage:start -->
 | Anweisungen | Verzweigungen | Funktionen | Zeilen |
 | ---: | ---: | ---: | ---: |
-| 98,3 % | 94,9 % | 98,5 % | 99,0 % |
+| 98,3 % | 94,9 % | 98,6 % | 99,0 % |
 
 Unit-Tests (Vitest, V8-Coverage) über `src/`, ohne den DOM-Code in `src/ui/` und `src/main.js`.
 <!-- coverage:end -->

@@ -233,7 +233,9 @@ export const RANGES = {
 /** Ranges of the panel values (span: share before normalization; chord: ratio to the root chord). */
 export const PANEL_RANGES = {
   span: [0.001, 100],
-  sweep: [-80, 80],
+  // A valid straight planform converts to sweeps up to about ±89.4° (100 mm span, 3000 mm root chord,
+  // taper 0.1 or 1.5, 8 sections); tan 89.9° = 573.
+  sweep: [-89.9, 89.9],
   chord: [0, 3],
   dihedral: [-60, 60],
 };
@@ -316,6 +318,15 @@ function panelProblems(params) {
     }
   });
   if (out.length) return out;
+  // Every panel spans at least 1 mm of the half span: the sections are rounded to 0.01 mm, and a
+  // narrower panel counts as no panel for the section planes.
+  const total = list.reduce((sum, q) => sum + q.span, 0);
+  if (Number.isFinite(params.span)) {
+    list.forEach((q, i) => {
+      const w = (q.span / total) * (params.span / 2);
+      if (w < 1) out.push(tr('Panel {n} spans {w} mm of the half span; a panel needs at least 1 mm.', { n: i + 1, w: plain(Number(w.toPrecision(3))) }));
+    });
+  }
   // Every section but a pointed or elliptic tip keeps at least the smallest chord.
   const last = list.length - 1;
   const endsInPoint = params.tip === 'pointed' || params.tip === 'elliptic';

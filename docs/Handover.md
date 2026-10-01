@@ -125,7 +125,7 @@ npm run screenshots
   `CHANGELOG.md` name no contributor material from its list of terms (Development, section
   Documentation check). It does not compare the contents of the two languages and does not read this
   page, `docs/Flow5upgrade.md` or `RECORD.md`.
-- `npm run i18n:check` checks that every interface text has a German translation (847 texts).
+- `npm run i18n:check` checks that every interface text has a German translation (848 texts).
 - `npm run e2e` took 6.5 min for 368 runs in the cloud container.
 - `npm run screenshots` regenerates 28 images. An image that differs only by rendering noise is
   restored on its own: `git checkout -- docs/wiki/images/<name>.png` (German:

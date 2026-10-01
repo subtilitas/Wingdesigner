@@ -889,18 +889,28 @@ describe('wizard panels', () => {
   it('checks the panel list', () => {
     const base = { ...PRESETS.deltaJet.params };
     expect(wizardProblems({ ...base, panels: [] })).toEqual([`The planform Panels needs 1 to ${MAX_PANELS} panels.`]);
-    expect(wizardProblems({ ...base, panels: [{ span: 1, sweep: 85, chord: NaN, dihedral: 0 }] })).toEqual([
-      'Panel 1: leading-edge sweep must be between -80 and 80.',
+    expect(wizardProblems({ ...base, panels: [{ span: 1, sweep: 95, chord: NaN, dihedral: 0 }] })).toEqual([
+      'Panel 1: leading-edge sweep must be between -89.9 and 89.9.',
       'Panel 1: outer chord must be between 0 and 3.',
     ]);
     // A chord below 1 mm is allowed only at a pointed or elliptic tip.
     expect(wizardProblems({ ...base, panels: [{ span: 1, sweep: 50, chord: 0, dihedral: 0 }] })).toEqual(['Panel 1: the outer chord is below 1 mm.']);
     expect(wizardProblems({ ...base, tip: 'pointed', panels: [{ span: 1, sweep: 50, chord: 0, dihedral: 0 }] })).toEqual([]);
     expect(wizardProblems({ ...PRESETS.sport.params, tip: 'elliptic' })).toEqual(['An elliptic tip needs the planform Panels.']);
+    // Shares 0.001 and 100 of a 100 mm span: the first panel spans 0.0005 mm, below the 0.01 mm rounding
+    // of two distinct sections and the 1 mm of a panel.
+    const tiny = { ...base, span: 100, panels: [{ span: 0.001, sweep: 0, chord: 1, dihedral: 0 }, { span: 100, sweep: 0, chord: 1, dihedral: 0 }] };
+    expect(wizardProblems(tiny)).toEqual(['Panel 1 spans 0.0005 mm of the half span; a panel needs at least 1 mm.']);
+    // The extreme straight planform converts to a sweep within the panel range and builds.
+    const extreme = { ...PRESETS.sport.params, span: 100, rootChord: 3000, taper: 0.1, sweep: 60, sections: 8 };
+    expect(buildWing(wizardProject(extreme)).errors).toEqual([]);
+    const converted = { ...extreme, planform: 'panels', panels: panelsFromParams(extreme) };
+    expect(wizardProblems(converted)).toEqual([]);
+    expect(Math.max(...converted.panels.map((q) => Math.abs(q.sweep)))).toBeGreaterThan(80);
     // Taper, sweep, dihedral and sections are not used with panels.
     expect(wizardProblems({ ...base, taper: 9, sweep: 99, dihedral: 99, sections: 0.5 })).toEqual([]);
     setLanguage('de');
-    expect(wizardProblems({ ...base, panels: [{ span: 1, sweep: 85, chord: 0.2, dihedral: 0 }] })).toEqual(['Feld 1: Pfeilung der Nasenleiste muss zwischen -80 und 80 liegen.']);
+    expect(wizardProblems({ ...base, panels: [{ span: 1, sweep: 95, chord: 0.2, dihedral: 0 }] })).toEqual(['Feld 1: Pfeilung der Nasenleiste muss zwischen -89,9 und 89,9 liegen.']);
     setLanguage('en');
   });
 });

@@ -71,7 +71,7 @@ With the planform **Panels (table)**, a table replaces **Taper**, **Sweep of the
 | Panel table column | Range | Unit |
 | --- | --- | --- |
 | **Span share (%)** | 0.1 to 10,000; the shares are scaled to the half span | % |
-| **Leading-edge sweep (deg)** | −80 to 80 | ° |
+| **Leading-edge sweep (deg)** | −89.9 to 89.9 | ° |
 | **Outer chord (% of root)** | 0 to 300 | % |
 | **Dihedral (deg)** | −60 to 60 | ° |
 
@@ -260,7 +260,7 @@ The Playwright tests run the DOM (Document Object Model) code; its coverage is n
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.3 % | 94.9 % | 98.5 % | 99.0 % |
+| 98.3 % | 94.9 % | 98.6 % | 99.0 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

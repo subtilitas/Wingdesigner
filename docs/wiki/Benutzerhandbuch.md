@@ -409,7 +409,7 @@ Felder: Mit **Grundriss** = **Felder (Tabelle)** gibt eine Tabelle die halbe Spa
 | --- | --- | --- |
 | **Feld** (Panel) | 1 bis 24 | Nummer des Felds, von der Wurzel an gezählt |
 | **Anteil an der Spannweite (%)** (Span share (%)) | 0,1 bis 10 000 % | Anteil des Felds an der halben Spannweite. Die Anteile werden so umgerechnet, dass sie zusammen die halbe Spannweite füllen: 2 Felder mit je 100 % erhalten je 50 %. |
-| **Pfeilung der Nasenleiste (°)** (Leading-edge sweep (deg)) | −80 bis 80° | Pfeilung der Nasenleiste entlang des Felds; positiv = nach hinten gepfeilt |
+| **Pfeilung der Nasenleiste (°)** (Leading-edge sweep (deg)) | −89,9 bis 89,9° | Pfeilung der Nasenleiste entlang des Felds; positiv = nach hinten gepfeilt |
 | **Äußere Profiltiefe (% der Wurzeltiefe)** (Outer chord (% of root)) | 0 bis 300 % | Profiltiefe am äußeren Ende des Felds, in % der **Wurzeltiefe** |
 | **V-Form (°)** (Dihedral (deg)) | −60 bis 60° | V-Form des Felds |
 | × | Schaltfläche | Entfernt das Feld (Name „Feld n entfernen“ (Remove panel n)). Gesperrt bei 1 Feld. |
@@ -439,7 +439,8 @@ Bei einer der folgenden Bedingungen wird die Zeile rot und nennt die Probleme; *
 - **Elliptisch** mit Flügelende **Flach** hat eine Zuspitzung ≥ 1 (`Ein elliptischer Grundriss braucht eine Zuspitzung < 1.`).
 - Das Flügelende ist **Elliptisch (nur mit Feldern)** und der Grundriss nicht **Felder (Tabelle)** (`Ein elliptisches Flügelende braucht den Grundriss Felder.`).
 - Die Feldliste hat weniger als 1 oder mehr als 24 Felder (`Der Grundriss Felder braucht 1 bis 24 Felder.`).
-- Ein Wert eines Felds liegt außerhalb seines Bereichs, z. B. `Feld 2: Pfeilung der Nasenleiste muss zwischen -80 und 80 liegen.` Die Meldung nennt `Anteil an der Spannweite`, `Pfeilung der Nasenleiste`, `äußere Profiltiefe` oder `V-Form`; Anteil an der Spannweite und äußere Profiltiefe erscheinen als Verhältnis: 0,001 bis 100 und 0 bis 3.
+- Ein Wert eines Felds liegt außerhalb seines Bereichs, z. B. `Feld 2: Pfeilung der Nasenleiste muss zwischen -89,9 und 89,9 liegen.` Die Meldung nennt `Anteil an der Spannweite`, `Pfeilung der Nasenleiste`, `äußere Profiltiefe` oder `V-Form`; Anteil an der Spannweite und äußere Profiltiefe erscheinen als Verhältnis: 0,001 bis 100 und 0 bis 3.
+- Ein Feld überspannt nach dem Umrechnen der Anteile weniger als 1 mm der halben Spannweite (`Feld 1 überspannt 0,0005 mm der halben Spannweite; ein Feld braucht mindestens 1 mm.`);
 - Die äußere Profiltiefe eines Felds liegt unter 1 mm (`Feld 1: die äußere Profiltiefe liegt unter 1 mm.`), an jedem Feldende außer dem letzten bei den Flügelenden **Spitz (Maßstab 1/200)** und **Elliptisch (nur mit Feldern)**.
 - Ein im Code erzeugtes Projekt (`wizardProject`) hat einen anderen Wert für Grundriss oder Flügelende (`Grundriss muss "straight", "elliptic" oder "panels" sein.`, `Flügelende muss "flat", "pointed" oder "elliptic" sein.`).
 - Der Flügel hat einen Aufbaufehler (Abschnitt [Prüfungen](#prüfungen)). Beispiel: Entwurfstyp **Leitwerk** mit 100 mm Spannweite, 8 Schnitten und 55° V-Form je Hälfte. Die Schnittebene der senkrechten Wurzel und die des nächsten Schnitts, 7,1 mm weiter außen in y, drehen sich schneller, als die Profile erlauben, sodass sich die Fläche faltet. Eine größere Spannweite, weniger Schnitte oder weniger V-Form bauen; ab 200 mm Spannweite baut dieser Entwurfstyp mit 2 bis 8 Schnitten bis 60°.

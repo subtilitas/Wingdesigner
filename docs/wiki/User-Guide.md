@@ -409,7 +409,7 @@ Panels: with **Planform** = **Panels (table)**, a table gives the half span as 1
 | --- | --- | --- |
 | Panel | 1 to 24 | Panel number, counted from the root |
 | Span share (%) | 0.1 to 10,000 % | Share of the panel in the half span. The shares are scaled so that together they fill the half span: 2 panels of 100 % each take 50 % each. |
-| Leading-edge sweep (deg) | −80 to 80° | Sweep of the leading edge along the panel; positive = swept back |
+| Leading-edge sweep (deg) | −89.9 to 89.9° | Sweep of the leading edge along the panel; positive = swept back |
 | Outer chord (% of root) | 0 to 300 % | Chord at the outer end of the panel, in % of **Root chord** |
 | Dihedral (deg) | −60 to 60° | Dihedral of the panel |
 | × | button | Removes the panel (name "Remove panel n"). Disabled with 1 panel. |
@@ -439,7 +439,8 @@ The line turns red, lists the problems, and **Create design** is disabled when:
 - **Elliptic** with **Flat** tip has taper ≥ 1 (`An elliptic planform needs taper < 1.`);
 - the tip is **Elliptic (panels only)** and the planform is not **Panels (table)** (`An elliptic tip needs the planform Panels.`);
 - the panel list has fewer than 1 or more than 24 panels (`The planform Panels needs 1 to 24 panels.`);
-- a panel value is outside its range, e.g. `Panel 2: leading-edge sweep must be between -80 and 80.` The message names `span share`, `leading-edge sweep`, `outer chord` or `dihedral`; span share and outer chord appear as ratios: 0.001 to 100 and 0 to 3;
+- a panel value is outside its range, e.g. `Panel 2: leading-edge sweep must be between -89.9 and 89.9.` The message names `span share`, `leading-edge sweep`, `outer chord` or `dihedral`; span share and outer chord appear as ratios: 0.001 to 100 and 0 to 3;
+- a panel spans less than 1 mm of the half span after the shares are scaled (`Panel 1 spans 0.0005 mm of the half span; a panel needs at least 1 mm.`);
 - the outer chord of a panel is below 1 mm (`Panel 1: the outer chord is below 1 mm.`), at every panel end except the last one with the tip **Pointed (1/200 scale)** or **Elliptic (panels only)**;
 - a project built in code (`wizardProject`) has another planform or tip value (`planform must be "straight", "elliptic" or "panels".`, `tip must be "flat", "pointed" or "elliptic".`);
 - the wing has a build error (section [Checks](#checks)). Example: preset **Tail surface** with 100 mm span, 8 sections and 55° dihedral per half. The section plane of the vertical root and that of the next section, 7.1 mm further out in y, turn faster than the airfoils allow, so the surface folds. A larger span, fewer sections or less dihedral builds; from 200 mm span, this preset builds with 2 to 8 sections up to 60°.
