@@ -228,12 +228,16 @@ export function projectFromJsonText(text) {
   } catch (e) {
     return { ok: false, errors: [tr('Invalid JSON: {message}', { message: e.message })] };
   }
-  // The part placement belongs to version 3: in an older file these keys are unknown and dropped, as
-  // an app of that version drops them; only the upgrade of a folded tilt sets a tilt there.
-  if (isObject(data) && typeof data.version === 'number' && data.version < 3 && isObject(data.settings)) {
-    const settings = { ...data.settings };
-    for (const k of ['partTilt', 'partRoll', 'partPivot']) delete settings[k];
-    data = { ...data, settings };
+  // The part placement belongs to version 3 and foldedTilt to version 2: in an older file these keys
+  // are unknown and dropped, as an app of that version drops them; only the upgrade of the folded tilt
+  // of a version 2 file sets a tilt there.
+  if (isObject(data) && typeof data.version === 'number' && data.version < 3) {
+    data = { ...data };
+    if (isObject(data.settings)) {
+      data.settings = { ...data.settings };
+      for (const k of ['partTilt', 'partRoll', 'partPivot']) delete data.settings[k];
+    }
+    if (data.version < 2) delete data.foldedTilt;
   }
   const v = validateProject(data);
   if (!v.ok) return { ok: false, errors: v.errors };

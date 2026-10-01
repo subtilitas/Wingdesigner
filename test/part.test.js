@@ -245,5 +245,11 @@ describe('upgrade of a folded tilt (project format version 2)', () => {
       expect(r.project.settings).toMatchObject({ partTilt: 0, partRoll: 0, partPivot: null });
       expect(r.notes).toEqual([]);
     }
+    // foldedTilt belongs to version 2: a version 1 file keeps its sections.
+    const base = sampleProject();
+    const r1 = projectFromJsonText(JSON.stringify({ ...projectToJson(base, null), version: 1, foldedTilt: { angle: 3, x: 0, z: 0 } }));
+    expect(r1.ok).toBe(true);
+    expect([r1.project.foldedTilt, r1.project.settings.partTilt, r1.notes]).toEqual([undefined, 0, []]);
+    r1.project.sections.forEach((q, i) => expect([q.x, q.z, q.twist]).toEqual([base.sections[i].x, base.sections[i].z, base.sections[i].twist]));
   });
 });
