@@ -165,7 +165,7 @@ Der Import liest eine XFLR5- oder flow5-Datei und baut aus einem Flügel eines F
 | `MAX_ELEMENTS`, `MAX_DEPTH`, `MAX_ATTRIBUTES` (`src/import/xmlscan.js`) | 1 000 000; 100; 100 | XML-Elemente je Datei, Schachtelungstiefe, Attribute je Element |
 | `FL5_FORMATS` (`src/import/fl5.js`) | 500750, 500754 | Gelesene `.fl5`-Projektformate |
 | `MAX_FLOW5_FOIL_POINTS` | 10 000 | Punkte eines `.fl5`-Profils |
-| `MAX_FLOW5_WINGS` (`src/import/fl5xml.js`) | 100 | Gelesene Flügel je Flugzeug einer flow5-XML-Datei |
+| `MAX_FLOW5_WINGS` (`src/import/fl5xml.js`) | 100 | Behaltene Flügel je Flugzeug einer flow5-XML-Datei oder eines `.fl5`-Projekts; weitere Flügel werden überlesen und mit der Warnung `Flugzeug „<Name>“ hat mehr als 100 Flügel; die ersten 100 werden gelesen.` verworfen |
 
 Schnitte je Flügel: `LIMITS.maxSections` (20 000). XML-Dateien: `MAX_PROJECT_BYTES` (100 MB).
 

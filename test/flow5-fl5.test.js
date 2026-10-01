@@ -137,6 +137,9 @@ describe('flow5 record layouts', () => {
     const old = { ...V753, lineStyle: 0, foil: 500750, foilPolar: 500001, part: 500001, plane: 500001, fuse: 500001, meshPlane: 500003, mesh: 500001 };
     expect(readFl5Bytes(writeFl5({ ...SPEC, formats: old })).planes.map((p) => p.name)).toEqual(['Wings', 'Mesh']);
     expect(readFl5Bytes(writeFl5({ ...SPEC, formats: { meshPlane: 500001 } })).planes[1].kind).toBe('mesh');
+    // A plane of more than 100 wings: the first 100 are kept, the rest read past, with a warning.
+    const many = readFl5Bytes(writeFl5({ planes: [{ name: 'Many', wings: Array.from({ length: 101 }, () => WINGS[0]) }] }));
+    expect([many.planes[0].wings.length, many.warnings]).toEqual([100, ['Plane "Many" has more than 100 wings; the first 100 are read.']]);
     // A sections body of a part format below 500757 (flow5 7.56 and older) holds its section points;
     // from 500757 on it does not. Read the other way, either file loses its place.
     expect(readFl5Bytes(writeFl5({ ...SPEC, formats: { part: 500755 } })).planes).toHaveLength(2);

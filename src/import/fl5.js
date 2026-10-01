@@ -24,7 +24,9 @@
 
 import { count, fixed, plain, tr, whole } from '../i18n/index.js';
 import { LIMITS } from '../model/project.js';
+import { displayName } from '../model/budget.js';
 import { XflrError } from './errors.js';
+import { MAX_FLOW5_WINGS } from './fl5xml.js';
 import { COLOR, MAX_FOILS, MAX_FOIL_POINTS, MAX_PLANES, MAX_TOTAL_SECTIONS, MAX_XFL_BYTES, Reader, WINDOW_SIZE, damaged, isFlow5, readXfl } from './xfl.js';
 
 /** The project formats this reader reads. */
@@ -378,15 +380,22 @@ function* skipBody(r) {
   yield* skipSpares(r, 'body');
 }
 
-/** One plane of wings and bodies: name, description, the number of bodies and the wings in file order. */
-function* readXflPlane(r) {
+/**
+ * One plane of wings and bodies: name, description, the number of bodies and the wings in file order;
+ * wings beyond MAX_FLOW5_WINGS are read past and dropped with a warning, as in the XML reader.
+ */
+function* readXflPlane(r, warnings) {
   const format = yield* r.format('plane', 500000, 500010);
   const nWings = yield* r.count('plane', Infinity, 4);
   const name = (yield* r.str('plane')).trim();
   const description = yield* r.str('plane');
   r.skip(12 + COLOR, 'plane'); // stipple, width, symbol, colour
   const wings = [];
-  for (let i = 0; i < nWings; i++) wings.push(yield* readWing(r));
+  for (let i = 0; i < nWings; i++) {
+    const wing = yield* readWing(r);
+    if (i < MAX_FLOW5_WINGS) wings.push(wing);
+  }
+  if (nWings > MAX_FLOW5_WINGS) warnings.push(tr('Plane "{plane}" has more than {max} wings; the first {max} are read.', { plane: displayName(name), max: count(MAX_FLOW5_WINGS) }));
   const bodies = yield* r.count('plane', 10_000);
   for (let i = 0; i < bodies; i++) yield* skipBody(r);
   if (format >= 500002) {
@@ -501,7 +510,7 @@ function* readProject(r) {
   for (let i = 0; i < nPlanes; i++) {
     const at = r.o;
     const kind = yield* r.i32('planes');
-    if (kind === 0) planes.push(yield* readXflPlane(r));
+    if (kind === 0) planes.push(yield* readXflPlane(r, warnings));
     else if (kind === 1) planes.push(yield* readMeshPlane(r));
     else throw new XflrError('damaged', tr('Plane {n} of the file is of a kind this import does not read (kind {kind}).', { n: plain(i + 1), kind: plain(kind) }), at);
   }

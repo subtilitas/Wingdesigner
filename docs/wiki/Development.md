@@ -165,7 +165,7 @@ The import reads an XFLR5 or flow5 file and builds a project from one wing of on
 | `MAX_ELEMENTS`, `MAX_DEPTH`, `MAX_ATTRIBUTES` (`src/import/xmlscan.js`) | 1,000,000; 100; 100 | XML elements per file, nesting depth, attributes per element |
 | `FL5_FORMATS` (`src/import/fl5.js`) | 500750, 500754 | `.fl5` project formats read |
 | `MAX_FLOW5_FOIL_POINTS` | 10,000 | Points of one `.fl5` airfoil |
-| `MAX_FLOW5_WINGS` (`src/import/fl5xml.js`) | 100 | Wings read per plane of a flow5 XML file |
+| `MAX_FLOW5_WINGS` (`src/import/fl5xml.js`) | 100 | Wings kept per plane of a flow5 XML file or `.fl5` project; further wings are read past and dropped with the warning `Plane "<name>" has more than 100 wings; the first 100 are read.` |
 
 Sections per wing: `LIMITS.maxSections` (20,000). XML files: `MAX_PROJECT_BYTES` (100 MB).
 
