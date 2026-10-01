@@ -109,6 +109,13 @@ describe('winglet checks', () => {
     // A straight part of 1 mm at 89° spans 0.02 mm in y.
     expect(wingletProblems(p, { ...w, cant: 89, radius: 0, height: 20 })).toEqual(['Winglet panel 1 spans 0.35 mm in y, less than 1 mm; reduce the cant angle or increase the blend radius or the height.']);
     expect(addWinglet(p, { ...w, cant: 90 })).toBeNull();
+    // A panel angle left on the tip from a removed outer section does not reach the first winglet panel.
+    const stale = sport();
+    sortedSections(stale).at(-1).panelAngle = -80;
+    expect(wingletProblems(stale, w)).toEqual([]);
+    addWinglet(stale, w);
+    expect(stale.sections.filter((s) => 'panelAngle' in s)).toEqual([]);
+    expect(buildWing(stale).errors).toEqual([]);
     // Chord and twist of the winglet stay within the project limits (100,000 mm, ±360°).
     const big = sport();
     const bt = sortedSections(big).at(-1);

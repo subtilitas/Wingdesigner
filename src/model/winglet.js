@@ -159,6 +159,9 @@ export function wingletProblems(project, params) {
 export function addWinglet(project, params) {
   if (wingletProblems(project, params).length) return null;
   const added = wingletSections(project, params).map((q) => ({ id: newId('s'), ...q }));
+  // A panel angle kept on the tip (from a removed outer section) would apply to the first winglet
+  // panel; that panel takes the dihedral of its own sections.
+  delete wingTip(project).tip.panelAngle;
   project.sections.push(...added);
   project.sections.sort((a, b) => a.y - b.y);
   resetDisabledGuides(project);
