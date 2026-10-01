@@ -116,6 +116,22 @@ async function run(lang) {
     await ctx.close();
   }
 
+  // Foam-cutting wizard for the Glider: a window tall enough for the whole dialog, the cores split
+  // until each deviates at most 0.2 mm from the wing.
+  {
+    const { ctx, page } = await newPage({ viewport: { width: 1280, height: 1400 }, deviceScaleFactor: 1 });
+    const wizard = await createDesign(page, 'Glider');
+    await wizard.getByRole('button', { name: t('Create design') }).click();
+    await page.waitForTimeout(600);
+    await page.getByRole('button', { name: t('Foam'), exact: true }).click();
+    const dialog = page.locator('dialog[open]');
+    await dialog.getByRole('button', { name: t('Split segments over the limit') }).click();
+    await page.waitForTimeout(600);
+    await shoot(dialog, 'foam-dialog');
+    await dialog.getByRole('button', { name: t('Close') }).click();
+    await ctx.close();
+  }
+
   // Import dialog for an XFLR5 project: the test file with two planes, opened through Open. The window
   // is tall enough for the whole dialog (airfoil table, planform, report and buttons).
   {

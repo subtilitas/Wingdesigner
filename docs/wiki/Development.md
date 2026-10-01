@@ -32,7 +32,7 @@ The bundled airfoil library needs no network request: plugin `airfoilLibrary` in
 | `docs/wiki/` | Wiki pages in English and German, `_Sidebar.md`, `images/` (English screenshots), `images/de/` (German screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
 
-Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`, `test-results/`, `playwright-report/`.
+Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`, `foam-check/`, `test-results/`, `playwright-report/`.
 
 ### Modules
 
@@ -48,6 +48,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/geom/mesh.js` | Tessellation, mirror, mesh volume, area and edge check |
 | `src/geom/triangulate.js` | End-cap triangulation: strip of upper and lower point pairs (linear time); ear clipping as fallback |
 | `src/geom/stats.js` | Planform statistics |
+| `src/geom/foam.js` | Foam cores: proposed cuts (`proposeCuts`), cut list rules (`normalizeCuts`), segments with end profiles, wedges and deviation (`foamSegments`), splitting above a deviation limit (`splitOverTolerance`); limits `FOAM_LIMITS` |
 | `src/geom/sampling.js` | Span samples for drawing, shared by the 3D view and the planform: `refine`, `thinParams`, `edgeParams`, `MAX_EDGE_SAMPLES` (20,000) |
 | `src/airfoil/parse.js` | Airfoil file parser; `cleanPoints` cleans a point list from another format (the airfoils of an XFLR5 project) by the rules of a parsed file |
 | `src/airfoil/geometry.js` | Polyline geometry |
@@ -58,6 +59,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/export/axes.js` | Up axis of the exported files (the Fusion 360 fix of the export dialog): `UP_AXES`, `upAxisMap` (identity for Z up, (x, z, −y) for Y up), `meshToUpAxis` |
 | `src/export/stl.js` | Binary stereolithography (STL) writer |
 | `src/export/threemf.js` | 3MF writer |
+| `src/export/foam.js` | Files of the foam-cutting wizard: `.dat` profiles, `segments.csv`, profile ZIP (`profileZip`), template blocks and sheet (`templateBlocks`, `templateLayout`), kerf offset (`offsetPolygon`), SVG (Scalable Vector Graphics), DXF (Drawing Exchange Format, AutoCAD R12) and PDF (Portable Document Format) writers (`layoutSvg`, `layoutDxf`, `layoutPdf`), PDF paging (`pagePlan`) |
 | `src/export/precision.js` | 32-bit coordinate check of STL and 3MF exports: `checkPrecision`, `MeshPrecisionError` |
 | `src/import/errors.js` | `XflrError`: file-level error of the XFLR5 readers, with a `code` and, for an `.xfl` project, the byte `offset` |
 | `src/import/xfl.js` | Reader of XFLR5 projects (`.xfl`): `readXfl` (windows of 4,194,304 bytes), `readXflBytes` (bytes in memory), `startsLikeXfl`, `sniffXflr5` |
@@ -79,10 +81,11 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/ui/wizard.js` | Wizard dialog; `drawPlanform` (also draws the planform in the import dialog) |
 | `src/ui/xflr5.js` | Import dialog for XFLR5 files: `openXflr5Dialog` |
 | `src/ui/exportui.js` | **Export** dialog |
+| `src/ui/foam.js` | Foam-cutting wizard: `foamDialog`; stored settings (`storedFoamSettings`, key `wingdesigner.foam`) |
 | `src/ui/dom.js` | DOM helpers |
 | `src/ui/styles.css` | Styles |
 | `src/i18n/index.js` | Language (`language`, `setLanguage`, `initialLanguage`), `tr()` and the number formats `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`; `index.js` merges them |
+| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`; `index.js` merges them |
 
 ### Scripts
 
@@ -93,6 +96,8 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `scripts/export-step-cases.mjs` | STEP and 3MF case export |
 | `scripts/validate_step.py` | STEP validation (OpenCascade) |
 | `scripts/validate_3mf.py` | 3MF validation (lib3mf) |
+| `scripts/export-foam-cases.mjs` | Foam-cutting file export of the test wings |
+| `scripts/validate_foam.py` | Foam-cutting file validation (ezdxf, pypdf) |
 | `scripts/screenshots.mjs` | Wiki screenshots, English and German |
 | `scripts/check-docs.mjs` | Documentation check |
 | `scripts/check-test-counts.mjs` | Test count check |
@@ -121,6 +126,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `wingdesigner.project.v1.stale` | Time of the first failed autosave; removed at the next start and when an autosave succeeds |
 | `wingdesigner.tab` | Active tab |
 | `wingdesigner.language` | Chosen language, `en` or `de` (section [Translations](#translations)) |
+| `wingdesigner.foam` | Settings of the foam-cutting wizard: `coreLength`, `tolerance`, `kerf` (mm), `paper` (`a4`, `a3`, `letter`); each value outside its range reads as its default |
 
 ### XFLR5 import
 
@@ -278,8 +284,9 @@ To add a text:
 | `xfl.js` | `src/import/xfl.js` |
 | `xflxml.js` | `src/import/xflxml.js` |
 | `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` and the texts of the XFLR5 import in `src/main.js` and `src/ui/airfoils.js`: title of **Open**, item in **Help**, count of further warnings, refusal of an XFLR5 file in the upload, `XFLR5: <file>` under an imported airfoil |
+| `foam.js` | `src/ui/foam.js`, `src/export/foam.js` and the label and title of **Foam** in `src/main.js` |
 
-`src/i18n/de/index.js` merges the nine files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 33 and 141 texts.
+`src/i18n/de/index.js` merges the ten files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 33 and 141 texts.
 
 To add a language:
 
@@ -379,7 +386,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 546 tests in 18 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 576 tests in 19 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -387,7 +394,8 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 12 STEP files, 12 3MF files and `cases.json` in `step-check/` |
-| `npm run screenshots` | `node scripts/screenshots.mjs` | 26 Portable Network Graphics (PNG) files: 13 in `docs/wiki/images/` (English) and 13 in `docs/wiki/images/de/` (German) |
+| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 11 test wings and `cases.json` in `foam-check/` |
+| `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Portable Network Graphics (PNG) files: 14 in `docs/wiki/images/` (English) and 14 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
 | `npm run i18n:check` | `node scripts/check-i18n.mjs` | Checks in [Translations](#translations); exit code 1 on a problem |
@@ -424,7 +432,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-179 tests in 12 spec files, 358 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+184 tests in 13 spec files, 368 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 
@@ -498,6 +506,27 @@ x and z: position of the leading edge.
 | `mitred-gull-15-5` | z 80.3848 mm at section 2 and 54.1382 mm at the tip (panels of 15° and −5°); **Mitred** section planes (rolls 0°, 5°, −5°), linear blending with 8 stations per panel | 2 |
 | `mitred-switch-short-panel` | Not the base wing: NACA 2412 at y 0 and 299.5 mm (chords 200 and 180 mm), NACA 0012 at y 300 and 600 mm (chords 180 and 120 mm, tip z 52.8981 mm, twist −2°); **Straight panels**, **Mitred** section planes: the 0.5 mm panel counts as none, both switch sections roll 5.25°; the outer panel stores a panel angle of 10.5° (tip roll 10.5°) | 2 |
 
+### Foam-cutting file validation
+
+Python: 3.12 in the `ci.yml` job `foam`, 3.11.15 in a local run on 2026-10-01; other versions not tested.
+
+```bash
+pip install ezdxf==1.4.4 pypdf==6.19.0
+npm run foam:cases
+python scripts/validate_foam.py foam-check/cases.json
+```
+
+`scripts/export-foam-cases.mjs` takes the wings of `test/step-cases.js` without `mitred-vtail-35-y-up` (11 cases). Cuts: the proposal for a longest core of 300 mm. Kerf 1 mm for `guided-elliptic`, paper A3 for `pointed-tip` and Letter for `mitred-gull-15-5`, else no kerf and A4. `cases.json` holds per case the name, the 4 files, the segment count, the points per profile, the kerf, the vertex count of each profile polyline, the page count, the page size and the paper size.
+
+| Check per case (`validate_foam.py`) | Pass condition |
+| --- | --- |
+| ZIP | `README.txt`, `segments.csv` and per segment end a file in `mm/` and in `normalized/`, nothing else; every `.dat` file has its name line and the expected point count; `segments.csv` has one row per segment |
+| DXF | ezdxf recover module reads it, its audit has no error, version `AC1009`; layer `PROFILE` holds closed polylines with the expected vertex counts; without kerf, width and height of each polyline equal those of its `mm/` `.dat` file within 0.001 mm |
+| SVG | parses as XML; width and height in mm; one `polygon` of class `profile` per segment end |
+| PDF | pypdf reads it in strict mode; page count as computed; every page at the computed size (mm, 0.01 mm); the text of page i holds `Page i of n.` |
+
+Exit code 1 when a check fails or when `cases.json` holds no case. The script prints a JSON report.
+
 ## Documentation
 
 | English | German |
@@ -530,7 +559,7 @@ On the next run, pages edited in the wiki web interface are overwritten, and pag
 | `docs/wiki/images/` | English | `en-US` |
 | `docs/wiki/images/de/` | German | `de-DE` |
 
-Both folders hold 13 files with the same names and the same states. The English wiki pages embed `images/<name>.png`, the German pages `images/de/<name>.png`.
+Both folders hold 14 files with the same names and the same states. The English wiki pages embed `images/<name>.png`, the German pages `images/de/<name>.png`.
 
 The two languages run the same steps. The steps name every control by its English label. The German run maps that label to its German entry in `DE` (`src/i18n/de/index.js`) and stops when there is no text entry. Both runs stop when the app starts in another language than the locale asks for (`lang` attribute of the `html` element). The text `Sample 4412 table` in `upload-preview.png` is the first line of the generated file and reads the same in both languages.
 
@@ -550,6 +579,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 | 680 x 730 |
 | `mobile-main.png` | Phone, **Sport** preset | 1082 x 2202 | 1082 x 2202 |
 | `mobile-planform.png` | Phone, **Planform**, **Sport**, end line on | 1082 x 2202 | 1082 x 2202 |
+| `foam-dialog.png` | Foam-cutting wizard, **Glider**, after **Split segments over the limit**, window 1280 x 1400 CSS px | 960 x 1344 | 960 x 1384 |
 | `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 966 | 960 x 1042 |
 
 ### Documentation check
@@ -607,20 +637,21 @@ The `docs.yml` job `wiki` only checks out.
 | --- | --- | --- | --- | --- |
 | `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`, `i18n:check`; uploads artifact `coverage` | `contents: read` | Every trigger |
 | `step` | STEP and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`; uploads artifact `step-files` (STEP, 3MF, `cases.json`) | `contents: read` | Every trigger |
+| `foam` | Foam-cutting files (ezdxf, pypdf) | Python 3.12, `pip install ezdxf==1.4.4 pypdf==6.19.0`, `foam:cases`, `validate_foam.py`; uploads artifact `foam-files` (ZIP, SVG, DXF, PDF, `cases.json`) | `contents: read` | Every trigger |
 | `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (build, then all specs in `e2e/`, both projects), `counts:check -- --e2e-report playwright-report/results.json`; on failure uploads artifact `playwright-results` (`test-results/`) | `contents: read` | Every trigger |
 | `build` | Build site | `build`; on push to `main` also `configure-pages` and `upload-pages-artifact` with `dist/` | `contents: read`, `pages: read` | Every trigger |
-| `deploy` | Deploy to GitHub Pages | `deploy-pages` to environment `github-pages`. Concurrency group `pages`: an active run is not cancelled. | `pages: write`, `id-token: write` | Push to `main`, after `test`, `step`, `e2e` and `build` pass |
+| `deploy` | Deploy to GitHub Pages | `deploy-pages` to environment `github-pages`. Concurrency group `pages`: an active run is not cancelled. | `pages: write`, `id-token: write` | Push to `main`, after `test`, `step`, `foam`, `e2e` and `build` pass |
 
-Artifacts `coverage` and `step-files` are uploaded also when a step fails; `playwright-results` only when a step fails. All 3 are kept 14 days.
-The pip cache key is `pip-ocp-<runner operating system>-8.0.1-lib3mf-2.5.0`.
+Artifacts `coverage`, `step-files` and `foam-files` are uploaded also when a step fails; `playwright-results` only when a step fails. All 4 are kept 14 days.
+The pip cache keys are `pip-ocp-<runner operating system>-8.0.1-lib3mf-2.5.0` (job `step`) and `pip-ezdxf-<runner operating system>-1.4.4-pypdf-6.19.0` (job `foam`).
 
 | Action | Version | Used in |
 | --- | --- | --- |
 | `actions/checkout` | `v7` | `ci.yml`, `docs.yml`, `release.yml` |
 | `actions/setup-node` | `v7` | `ci.yml`, `release.yml`; Node.js version from `.nvmrc`, npm cache |
-| `actions/setup-python` | `v7` | `ci.yml` job `step` |
-| `actions/cache` | `v6` | `ci.yml` job `step` (`~/.cache/pip`) |
-| `actions/upload-artifact` | `v7` | `ci.yml` jobs `test`, `step`, `e2e` |
+| `actions/setup-python` | `v7` | `ci.yml` jobs `step`, `foam` |
+| `actions/cache` | `v6` | `ci.yml` jobs `step`, `foam` (`~/.cache/pip`) |
+| `actions/upload-artifact` | `v7` | `ci.yml` jobs `test`, `step`, `foam`, `e2e` |
 | `actions/configure-pages` | `v6` | `ci.yml` job `build` |
 | `actions/upload-pages-artifact` | `v5` | `ci.yml` job `build` |
 | `actions/deploy-pages` | `v5` | `ci.yml` job `deploy` |

@@ -32,7 +32,7 @@ Die mitgelieferte Profilbibliothek braucht keine Netzanfrage: Das Plugin `airfoi
 | `docs/wiki/` | Wiki-Seiten auf Englisch und Deutsch, `_Sidebar.md`, `images/` (englische Screenshots), `images/de/` (deutsche Screenshots) |
 | `.github/workflows/` | `ci.yml`, `docs.yml`, `release.yml` |
 
-Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/`, `test-results/`, `playwright-report/`.
+Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/`, `foam-check/`, `test-results/`, `playwright-report/`.
 
 ### Module
 
@@ -48,6 +48,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/geom/mesh.js` | Dreiecksnetz, Spiegelung, Volumen, Fläche und Kantenprüfung des Netzes |
 | `src/geom/triangulate.js` | Triangulierung der Abschlussflächen: Streifen aus Punktpaaren von Ober- und Unterseite (lineare Laufzeit); Ear Clipping als Rückfallverfahren |
 | `src/geom/stats.js` | Grundrisskennwerte |
+| `src/geom/foam.js` | Schaumkerne: vorgeschlagene Schnitte (`proposeCuts`), Regeln der Schnittliste (`normalizeCuts`), Segmente mit Endprofilen, Keilen und Abweichung (`foamSegments`), Teilen über einer Grenze der Abweichung (`splitOverTolerance`); Grenzen `FOAM_LIMITS` |
 | `src/geom/sampling.js` | Stützstellen in Spannweitenrichtung zum Zeichnen, gemeinsam für die 3D-Ansicht und den Grundriss: `refine`, `thinParams`, `edgeParams`, `MAX_EDGE_SAMPLES` (20.000) |
 | `src/airfoil/parse.js` | Parser für Profildateien; `cleanPoints` bereinigt eine Punktliste aus einem anderen Format (die Profile eines XFLR5-Projekts) nach den Regeln einer eingelesenen Datei |
 | `src/airfoil/geometry.js` | Polyliniengeometrie |
@@ -58,6 +59,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/export/axes.js` | Hochachse der exportierten Dateien (die Fusion-360-Korrektur des Exportdialogs): `UP_AXES`, `upAxisMap` (unverändert für Z nach oben, (x, z, −y) für Y nach oben), `meshToUpAxis` |
 | `src/export/stl.js` | Export als binäres STL (Stereolithografie) |
 | `src/export/threemf.js` | 3MF-Export |
+| `src/export/foam.js` | Dateien des Schaumschnitt-Assistenten: `.dat`-Profile, `segments.csv`, Profil-ZIP (`profileZip`), Blöcke und Blatt der Schablonen (`templateBlocks`, `templateLayout`), Versatz für die Schnittbreite (`offsetPolygon`), Schreiber für SVG (Scalable Vector Graphics), DXF (Drawing Exchange Format, AutoCAD R12) und PDF (Portable Document Format) (`layoutSvg`, `layoutDxf`, `layoutPdf`), Seitenaufteilung des PDF (`pagePlan`) |
 | `src/export/precision.js` | Prüfung der 32-Bit-Koordinaten beim Export als STL und 3MF: `checkPrecision`, `MeshPrecisionError` |
 | `src/import/errors.js` | `XflrError`: Fehler auf Dateiebene der XFLR5-Leser, mit einem `code` und, bei einem `.xfl`-Projekt, dem Byte-`offset` |
 | `src/import/xfl.js` | Leser für XFLR5-Projekte (`.xfl`): `readXfl` (Fenster von 4 194 304 Byte), `readXflBytes` (Bytes im Speicher), `startsLikeXfl`, `sniffXflr5` |
@@ -79,10 +81,11 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/wizard.js` | Dialog des Assistenten; `drawPlanform` (zeichnet den Grundriss auch im Importdialog) |
 | `src/ui/xflr5.js` | Importdialog für XFLR5-Dateien: `openXflr5Dialog` |
 | `src/ui/exportui.js` | Dialog **Exportieren** (Export) |
+| `src/ui/foam.js` | Schaumschnitt-Assistent: `foamDialog`; gespeicherte Einstellungen (`storedFoamSettings`, Schlüssel `wingdesigner.foam`) |
 | `src/ui/dom.js` | DOM-Hilfsfunktionen |
 | `src/ui/styles.css` | Stile |
 | `src/i18n/index.js` | Sprache (`language`, `setLanguage`, `initialLanguage`), `tr()` und die Zahlenformate `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`; `index.js` fasst sie zusammen |
+| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`; `index.js` fasst sie zusammen |
 
 ### Skripte
 
@@ -93,6 +96,8 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `scripts/export-step-cases.mjs` | Export der STEP- und 3MF-Testfälle |
 | `scripts/validate_step.py` | STEP-Validierung (OpenCascade) |
 | `scripts/validate_3mf.py` | 3MF-Validierung (lib3mf) |
+| `scripts/export-foam-cases.mjs` | Export der Schaumschnitt-Dateien der Testflügel |
+| `scripts/validate_foam.py` | Validierung der Schaumschnitt-Dateien (ezdxf, pypdf) |
 | `scripts/screenshots.mjs` | Screenshots für das Wiki, englisch und deutsch |
 | `scripts/check-docs.mjs` | Dokumentationsprüfung |
 | `scripts/check-test-counts.mjs` | Prüfung der Testanzahlen |
@@ -121,6 +126,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `wingdesigner.project.v1.stale` | Zeitpunkt der ersten fehlgeschlagenen automatischen Sicherung; entfällt beim nächsten Start und wenn eine automatische Sicherung gelingt |
 | `wingdesigner.tab` | Aktive Registerkarte |
 | `wingdesigner.language` | Gewählte Sprache, `en` oder `de` (Abschnitt [Übersetzungen](#übersetzungen)) |
+| `wingdesigner.foam` | Einstellungen des Schaumschnitt-Assistenten: `coreLength`, `tolerance`, `kerf` (mm), `paper` (`a4`, `a3`, `letter`); jeder Wert außerhalb seines Bereichs gilt als seine Vorgabe |
 
 ### XFLR5-Import
 
@@ -278,8 +284,9 @@ Einen Text hinzufügen:
 | `xfl.js` | `src/import/xfl.js` |
 | `xflxml.js` | `src/import/xflxml.js` |
 | `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` und die Texte des XFLR5-Imports in `src/main.js` und `src/ui/airfoils.js`: Titel von **Öffnen** (Open), Eintrag in **Hilfe** (Help), Anzahl weiterer Warnungen, Ablehnung einer XFLR5-Datei beim Hochladen, `XFLR5: <file>` unter einem importierten Profil |
+| `foam.js` | `src/ui/foam.js`, `src/export/foam.js` sowie Beschriftung und Titel von **Schaum** (Foam) in `src/main.js` |
 
-`src/i18n/de/index.js` fasst die neun Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 33 und 141 Texte.
+`src/i18n/de/index.js` fasst die zehn Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 33 und 141 Texte.
 
 Eine Sprache hinzufügen:
 
@@ -379,7 +386,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 546 Tests in 18 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 576 Tests in 19 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -387,7 +394,8 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Prüfungen unter [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek); Exit-Code 1 bei einem Problem |
 | `npm run e2e` | `npm run build && playwright test` | Browsertests in `e2e/` gegen `vite preview` auf Port 4173 |
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 12 STEP-Dateien, 12 3MF-Dateien und `cases.json` in `step-check/` |
-| `npm run screenshots` | `node scripts/screenshots.mjs` | 26 Dateien im Format Portable Network Graphics (PNG): 13 in `docs/wiki/images/` (Englisch) und 13 in `docs/wiki/images/de/` (Deutsch) |
+| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profil-ZIP, SVG, DXF und PDF von 11 Testflügeln und `cases.json` in `foam-check/` |
+| `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Dateien im Format Portable Network Graphics (PNG): 14 in `docs/wiki/images/` (Englisch) und 14 in `docs/wiki/images/de/` (Deutsch) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Prüfungen unter [Prüfung der Testanzahlen](#prüfung-der-testanzahlen); Exit-Code 1 bei einer Abweichung |
 | `npm run i18n:check` | `node scripts/check-i18n.mjs` | Prüfungen unter [Übersetzungen](#übersetzungen); Exit-Code 1 bei einem Problem |
@@ -424,7 +432,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-179 Tests in 12 Spec-Dateien, 358 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+184 Tests in 13 Spec-Dateien, 368 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 
@@ -498,6 +506,27 @@ x und z: Lage der Profilnase.
 | `mitred-gull-15-5` | z 80,3848 mm an Schnitt 2 und 54,1382 mm am Rand (Felder mit 15° und −5°); Schnittebenen **Auf Gehrung** (Neigungen 0°, 5°, −5°), lineare Interpolation mit 8 Stationen je Feld | 2 |
 | `mitred-switch-short-panel` | Nicht der Basisflügel: NACA 2412 bei y 0 und 299,5 mm (Profiltiefen 200 und 180 mm), NACA 0012 bei y 300 und 600 mm (Profiltiefen 180 und 120 mm, Rand-z 52,8981 mm, Schränkung −2°); **Gerade Felder**, Schnittebenen **Auf Gehrung**: Das 0,5 mm breite Feld gilt als keines, beide Schnitte des Profilwechsels sind um 5,25° geneigt; das äußere Feld speichert einen Feldwinkel von 10,5° (Neigung am Rand 10,5°) | 2 |
 
+### Validierung der Schaumschnitt-Dateien
+
+Python: 3.12 im Job `foam` von `ci.yml`, 3.11.15 in einem lokalen Lauf am 01.10.2026; andere Versionen nicht getestet.
+
+```bash
+pip install ezdxf==1.4.4 pypdf==6.19.0
+npm run foam:cases
+python scripts/validate_foam.py foam-check/cases.json
+```
+
+`scripts/export-foam-cases.mjs` nimmt die Flügel aus `test/step-cases.js` ohne `mitred-vtail-35-y-up` (11 Testfälle). Schnitte: der Vorschlag für einen längsten Kern von 300 mm. Schnittbreite 1 mm für `guided-elliptic`, Papier A3 für `pointed-tip` und Letter für `mitred-gull-15-5`, sonst keine Schnittbreite und A4. `cases.json` enthält je Testfall den Namen, die 4 Dateien, die Anzahl der Segmente, die Punkte je Profil, die Schnittbreite, die Anzahl der Eckpunkte jeder Profil-Polylinie, die Seitenzahl, die Seitengröße und die Papiergröße.
+
+| Prüfung je Testfall (`validate_foam.py`) | Bestanden, wenn |
+| --- | --- |
+| ZIP | `README.txt`, `segments.csv` und je Segmentende eine Datei in `mm/` und in `normalized/`, nichts sonst; jede `.dat`-Datei hat ihre Namenszeile und die erwartete Punktzahl; `segments.csv` hat eine Zeile je Segment |
+| DXF | Das Modul recover von ezdxf liest die Datei, die Prüfung (audit) von ezdxf meldet keinen Fehler, Version `AC1009`; Layer `PROFILE` enthält geschlossene Polylinien mit der erwarteten Anzahl an Eckpunkten; ohne Schnittbreite stimmen Breite und Höhe jeder Polylinie innerhalb 0,001 mm mit denen ihrer `.dat`-Datei in `mm/` überein |
+| SVG | lässt sich als XML lesen; Breite und Höhe in mm; ein `polygon` der Klasse `profile` je Segmentende |
+| PDF | pypdf liest die Datei im strikten Modus; Seitenzahl wie berechnet; jede Seite in der berechneten Größe (mm, auf 0,01 mm); der Text von Seite i enthält `Page i of n.` |
+
+Exit-Code 1, wenn eine Prüfung fehlschlägt oder `cases.json` keinen Testfall enthält. Das Skript gibt einen JSON-Bericht aus.
+
 ## Dokumentation
 
 | Englisch | Deutsch |
@@ -530,7 +559,7 @@ Beim nächsten Lauf werden im Wiki bearbeitete Seiten überschrieben und dort an
 | `docs/wiki/images/` | Englisch | `en-US` |
 | `docs/wiki/images/de/` | Deutsch | `de-DE` |
 
-Beide Ordner enthalten 13 Dateien mit denselben Namen und denselben Zuständen. Die englischen Wiki-Seiten binden `images/<name>.png` ein, die deutschen Seiten `images/de/<name>.png`.
+Beide Ordner enthalten 14 Dateien mit denselben Namen und denselben Zuständen. Die englischen Wiki-Seiten binden `images/<name>.png` ein, die deutschen Seiten `images/de/<name>.png`.
 
 Die beiden Sprachen durchlaufen dieselben Schritte. Die Schritte benennen jedes Bedienelement mit seiner englischen Beschriftung. Der deutsche Durchlauf ordnet diese Beschriftung ihrem deutschen Eintrag in `DE` (`src/i18n/de/index.js`) zu und bricht ab, wenn es keinen Texteintrag gibt. Beide Durchläufe brechen ab, wenn die App in einer anderen Sprache startet, als die Sprache des Browsers verlangt (Attribut `lang` des Elements `html`). Der Text `Sample 4412 table` in `upload-preview.png` ist die erste Zeile der erzeugten Datei und lautet in beiden Sprachen gleich.
 
@@ -550,6 +579,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | `flying-wing-control-net.png` | 3D-Ansicht, **Pfeilnurflügel** (Swept flying wing), **NURBS-Kontrollnetz zeigen** (Show NURBS control net) an | 680 x 730 | 680 x 730 |
 | `mobile-main.png` | Smartphone, Entwurfstyp **Sportmodell** (Sport) | 1082 x 2202 | 1082 x 2202 |
 | `mobile-planform.png` | Smartphone, **Grundriss**, **Sportmodell**, Endlinie eingeschaltet | 1082 x 2202 | 1082 x 2202 |
+| `foam-dialog.png` | Schaumschnitt-Assistent, **Segelflugmodell**, nach **Segmente über der Grenze teilen** (Split segments over the limit), Fenster 1280 x 1400 CSS-Pixel | 960 x 1344 | 960 x 1384 |
 | `xflr5-import.png` | Dialog **Aus XFLR5 importieren** (Import from XFLR5) für `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** geöffnet, Fenster 1280 x 1200 CSS-Pixel | 960 x 966 | 960 x 1042 |
 
 ### Dokumentationsprüfung
@@ -607,20 +637,21 @@ Der Job `wiki` in `docs.yml` checkt nur aus.
 | --- | --- | --- | --- | --- |
 | `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`, `i18n:check`; lädt Artefakt `coverage` hoch | `contents: read` | Jedem Auslöser |
 | `step` | STEP and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`; lädt Artefakt `step-files` hoch (STEP, 3MF, `cases.json`) | `contents: read` | Jedem Auslöser |
+| `foam` | Foam-cutting files (ezdxf, pypdf) | Python 3.12, `pip install ezdxf==1.4.4 pypdf==6.19.0`, `foam:cases`, `validate_foam.py`; lädt Artefakt `foam-files` hoch (ZIP, SVG, DXF, PDF, `cases.json`) | `contents: read` | Jedem Auslöser |
 | `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (Build, dann alle Specs in `e2e/`, beide Projekte), `counts:check -- --e2e-report playwright-report/results.json`; bei einem Fehlschlag Upload des Artefakts `playwright-results` (`test-results/`) | `contents: read` | Jedem Auslöser |
 | `build` | Build site | `build`; bei Push auf `main` zusätzlich `configure-pages` und `upload-pages-artifact` mit `dist/` | `contents: read`, `pages: read` | Jedem Auslöser |
-| `deploy` | Deploy to GitHub Pages | `deploy-pages` in die Umgebung `github-pages`. Concurrency-Gruppe `pages`: ein aktiver Lauf wird nicht abgebrochen. | `pages: write`, `id-token: write` | Push auf `main`, nachdem `test`, `step`, `e2e` und `build` bestanden sind |
+| `deploy` | Deploy to GitHub Pages | `deploy-pages` in die Umgebung `github-pages`. Concurrency-Gruppe `pages`: ein aktiver Lauf wird nicht abgebrochen. | `pages: write`, `id-token: write` | Push auf `main`, nachdem `test`, `step`, `foam`, `e2e` und `build` bestanden sind |
 
-Die Artefakte `coverage` und `step-files` werden auch bei einem fehlgeschlagenen Schritt hochgeladen, `playwright-results` nur bei einem fehlgeschlagenen Schritt. Alle 3 werden 14 Tage aufbewahrt.
-Der Schlüssel des pip-Caches ist `pip-ocp-<Runner-Betriebssystem>-8.0.1-lib3mf-2.5.0`.
+Die Artefakte `coverage`, `step-files` und `foam-files` werden auch bei einem fehlgeschlagenen Schritt hochgeladen, `playwright-results` nur bei einem fehlgeschlagenen Schritt. Alle 4 werden 14 Tage aufbewahrt.
+Die Schlüssel der pip-Caches sind `pip-ocp-<Runner-Betriebssystem>-8.0.1-lib3mf-2.5.0` (Job `step`) und `pip-ezdxf-<Runner-Betriebssystem>-1.4.4-pypdf-6.19.0` (Job `foam`).
 
 | Action | Version | Verwendet in |
 | --- | --- | --- |
 | `actions/checkout` | `v7` | `ci.yml`, `docs.yml`, `release.yml` |
 | `actions/setup-node` | `v7` | `ci.yml`, `release.yml`; Node.js-Version aus `.nvmrc`, npm-Cache |
-| `actions/setup-python` | `v7` | `ci.yml` Job `step` |
-| `actions/cache` | `v6` | `ci.yml` Job `step` (`~/.cache/pip`) |
-| `actions/upload-artifact` | `v7` | `ci.yml` Jobs `test`, `step`, `e2e` |
+| `actions/setup-python` | `v7` | `ci.yml` Jobs `step`, `foam` |
+| `actions/cache` | `v6` | `ci.yml` Jobs `step`, `foam` (`~/.cache/pip`) |
+| `actions/upload-artifact` | `v7` | `ci.yml` Jobs `test`, `step`, `foam`, `e2e` |
 | `actions/configure-pages` | `v6` | `ci.yml` Job `build` |
 | `actions/upload-pages-artifact` | `v5` | `ci.yml` Job `build` |
 | `actions/deploy-pages` | `v5` | `ci.yml` Job `deploy` |

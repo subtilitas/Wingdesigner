@@ -10,12 +10,12 @@ how the owner works with contributors, and what the repository does not hold.
 | Item | State on 2026-10-01 |
 | --- | --- |
 | Version | `package.json` holds 0.3.0. Released: `v0.1.0` on 9faa12b, `v0.2.0` on 3b9a67c and `v0.3.0` on 6580092 (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | Not prepared: the section Unreleased of `CHANGELOG.md` is empty. The steps: Development, section Release. |
+| Next release | Not prepared. The section Unreleased of `CHANGELOG.md` holds the foam-cutting wizard (Added) and the top bar of 8 buttons (Changed). The steps: Development, section Release. |
 | Release texts | The notes of `v0.2.0` and `v0.3.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
 | `main` | Release 0.3.0 (6580092) and, from pull requests #11 to #14, documentation only: the record of that release; release texts without contributor material, with the check of `npm run docs:check`; the section Authors of both READMEs; the standing rules of the owner below; the state of the release texts on GitHub. No change to the app since 0.3.0. |
-| Unit tests | 546 in 18 files (Vitest). |
-| Browser tests | 179 in 12 spec files, 358 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
-| Export validation | 12 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. |
+| Unit tests | 576 in 19 files (Vitest). |
+| Browser tests | 184 in 13 spec files, 368 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
+| Export validation | 12 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 11 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
 | Documentation | `README.md`, `README.de.md`, wiki pages in English and German in `docs/wiki/` (mirrored to the GitHub wiki by `docs.yml`), `RECORD.md`, `CHANGELOG.md`, `docs/Flow5upgrade.md`, this page. |
 
 `npm run counts:check` keeps the counts of the READMEs, `RECORD.md` and the wiki pages equal to the
@@ -119,6 +119,8 @@ node scripts/check-test-counts.mjs --e2e-report playwright-report/results.json
 npm run step:cases
 python scripts/validate_step.py step-check/cases.json
 python scripts/validate_3mf.py step-check/cases.json
+npm run foam:cases
+python scripts/validate_foam.py foam-check/cases.json
 npm run screenshots
 ```
 
@@ -130,11 +132,11 @@ npm run screenshots
   `CHANGELOG.md` name no contributor material from its list of terms (Development, section
   Documentation check). It does not compare the contents of the two languages and does not read this
   page, `docs/Flow5upgrade.md` or `RECORD.md`.
-- `npm run i18n:check` checks that every interface text has a German translation (739 texts).
-- `npm run e2e` took 5.4 min for 358 runs in the cloud container.
-- `npm run screenshots` regenerates 26 images. An image that differs only by rendering noise is
+- `npm run i18n:check` checks that every interface text has a German translation (809 texts).
+- `npm run e2e` took 6.5 min for 368 runs in the cloud container.
+- `npm run screenshots` regenerates 28 images. An image that differs only by rendering noise is
   restored on its own: `git checkout -- docs/wiki/images/<name>.png` (German:
-  `docs/wiki/images/de/<name>.png`). `git checkout -- docs/wiki/images` restores all 26, changed ones
+  `docs/wiki/images/de/<name>.png`). `git checkout -- docs/wiki/images` restores all 28, changed ones
   included. On 2026-09-30 the largest pixel difference of the noise was 23 of 255, with no text or
   layout change.
 
@@ -149,7 +151,7 @@ export PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome
 npm ci
 python3 -m venv "$SCRATCH/venv"
 export PATH="$SCRATCH/venv/bin:$PATH"   # python and pip of the virtual environment first
-pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0
+pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0 ezdxf==1.4.4 pypdf==6.19.0
 ```
 
 The `export` lines hold for the shell they run in; a new shell needs them again.
@@ -193,4 +195,5 @@ Development, section Architecture, describes the modules. Entry points by topic:
 | Section planes: roll, stretch, stored panel angles | `src/geom/planes.js` (`sectionPlanes`) |
 | XFLR5 import | `src/import/xfl.js` (`.xfl` reader), `src/import/xflxml.js` (XML reader), `src/import/xflr5.js` (mapping, `airfoilFrame`, `placeAirfoil`, report), `src/ui/xflr5.js` (dialog) |
 | Wizard | `src/model/wizard.js` (presets, `RANGES`, `wizardProject`), `src/ui/wizard.js` (dialog; a build error disables **Create design**) |
+| Foam-cutting wizard | `src/geom/foam.js` (`proposeCuts`, `foamSegments`, `splitOverTolerance`), `src/export/foam.js` (`.dat`, CSV, ZIP, template layout, SVG, DXF, PDF paging), `src/ui/foam.js` (dialog) |
 | Interface texts | `src/i18n/de/*.js` (German); `npm run i18n:check` |

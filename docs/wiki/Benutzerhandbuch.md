@@ -21,7 +21,7 @@ Die App zeigt sich auf Deutsch oder Englisch (Abschnitt [Sprache](#sprache)). Di
 
 | Bereich | Inhalt |
 | --- | --- |
-| Kopfleiste | **Neu** (New), **Öffnen** (Open), **Speichern** (Save), **Exportieren** (Export), **Rückgängig** (Undo), **Wiederholen** (Redo), **Hilfe** (Help) |
+| Kopfleiste | **Neu** (New), **Öffnen** (Open), **Speichern** (Save), **Exportieren** (Export), **Schaum** (Foam), **Rückgängig** (Undo), **Wiederholen** (Redo), **Hilfe** (Help) |
 | 3D-Ansicht | NURBS-Fläche (Non-Uniform Rational B-Spline) des Flügels, Schnittkonturen (blau, ausgewählter Schnitt rot), Linien der Nasenleiste und der Endleiste (grau), Raster in der Ebene z = 0 (20 × 20 Zellen); Ansichtsschaltflächen |
 | Bedienbereich | Registerkarten **Schnitte** (Sections), **Grundriss** (Planform), **Profile** (Airfoils), **Einstellungen** (Settings), **Prüfungen** (Checks). Rechts der 3D-Ansicht, 360 bis 650 px breit; die 3D-Ansicht nimmt den Rest der Breite. |
 | Statusleiste | `Spannweite … mm · Fläche … dm² · AR … · MAC … mm` (AR: aspect ratio, deutsch Streckung; MAC: mean aerodynamic chord, deutsch mittlere aerodynamische Flügeltiefe), danach die Anzahl der Warnungen (`1 Warnung`, `2 Warnungen`; nur bei 1 oder mehr Warnungen). Bei Fehlern: Anzahl der Fehler und erste Fehlermeldung in roter Schrift (`… Fehler: …`). Bei ausgeschalteter automatischer Sicherung: `Automatische Sicherung aus: „Speichern“ verwenden` in roter Schrift (Abschnitt [Speicherung](#speicherung)). |
@@ -33,6 +33,7 @@ Die App zeigt sich auf Deutsch oder Englisch (Abschnitt [Sprache](#sprache)). Di
 | **Öffnen** | Lädt eine Projektdatei im Format JSON (JavaScript Object Notation, Dateiendung `.json`). Öffnet den Importdialog für eine XFLR5-Datei (Dateiendung `.xfl` oder `.xml`; XML: Extensible Markup Language; Abschnitt [Import aus XFLR5](#import-aus-xflr5)). Die Dateiauswahl listet `.json`-, `.xfl`-, `.xml`-, `.wpa`- und `.fl5`-Dateien. JSON- und XML-Dateien über 100 MB werden ungelesen abgewiesen: `<Datei> kann nicht geöffnet werden: … MB; Projektdateien sind auf 100 MB begrenzt.` Eine Datei, die der Browser nicht lesen kann (entferntes Laufwerk, entzogene Berechtigung), zeigt `<Datei> kann nicht geöffnet werden: Der Browser konnte die Datei nicht lesen (NotReadableError).`; der aktuelle Entwurf bleibt. Ungültige JSON-Dateien werden abgewiesen; die Meldung zeigt bis zu 3 Fehler. Abgeleitete NURBS-Daten in der Datei werden ignoriert und neu berechnet. |
 | **Speichern** | Lädt das Projekt-JSON herunter. Gleiche Datei wie **Exportieren** > **Projekt-JSON** (Project JSON). Brächten die abgeleiteten NURBS-Daten die Datei über 100 MB, lässt die Datei sie weg (Abschnitt [Export](#export)). Ein Fehler zeigt die rote Meldung `Speichern fehlgeschlagen: ….` |
 | **Exportieren** | Öffnet den Exportdialog (Abschnitt [Export](#export)). |
+| **Schaum** | Öffnet den Schaumschnitt-Assistenten (Abschnitt [Schaumschnitt](#schaumschnitt)). |
 | **Rückgängig** / **Wiederholen** | Springen im Bearbeitungsverlauf einen Schritt zurück beziehungsweise vor. Der Verlauf liegt nur im Arbeitsspeicher: höchstens 100 Schritte und höchstens 64 000 000 Zeichen serialisiertes Projekt (Rückgängig- und Wiederholen-Schritte zusammen); ein Projekt über 640 000 Zeichen behält weniger Schritte, mindestens 1. **Neu** und **Öffnen** lassen sich mit **Rückgängig** zurücknehmen. |
 | **Hilfe** | App-Version, Arbeitsablauf, Bedienung, Links zu diesem Wiki, zum Quellcode und zu `LICENSES.txt` (Link **Lizenzen dieser App und ihrer Bibliotheken** (Licenses of this app and its libraries)). Die Datei enthält die MIT-Lizenz (Massachusetts Institute of Technology) der App und die Lizenztexte von three.js und fflate. Der Link **Dokumentation (Wiki)** (Documentation (wiki)) öffnet in der englischen Oberfläche die Startseite dieses Wikis und in der deutschen Oberfläche die Seite Benutzerhandbuch. |
 
@@ -46,8 +47,9 @@ Bei einer Fensterbreite von höchstens 860 px:
 - In der 3D-Ansicht erscheint **Vergrößern** (Enlarge). Die Schaltfläche blendet den Bedienbereich aus und gibt der 3D-Ansicht die volle Höhe; erneutes Tippen blendet ihn wieder ein.
 - Die Schnitttabelle wird zu einer Karte je Schnitt (3 Spalten, Beschriftung über jedem Wert).
 - Die Grundriss-Zeichenfläche ist 260 px hoch.
-- Deutsche Oberfläche: Die Statusleiste zeigt höchstens 2 Zeilen; die Registerkarte **Prüfungen** zeigt den ganzen Text. Die Kopfleiste hat bei einer Fensterbreite von höchstens 563 px 2 Zeilen (gemessen in Chromium 141: 2 Zeilen bei 563 px, 1 Zeile bei 564 px).
-- Bei einer Fensterbreite von höchstens 420 px bleiben die 7 Schaltflächen der Kopfleiste der englischen Oberfläche in 1 Zeile; ist die Zeile breiter als das Fenster, lässt sie sich seitlich verschieben. Die deutsche Kopfleiste bricht stattdessen um, und die Schaltflächen eines Projektprofils rücken unter den Namen.
+- Deutsche Oberfläche: Die Statusleiste zeigt höchstens 2 Zeilen; die Registerkarte **Prüfungen** zeigt den ganzen Text. Die Kopfleiste hat bei einer Fensterbreite von höchstens 637 px 2 Zeilen (gemessen in Chromium 141: 2 Zeilen bei 637 px, 1 Zeile bei 638 px).
+- Bei einer Fensterbreite von höchstens 460 px haben die Schaltflächen der Kopfleiste links und rechts je 5 px Innenabstand statt 8 px; bei höchstens 402 px je 3 px, mit 2 px Abstand zwischen den Schaltflächen.
+- Bei einer Fensterbreite von höchstens 420 px bleiben die 8 Schaltflächen der Kopfleiste der englischen Oberfläche in 1 Zeile. Die Zeile lässt sich seitlich verschieben, wenn sie breiter als das Fenster ist: unter 356 px (gemessen in Chromium 141). Die deutsche Kopfleiste bricht stattdessen um, und die Schaltflächen eines Projektprofils rücken unter den Namen.
 
 ![Smartphone-Ansicht der Registerkarte Grundriss mit Grundriss-Editor und eingeschalteter Endlinie](images/de/mobile-planform.png)
 
@@ -981,3 +983,105 @@ Für STEP nennt der Hinweis die Kontrollpunkte der Flächen in der Datei und die
 - STL und 3MF speichern 32-Bit-Koordinaten. Fällt durch die Rundung ein bei dieser Auflösung sichtbares Dreieck zusammen oder kippt es um, schreibt der Export keine Datei und zeigt die rote Meldung `STL speichert 32-Bit-Koordinaten: Bei … mm beträgt ihr Rasterabstand … mm, und … von … Dreiecken fallen zusammen oder kehren sich um. Den Flügel zum Ursprung hin verschieben oder als STEP exportieren.` (3MF: `3MF-Leseprogramme speichern 32-Bit-Koordinaten: …`). `Bei … mm` nennt die größte Koordinate der beschädigten Dreiecke.
 - Fällt das erste beschädigte Dreieck auch dann zusammen oder kippt um, wenn seine x- und z-Werte neben 0 und die Wurzel auf y = 0 verschoben sind (bei gespiegeltem Flügel beide Hälften), ist schon sein Abstand zur Wurzel zu grob: Schnitte oder Stationen liegen dichter beieinander als der 32-Bit-Abstand, und Verschieben des Flügels hilft nicht. Der letzte Satz lautet dann `Schnitte oder Stationen nahe y = … mm liegen dichter beieinander als der Rasterabstand dort (… mm); sie auseinanderschieben oder als STEP exportieren.` Beispiel: 4 Schnitte, 2 davon bei y = 300 mm und y = 300,00001 mm: `STL speichert 32-Bit-Koordinaten: Bei 300 mm beträgt ihr Rasterabstand 0,000031 mm, und 484 von 1.928 Dreiecken fallen zusammen oder kehren sich um. Schnitte oder Stationen nahe y = 300 mm liegen dichter beieinander als der Rasterabstand dort (0,000031 mm); sie auseinanderschieben oder als STEP exportieren.`
 - Dateiinhalte: [[Dateiformate|Dateiformate]].
+
+## Schaumschnitt
+
+![Schaumschnitt-Assistent für den Entwurfstyp Segelflugmodell nach „Segmente über der Grenze teilen“: Einstellungen, Schnitte, Grundriss mit den Schnitten, Segmenttabelle, Downloads](images/de/foam-dialog.png)
+
+**Schaum** (Foam) in der Kopfleiste öffnet den Schaumschnitt-Assistenten für den aktuellen Flügel, einen Dialog mit dem Titel **Schaumschnitt** (Foam cutting). Er teilt den Halbflügel in Segmente. Jedes Segment ist ein Schaumkern, den ein Heißdraht entlang gerader Linien zwischen seinen beiden Endprofilen schneidet. Der Assistent schreibt diese Endprofile für Schneideprogramme und als Schablonen 1:1. Das Projekt ändert er nicht.
+
+| Begriff | Bedeutung |
+| --- | --- |
+| Schnitt | Spannweitenposition y (mm), an der ein Kern endet und der nächste beginnt. Die Schnitte dieses Dialogs sind nicht die Schnitte der Registerkarte **Schnitte** (Sections); diese heißen in diesem Abschnitt Profilschnitte. |
+| Segment, Kern | der Flügel zwischen zwei benachbarten Schnitten oder zwischen Wurzel oder Rand und einem Schnitt |
+| Inneres Ende, äußeres Ende | das Ende eines Kerns näher an der Wurzel, näher am Rand |
+| Endfläche | ebenes Ende des Kerns, rechtwinklig zur Kernachse; beide Endflächen sind parallel |
+| Stoßebene | die Ebene, in der zwei Kerne aneinanderstoßen oder ein Kern an Wurzel oder Rand endet (an einem Profilschnitt seine Schnittebene, sonst die winkelhalbierende Ebene der beiden Kernachsen) |
+| Keil | Material zwischen Endfläche und Stoßebene, das vor dem Verkleben der Kerne abgeschliffen wird |
+| Abweichung | größter Abstand (mm) zwischen dem geradlinigen Kern und dem Flügel |
+| Schnittbreite | Breite der Fuge, die der Heißdraht ausschmilzt (mm) |
+
+Geometrie, Formeln und Beispiele: [[Geometrie|Geometrie]], Abschnitt 8 „Schaumkerne“.
+
+### Einstellungen
+
+| Feld | Bereich | Vorgabe | Wirkung |
+| --- | --- | --- | --- |
+| **Längster Kern (mm)** (Longest core (mm)) | 20 bis 5000 | 800 | Arbeitsbreite des Heißdrahtschneiders oder Länge des Schaumblocks. Eine Änderung schlägt die Schnitte neu vor; bearbeitete Schnitte werden ersetzt. |
+| **Grenze der Abweichung (mm)** (Deviation limit (mm)) | 0,01 bis 10 | 0,2 | Segmente darüber werden markiert; **Segmente über der Grenze teilen** (Split segments over the limit) fügt Schnitte hinzu, damit sie die Grenze einhalten. |
+| **Schnittbreite für Schablonen (mm)** (Kerf for templates (mm)) | 0 bis 5 | 0 | Die Umrisse der Schablonen (SVG: Scalable Vector Graphics, PDF: Portable Document Format, DXF: Drawing Exchange Format) werden um die Hälfte davon nach außen versetzt. Die `.dat`-Profile bleiben ohne Versatz. |
+| **Papier (PDF)** (Paper (PDF)) | A4, A3, Letter | A4 | Seitengröße der PDF-Schablonen |
+
+- Ein Wert außerhalb seines Bereichs wird abgewiesen: Das Feld zeigt wieder den gespeicherten Wert.
+- Die 4 Einstellungen werden im Browser unter `wingdesigner.foam` gespeichert. Die Schnitte werden nicht gespeichert: Jedes Öffnen schlägt sie aus **Längster Kern** neu vor.
+
+### Schnitte
+
+Der Vorschlag setzt einen Schnitt an jeden Profilschnitt zwischen Wurzel und Rand. Jedes Stück dazwischen teilt er in gleiche Teile, die höchstens so lang sind wie **Längster Kern**, entlang der V-Form gemessen. Profilschnitte, die weniger als 5 mm auseinanderliegen, ergeben einen Schnitt. Die Kernlänge enthält zusätzlich die Keiltiefen an ihren Enden und kann **Längster Kern** um diese überschreiten: **Sportmodell** (Sport) als ein Kern, Bezugslinie 600,2 mm, Kern 600,5 mm.
+
+| Bedienelement | Wirkung |
+| --- | --- |
+| Feld **Schnitt i, y in mm** (Cut i, y in mm) | Verschiebt Schnitt i. Die Liste wird neu sortiert. |
+| **×** neben einem Schnitt | Entfernt ihn. |
+| **Schnitt hinzufügen** (Add cut) | Fügt einen Schnitt in der Mitte des längsten Segments hinzu. |
+| **Schnitte neu vorschlagen** (Propose cuts again) | Ersetzt die Liste durch den Vorschlag. |
+| **Segmente über der Grenze teilen** (Split segments over the limit) | Teilt jedes Segment über **Grenze der Abweichung** in der Mitte und wiederholt das, bis kein Segment von 10 mm oder mehr darüber liegt oder 200 Segmente erreicht sind. Ein Segment unter 10 mm wird nicht geteilt. |
+
+- Jede Änderung berechnet die Segmente im nächsten Animations-Frame neu. 200 Segmente dauern etwa 1 s (Node.js 24 auf einer Server-CPU mit 2,1 GHz; im Browser nicht gemessen).
+- Ein Schnitt, der näher als 5 mm an einem anderen Schnitt, der Wurzel oder dem Rand liegt, wird entfernt, mit `1 Schnitt wurde entfernt: näher als 5 mm an einem anderen Schnitt, der Wurzel oder dem Randbogen.`
+- Höchstens 200 Segmente je Halbflügel.
+- Enter in einem Feld übernimmt den Wert und lässt den Dialog offen.
+
+### Segmenttabelle und Zusammenfassung
+
+| Spalte | Inhalt |
+| --- | --- |
+| **Segment** | Nummer, von der Wurzel an |
+| **y (mm)** | innerer und äußerer Schnitt |
+| **Kernlänge (mm)** (Core length (mm)) | Abstand der Endflächen entlang der Kernachse; Warnfarbe über **Längster Kern** |
+| **Block (mm)** | Breite in Profiltiefenrichtung × Höhe des Schablonenrahmens: der kleinste Block, der beide Endprofile enthält, plus 10 mm auf jeder Seite |
+| **Profiltiefen (mm)** (Chords (mm)) | Profiltiefe des inneren / äußeren Endprofils |
+| **Abweichung (mm)** (Deviation (mm)) | größter Abstand zwischen dem geradlinigen Kern und dem Flügel; Warnfarbe über **Grenze der Abweichung** |
+| **Keil innen** (Wedge inboard), **Keil außen** (Wedge outboard) | Winkel, Tiefe entlang des Kerns und die Seite, an der der Keil am tiefsten ist (`oben`, `unten`); `–` ohne Keil |
+
+Die Zusammenfassung unter dem Grundriss nennt die Anzahl der Segmente und die größte Abweichung, die Kerne, die länger als **Längster Kern** sind, die Segmente über **Grenze der Abweichung**, entfernte Schnitte und die Anzahl der PDF-Seiten. Beispiel, Entwurfstyp **Sportmodell** mit den Vorgaben: `1 Segment je Hälfte, Abweichung 0,341 mm. 1 Segment weicht mehr als 0,20 mm vom Flügel ab; Segmente über der Grenze teilen fügt Schnitte hinzu. Die PDF-Schablonen belegen 2 Seiten.` Nach **Segmente über der Grenze teilen**: 2 Segmente, größte Abweichung 0,085 mm.
+
+Der Grundriss zeigt beide Hälften mit der Wurzel, den Schnitten und dem Rand als blaue Linien.
+
+### Downloads
+
+| Schaltfläche | Datei | Inhalt |
+| --- | --- | --- |
+| **Profile (.dat, ZIP)** (Profiles (.dat, ZIP)) | `<name>_foam_profiles.zip` | Je Segmentende eine `.dat`-Datei in mm (Ordner `mm/`) und eine auf Profiltiefe 1 normierte (Ordner `normalized/`); `segments.csv`; `README.txt` |
+| **Schablonen (SVG)** (Templates (SVG)) | `<name>_foam_templates.svg` | Alle Schablonen auf einem Blatt im Maßstab 1:1, Breite und Höhe in mm |
+| **Schablonen (PDF)** (Templates (PDF)) | `<name>_foam_templates.pdf` | Die Schablonen im Maßstab 1:1 auf Seiten der Größe **Papier (PDF)** |
+| **Schablonen (DXF)** (Templates (DXF)) | `<name>_foam_templates.dxf` | Die Schablonen als DXF von AutoCAD R12, mm |
+
+`<name>`: der Projektname, wie beim Export umgeformt (Abschnitt [Export](#export)). Dateiinhalte: [[Dateiformate|Dateiformate]], Abschnitt Schaumschnitt-Dateien.
+
+Jede Schablone zeigt:
+
+- Textzeilen, bei der Rahmenbreite umbrochen (mindestens bei 150 mm): Segment und Ende; y, Kernlänge und Blockgröße; Profiltiefe und Anstellwinkel; den abzuschleifenden Keil. Bei einem schmalen Rahmen verteilt sich ein Text auf 2 Zeilen.
+- Einen Rahmen: den Blockquerschnitt plus 10 mm auf jeder Seite. Beide Schablonen eines Segments haben denselben Rahmen.
+- Das Endprofil, um die halbe Schnittbreite nach außen versetzt.
+- 21 nummerierte Marken (0 bis 20) an Punkten mit demselben Index auf beiden Schablonen eines Segments. Marken mit gleicher Nummer werden gleichzeitig durchfahren.
+
+Das Blatt beginnt mit einem 100-mm-Maßstab und den Anweisungen. Jede PDF-Seite wiederholt den Maßstab mit `100 mm. Seite <i> von <n>.`
+
+PDF-Seiten:
+
+- Rand 10 mm. Die untersten 12 mm des bedruckbaren Bereichs enthalten den Maßstab und die Seitenbeschriftung.
+- Die Schablonen folgen einander vom oberen Rand einer Seite an und beginnen eine neue Seite, wo sie nicht mehr passen.
+- Eine Schablone, die breiter oder höher als der bedruckbare Bereich ist, wird in Streifen geteilt, die sich um 10 mm überlappen. Jeder Streifen trägt die Beschriftung `<Schablone>: Teil <i> von <n> (Zeile <r>, Spalte <c>)`. Kreuze in der Überlappung stehen auf beiden Streifen einer Stoßstelle, damit sich die Streifen passgenau zusammenkleben lassen.
+- Ausrichtung: die mit weniger in Streifen geteilten Schablonen, dann die mit weniger Seiten; bei Gleichstand Hochformat. Die 260 mm breiten Schablonen des Entwurfstyps **Sportmodell** passen ungeteilt auf A4 quer (277 mm bedruckbare Breite).
+
+Beispiel, **Längster Kern** 800 mm, auf 0,2 mm geteilt: **Sportmodell** 3 Seiten auf A4, 1 auf A3, 4 auf Letter; **Segelflugmodell** (Glider) 10 Seiten auf A4, 4 auf A3, 10 auf Letter.
+
+### Schneiden
+
+- Die Dateien beschreiben die rechte Hälfte. Die linke Hälfte ist ihr Spiegelbild: dieselben Profile mit getauschtem innerem und äußerem Ende, dieselben Schablonen umgedreht.
+- Jeder Kern wird mit parallelen Endflächen rechtwinklig zu seiner Achse geschnitten. An einer Stoßstelle mit Keil die Endfläche auf die Stoßebene schleifen: Die Keil-Spalten, `segments.csv` und die Schablone nennen Winkel, Tiefe und Seite.
+- Die `.dat`-Dateien haben keinen Versatz für die Schnittbreite; das Schneideprogramm fügt ihn hinzu.
+- Punkt i der inneren `.dat`-Datei und Punkt i der äußeren Datei liegen auf einer Geraden des Kerns. Ein Schneideprogramm, das die Punkte nach ihrem Index paart, schneidet den berechneten Kern.
+
+Ein Flügel mit Fehlern öffnet den Dialog mit `Der Flügel hat Fehler; diese zuerst beheben, dann die Schaumkerne planen.` und ohne Downloads.

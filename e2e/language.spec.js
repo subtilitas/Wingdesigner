@@ -13,7 +13,7 @@ const SAMPLE = { en: 'Span 1500 mm · area 30.07 dm² · AR 7.48 · MAC 205.4 mm
 const TEXT = {
   en: {
     tabs: ['Sections', 'Planform', 'Airfoils', 'Settings', 'Checks'],
-    top: ['New', 'Open', 'Save', 'Export', 'Undo', 'Redo', 'Help'],
+    top: ['New', 'Open', 'Save', 'Export', 'Foam', 'Undo', 'Redo', 'Help'],
     nav: 'Project',
     views: ['Iso', 'Top', 'Front', 'Side', 'Fit'],
     undoTitle: 'Undo (Ctrl+Z)',
@@ -46,7 +46,7 @@ const TEXT = {
   },
   de: {
     tabs: ['Schnitte', 'Grundriss', 'Profile', 'Einstellungen', 'Prüfungen'],
-    top: ['Neu', 'Öffnen', 'Speichern', 'Exportieren', 'Rückgängig', 'Wiederholen', 'Hilfe'],
+    top: ['Neu', 'Öffnen', 'Speichern', 'Exportieren', 'Schaum', 'Rückgängig', 'Wiederholen', 'Hilfe'],
     nav: 'Projekt',
     views: ['Iso', 'Oben', 'Vorne', 'Links', 'Einpassen'],
     undoTitle: 'Rückgängig (Strg+Z)',
@@ -98,7 +98,8 @@ async function expectShell(page, lang) {
   await expect(page.getByRole('tab')).toHaveText(t.tabs);
   for (const name of t.top) await expect(button(page, name)).toBeVisible();
   await expect(page.getByRole('navigation', { name: t.nav, exact: true })).toBeVisible();
-  await expect(button(page, t.top[4])).toHaveAttribute('title', t.undoTitle);
+  // t.top[5]: Undo.
+  await expect(button(page, t.top[5])).toHaveAttribute('title', t.undoTitle);
   for (const name of t.views) await expect(button(page, name)).toBeVisible();
   // The other language's labels are gone.
   const other = TEXT[lang === 'en' ? 'de' : 'en'];

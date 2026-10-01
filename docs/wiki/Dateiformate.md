@@ -12,6 +12,8 @@ English: [[File Formats|File-Formats]]
 | Export | Flügel, Dreiecksnetz | binäres STL | `.stl` | **Exportieren** |
 | Export | Flügel, Dreiecksnetz | 3MF | `.3mf` | **Exportieren** |
 | Export | ein Profil | Selig | `.dat` | **Profile** > **.dat** |
+| Export | Schaumkerne: Paare von Endprofilen, Segmenttabelle | Selig-`.dat` (mm und normiert), CSV, in einem ZIP | `.zip` | **Schaum** (Foam) > **Profile (.dat, ZIP)** (Profiles (.dat, ZIP)) |
+| Export | Schaumkerne: Schablonen 1:1 | SVG, PDF, DXF | `.svg` `.pdf` `.dxf` | **Schaum** > **Schablonen (SVG)** (Templates (SVG)), **Schablonen (PDF)** (Templates (PDF)), **Schablonen (DXF)** (Templates (DXF)) |
 
 | Abkürzung | Bedeutung |
 | --- | --- |
@@ -27,8 +29,14 @@ English: [[File Formats|File-Formats]]
 | LE, TE | leading edge (Profilnase), trailing edge (Endleiste); nur in Formelzeichen (y_LE) und JSON-Schlüsseln (`xLE`) |
 | UTC | koordinierte Weltzeit (Coordinated Universal Time) |
 | VLM | Vortex-Lattice-Verfahren (vortex lattice method) |
+| ASCII | American Standard Code for Information Interchange |
+| CAD | rechnergestütztes Konstruieren (computer-aided design) |
+| CSV | durch Kommas getrennte Werte (comma-separated values) |
+| SVG | Scalable Vector Graphics |
+| PDF | Portable Document Format |
+| DXF | Drawing Exchange Format (AutoCAD) |
 
-Die Oberfläche spricht Englisch oder Deutsch ([[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Sprache). Meldungen auf dieser Seite stehen so, wie die deutsche Oberfläche sie schreibt; die englische Oberfläche schreibt sie auf Englisch ([[File Formats|File-Formats]]). Codes wie `too-large` benennen die Prüfungen in dieser Dokumentation; die App zeigt sie nicht. Dateiinhalte hängen nicht von der Sprache ab: Zahlen haben einen Dezimalpunkt, Schlüssel und feste Namen sind englisch. Nur ein Name, den die App selbst anlegt, z. B. der voreingestellte Projektname, steht in der Sprache, die beim Anlegen eingestellt ist.
+Die Oberfläche spricht Englisch oder Deutsch ([[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Sprache). Meldungen auf dieser Seite stehen so, wie die deutsche Oberfläche sie schreibt; die englische Oberfläche schreibt sie auf Englisch ([[File Formats|File-Formats]]). Codes wie `too-large` benennen die Prüfungen in dieser Dokumentation; die App zeigt sie nicht. Dateiinhalte hängen nicht von der Sprache ab: Zahlen haben einen Dezimalpunkt, Schlüssel und feste Namen sind englisch. Ausnahme: Die Texte der Schaumschnitt-Dateien (`README.txt`, Texte der Schablonen, Titel des PDF) stehen in der Sprache der Oberfläche, mit deren Zahlenformat (Abschnitt „Schaumschnitt-Dateien“). Nur ein Name, den die App selbst anlegt, z. B. der voreingestellte Projektname, steht in der Sprache, die beim Anlegen eingestellt ist.
 
 ## Dateinamen beim Export
 
@@ -56,6 +64,8 @@ Name in STEP-, STL- und 3MF-Dateien, unten `<name>` geschrieben: Projektname; le
 | STEP | Name in `FILE_NAME`, `PRODUCT`, `ADVANCED_BREP_SHAPE_REPRESENTATION`, Volumenkörper `<name> right` und `<name> left` |
 | STL | Kopf `Wingdesigner <name>` |
 | 3MF | Metadaten `Title`. Die Objektnamen sind fest: Tabelle „Körper je Datei“. |
+
+Der Schaumschnitt-Assistent wendet dieselbe Regel auf den Projektnamen an und hängt einen Zusatz an: `<name>_foam_profiles.zip`, `<name>_foam_templates.svg`, `<name>_foam_templates.pdf`, `<name>_foam_templates.dxf` (Abschnitt „Schaumschnitt-Dateien“). Leeres Ergebnis: `wing_foam_profiles.zip`.
 
 ## Profildateien (Import)
 
@@ -1007,6 +1017,95 @@ Abschnitt 6 „STEP-Topologie“.
 | Eckpunkte | 9 signifikante Stellen (genug für jede 32-Bit-Gleitkommazahl), kürzeste Form ohne Nullen am Ende, z. B. `1000000.12`, `0.123456789`, `12`; Beträge unter 1e-6 mm in Exponentenschreibweise, z. B. `-1e-7`; null als `0` |
 | Dreiecke | `v1`, `v2`, `v3`: Eckpunktindizes ab 0, von außen gesehen gegen den Uhrzeigersinn |
 | Datum der Zip-Einträge | fest 01.01.2026 00:00 UTC, gespeichert in der Ortszeit des Browsers; nicht die Exportzeit |
+
+## Schaumschnitt-Dateien
+
+Geschrieben vom Schaumschnitt-Assistenten ([[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Schaumschnitt); Geometrie: [[Geometrie|Geometrie]], Abschnitt 8 „Schaumkerne“. Längen in mm, Winkel in Grad. Die `.dat`-Dateien, `segments.csv` und die Koordinaten in SVG, DXF und PDF haben in beiden Sprachen der Oberfläche einen Dezimalpunkt. `README.txt`, die Texte der Schablonen und der Titel des PDF stehen in der Sprache der Oberfläche, mit deren Zahlenformat (deutsch: Dezimalkomma, `y = 0,0 mm`). Die Dateien beschreiben die rechte Hälfte.
+
+### Profil-ZIP
+
+| Eintrag | Inhalt |
+| --- | --- |
+| `README.txt` | Blocksystem, Punktfolge, Keile und die linke Hälfte, in der Sprache der Oberfläche; UTF-8, Zeilenenden CRLF |
+| `segments.csv` | Eine Zeile je Segment (Tabelle unten) |
+| `mm/segment-<ii>-inboard.dat`, `mm/segment-<ii>-outboard.dat` | Endprofile im Blocksystem, mm |
+| `normalized/segment-<ii>-inboard.dat`, `normalized/segment-<ii>-outboard.dat` | Dieselben Profile, auf Profiltiefe 1 skaliert |
+
+`<ii>`: Segmentnummer von der Wurzel an, mindestens 2 Ziffern (`01`, `100`). Zip: Deflate-Stufe 6, Datum der Einträge 01.01.2026 00:00 (in jeder Zeitzone gleich).
+
+`.dat`-Datei (Selig-Reihenfolge):
+
+| Zeile | Inhalt |
+| --- | --- |
+| 1 | `<name> segment <i> <inboard oder outboard> y=<y> mm`; `normalized/` ergänzt ` chord=<chord> mm`. `<name>`: Projektname in ASCII (Umlaute ausgeschrieben, übrige Akzente entfernt, übrige Zeichen außerhalb von ASCII weggelassen; leer: `wing`) |
+| 2 … | `x h` je Punkt: obere Endleiste, Profilnase, untere Endleiste. `mm/`: 6 Nachkommastellen; `normalized/`: 7 Nachkommastellen. Zeilenenden LF. |
+
+- Punktzahl: 2N + 1 (121 bei der Vorgabe von 60 Stationen je Profilseite), in jeder Datei eines ZIP gleich.
+- `mm/`: x in Profiltiefenrichtung zur Endleiste, h nach oben, rechtwinklig zur Kernachse. Ursprung: die vordere untere Ecke des kleinsten Blocks, der beide Profile des Segments enthält. Beide Dateien eines Segments teilen das Blocksystem.
+- `normalized/`: Profilnase bei (0, 0), Mitte der Endleiste (Mittel aus erstem und letztem Punkt) bei (1, 0). Profiltiefe, Lage der Profilnase und Anstellwinkel jedes Endes: `segments.csv`.
+- Kein Versatz für die Schnittbreite.
+
+`segments.csv`: durch Kommas getrennt, Dezimalpunkt, Zeilenenden LF, eine Kopfzeile.
+
+| Spalte | Einheit | Inhalt |
+| --- | --- | --- |
+| `segment` | – | Nummer ab 1 |
+| `y_inboard_mm`, `y_outboard_mm` | mm | Schnitte |
+| `core_length_mm` | mm | Abstand der Endflächen entlang der Achse |
+| `axis_angle_deg` | ° | Achswinkel (V-Form des Segments) |
+| `block_width_mm`, `block_height_mm` | mm | kleinster Block, der beide Profile enthält (ohne den Rahmenzuschlag von 10 mm der Schablonen) |
+| `deviation_mm`, `deviation_y_mm` | mm | größte Abweichung des Kerns (Regelfläche) und ihre Spannweitenposition |
+| `inboard_chord_mm` … `inboard_wedge_side`, `outboard_chord_mm` … `outboard_wedge_side` | | je Ende: `chord_mm`, `le_x_mm`, `le_h_mm`, `te_x_mm`, `te_h_mm` (Blocksystem), `incidence_deg` (Nase hoch positiv), `wedge_angle_deg`, `wedge_depth_mm`, `wedge_side` (`upper`, `lower`, leer ohne Keil; Winkel und Tiefe dann 0) |
+
+### Aufbau der Schablonen
+
+Gemeinsam für SVG, PDF und DXF: Blöcke in einer Spalte, 15 mm Abstand, y nach oben.
+
+| Block | Inhalt |
+| --- | --- |
+| Kopf | 100-mm-Maßstab mit Teilstrichen alle 10 mm; Anweisungen, bei 180 mm umbrochen |
+| Schablone, je Segmentende | Textzeilen (3,5 mm hoch, 5 mm Abstand, bei der Rahmenbreite umbrochen, mindestens bei 150 mm); Rahmen: Block plus 10 mm auf jeder Seite; das Endprofil an seiner Lage im Block innerhalb des Rahmens, um die halbe Schnittbreite nach außen versetzt (Gehrungsecken, die Gehrung höchstens das 4-Fache des Versatzes); 21 Marken: 3 mm lange Striche nach außen an den Punkten 0, 6, 12 … 120 von 121, nummeriert 0 bis 20 (Text 2 mm hoch) |
+
+| Element | SVG | PDF | DXF-Layer, Farbe |
+| --- | --- | --- | --- |
+| Profil | `polygon` mit Klasse `profile`, schwarz, 0,25 mm | schwarz, 0,25 mm | `PROFILE`, 7 |
+| Rahmen, Maßstab des Kopfs | `polygon` oder `polyline` mit Klasse `frame`, grau `#555555`, 0,18 mm | grau 0,33, 0,18 mm | `FRAME`, 8 |
+| Marken | `polyline` mit Klasse `mark`, rot `#c0392b`, 0,18 mm | rot, 0,18 mm | `MARKS`, 1 |
+| Text | `text`, Helvetica, Arial, sans-serif | Helvetica (Standardschrift, WinAnsiEncoding) | `TEXT`, 5 |
+
+### SVG
+
+Ein Blatt. `width` und `height` in mm, `viewBox` in mm (1 Einheit = 1 mm), weißer Hintergrund. Koordinaten mit 3 Nachkommastellen.
+
+### DXF
+
+| Eigenschaft | Wert |
+| --- | --- |
+| Version | AutoCAD R12 (`$ACADVER` `AC1009`), ASCII, Zeilenenden CRLF |
+| Kopf | `$INSUNITS` 4 (mm), `$EXTMIN`, `$EXTMAX` |
+| Tabellen | Linientyp `CONTINUOUS`; Layer `PROFILE`, `FRAME`, `MARKS`, `TEXT` |
+| Umrisse | `POLYLINE` mit `VERTEX` und `SEQEND`; Flag 1 (geschlossen) für Profile und Schablonenrahmen, 0 für den Maßstab und die Marken |
+| Text | `TEXT`; `°` als `%%d`, andere Zeichen außerhalb von ASCII als `\U+XXXX` |
+| Koordinaten | 4 Nachkommastellen, z = 0 |
+
+### PDF
+
+| Eigenschaft | Wert |
+| --- | --- |
+| Version | PDF 1.4 |
+| Seite | A4 (210 × 297 mm), A3 (297 × 420 mm) oder Letter (215,9 × 279,4 mm), Hoch- oder Querformat (Seitenaufteilung: [[Benutzerhandbuch]], Abschnitt Schaumschnitt) |
+| Maßstab | 1:1: 1 mm = 72/25,4 pt |
+| Schrift | Helvetica, WinAnsiEncoding; Zeichen außerhalb davon als `?` |
+| Inhaltsströme | FlateDecode |
+| Info | `Title`: `<Projektname>: Schablonen für Schaumkerne` in der Sprache der Oberfläche; `Producer`: `Wingdesigner` |
+| Seitenfuß | 100-mm-Maßstab, schwarz, 0,2 mm, und `100 mm. Seite <i> von <n>.` (Text 3 mm hoch) |
+| Passkreuze | in der Überlappung von 2 Streifen einer geteilten Schablone, schwarz, 0,15 mm, 6 mm breit |
+
+### Prüfung
+
+Unabhängige Leseprogramme an 11 Testflügeln (den STEP-Testfällen ohne die Kopie mit Y nach oben), jeder so geschnitten, wie für einen längsten Kern von 300 mm vorgeschlagen, einer mit 1 mm Schnittbreite, einer auf A3, einer auf Letter: ezdxf 1.4.4 liest jedes DXF mit seinem Modul recover, und seine Prüfung (audit) findet keinen Fehler; jede Profil-Polylinie ist geschlossen und hat die erwartete Anzahl an Eckpunkten, und ohne Schnittbreite stimmen ihre Breite und Höhe innerhalb 0,001 mm mit denen ihrer `.dat`-Datei in `mm/` überein. pypdf 6.19.0 liest jedes PDF im strikten Modus: Seitenzahl und Seitengröße wie berechnet, eine Seitenbeschriftung auf jeder Seite. Jedes SVG lässt sich als XML lesen und enthält ein Profil-Polygon je Segmentende. Das Skript liest jedes ZIP mit der Python-Standardbibliothek: die erwarteten Einträge, 121 Punkte in jeder `.dat`-Datei, eine Zeile in `segments.csv` je Segment.
+
+Nicht getestet: Programme für den Heißdrahtschnitt (Jedicut, GMFC, DevFoam und andere) mit diesen Dateien; CAD-Programme und Laserschneider mit dem DXF; Drucker mit PDF und SVG.
 
 ## Dateigrößen
 

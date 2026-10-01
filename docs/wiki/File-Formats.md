@@ -12,6 +12,8 @@ Deutsch: [[Dateiformate|Dateiformate]]
 | Export | Wing, triangle mesh | binary STL | `.stl` | **Export** |
 | Export | Wing, triangle mesh | 3MF | `.3mf` | **Export** |
 | Export | One airfoil | Selig | `.dat` | **Airfoils** > **.dat** |
+| Export | Foam cores: end profile pairs, segment table | Selig `.dat` (mm and normalized), CSV, in a ZIP | `.zip` | **Foam** > **Profiles (.dat, ZIP)** |
+| Export | Foam cores: 1:1 templates | SVG, PDF, DXF | `.svg` `.pdf` `.dxf` | **Foam** > **Templates (SVG)**, **Templates (PDF)**, **Templates (DXF)** |
 
 | Abbreviation | Meaning |
 | --- | --- |
@@ -27,8 +29,14 @@ Deutsch: [[Dateiformate|Dateiformate]]
 | LE, TE | leading edge, trailing edge |
 | UTC | Coordinated Universal Time |
 | VLM | vortex lattice method |
+| ASCII | American Standard Code for Information Interchange |
+| CAD | computer-aided design |
+| CSV | comma-separated values |
+| SVG | Scalable Vector Graphics |
+| PDF | Portable Document Format |
+| DXF | Drawing Exchange Format (AutoCAD) |
 
-The interface speaks English or German ([[User Guide|User-Guide]], section Language). Messages quoted on this page are the English texts; the German interface writes them in German ([[Dateiformate]]). Codes such as `too-large` name the checks in this documentation; the app does not show them. File contents do not depend on the language: numbers have a decimal point, and keys and fixed names are English. Only a name that the app creates, such as the default project name, is written in the language that is set when the name is created.
+The interface speaks English or German ([[User Guide|User-Guide]], section Language). Messages quoted on this page are the English texts; the German interface writes them in German ([[Dateiformate]]). Codes such as `too-large` name the checks in this documentation; the app does not show them. File contents do not depend on the language: numbers have a decimal point, and keys and fixed names are English. Exception: the texts of the foam-cutting files (`README.txt`, template texts, PDF title) are written in the interface language, with its number format (section Foam-cutting files). Only a name that the app creates, such as the default project name, is written in the language that is set when the name is created.
 
 ## Export file names
 
@@ -56,6 +64,8 @@ Name inside STEP, STL and 3MF files, written `<name>` below: project name; empty
 | STEP | `FILE_NAME` name, `PRODUCT`, `ADVANCED_BREP_SHAPE_REPRESENTATION`, solids `<name> right` and `<name> left` |
 | STL | header `Wingdesigner <name>` |
 | 3MF | metadata `Title`. Object names are fixed: table "Bodies per file". |
+
+The foam-cutting wizard applies the same rule to the project name and appends a suffix: `<name>_foam_profiles.zip`, `<name>_foam_templates.svg`, `<name>_foam_templates.pdf`, `<name>_foam_templates.dxf` (section "Foam-cutting files"). Empty result: `wing_foam_profiles.zip`.
 
 ## Airfoil files (import)
 
@@ -1003,6 +1013,95 @@ Faces, edges, orientation flags and the OpenCascade validation: [[Geometry|Geome
 | Vertices | 9 significant digits (enough for every 32-bit float), shortest form without trailing zeros, e.g. `1000000.12`, `0.123456789`, `12`; magnitudes below 1e-6 mm in exponent notation, e.g. `-1e-7`; zero as `0` |
 | Triangles | `v1`, `v2`, `v3`: vertex indices from 0, counterclockwise seen from outside |
 | Zip entry date | fixed at 2026-01-01 00:00 UTC, stored in the local time of the browser; not the export time |
+
+## Foam-cutting files
+
+Written by the foam-cutting wizard ([[User Guide|User-Guide]], section Foam cutting); geometry: [[Geometry|Geometry]], section 8 "Foam cores". Lengths in mm, angles in degrees. The `.dat` files, `segments.csv` and the coordinates in SVG, DXF and PDF have a decimal point in both interface languages. `README.txt`, the template texts and the PDF title are written in the interface language, with its number format (German: decimal comma, `y = 0,0 mm`). The files describe the right half.
+
+### Profile ZIP
+
+| Entry | Content |
+| --- | --- |
+| `README.txt` | Frame, point order, wedges and the left half, in the interface language; UTF-8, CRLF line ends |
+| `segments.csv` | One row per segment (table below) |
+| `mm/segment-<ii>-inboard.dat`, `mm/segment-<ii>-outboard.dat` | End profiles in the block frame, mm |
+| `normalized/segment-<ii>-inboard.dat`, `normalized/segment-<ii>-outboard.dat` | The same profiles scaled to chord 1 |
+
+`<ii>`: segment number from the root, at least 2 digits (`01`, `100`). Zip: deflate level 6, entry date 2026-01-01 00:00 (the same in every time zone).
+
+`.dat` file (Selig order):
+
+| Line | Content |
+| --- | --- |
+| 1 | `<name> segment <i> <inboard or outboard> y=<y> mm`; `normalized/` adds ` chord=<chord> mm`. `<name>`: project name in ASCII (umlauts written out, other accents removed, other characters outside ASCII dropped; empty: `wing`) |
+| 2 … | `x h` per point: upper TE, LE, lower TE. `mm/`: 6 decimals; `normalized/`: 7 decimals. LF line ends. |
+
+- Point count: 2N + 1 (121 at the default of 60 chordwise stations per surface), the same in every file of a ZIP.
+- `mm/`: x chordwise towards the TE, h up, square to the core axis. Origin: the front lower corner of the smallest block that holds both profiles of the segment. Both files of a segment share the frame.
+- `normalized/`: LE at (0, 0), TE midpoint (mean of the first and the last point) at (1, 0). Chord, LE position and incidence of each end: `segments.csv`.
+- No kerf offset.
+
+`segments.csv`: comma separated, decimal point, LF line ends, a header row.
+
+| Column | Unit | Content |
+| --- | --- | --- |
+| `segment` | – | number from 1 |
+| `y_inboard_mm`, `y_outboard_mm` | mm | cuts |
+| `core_length_mm` | mm | distance of the end faces along the axis |
+| `axis_angle_deg` | ° | axis angle (dihedral of the segment) |
+| `block_width_mm`, `block_height_mm` | mm | smallest block that holds both profiles (without the 10 mm frame margin of the templates) |
+| `deviation_mm`, `deviation_y_mm` | mm | largest deviation of the ruled core and its span position |
+| `inboard_chord_mm` … `inboard_wedge_side`, `outboard_chord_mm` … `outboard_wedge_side` | | per end: `chord_mm`, `le_x_mm`, `le_h_mm`, `te_x_mm`, `te_h_mm` (block frame), `incidence_deg` (nose up positive), `wedge_angle_deg`, `wedge_depth_mm`, `wedge_side` (`upper`, `lower`, empty without a wedge; angle and depth then 0) |
+
+### Template layout
+
+Common to SVG, PDF and DXF: blocks in a column, 15 mm apart, y up.
+
+| Block | Content |
+| --- | --- |
+| Header | 100 mm scale bar with ticks every 10 mm; instructions, wrapped at 180 mm |
+| Template, per segment end | Text lines (3.5 mm high, 5 mm apart, wrapped at the frame width, at least 150 mm); frame: block plus 10 mm on each side; the end profile at its block position inside the frame, offset outward by half the kerf (mitred corners, the mitre at most 4 times the offset); 21 marks: 3 mm ticks outward at points 0, 6, 12 … 120 of 121, numbered 0 to 20 (2 mm text) |
+
+| Item | SVG | PDF | DXF layer, colour |
+| --- | --- | --- | --- |
+| Profile | `polygon` class `profile`, black, 0.25 mm | black, 0.25 mm | `PROFILE`, 7 |
+| Frame, scale bar of the header | `polygon` or `polyline` class `frame`, grey `#555555`, 0.18 mm | grey 0.33, 0.18 mm | `FRAME`, 8 |
+| Marks | `polyline` class `mark`, red `#c0392b`, 0.18 mm | red, 0.18 mm | `MARKS`, 1 |
+| Text | `text`, Helvetica, Arial, sans-serif | Helvetica (standard font, WinAnsiEncoding) | `TEXT`, 5 |
+
+### SVG
+
+One sheet. `width` and `height` in mm, `viewBox` in mm (1 unit = 1 mm), white background. Coordinates with 3 decimals.
+
+### DXF
+
+| Property | Value |
+| --- | --- |
+| Version | AutoCAD R12 (`$ACADVER` `AC1009`), ASCII, CRLF line ends |
+| Header | `$INSUNITS` 4 (mm), `$EXTMIN`, `$EXTMAX` |
+| Tables | line type `CONTINUOUS`; layers `PROFILE`, `FRAME`, `MARKS`, `TEXT` |
+| Outlines | `POLYLINE` with `VERTEX` and `SEQEND`; flag 1 (closed) for profiles and template frames, 0 for the scale bar and the marks |
+| Text | `TEXT`; `°` as `%%d`, other characters outside ASCII as `\U+XXXX` |
+| Coordinates | 4 decimals, z = 0 |
+
+### PDF
+
+| Property | Value |
+| --- | --- |
+| Version | PDF 1.4 |
+| Page | A4 (210 × 297 mm), A3 (297 × 420 mm) or Letter (215.9 × 279.4 mm), portrait or landscape (paging: [[User Guide]], section Foam cutting) |
+| Scale | 1:1: 1 mm = 72/25.4 pt |
+| Font | Helvetica, WinAnsiEncoding; characters outside it as `?` |
+| Content streams | FlateDecode |
+| Info | `Title`: `<project name>: foam-core templates` in the interface language; `Producer`: `Wingdesigner` |
+| Page foot | 100 mm scale bar, black, 0.2 mm, and `100 mm. Page <i> of <n>.` (3 mm text) |
+| Registration crosses | in the overlap of 2 strips of a split template, black, 0.15 mm, 6 mm across |
+
+### Verification
+
+Independent readers of 11 test wings (the STEP cases without the Y-up copy), each cut as proposed for a longest core of 300 mm, one with a 1 mm kerf, one on A3, one on Letter: ezdxf 1.4.4 reads every DXF with its recover module and its audit finds no error; every profile polyline is closed and has the expected vertex count, and without kerf its width and height equal those of its `mm/` `.dat` file within 0.001 mm. pypdf 6.19.0 reads every PDF in strict mode: page count and size as computed, a page label on every page. Every SVG parses as XML with one profile polygon per segment end. The script reads every ZIP with the Python standard library: the expected entries, 121 points in every `.dat` file, one `segments.csv` row per segment.
+
+Not tested: hot-wire cutting programs (Jedicut, GMFC, DevFoam and others) with these files; CAD programs and laser cutters with the DXF; printers with the PDF and SVG.
 
 ## File sizes
 

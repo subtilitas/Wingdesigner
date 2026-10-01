@@ -21,7 +21,7 @@ import {
 } from './helpers.js';
 
 const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
-const TOP_BAR = ['New', 'Open', 'Save', 'Export', 'Undo', 'Redo', 'Help'];
+const TOP_BAR = ['New', 'Open', 'Save', 'Export', 'Foam', 'Undo', 'Redo', 'Help'];
 // With mitred section planes (the default) every card but the tip's has the panel angle.
 const CARD_LABELS = ['Airfoil', 'y (mm)', 'x (mm)', 'z (mm)', 'Chord (mm)', 'Twist (deg)', 'Panel angle (deg)'];
 // A valid airfoil with a "few points" warning (from the smoke test).

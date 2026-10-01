@@ -46,6 +46,7 @@ Derivatives are written dx/du and d²x/du². Subscripts are point indices (Q_k, 
 | 5. Meshes | `src/geom/mesh.js`, `src/geom/triangulate.js` | A3.5 |
 | 6. STEP (Standard for the Exchange of Product model data) topology | `src/export/step.js` | A5.1 |
 | 7. Planform statistics | `src/geom/stats.js`, `src/geom/wing.js` (`planformAt`) | – |
+| 8. Foam cores | `src/geom/foam.js` | A3.5 (per column curve) |
 
 ## 1. Airfoil to NURBS curve
 
@@ -793,3 +794,116 @@ x 50.0 mm, **Root / tip chord** 200.0 / 90.0 mm, **Surface** degree 3 × 3, 121 
 **Trailing edge** `open`.
 
 ![Checks tab, Glider preset: span, wing area, aspect ratio, MAC, MAC position, 25 % MAC, root and tip chord, surface degree and control points, trailing edge](images/checks.png)
+
+## 8. Foam cores
+
+The foam-cutting wizard ([[User Guide|User-Guide]], section Foam cutting) splits the half wing into
+segments. Each segment is one foam core. A hot wire cuts it as a ruled surface: straight lines
+between two end profiles. Code: `src/geom/foam.js`.
+
+### 8.1 Cuts
+
+A cut is a span position y in mm. Root and tip are the ends; the cuts lie between them.
+
+| Rule | Value |
+| --- | --- |
+| Proposal | A cut at every section between root and tip. Each piece between them splits into n = min(ceil(L / L_max), floor(Δy / 5 mm)) parts of equal length along the reference line; a curved line (**Smooth** blending) gets shorter parts in y where it is steeper. L: length of the reference line of the piece; Δy: its extent in y; L_max: **Longest core**. The second bound keeps the parts at least 5 mm apart in y on a straight panel; on a curved line a cut closer than 5 mm in y to the one before is dropped. Within 200 segments the section cuts stay; when the pieces ask for more cuts than are left, each gets its share in proportion to the cuts it asks for (largest remainders first, then inboard) |
+| Reference line | (y, z) of the stations, linear between them. Its length counts the dihedral: 600 mm in y at 1.5° are 600.2 mm |
+| Shortest segment | 5 mm in y. A cut closer than 5 mm to the cut before it, to the root or to the tip is dropped |
+| Sections closer than 5 mm | One cut, at the first of them |
+| Segments | at most 200 per half wing; further cuts are dropped |
+
+### 8.2 Segment frame
+
+```
+z_ref(y)  = z of the stations, linear in y between them
+α         = atan2(z_ref(y_b) − z_ref(y_a), y_b − y_a)       axis angle of the segment (°)
+a         = (0, cos α, sin α)                               axis direction
+up        = (0, −sin α, cos α)                              up direction of the end faces
+```
+
+y_a and y_b are the inboard and the outboard cut. Without dihedral α = 0, a = (0, 1, 0) and up = (0, 0, 1).
+
+### 8.3 Joint planes and end faces
+
+The joint plane at a cut is where two cores meet, or where a core ends at root or tip:
+
+| Cut | Joint plane |
+| --- | --- |
+| Root, tip, a section | the section plane of the station there (section 3.8): vertical, or rolled by φ about x |
+| Between two sections | the bisector of the two segment axes: square to both when α is equal on both sides |
+
+```
+n         = (0, cos φ, sin φ)                    normal of a section plane
+n         = (a_k + a_(k+1)) / |a_k + a_(k+1)|    bisector of segments k and k + 1
+q(u)      = point of the wing surface in the joint plane, for each u of the surface
+d_in      = min over u of q_in(u) · a             inboard end face  {p : p · a = d_in}
+d_out     = max over u of q_out(u) · a            outboard end face {p : p · a = d_out}
+L_core    = d_out − d_in                          core length along the axis
+```
+
+- The end faces are square to the axis and parallel: the faces of a block that a hot-wire cutter makes.
+- Each end face lies where the shortest core that covers the joint profile q ends. The core is then at least as long as the wing segment, and sanding brings its end face to the joint plane.
+- Points of the wing beyond the end of the segment come from the segment surface continued straight along its end tangent in v. A core does not take the shape of its neighbour across a dihedral break.
+
+Wedge between end face and joint plane:
+
+```
+angle     = acos |n · a|                                     (°); none below 0.001°
+depth     = max over u of q(u) · a − min over u of q(u) · a   (mm, along the axis)
+side      = upper or lower: where q lies farthest from the end face
+```
+
+| Wing | Joint | Wedge |
+| --- | --- | --- |
+| Straight panel at 10° dihedral, **Mitred** section planes | root (vertical plane) | 10°, h · tan 10° deep at the upper surface (h: height of the airfoil at its chord, square to the panel: 24.31 mm at 200 mm chord of NACA 2412 gives 4.29 mm) |
+| same | tip (square to the panel) | none |
+| same, cut halfway | bisector of equal axes | none |
+| Gull: panels at 15° and −5°, **Mitred** | the section at the break (bisector plane) | 10° at the lower surface on both cores |
+| Sample wing (**Vertical** planes, panels at 1.91° and 3.81°) | the section at y = 300 mm (vertical) | 1.91° at the lower surface (inboard core), 3.81° at the upper surface (outboard core) |
+
+### 8.4 End profiles
+
+```
+P(u)      = point of the segment surface in the end face {p : p · a = d}, for each u of the surface
+x         = P_x − x_0
+h         = P · up − h_0
+(x_0, h_0) = smallest x and smallest P · up over both end profiles of the segment
+```
+
+- u runs over the surface parameters of the build (2N + 1 values, 121 at N = 60): upper TE, LE, lower TE.
+- Point i of the inboard profile and point i of the outboard profile lie on one ruling of the core. A cutting program that moves both wire ends from point to point with the same index cuts the ruled core.
+- The origin (x, h) = (0, 0) is the front lower corner of the smallest block that holds both profiles.
+- Per end profile: LE = point at u_LE; TE = midpoint of the first and the last point; chord = |TE − LE|; incidence = atan2(h_LE − h_TE, x_TE − x_LE), positive nose up.
+- Root find per u: the column curve C_u(v) = Σ N_i(u) P_ij is a B-spline curve in v; regula falsi with bisection steps (`solveMonotonic`) to 1e-10 mm in p · a. Outside [v_a, v_b] the continued straight line gives the point in one step.
+
+A straight panel of one airfoil at 10° dihedral:
+
+| Section planes | End profile thickness |
+| --- | --- |
+| **Mitred** | the airfoil at its chord: the root is stretched by 1/cos 10° and the tip is square to the panel, so every cut square to the panel is the airfoil |
+| **Vertical** | cos 10° = 0.985 of the airfoil: the wing is cos δ as thick across the panel (section 3.8) |
+
+### 8.5 Deviation
+
+The ruled core is compared with the wing in planes parallel to the end faces: 7 planes at s = 1/8 … 7/8 of the core length, and one plane through each loft station inside the segment, where a guide curve or **Smooth** blending can bend the wing between the 7 planes. Each station lies in one segment, so the loft grid limit (5,000,000 points) also bounds the planes. The nearest edge of W_s to R_s(u) is searched from the same index u outward, in a window that doubles while the nearest edge lies at its border.
+
+```
+d_s       = d_in + s · (d_out − d_in)
+R_s(u)    = (1 − s) · A(u) + s · B(u)       ruled core: A, B inboard and outboard end profile
+W_s       = closed polygon of the segment surface in the plane p · a = d_s, at every u
+deviation = max over s and u of the distance from R_s(u) to W_s     (mm)
+```
+
+| Wing | Deviation |
+| --- | --- |
+| Straight panels (**Straight panels**, or **Linear** with stations at the sections only) | 0 up to round-off (below 1e-9 mm in the tested wings) |
+| **Sport** preset: chord 240 to 144 mm, NACA 2412 to 2410, twist 0 to −1°, **Linear**, **Mitred**: 1 core, y = 0 to 600 mm | 0.341 mm |
+| same, 2 cores, y = 0 to 300 and 300 to 600 mm | 0.085 mm |
+| **Glider** preset (elliptic, guide curves): 2 cores, y = 0 to 500 and 500 to 1000 mm | 1.348 and 2.489 mm |
+| same, split to 0.2 mm | 10 cores, at most 0.156 mm |
+
+- A **Linear** panel between **Mitred** section planes of different roll (with dihedral, at least the root panel) gets stations between its sections (section 3.2). Its loft then follows c(y) · airfoil(y): both factors are linear in y, their product is not. The ruled core misses it by up to 0.25 mm on the **Sport** wing without twist. With a loft of stations at the sections only, taper and twist give no deviation: the **Sport** wing with **Vertical** planes deviates 0 mm.
+- The deviation falls with the square of the segment length: halving a core gives about 1/4.
+- Splitting (**Split segments over the limit**): every segment of 10 mm or more above the limit is cut in the middle (in y), and the whole set is computed again; this repeats until no such segment is left or 200 segments are reached. A segment shorter than 10 mm is not split.
+- Time in Node.js 24 on a 2.1 GHz server processor: 5 to 19 ms for the proposal of the 6 wizard presets, about 1 s for 200 segments of the **Glider**.
