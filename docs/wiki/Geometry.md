@@ -325,7 +325,7 @@ Example: **Swept flying wing** preset (3 sections, **Linear**, tip twist −4°)
 y = 150.0 mm and y = 450.0 mm. The same preset with tip twist 0°: no added station.
 
 Pointed elliptic tips (wizard: **Planform** = **Elliptic (guide curves)**, **Tip** =
-**Pointed (1/200 scale)**), every preset: 5 to 9 added stations. Largest deviation at the check
+**Pointed (1/200 scale)**), each of the 6 presets with a straight or elliptic planform (Trainer, Sport, Glider, Swept flying wing, Plank, Tail surface): 5 to 9 added stations. Largest deviation at the check
 positions: 0.077 mm (**Tail surface**) to 0.371 mm (**Swept flying wing**), below the tolerance; no
 warning. The nose line and the end line end a quarter and three quarters of the tip chord around
 the sweep line, so the tip section keeps its quarter chord on that line. Within 2 mm of the tip the
@@ -976,4 +976,4 @@ deviation = max over s and u of the distance from R_s(u) to W_s     (mm)
 - A **Linear** panel between **Mitred** section planes of different roll (with dihedral, at least the root panel) gets stations between its sections (section 3.2). Its loft then follows c(y) · airfoil(y): both factors are linear in y, their product is not. The ruled core misses it by up to 0.25 mm on the **Sport** wing without twist. With a loft of stations at the sections only, taper and twist give no deviation: the **Sport** wing with **Vertical** planes deviates 0 mm.
 - The deviation falls with the square of the segment length: halving a core gives about 1/4.
 - Splitting (**Split segments over the limit**): every segment of 10 mm or more above the limit is cut in the middle (in y), and the whole set is computed again; this repeats until no such segment is left or 200 segments are reached. A segment shorter than 10 mm is not split.
-- Time in Node.js 24 on a 2.1 GHz server processor: 5 to 19 ms for the proposal of the 6 wizard presets, about 1 s for 200 segments of the **Glider**.
+- Time in Node.js 24 on a 2.1 GHz server processor: 5 to 19 ms for the proposal of the 6 wizard presets with a straight or elliptic planform, about 1 s for 200 segments of the **Glider**.
