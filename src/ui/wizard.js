@@ -1,6 +1,6 @@
 // New-design wizard dialog with live planform preview and key figures.
 
-import { PRESETS, RANGES, wizardProblems, wizardProject } from '../model/wizard.js';
+import { MAX_PANELS, PANEL_RANGES, PRESETS, RANGES, panelsFromParams, wizardProblems, wizardProject } from '../model/wizard.js';
 import { buildWing } from '../geom/wing.js';
 import { LIMITS } from '../model/project.js';
 import { wingStats } from '../geom/stats.js';
@@ -17,6 +17,17 @@ const FIELDS = [
   { key: 'dihedral', label: () => tr('Dihedral per half'), unit: () => tr('deg'), step: 0.5 },
   { key: 'washout', label: () => tr('Tip twist (negative = washout)'), unit: () => tr('deg'), step: 0.5 },
   { key: 'sections', label: () => tr('Number of sections'), unit: () => '', step: 1 },
+];
+
+// Fields that the panel list replaces.
+const PANEL_REPLACED = ['taper', 'sweep', 'dihedral', 'sections'];
+
+// Columns of the panel table: the value as shown (span share and outer chord in %), its step and range.
+const PANEL_COLUMNS = [
+  { key: 'span', label: () => tr('Span share (%)'), scale: 100, step: 5 },
+  { key: 'sweep', label: () => tr('Leading-edge sweep (deg)'), scale: 1, step: 1 },
+  { key: 'chord', label: () => tr('Outer chord (% of root)'), scale: 100, step: 5 },
+  { key: 'dihedral', label: () => tr('Dihedral (deg)'), scale: 1, step: 0.5 },
 ];
 
 /**
@@ -48,7 +59,9 @@ export function drawPlanform(ctx, view, w, hgt, stations) {
 export function openWizard({ firstRun = false } = {}) {
   return new Promise((resolve) => {
     let preset = 'sport';
-    let params = { ...PRESETS[preset].params };
+    // The panel list is copied too: the table edits it in place.
+    const copy = (p) => ({ ...p, ...(p.panels ? { panels: p.panels.map((q) => ({ ...q })) } : {}) });
+    let params = copy(PRESETS[preset].params);
     const nameInput = h('input', { type: 'text', value: PRESETS[preset].label, 'aria-label': tr('Project name'), maxLength: LIMITS.maxName });
     const inputs = {};
     const presetBox = h('div', { class: 'preset-grid', role: 'radiogroup', 'aria-label': tr('Design type') });
@@ -69,7 +82,7 @@ export function openWizard({ firstRun = false } = {}) {
               class: `preset${key === preset ? ' active' : ''}`,
               onclick: () => {
                 preset = key;
-                params = { ...p.params };
+                params = copy(p.params);
                 nameInput.value = p.label;
                 renderPresets();
                 renderFields();
@@ -83,8 +96,82 @@ export function openWizard({ firstRun = false } = {}) {
       );
     };
 
+    const panelTable = () => {
+      const rows = params.panels.map((q, i) =>
+        h(
+          'tr',
+          {},
+          h('th', { scope: 'row' }, String(i + 1)),
+          ...PANEL_COLUMNS.map((c) => {
+            const [lo, hi] = PANEL_RANGES[c.key];
+            // The shown value without the round-off of the scaling (0.07 · 100 = 7.000000000000001).
+            const shown = () => Math.round(q[c.key] * c.scale * 1e6) / 1e6;
+            const input = numberField({ value: shown(), step: c.step, min: lo * c.scale, max: hi * c.scale, className: 'num' });
+            input.setAttribute('aria-label', tr('Panel {n}: {column}', { n: i + 1, column: c.label() }));
+            input.addEventListener('input', () => {
+              q[c.key] = readNumber(input.value) / c.scale;
+              refresh();
+            });
+            input.addEventListener('change', () => {
+              if (Number.isFinite(q[c.key])) showNumber(input, shown());
+            });
+            return h('td', {}, input);
+          }),
+          h(
+            'td',
+            {},
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'small',
+                disabled: params.panels.length <= 1,
+                'aria-label': tr('Remove panel {n}', { n: i + 1 }),
+                onclick: () => {
+                  params.panels.splice(i, 1);
+                  renderFields();
+                  refresh();
+                },
+              },
+              '×',
+            ),
+          ),
+        ),
+      );
+      const total = params.panels.reduce((sum, q) => sum + (Number.isFinite(q.span) ? q.span : 0), 0);
+      return h(
+        'div',
+        { class: 'panel-list' },
+        h(
+          'table',
+          { class: 'panel-table', 'aria-label': tr('Panels from root to tip') },
+          h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, tr('Panel')), ...PANEL_COLUMNS.map((c) => h('th', { scope: 'col' }, c.label())), h('th', {}))),
+          h('tbody', {}, ...rows),
+        ),
+        h(
+          'div',
+          { class: 'row' },
+          h(
+            'button',
+            {
+              type: 'button',
+              disabled: params.panels.length >= MAX_PANELS,
+              onclick: () => {
+                params.panels.push({ ...params.panels[params.panels.length - 1] });
+                renderFields();
+                refresh();
+              },
+            },
+            tr('Add panel'),
+          ),
+          h('span', { class: 'small muted' }, tr('Shares sum to {sum} %; they are scaled to the half span.', { sum: fixed(total * 100, 1) })),
+        ),
+      );
+    };
+
     const renderFields = () => {
-      const rows = FIELDS.map((f) => {
+      const panels = params.planform === 'panels';
+      const rows = FIELDS.filter((f) => !(panels && PANEL_REPLACED.includes(f.key))).map((f) => {
         const [lo, hi] = RANGES[f.key];
         // Checked while typing: a text that is no number (NaN) is out of range and disables Create.
         // The arrow keys step such a text from the preset's value.
@@ -107,11 +194,15 @@ export function openWizard({ firstRun = false } = {}) {
         {
           onchange: (e) => {
             params.planform = e.target.value;
+            // The first switch to panels starts from the straight planform of the current numbers.
+            if (params.planform === 'panels' && !params.panels?.length) params.panels = panelsFromParams(params);
+            renderFields();
             refresh();
           },
         },
         h('option', { value: 'straight', selected: params.planform === 'straight' }, tr('Straight taper')),
         h('option', { value: 'elliptic', selected: params.planform === 'elliptic' }, tr('Elliptic (guide curves)')),
+        h('option', { value: 'panels', selected: params.planform === 'panels' }, tr('Panels (table)')),
       );
       const airfoil = (key, label) =>
         h(
@@ -136,8 +227,9 @@ export function openWizard({ firstRun = false } = {}) {
             refresh();
           },
         },
-        h('option', { value: 'flat', selected: params.tip !== 'pointed' }, tr('Flat')),
+        h('option', { value: 'flat', selected: params.tip !== 'pointed' && params.tip !== 'elliptic' }, tr('Flat')),
         h('option', { value: 'pointed', selected: params.tip === 'pointed' }, tr('Pointed (1/200 scale)')),
+        h('option', { value: 'elliptic', selected: params.tip === 'elliptic' }, tr('Elliptic (panels only)')),
       );
       clear(fieldsBox).append(
         ...rows,
@@ -145,6 +237,7 @@ export function openWizard({ firstRun = false } = {}) {
         h('label', { class: 'field' }, tr('Tip'), tip),
         airfoil('rootAirfoil', tr('Root airfoil (NACA)')),
         airfoil('tipAirfoil', tr('Tip airfoil (NACA)')),
+        ...(panels ? [panelTable()] : []),
       );
     };
 

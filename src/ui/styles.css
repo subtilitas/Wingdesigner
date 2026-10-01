@@ -639,6 +639,30 @@ dialog::backdrop {
   width: 100%;
 }
 
+/* Panel list of the planform Panels: both columns of the field grid, scrolls sideways on a phone. */
+.panel-list {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow-x: auto;
+  margin: 4px 0;
+}
+
+.panel-table {
+  border-collapse: collapse;
+}
+
+.panel-table th,
+.panel-table td {
+  padding: 2px 4px;
+  text-align: left;
+  vertical-align: bottom;
+  font-weight: normal;
+}
+
+.wizard-fields .panel-table input {
+  width: 5.5em;
+}
+
 /* XFLR5 import dialog: the surface choice as two cards (a missing surface stays visible with its reason),
    the airfoil table and the report. Names from the file can be long and have no spaces. */
 .xflr5-source {

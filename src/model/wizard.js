@@ -8,16 +8,61 @@
 //   dihedral   dihedral angle of each half
 //   washout    twist at the tip (negative = leading edge down)
 //   sections   number of sections (2 .. 8), evenly spaced along the half span
-//   planform   'straight' (linear taper) or 'elliptic' (nose and end guide curves)
-//   tip        'flat' (cut at the tip section) or 'pointed' (tip profile scaled to 1/200 of the
+//   planform   'straight' (linear taper), 'elliptic' (nose and end guide curves) or 'panels'
+//   panels     with planform 'panels': the half span from root to tip as panels { span (share of the
+//              half span, the shares are normalized), sweep (leading-edge sweep, positive = swept
+//              back), chord (chord at the outer end / root chord), dihedral }; taper, sweep and
+//              sections are then not used, and every panel end is a section
+//   tip        'flat' (cut at the tip section), 'pointed' (tip profile scaled to 1/200 of the
 //              previous section, at least 1 mm; an elliptic planform then converges to the 25 % line
-//              at the tip)
+//              at the tip) or, with panels, 'elliptic' (the last panel ends in a quarter ellipse:
+//              ELLIPTIC_TIP_SECTIONS sections, its quarter-chord line straight at the panel's
+//              leading-edge sweep, the last one pointed)
 //   rootAirfoil, tipAirfoil  NACA designations
 
 import { parseNacaCode } from '../airfoil/naca.js';
 import { nacaEntry } from '../airfoil/library.js';
 import { plain, tr, whole } from '../i18n/index.js';
 import { LIMITS, createProject } from './project.js';
+
+/** Sections of an elliptic tip (the last one pointed). */
+export const ELLIPTIC_TIP_SECTIONS = 6;
+
+/** Most panels per half. */
+export const MAX_PANELS = 24;
+
+/**
+ * Panels of an outline given at span fractions `etas` (0 … 1) by leading-edge and trailing-edge x
+ * (any length unit, x aft): each panel a straight segment between two of the points. Returns
+ * { rootChord (in the unit of the outline, times `scale`), panels }.
+ */
+function panelsFromOutline(etas, le, te, halfSpan, scale) {
+  const c0 = te[0] - le[0];
+  const panels = [];
+  for (let i = 1; i < etas.length; i++) {
+    const dy = (etas[i] - etas[i - 1]) * halfSpan;
+    const dx = (le[i] - le[i - 1]) * scale;
+    panels.push({
+      span: Math.round((etas[i] - etas[i - 1]) * 1000) / 1000,
+      sweep: Math.round((Math.atan2(dx, dy) * 1800) / Math.PI) / 10,
+      chord: Math.round(((te[i] - le[i]) / c0) * 1000) / 1000,
+      dihedral: 0,
+    });
+  }
+  return { rootChord: Math.round(c0 * scale), panels };
+}
+
+// Batwing outline (planform of the Batwing of the 1989 film, right half, read from a top view with
+// the half span as 400 units, x aft): the leading edge runs into a notch beside the fuselage and on
+// to the forward point of the ear at 66 % of the half span; the trailing edge runs from a concave
+// scallop to the rear spike at 51 %; both meet in the round tip.
+const BAT_ETA = [0, 0.15, 0.25, 0.33, 0.4, 0.47, 0.51, 0.58, 0.66, 0.75, 0.85, 0.93, 1];
+const BAT_LE = [470, 490, 515, 545, 560, 535, 505, 455, 400, 450, 515, 585, 660];
+const BAT_TE = [760, 765, 770, 790, 820, 890, 970, 940, 905, 865, 810, 745, 660];
+const BAT = panelsFromOutline(BAT_ETA, BAT_LE, BAT_TE, 500, 500 / 400);
+
+/** Leading-edge sweep (degrees) of a straight-trailing-edge delta: x_TE(tip) = root chord. */
+const deltaSweep = (rootChord, tipChord, halfSpan) => Math.round((Math.atan((rootChord - tipChord) / halfSpan) * 1800) / Math.PI) / 10;
 
 // label and description are getters: they follow the language at the time they are read.
 export const PRESETS = {
@@ -47,6 +92,102 @@ export const PRESETS = {
       return tr('High aspect ratio with elliptic planform, dihedral and washout.');
     },
     params: { span: 2000, rootChord: 200, taper: 0.45, sweep: 0, dihedral: 4, washout: -1.5, sections: 3, tip: 'flat', planform: 'elliptic', rootAirfoil: '2410', tipAirfoil: '2408' },
+  },
+  sailplane: {
+    get label() {
+      return tr('Sailplane');
+    },
+    get description() {
+      return tr('Aspect ratio 16.8 with polyhedral (2°, 6°, 10°) and an elliptic or flat tip.');
+    },
+    params: {
+      span: 3000,
+      rootChord: 210,
+      taper: 0.5,
+      sweep: 0,
+      dihedral: 2,
+      washout: -2,
+      sections: 4,
+      tip: 'elliptic',
+      planform: 'panels',
+      panels: [
+        { span: 0.45, sweep: 0, chord: 0.95, dihedral: 2 },
+        { span: 0.35, sweep: 1.5, chord: 0.75, dihedral: 6 },
+        { span: 0.2, sweep: 4, chord: 0.5, dihedral: 10 },
+      ],
+      rootAirfoil: '2410',
+      tipAirfoil: '2408',
+    },
+  },
+  deltaJet: {
+    get label() {
+      return tr('Delta jet');
+    },
+    get description() {
+      return tr('Delta wing, leading edge swept 54.9°, straight trailing edge.');
+    },
+    params: {
+      span: 900,
+      rootChord: 800,
+      taper: 0.2,
+      sweep: 45,
+      dihedral: 0,
+      washout: 0,
+      sections: 2,
+      tip: 'flat',
+      planform: 'panels',
+      panels: [{ span: 1, sweep: deltaSweep(800, 160, 450), chord: 0.2, dihedral: 0 }],
+      rootAirfoil: '0008',
+      tipAirfoil: '0006',
+    },
+  },
+  doubleDelta: {
+    get label() {
+      return tr('Double delta');
+    },
+    get description() {
+      return tr('Strake swept 70°, outer delta swept 45°, straight trailing edge.');
+    },
+    params: {
+      span: 1000,
+      rootChord: 1000,
+      taper: 0.24,
+      sweep: 45,
+      dihedral: 0,
+      washout: 0,
+      sections: 3,
+      tip: 'flat',
+      planform: 'panels',
+      // Strake: 150 mm at 70° moves the leading edge 412.1 mm aft; the outer delta: 350 mm at 45°.
+      panels: [
+        { span: 0.3, sweep: 70, chord: 0.588, dihedral: 0 },
+        { span: 0.7, sweep: 45, chord: 0.238, dihedral: 0 },
+      ],
+      rootAirfoil: '0008',
+      tipAirfoil: '0006',
+    },
+  },
+  batwing: {
+    get label() {
+      return tr('Batwing');
+    },
+    get description() {
+      return tr('Bat-shaped flying wing: ears ahead, scalloped trailing edge, rear spikes, round tips.');
+    },
+    params: {
+      span: 1000,
+      rootChord: BAT.rootChord,
+      taper: 0.5,
+      sweep: 0,
+      dihedral: 0,
+      washout: 0,
+      sections: 2,
+      tip: 'pointed',
+      planform: 'panels',
+      panels: BAT.panels,
+      rootAirfoil: '0010',
+      tipAirfoil: '0008',
+    },
   },
   flyingWing: {
     get label() {
@@ -89,6 +230,14 @@ export const RANGES = {
   sections: [2, 8],
 };
 
+/** Ranges of the panel values (span: share before normalization; chord: ratio to the root chord). */
+export const PANEL_RANGES = {
+  span: [0.001, 100],
+  sweep: [-80, 80],
+  chord: [0, 3],
+  dihedral: [-60, 60],
+};
+
 // The parameter as a message names it: the identifier in English, the term of the wizard in German.
 const PARAM_NAMES = {
   span: () => tr('span'),
@@ -108,15 +257,55 @@ const bound = (v) => (Number.isInteger(v) ? whole(v) : plain(v));
 /** Problems with the parameters; empty when valid. */
 export function wizardProblems(params) {
   const out = [];
+  const panels = params.planform === 'panels';
   for (const [k, [lo, hi]] of Object.entries(RANGES)) {
+    // With panels, taper, sweep, dihedral and sections come from the panel list.
+    if (panels && ['taper', 'sweep', 'dihedral', 'sections'].includes(k)) continue;
     const v = params[k];
     if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi) out.push(tr('{param} must be between {min} and {max}.', { param: PARAM_NAMES[k](), min: bound(lo), max: bound(hi) }));
   }
-  if (!Number.isInteger(params.sections)) out.push(tr('sections must be an integer.'));
-  if (!['straight', 'elliptic'].includes(params.planform)) out.push(tr('planform must be "straight" or "elliptic".'));
-  if (!['flat', 'pointed', undefined].includes(params.tip)) out.push(tr('tip must be "flat" or "pointed".'));
+  if (!panels && !Number.isInteger(params.sections)) out.push(tr('sections must be an integer.'));
+  if (!['straight', 'elliptic', 'panels'].includes(params.planform)) out.push(tr('planform must be "straight", "elliptic" or "panels".'));
+  if (!['flat', 'pointed', 'elliptic', undefined].includes(params.tip)) out.push(tr('tip must be "flat", "pointed" or "elliptic".'));
+  if (params.tip === 'elliptic' && !panels) out.push(tr('An elliptic tip needs the planform Panels.'));
+  if (panels) out.push(...panelProblems(params));
   if (params.planform === 'elliptic' && params.tip !== 'pointed' && params.taper >= 1) out.push(tr('An elliptic planform needs taper < 1.'));
   for (const k of ['rootAirfoil', 'tipAirfoil']) if (!parseNacaCode(params[k] ?? '')) out.push(tr('{param} must be a NACA 4- or 5-digit designation.', { param: PARAM_NAMES[k]() }));
+  return out;
+}
+
+/**
+ * The straight planform of `params` as one panel: the leading-edge sweep that puts the tip where the
+ * swept 25 % line puts it, the taper as outer chord, the dihedral. Elliptic planforms give the same.
+ */
+export function panelsFromParams(params) {
+  const b = params.span / 2;
+  const c0 = params.rootChord;
+  const ct = c0 * params.taper;
+  const xTip = 0.25 * (c0 - ct) + b * Math.tan((params.sweep * Math.PI) / 180);
+  return [{ span: 1, sweep: Math.round((Math.atan2(xTip, b) * 1800) / Math.PI) / 10, chord: params.taper, dihedral: params.dihedral }];
+}
+
+/** Problems of the panel list of a 'panels' planform. */
+function panelProblems(params) {
+  const list = params.panels;
+  if (!Array.isArray(list) || list.length < 1 || list.length > MAX_PANELS) return [tr('The planform Panels needs 1 to {max} panels.', { max: MAX_PANELS })];
+  const out = [];
+  const names = { span: () => tr('span share'), sweep: () => tr('leading-edge sweep'), chord: () => tr('outer chord'), dihedral: () => tr('dihedral') };
+  list.forEach((q, i) => {
+    for (const [k, [lo, hi]] of Object.entries(PANEL_RANGES)) {
+      const v = q?.[k];
+      if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi) out.push(tr('Panel {n}: {param} must be between {min} and {max}.', { n: i + 1, param: names[k](), min: bound(lo), max: bound(hi) }));
+    }
+  });
+  if (out.length) return out;
+  // Every section but a pointed or elliptic tip keeps at least the smallest chord.
+  const last = list.length - 1;
+  const endsInPoint = params.tip === 'pointed' || params.tip === 'elliptic';
+  list.forEach((q, i) => {
+    if (i === last && endsInPoint) return;
+    if (Number.isFinite(params.rootChord) && q.chord * params.rootChord < LIMITS.minChord) out.push(tr('Panel {n}: the outer chord is below {min} mm.', { n: i + 1, min: plain(LIMITS.minChord) }));
+  });
   return out;
 }
 
@@ -138,6 +327,7 @@ function leadingEdgeX(params, y, chord) {
 export function wizardProject(params, name) {
   const problems = wizardProblems(params);
   if (problems.length) throw new Error(problems.join(' '));
+  if (params.planform === 'panels') return panelProject(params, name);
   const b = params.span / 2;
   const n = params.sections;
   const airfoils = [];
@@ -190,5 +380,65 @@ export function wizardProject(params, name) {
   }
   project.settings.trailingEdge = { mode: 'thickness', thickness: Math.max(0.3, r(params.rootChord * 0.002)) };
   project.settings.tip = { mode: params.tip === 'pointed' ? 'pointed' : 'flat', ratio: 0.005 };
+  return project;
+}
+
+/** Sections of a 'panels' planform: one at the root and one at the outer end of every panel. */
+function panelProject(params, name) {
+  const b = params.span / 2;
+  const c0 = params.rootChord;
+  const total = params.panels.reduce((sum, q) => sum + q.span, 0);
+  const airfoils = [];
+  const idOf = (code) => {
+    const id = `naca${parseNacaCode(code).code}`;
+    if (!airfoils.some((a) => a.id === id)) airfoils.push({ id, ...nacaEntry(code) });
+    return id;
+  };
+  const rootId = idOf(params.rootAirfoil);
+  const tipId = idOf(params.tipAirfoil);
+  const r = (v) => Math.round(v * 100) / 100;
+  const tan = (deg) => Math.tan((deg * Math.PI) / 180);
+  // Stations along the half span: { y, x (leading edge), z, chord }.
+  const pts = [{ y: 0, x: 0, z: 0, chord: c0 }];
+  params.panels.forEach((q, i) => {
+    const prev = pts[pts.length - 1];
+    const dy = (q.span / total) * b;
+    const tipPanel = i === params.panels.length - 1;
+    if (tipPanel && params.tip === 'elliptic') {
+      // Quarter ellipse: chord c(t) = c_in · sqrt(1 − t²), the quarter-chord line straight at the
+      // panel's sweep, t = sin(π k / (2 m)) for k = 1 … m (closer together towards the tip).
+      const m = ELLIPTIC_TIP_SECTIONS;
+      const xq = prev.x + 0.25 * prev.chord;
+      for (let k = 1; k <= m; k++) {
+        const t = k === m ? 1 : Math.sin((Math.PI * k) / (2 * m));
+        const chord = prev.chord * Math.sqrt(Math.max(0, 1 - t * t));
+        const y = prev.y + t * dy;
+        pts.push({ y, x: xq + t * dy * tan(q.sweep) - 0.25 * chord, z: prev.z + t * dy * tan(q.dihedral), chord });
+      }
+      return;
+    }
+    pts.push({ y: prev.y + dy, x: prev.x + dy * tan(q.sweep), z: prev.z + dy * tan(q.dihedral), chord: q.chord * c0 });
+  });
+  // A pointed or elliptic tip ends in the scaled chord (1/200 of the section before, at least 1 mm).
+  const n = pts.length;
+  if (params.tip === 'pointed' || params.tip === 'elliptic') {
+    const tipChord = Math.max(pts[n - 2].chord * 0.005, LIMITS.minChord);
+    const tip = pts[n - 1];
+    // The tip point keeps its quarter-chord position.
+    tip.x += 0.25 * (tip.chord - tipChord);
+    tip.chord = tipChord;
+  }
+  const sections = pts.map((q, i) => ({
+    id: `s${i + 1}`,
+    airfoil: i === n - 1 ? tipId : rootId,
+    x: r(q.x),
+    y: r(q.y),
+    z: r(q.z),
+    chord: r(q.chord),
+    twist: r((params.washout * q.y) / b),
+  }));
+  const project = createProject({ name: name || tr('{span} mm wing', { span: plain(params.span) }), airfoils, sections });
+  project.settings.trailingEdge = { mode: 'thickness', thickness: Math.max(0.3, r(c0 * 0.002)) };
+  project.settings.tip = { mode: params.tip === 'pointed' || params.tip === 'elliptic' ? 'pointed' : 'flat', ratio: 0.005 };
   return project;
 }
