@@ -146,7 +146,7 @@ function lineLength(stations, ya, yb) {
 function sectionCuts(build) {
   const out = [];
   for (const s of build.sections) {
-    if (s.y <= build.rootY + FOAM_LIMITS.minSegment || s.y >= build.tipY - FOAM_LIMITS.minSegment) continue;
+    if (s.y < build.rootY + FOAM_LIMITS.minSegment || s.y > build.tipY - FOAM_LIMITS.minSegment) continue;
     if (out.length && s.y - out[out.length - 1] < FOAM_LIMITS.minSegment) continue;
     out.push(s.y);
   }
@@ -156,16 +156,20 @@ function sectionCuts(build) {
 /**
  * Cuts proposed for cores of at most `maxLength` mm along the reference line: at every section
  * between root and tip (sections closer than FOAM_LIMITS.minSegment merged), and each piece between
- * them split into equal parts in y. Sorted span positions (mm), root and tip excluded.
+ * them split into equal parts in y. Sorted span positions (mm), root and tip excluded. A piece gets at
+ * most as many parts as keep them FOAM_LIMITS.minSegment long in y, and generation stops at
+ * FOAM_LIMITS.maxSegments cuts: a steep wing with a short longest core would otherwise build millions
+ * of cuts that normalizeCuts drops.
  */
 export function proposeCuts(build, maxLength) {
   const ends = [build.rootY, ...sectionCuts(build), build.tipY];
   const cuts = [];
-  for (let i = 1; i < ends.length; i++) {
+  const cap = FOAM_LIMITS.maxSegments;
+  for (let i = 1; i < ends.length && cuts.length < cap; i++) {
     const a = ends[i - 1];
     const b = ends[i];
-    const n = Math.max(1, Math.ceil(lineLength(build.stations, a, b) / maxLength - 1e-9));
-    for (let k = 1; k < n; k++) cuts.push(a + ((b - a) * k) / n);
+    const n = Math.min(cap, Math.max(1, Math.floor((b - a) / FOAM_LIMITS.minSegment)), Math.max(1, Math.ceil(lineLength(build.stations, a, b) / maxLength - 1e-9)));
+    for (let k = 1; k < n && cuts.length < cap; k++) cuts.push(a + ((b - a) * k) / n);
     if (i < ends.length - 1) cuts.push(b);
   }
   return normalizeCuts(build, cuts).cuts;

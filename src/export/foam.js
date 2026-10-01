@@ -484,6 +484,23 @@ export function pagePlan(layout, paper = 'a4') {
 const PT = 72 / 25.4;
 
 /**
+ * Registration crosses of a block cut into strips (pagePlan), in block coordinates: one per pair of
+ * neighbouring strips, in the middle of their overlap and of the span both strips share.
+ */
+export function registrationCrosses(plan, block) {
+  const strips = plan.pieces.filter((q) => q.block === block);
+  const at = (c, r) => strips.find((q) => q.col === c && q.row === r);
+  const out = [];
+  for (const s of strips) {
+    const right = at(s.col + 1, s.row);
+    if (right) out.push([(right.x0 + s.x0 + s.w) / 2, s.y0 + s.h / 2]);
+    const below = at(s.col, s.row + 1);
+    if (below) out.push([s.x0 + s.w / 2, (s.y0 + below.y0 + below.h) / 2]);
+  }
+  return out;
+}
+
+/**
  * The template blocks as a PDF at 1:1 on pages of `paper` (pagePlan), with a scale bar and a page
  * label on every page, and registration crosses in the overlap of the strips of a split block.
  */
@@ -523,16 +540,11 @@ export function layoutPdf(layout, paper = 'a4', { title = 'Templates' } = {}) {
       ops.push('q', `${f(X - 0.5)} ${f(Y - 0.5)} ${f(pc.w + 1)} ${f(pc.h + 1)} re W n`, `1 0 0 1 ${f(X - pc.x0)} ${f(Y - pc.y0)} cm`);
       draw(ops, b.items);
       if (split) {
-        // Registration crosses in the overlaps: they print on both neighbouring strips.
+        // Registration crosses in the overlaps, one per pair of neighbouring strips: in the middle of
+        // the overlap, and in the middle of the row (or column) both strips share, so it prints on both.
         ops.push('0 0 0 RG 0.15 w');
-        const [aw, ah] = plan.area;
-        const sx = aw - PAGE_OVERLAP;
-        const sy = ah - (pc.rows > 1 || pc.cols > 1 ? PART_LABEL : 0) - PAGE_OVERLAP;
         const cross = (x, y) => ops.push(`${f(x - 3)} ${f(y)} m ${f(x + 3)} ${f(y)} l ${f(x)} ${f(y - 3)} m ${f(x)} ${f(y + 3)} l S`);
-        const ys = [b.height * 0.2, b.height * 0.5, b.height * 0.8];
-        for (let c = 1; c < pc.cols; c++) for (const y of ys) cross(c * sx + PAGE_OVERLAP / 2, y);
-        const xs = [b.width * 0.2, b.width * 0.5, b.width * 0.8];
-        for (let r = 1; r < pc.rows; r++) for (const x of xs) cross(x, b.height - r * sy - PAGE_OVERLAP / 2);
+        for (const [x, y] of registrationCrosses(plan, pc.block)) cross(x, y);
       }
       ops.push('Q');
     }

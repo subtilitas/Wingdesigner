@@ -189,8 +189,14 @@ export function foamDialog(store, getBuild, notify = () => {}) {
   const pz = new PanZoomCanvas(canvas, {
     bounds: () => {
       if (blocked) return null;
-      const xs = build.stations.flatMap((q) => [q.xLE, q.xLE + q.chord]);
-      return [-build.tipY, -Math.max(...xs), build.tipY, -Math.min(0, ...xs)];
+      // A loop, not Math.max(...xs): a loft can hold more stations than a call takes arguments.
+      let lo = 0;
+      let hi = -Infinity;
+      for (const q of build.stations) {
+        lo = Math.min(lo, q.xLE);
+        hi = Math.max(hi, q.xLE + q.chord);
+      }
+      return [-build.tipY, -hi, build.tipY, -lo];
     },
     draw: (ctx, view, w, hgt) => {
       drawPlanform(ctx, view, w, hgt, build?.stations);

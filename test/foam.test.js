@@ -20,6 +20,7 @@ import {
   normalizedProfile,
   offsetPolygon,
   pagePlan,
+  registrationCrosses,
   profileDat,
   profileZip,
   segmentsCsv,
@@ -68,6 +69,22 @@ describe('cuts', () => {
     // The pieces are 300.2 and 300.7 mm long along the dihedral: 301 mm splits neither.
     expect(proposeCuts(b, 301)).toEqual([300]);
     expect(proposeCuts(b, 100)).toHaveLength(7);
+  });
+
+  it('keep a section exactly 5 mm from the root, and stop at the segment limit', () => {
+    const p = sampleProject();
+    p.sections.splice(1, 0, { ...p.sections[1], id: 'near', y: FOAM_LIMITS.minSegment, x: 0, z: 0, chord: 200, twist: 0 });
+    expect(proposeCuts(built(p), 1000)[0]).toBe(FOAM_LIMITS.minSegment);
+    // A 20 mm longest core: the two pieces (300.2 and 300.7 mm along the dihedral) take 16 cores each,
+    // 15 + 15 cuts plus the section. 0.5 mm asks for about 1,200 cores: each 300 mm piece takes at most
+    // 60 parts of 5 mm (59 + 59 cuts plus the section).
+    const b = built(sampleProject());
+    expect(proposeCuts(b, 20)).toHaveLength(31);
+    expect(proposeCuts(b, 0.5)).toHaveLength(119);
+    // A 1,500 mm half span in 5 mm parts reaches the segment limit: 199 cuts.
+    const long = panel('vertical', 0);
+    long.sections.forEach((q) => (q.y *= 2.5));
+    expect(proposeCuts(built(long), 0.5)).toHaveLength(FOAM_LIMITS.maxSegments - 1);
   });
 
   it('merge sections closer than the shortest segment', () => {
@@ -447,24 +464,27 @@ describe('split templates in the PDF', () => {
     expect([plan.pageW, plan.pageH, cols, rows, plan.pages]).toEqual([297, 210, 2, 3, 5]);
     const all = streams(layoutPdf(layout, 'a4')).join('\n');
     for (let k = 1; k <= cols * rows; k++) expect(all).toContain(`(Big: part ${k} of ${cols * rows} \\(row ${Math.ceil(k / cols)}, column ${((k - 1) % cols) + 1}\\))`);
-    // Crosses: centre of every overlap of two neighbouring strips, inside both of them.
-    const [aw, ah] = plan.area;
-    const sx = aw - PAGE_OVERLAP;
+    // Crosses: every pair of neighbouring strips (also in the 74 mm bottom row) shares a cross that
+    // lies inside both strips, 3 mm clear of their edges.
     const strips = plan.pieces;
-    for (let c = 1; c < cols; c++) {
-      const x = c * sx + PAGE_OVERLAP / 2;
-      const left = strips.find((q) => q.col === c - 1 && q.row === 0);
-      const right = strips.find((q) => q.col === c && q.row === 0);
-      expect(x).toBeGreaterThan(right.x0);
-      expect(x).toBeLessThan(left.x0 + left.w);
+    const crosses = registrationCrosses(plan, 0);
+    const inside = (q, [x, y]) => x - 3 >= q.x0 && x + 3 <= q.x0 + q.w && y - 3 >= q.y0 && y + 3 <= q.y0 + q.h;
+    let pairs = 0;
+    for (const a of strips) {
+      for (const b of strips) {
+        const neighbours = (b.col === a.col + 1 && b.row === a.row) || (b.row === a.row + 1 && b.col === a.col);
+        if (!neighbours) continue;
+        pairs++;
+        expect(crosses.some((c) => inside(a, c) && inside(b, c))).toBe(true);
+      }
     }
+    // 2 columns x 3 rows: 3 pairs side by side, 4 pairs one above the other.
+    expect(pairs).toBe(7);
+    expect(crosses).toHaveLength(7);
+    for (const [x, y] of crosses) expect(all).toContain(`${(x - 3).toFixed(3)} ${y.toFixed(3)} m`);
+    // Strips of one column overlap by 10 mm.
     const upper = strips.find((q) => q.row === 0 && q.col === 0);
     const lower = strips.find((q) => q.row === 1 && q.col === 0);
-    const y = 400 - (ah - 5 - PAGE_OVERLAP) - PAGE_OVERLAP / 2;
-    expect(y).toBeGreaterThan(upper.y0);
-    expect(y).toBeLessThan(lower.y0 + lower.h);
-    expect(all).toContain(`${(y - 3).toFixed(3)} m`);
-    // Strips of one row overlap by 10 mm, rows as well.
     expect(upper.y0 - (lower.y0 + lower.h)).toBeCloseTo(-PAGE_OVERLAP, 9);
   });
 
