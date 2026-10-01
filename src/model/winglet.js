@@ -146,6 +146,8 @@ export function wingletProblems(project, params) {
     y = q.y;
     if ([q.x, q.y, q.z].some((v) => Math.abs(v) > LIMITS.maxCoordinate)) out.push(tr('Winglet section {n} lies beyond ±{max} mm.', { n: i + 1, max: whole(LIMITS.maxCoordinate) }));
     if (q.chord < LIMITS.minChord) out.push(tr('Winglet section {n}: the chord is below {min} mm.', { n: i + 1, min: plain(LIMITS.minChord) }));
+    if (q.chord > LIMITS.maxChord) out.push(tr('Winglet section {n}: the chord is above {max} mm.', { n: i + 1, max: whole(LIMITS.maxChord) }));
+    if (Math.abs(q.twist) > LIMITS.maxTwist) out.push(tr('Winglet section {n}: the twist lies beyond ±{max}°.', { n: i + 1, max: plain(LIMITS.maxTwist) }));
   });
   return out;
 }

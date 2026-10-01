@@ -569,7 +569,7 @@ Mit **Einstellungen** > **Flügelende** (Wing tip) = **Spitz** (Pointed) verwend
 - **Einstellungen** > **Schnittebenen** nicht **Auf Gehrung** ist oder die **Interpolation in Spannweitenrichtung** **Glatt** ist;
 - der Übergangsbogen nicht kürzer als die Höhe ist (`Winglet: Der Übergangsbogen ist … mm lang, …`);
 - ein Wingletfeld in y weniger als 1 mm reicht (`Wingletfeld … reicht … mm in y, …`), so bei ±89° ohne Übergangsradius;
-- die Schnitte 20.000 überschreiten, eine Koordinate ±1.000.000 mm überschreitet oder eine Profiltiefe unter 1 mm fällt.
+- die Schnitte 20.000 überschreiten, eine Koordinate ±1.000.000 mm überschreitet, eine Profiltiefe 1 bis 100.000 mm verlässt oder eine Schränkung ±360° verlässt.
 
 Konstruktion: [[Geometrie|Geometrie]], Abschnitt 9.
 

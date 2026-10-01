@@ -569,7 +569,7 @@ With **Settings** > **Wing tip** = Pointed, the wing does not use the typed tip 
 - **Settings** > **Section planes** is not Mitred or **Spanwise interpolation** is Smooth;
 - the blend arc is not shorter than the height (`Winglet: the blend arc is … mm long, …`);
 - a winglet panel spans less than 1 mm in y (`Winglet panel … spans … mm in y, …`), which happens near ±89° without a blend radius;
-- the sections would exceed 20,000, a coordinate ±1,000,000 mm, or a chord falls below 1 mm.
+- the sections would exceed 20,000, a coordinate ±1,000,000 mm, a chord would leave 1 to 100,000 mm, or a twist would leave ±360°.
 
 Construction: [[Geometry|Geometry]], section 9.
 

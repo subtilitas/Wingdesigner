@@ -36,4 +36,6 @@ export default {
     'Wingletfeld {n} reicht {dy} mm in y, weniger als {min} mm; die Neigung verkleinern oder den Übergangsradius oder die Höhe vergrößern.',
   'Winglet section {n} lies beyond ±{max} mm.': 'Wingletschnitt {n} liegt außerhalb von ±{max} mm.',
   'Winglet section {n}: the chord is below {min} mm.': 'Wingletschnitt {n}: Die Profiltiefe liegt unter {min} mm.',
+  'Winglet section {n}: the chord is above {max} mm.': 'Wingletschnitt {n}: Die Profiltiefe liegt über {max} mm.',
+  'Winglet section {n}: the twist lies beyond ±{max}°.': 'Wingletschnitt {n}: Die Schränkung liegt außerhalb von ±{max}°.',
 };
