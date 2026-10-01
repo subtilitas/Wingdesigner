@@ -273,9 +273,10 @@ function oneSidedAsHalf(wing) {
   return { ...wing, oneSided: true, roll: -wing.roll, tilt: Number.isFinite(wing.tilt) ? 0 : wing.tilt, sections: wing.sections.map((s) => ({ ...s, rightFoil: s.leftFoil })) };
 }
 
-/** The surface a dialog selects first: the main wing, or the stabilizer when it is the only one. */
+/** The surface a dialog selects first: the main wing, else the first available surface in file order. */
 export function defaultSurface(file, planeIndex = 0) {
-  return planeSurfaces(file, planeIndex).surfaces.find((s) => s.available)?.key ?? 'main';
+  const { surfaces } = planeSurfaces(file, planeIndex);
+  return (surfaces.find((s) => s.key === 'main' && s.available) ?? surfaces.find((s) => s.available))?.key ?? 'main';
 }
 
 /** The length unit of an XML file in words. */

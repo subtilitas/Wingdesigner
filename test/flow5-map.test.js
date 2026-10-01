@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../src/i18n/index.js';
 import { readFl5Bytes } from '../src/import/fl5.js';
 import { readFlow5Xml } from '../src/import/fl5xml.js';
-import { describeFile, mapXflr5, planeSurfaces, readAirfoilUpload } from '../src/import/xflr5.js';
+import { defaultSurface, describeFile, mapXflr5, planeSurfaces, readAirfoilUpload } from '../src/import/xflr5.js';
 import { buildWing } from '../src/geom/wing.js';
 import { exportMeshes } from '../src/geom/mesh.js';
 
@@ -103,6 +103,12 @@ describe('flow5 planes: the wing list', () => {
     // A plane of a triangle mesh has no wing: an error, no surface.
     const mesh = mapXflr5(FULL, { plane: planeOf(FULL, 'Mesh plane'), fileName: 'full.fl5' });
     expect([mesh.project, mesh.surfaces, mesh.report.filter((l) => l.severity === 'error').map((l) => l.text)]).toEqual([null, [], ['Plane "Mesh plane" has no wing to import.']]);
+    // The main wing is the default, also behind other wings in the file.
+    const behind = structuredClone(FULL);
+    const tandem = behind.planes[planeOf(FULL, 'Tandem')];
+    tandem.wings = [...tandem.wings.filter((w) => w.type !== 'main'), ...tandem.wings.filter((w) => w.type === 'main')];
+    expect(defaultSurface(behind, planeOf(FULL, 'Tandem'))).toBe('main');
+    expect(planeSurfaces(behind, planeOf(FULL, 'Tandem')).surfaces.find((s) => s.key === 'main')).toMatchObject({ slot: 4, wing: { name: 'Front' } });
     expect(describeFile(FULL)).toBe('flow5 project, format 500754 (flow5 7.54 or later)');
     expect(describeFile(readFlow5Xml(text('full-plane.xml')))).toBe('flow5 plane file (XML), lengths in millimetres');
   });

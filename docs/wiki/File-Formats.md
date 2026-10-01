@@ -626,7 +626,7 @@ XFLR5 has 4 wing slots per plane.
 - XML wing without a known `<Type>` (XFLR5 6.11 files write none): the wing is a fin when `<isFin>` is `true`. Otherwise the second `<wing>` read is the elevator and every other `<wing>` is the main wing. XFLR5 counts all `<wing>` elements, fins included. At most 4 wings are read per plane; more: warning `Plane "<plane>" has more than 4 wings; XFLR5 reads the first 4, and so does this import.`
 - A later wing for a slot that is taken replaces the earlier one, as in XFLR5: warning `Plane "<plane>" has more than one main wing: "<name>" replaces "<previous>", as in XFLR5.`
 - XML wing file (a top-level `<wing>`, no `<Plane>`): the `<Type>` gives the surface. `ELEVATOR`: horizontal stabilizer. `FIN` or `<isFin>true</isFin>`: refused. Every other type: wing. Position and tilt angle are 0. Several top-level wings: only the last is read, with a warning. Top-level wings in a plane file are ignored, with a warning.
-- Several planes: the dialog shows the **Plane** select only for more than one plane. The first plane is preselected. A plane without a name is listed as `Plane <n>`.
+- Several planes: the dialog shows the **Plane** select only for more than one plane. The first plane is preselected; for a flow5 file the first plane with a wing to import. A plane without a name is listed as `Plane <n>`.
 - The dialog offers **Main wing** and **Horizontal stabilizer (XFLR5: Elevator)**. Each option shows `"<wing name>": <n> sections, span <span> mm, root chord <chord> mm`. The span is twice the y of the last section (Y_(n−1) of step 1 in section "Mapping to sections"), both halves. An option that the plane lacks is disabled with its reason: `This plane has no main wing.`, `This plane has no elevator.`, `The wing in this file is a horizontal stabilizer (type ELEVATOR).` or `The wing in this file is not a horizontal stabilizer (type ELEVATOR).`
 - The second wing, the fin and the other surface are not imported; the report says so (section "Report"). One surface is imported at a time; opening the file again offers the other.
 
@@ -1024,7 +1024,7 @@ A flow5 plane holds any number of wings, each with a type: main wing, elevator (
 | a one-sided wing (`Two_Sided` false, a fin) | yes, as the half that flow5 builds (section "Mapping to sections") | – |
 | a one-sided wing with `Ry_angle` other than 0 | no: flow5 turns a one-sided wing by `Ry_angle` about the z axis, a part only about x and y | `A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.` |
 
-- The first available wing is preselected: the first main wing when the plane has one.
+- The first main wing is preselected; a plane without an available main wing preselects its first available wing in file order.
 - The report lists the other wings of the plane: `Not imported: Main wing 2 "Rear", Fin "Fin". One surface per import; open the file again for another one.`
 - Toast for a further wing: `Imported the wing "Canard" of "Tandem" from full.fl5: 2 sections, 1 airfoil.`
 
