@@ -233,7 +233,8 @@ Export per triangle: STL 0.8 µs, 210 bytes of memory, 50 bytes of file; 3MF 5.8
   grant, with the designers named in the research: Gerald Taylor (DLG, F3J/F5J sections), Michael
   Selig (SD7037, SD7003, S5010, S1223), Mark Drela (HT, AG, DAE41), Peter Wick (PW planks).
 - Written permission from Hartmut Siegmann (postal only, per his site) or Martin Hepperle
-  (e-mail in his page footer) would allow bundling HS or MH airfoils.
+  (e-mail in his page footer) would allow bundling HS or MH airfoils. The owner asked Martin Hepperle
+  by e-mail on 2026-10-01; no answer as of 2026-10-02. Siegmann: not asked.
 - Not measured: build time and memory on phones; the drawing time of the 3D view on a graphics card
   (the estimates cover JavaScript time only).
 - Not tested: the German interface in Firefox and Safari, in Chromium with a German interface language,
