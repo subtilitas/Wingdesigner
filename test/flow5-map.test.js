@@ -97,6 +97,11 @@ describe('flow5 planes: the wing list', () => {
     expect(planeSurfaces(yawed).surfaces[2]).toMatchObject({ available: false, reason: 'A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.' });
     const r = mapXflr5(yawed, { surface: 'wing:2', fileName: 'basic.fl5' });
     expect([r.project, r.report.filter((l) => l.severity === 'error').map((l) => l.text)]).toEqual([null, ['A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.']]);
+    // A plane whose only wing is not available: the default is that wing, and the report gives its reason.
+    const alone = structuredClone(yawed);
+    alone.planes[0].wings = [alone.planes[0].wings[2]];
+    expect(defaultSurface(alone)).toBe('wing:0');
+    expect(mapXflr5(alone, { fileName: 'basic.fl5' }).report.filter((l) => l.severity === 'error').map((l) => l.text)).toEqual(['A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.']);
     // A tilt that is no number is reported, not dropped with the turn of a one-sided wing.
     yawed.planes[0].wings[2].tilt = Number.NaN;
     expect(mapXflr5(yawed, { surface: 'wing:2', fileName: 'basic.fl5' }).report.filter((l) => l.severity === 'error').map((l) => l.text)).toEqual(['The tilt angle of the wing is not a finite number in the file.']);

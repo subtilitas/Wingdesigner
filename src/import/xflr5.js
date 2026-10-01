@@ -273,10 +273,13 @@ function oneSidedAsHalf(wing) {
   return { ...wing, oneSided: true, roll: -wing.roll, tilt: Number.isFinite(wing.tilt) ? 0 : wing.tilt, sections: wing.sections.map((s) => ({ ...s, rightFoil: s.leftFoil })) };
 }
 
-/** The surface a dialog selects first: the main wing, else the first available surface in file order. */
+/**
+ * The surface a dialog selects first: the main wing, else the first available surface in file order,
+ * else the first surface, whose reason the mapping reports.
+ */
 export function defaultSurface(file, planeIndex = 0) {
   const { surfaces } = planeSurfaces(file, planeIndex);
-  return (surfaces.find((s) => s.key === 'main' && s.available) ?? surfaces.find((s) => s.available))?.key ?? 'main';
+  return (surfaces.find((s) => s.key === 'main' && s.available) ?? surfaces.find((s) => s.available) ?? surfaces[0])?.key ?? 'main';
 }
 
 /** The length unit of an XML file in words. */

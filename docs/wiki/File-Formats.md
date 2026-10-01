@@ -1024,7 +1024,7 @@ A flow5 plane holds any number of wings, each with a type: main wing, elevator (
 | a one-sided wing (`Two_Sided` false, a fin) | yes, as the half that flow5 builds (section "Mapping to sections") | – |
 | a one-sided wing with `Ry_angle` other than 0 | no: flow5 turns a one-sided wing by `Ry_angle` about the z axis, a part only about x and y | `A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.` |
 
-- The first main wing is preselected; a plane without an available main wing preselects its first available wing in file order.
+- The first main wing is preselected; a plane without an available main wing preselects its first available wing in file order, and a plane without any available wing its first wing, whose reason the report gives as an error.
 - The report lists the other wings of the plane: `Not imported: Main wing 2 "Rear", Fin "Fin". One surface per import; open the file again for another one.`
 - Toast for a further wing: `Imported the wing "Canard" of "Tandem" from full.fl5: 2 sections, 1 airfoil.`
 

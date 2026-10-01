@@ -1027,7 +1027,7 @@ Ein flow5-Flugzeug enthält beliebig viele Flügel, jeder mit einem Typ: Tragfl�
 | ein einseitiger Flügel (`Two_Sided` false, ein Seitenleitwerk) | ja, als die Hälfte, die flow5 baut (Abschnitt „Abbildung auf Schnitte“ unten) | – |
 | ein einseitiger Flügel mit `Ry_angle` ungleich 0 | nein: flow5 dreht einen einseitigen Flügel um `Ry_angle` um die z-Achse, ein Teil dreht sich nur um x und y | `Ein einseitiger Flügel, um 3° um z gedreht (Ry_angle): Ein Teil dreht sich nur um x und y.` |
 
-- Die erste Tragfläche ist vorgewählt; ein Flugzeug ohne verfügbare Tragfläche wählt seinen ersten verfügbaren Flügel in der Reihenfolge der Datei vor.
+- Die erste Tragfläche ist vorgewählt; ein Flugzeug ohne verfügbare Tragfläche wählt seinen ersten verfügbaren Flügel in der Reihenfolge der Datei vor, ein Flugzeug ohne verfügbaren Flügel seinen ersten Flügel, dessen Grund der Bericht als Fehler nennt.
 - Der Bericht nennt die übrigen Flügel des Flugzeugs: `Nicht importiert: Tragfläche 2 „Rear“, Seitenleitwerk „Fin“. Eine Fläche je Import; für eine weitere die Datei erneut öffnen.`
 - Meldung für einen weiteren Flügel: `Flügel „Canard“ von „Tandem“ aus full.fl5 importiert: 2 Schnitte, 1 Profil.`
 
