@@ -18,6 +18,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
     with the defaults gets 6 sections, the winglet tip 117.7 mm above and 63.4 mm beyond the tip section.
   - Refused with a stated reason for a pointed tip, guide curves, section planes other than **Mitred**, **Smooth**
     interpolation, a blend arc not shorter than the height and a winglet panel narrower than 1 mm in y.
+- flow5 import: **Open** reads flow5 projects (`.fl5`, formats 500750 and 500754: flow5 7.50 to 7.57) and flow5 plane
+  and wing files (`.xml`) and imports one wing in the import dialog.
+  - The dialog lists every wing of the plane. The first main wing and the first elevator import with their roll
+    (`Rx_angle`, as **Part roll**) and tilt (`Ry_angle`, as **Part tilt**) about the wing origin; further two-sided
+    wings import when they are not rolled. Fins and one-sided wings are listed with the reason they are not imported.
+  - A rolled wing gets a warning: flow5 rolls both halves as one body, Wingdesigner mirrors the right half (62.5 mm
+    apart at the tips of a 10° rolled V-tail of 180 mm half span).
+  - Airfoils of a `.fl5` project are used with their coordinates (`source.kind` `flow5`); an XML file names the
+    airfoils or `.dat` files next to it.
+  - Tested with files that flow5 7.57 and 7.56 write: the right half of 7 imported wings lies within 0.15 mm of the
+    analysis mesh flow5 builds.
+- **Upload .dat files…** in the import dialog takes several airfoil files at once and gives each airfoil name the
+  file of that name.
+
+### Changed
+
+- The import dialog names the program of the file: **Import from XFLR5** or **Import from flow5**, and the messages
+  of the mapping name it too.
 
 ## [0.4.0] - 2026-10-01
 

@@ -17,8 +17,9 @@ import { exportDialog } from './ui/exportui.js';
 import { foamDialog } from './ui/foam.js';
 import { openWizard } from './ui/wizard.js';
 import { openXflr5Dialog } from './ui/xflr5.js';
-import { readXfl, sniffXflr5 } from './import/xfl.js';
-import { readXflr5Xml } from './import/xflxml.js';
+import { sniffXflr5 } from './import/xfl.js';
+import { readProjectFile } from './import/fl5.js';
+import { readPlaneXml } from './import/fl5xml.js';
 import { XflrError } from './import/errors.js';
 import { decodeText } from './airfoil/parse.js';
 import { clear, download, h, slugFile } from './ui/dom.js';
@@ -188,7 +189,7 @@ const redoBtn = localized(h('button', { type: 'button', onclick: () => store.red
 let openRequest = 0;
 const openInput = h('input', {
   type: 'file',
-  // .wpa and .fl5 are listed so that Open can say why they cannot be imported.
+  // .wpa is listed so that Open can say why it cannot be imported.
   accept: '.json,.xfl,.xml,.wpa,.fl5,application/json',
   style: { display: 'none' },
   onchange: async (e) => {
@@ -201,9 +202,9 @@ const openInput = h('input', {
       importXflr5(f, kind, request).catch((err) =>
         message(tr('Cannot open {name}: {problems}', { name: f.name, problems: tr('Internal error: {message}', { message: err?.message ?? String(err) }) }), true),
       );
-    // XFLR5 projects by their extension: the binary reader loads them piece by piece and also names
-    // the .wpa and flow5 (.fl5) projects it cannot read. Every other file is read whole: an XFLR5 XML
-    // file (.xml), or else a project JSON.
+    // XFLR5 and flow5 projects by their extension: the binary readers load them piece by piece, and
+    // the .xfl reader names the .wpa projects it cannot read. Every other file is read whole: an XFLR5
+    // or flow5 XML file (.xml), or else a project JSON.
     const ext = /\.([^.]*)$/.exec(f.name)?.[1].toLowerCase();
     let kind = ext === 'xfl' || ext === 'wpa' || ext === 'fl5' ? 'xfl' : ext === 'xml' ? 'xml' : null;
     if (kind === null && ext !== 'json') {
@@ -237,8 +238,8 @@ const openInput = h('input', {
       return;
     }
     if (request !== openRequest) return;
-    // XML under another name (plane.txt, say): the XFLR5 import names what it is. JSON never starts so.
-    if (ext !== 'json' && /^\s*<(?:\?xml|!|explane[\s>/])/.test(text)) {
+    // XML under another name (plane.txt, say): the XFLR5 and flow5 import names what it is. JSON never starts so.
+    if (ext !== 'json' && /^\s*<(?:\?xml|!|explane[\s>/]|xflplane[\s>/]|xflwing[\s>/])/i.test(text)) {
       importAs('xml');
       return;
     }
@@ -261,7 +262,7 @@ const header = h(
       'nav',
       { class: 'actions' },
       localized(h('button', { type: 'button', onclick: () => newDesign(false) }), { text: () => tr('New') }),
-      localized(h('button', { type: 'button', onclick: () => openInput.click() }), { text: () => tr('Open'), title: () => tr('Open a project (.json) or import a wing from XFLR5 (.xfl, .xml)') }),
+      localized(h('button', { type: 'button', onclick: () => openInput.click() }), { text: () => tr('Open'), title: () => tr('Open a project (.json) or import a wing from XFLR5 or flow5 (.xfl, .fl5, .xml)') }),
       localized(
         h('button', {
           type: 'button',
@@ -569,7 +570,7 @@ function cannotRead(f, err) {
 }
 
 /**
- * Import from an XFLR5 file chosen with Open: read it, let the user pick the plane, the surface and
+ * Import from an XFLR5 or flow5 file chosen with Open: read it, let the user pick the plane, the surface and
  * the airfoils in the import dialog, and replace the project (one undo step, as New does). A file that
  * cannot be read leaves the design as it is.
  */
@@ -587,7 +588,7 @@ async function importXflr5(f, kind, request) {
     }
     if (request !== openRequest) return;
     try {
-      file = readXflr5Xml(decodeText(bytes));
+      file = readPlaneXml(decodeText(bytes));
     } catch (err) {
       // Any other error is one of the import: Open reports it as an internal error.
       if (!(err instanceof XflrError)) throw err;
@@ -595,9 +596,9 @@ async function importXflr5(f, kind, request) {
       return;
     }
   } else {
-    // The .xfl reader loads the file piece by piece; its own errors are XflrErrors, the browser's pass through.
+    // The .xfl and .fl5 readers load the file piece by piece; their own errors are XflrErrors, the browser's pass through.
     try {
-      file = await readXfl(f);
+      file = await readProjectFile(f);
     } catch (err) {
       if (request !== openRequest) return;
       // The browser rejects a failed read with a DOMException (NotReadableError, say); any other
@@ -633,7 +634,7 @@ function helpDialog() {
         'ol',
         {},
         h('li', {}, tr('New: pick a design type in the wizard, or edit the sample wing.')),
-        h('li', {}, tr('Open: a project file (.json), or an XFLR5 file (.xfl, .xml) to import its main wing or horizontal stabilizer.')),
+        h('li', {}, tr('Open: a project file (.json), or an XFLR5 or flow5 file (.xfl, .fl5, .xml) to import one of its wings.')),
         h('li', {}, tr('Airfoils: add NACA sections, library entries, or upload .dat files (checked and previewed before use).')),
         h('li', {}, tr('Sections: set span position y, leading edge x and z, chord and twist for each section.')),
         h('li', {}, tr('Planform: switch on the nose line and end line to shape the leading and trailing edge between sections.')),

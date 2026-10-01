@@ -369,7 +369,7 @@ test.describe('XFLR5 import', () => {
   test('the Open button accepts XFLR5 files', async ({ page }) => {
     await createDesign(page, 'Sport');
     const open = page.locator('header.topbar').getByRole('button', { name: 'Open', exact: true });
-    await expect(open).toHaveAttribute('title', 'Open a project (.json) or import a wing from XFLR5 (.xfl, .xml)');
+    await expect(open).toHaveAttribute('title', 'Open a project (.json) or import a wing from XFLR5 or flow5 (.xfl, .fl5, .xml)');
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), open.click()]);
     expect(chooser.isMultiple()).toBe(false);
     expect(await chooser.element().getAttribute('accept')).toBe('.json,.xfl,.xml,.wpa,.fl5,application/json');
@@ -523,7 +523,7 @@ test.describe('XFLR5 import in German', () => {
     await expect(toastOf(page)).toHaveText(/^Tragfläche „Flying Wing“ von „Fixture B“ aus fixtures_v662\.xfl importiert: 4 Schnitte, 2 Profile\. Profil „Clark Y“ \(Schnitte 1–2\) hat in seinen eigenen Koordinaten /);
     await expect(page.locator('header.topbar').getByRole('button', { name: 'Öffnen', exact: true })).toHaveAttribute(
       'title',
-      'Ein Projekt öffnen (.json) oder einen Flügel aus XFLR5 importieren (.xfl, .xml)',
+      'Ein Projekt öffnen (.json) oder einen Flügel aus XFLR5 oder flow5 importieren (.xfl, .fl5, .xml)',
     );
   });
 });

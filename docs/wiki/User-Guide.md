@@ -30,7 +30,7 @@ The interface speaks English or German (section [Language](#language)). This pag
 | Top bar button | Effect |
 | --- | --- |
 | **New** | Opens the wizard (section [Wizard](#wizard)). |
-| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Opens the import dialog for an XFLR5 file (extension `.xfl` or `.xml`; XML: Extensible Markup Language; section [Import from XFLR5](#import-from-xflr5)). The file chooser lists `.json`, `.xfl`, `.xml`, `.wpa` and `.fl5` files. Rejects JSON and XML files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` A file the browser cannot read (removed drive, revoked permission) shows `Cannot open <file>: the browser could not read the file (NotReadableError).` and keeps the current design. Rejects invalid JSON files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. A project file of format version 2 whose tilt angle the XFLR5 import folded into the sections opens with that angle as **Part tilt**; the notice after `Opened <file>.` says so (section [Storage](#storage)). |
+| **Open** | Loads a project file in JSON (JavaScript Object Notation) format, file extension `.json`. Opens the import dialog for an XFLR5 or flow5 file (extension `.xfl`, `.fl5` or `.xml`; XML: Extensible Markup Language; section [Import from XFLR5 and flow5](#import-from-xflr5-and-flow5)). The file chooser lists `.json`, `.xfl`, `.xml`, `.wpa` and `.fl5` files. Rejects JSON and XML files above 100 MB unread: `Cannot open <file>: … MB; project files are limited to 100 MB.` A file the browser cannot read (removed drive, revoked permission) shows `Cannot open <file>: the browser could not read the file (NotReadableError).` and keeps the current design. Rejects invalid JSON files and shows up to 3 error messages. Derived NURBS (non-uniform rational B-spline) data in the file is ignored and recomputed. A project file of format version 2 whose tilt angle the XFLR5 import folded into the sections opens with that angle as **Part tilt**; the notice after `Opened <file>.` says so (section [Storage](#storage)). |
 | **Save** | Downloads the project JSON. Same file as **Export** > Project JSON. When the derived NURBS data would take the file above 100 MB, the file leaves it out (section [Export](#export)). A failure shows the red notice `Save failed: <reason>.` |
 | **Export** | Opens the export dialog (section [Export](#export)). |
 | **Foam** | Opens the foam-cutting wizard (section [Foam cutting](#foam-cutting)). |
@@ -55,17 +55,17 @@ At a window width of 860 px or less:
 
 On touch screens (coarse pointer), buttons and input fields are at least 40 px high.
 
-## Import from XFLR5
+## Import from XFLR5 and flow5
 
 ![Import dialog for the file fixtures_v662.xfl: plane, surface, airfoil table, planform preview, report](images/xflr5-import.png)
 
-**Open** reads files of XFLR5 as well as project files. The import takes one surface from one plane of the file, the main wing or the horizontal stabilizer (XFLR5 calls it the elevator), and replaces the current project with it. It reads files of XFLR5 6.10.01 to 6.62. Version 6.62 (2026-03-24) is the last release of XFLR5.
+**Open** reads files of XFLR5 and of flow5 as well as project files. The import takes one surface from one plane of the file and replaces the current project with it: from an XFLR5 file the main wing or the horizontal stabilizer (XFLR5 calls it the elevator), from a flow5 file one of its wings (section [flow5 files](#flow5-files)). It reads files of XFLR5 6.10.01 to 6.62 and of flow5 7.50 to 7.57. Version 6.62 (2026-03-24) is the last release of XFLR5; flow5 is its successor (version 7).
 
 ### Files
 
-- **Open** accepts `.xfl` (XFLR5 project) and `.xml` (XFLR5 plane or wing file) besides `.json`. The filter of the file chooser lists `.json`, `.xfl` and `.xml` files, and `.wpa` and `.fl5` files, which Open refuses with the reason (next item). Whether the file choosers of Android and iOS list `.xfl` files with this filter is untested.
+- **Open** accepts `.xfl` (XFLR5 project), `.fl5` (flow5 project) and `.xml` (XFLR5 or flow5 plane or wing file) besides `.json`. The filter of the file chooser lists `.json`, `.xfl`, `.fl5` and `.xml` files, and `.wpa` files, which Open refuses with the reason (next item but one). Whether the file choosers of Android and iOS list `.xfl` and `.fl5` files with this filter is untested.
 - An `.xfl` project holds the planes with airfoil coordinates. An XML file holds the wing geometry in the length unit set in XFLR5 and the airfoil names only. Project formats 200001 (XFLR5 6.10.01 to 6.43) and 200002 (6.44 to 6.62) and XML files of XFLR5 6.11 to 6.62 are read.
-- Projects of XFLR5 6.09 and older (`.wpa`) and files of flow5 (`.fl5` and XML) are not read: red notice with the reason.
+- Projects of XFLR5 6.09 and older (`.wpa`) are not read: red notice with the reason. flow5 files: section [flow5 files](#flow5-files).
 - A file that cannot be imported gives the red notice `Cannot open <file>: <reason>`, e.g. `The file is damaged or cut off at byte 902 (in a wing).` The current design stays and the undo history gets no step.
 - A `.xfl` file damaged after its planes still gives its planes. The airfoils are then missing, and the report holds the warning `The airfoils could not be read. The file is damaged or cut off at byte … (in the list of airfoils). Pick or upload them.`
 - How **Open** picks the reader (extension, first bytes, text), the reasons for refusal and the limits (`.xfl` up to 2,000 MB, other files 100 MB): [[File Formats|File-Formats]], section XFLR5 import.
@@ -76,7 +76,7 @@ The dialog is modal. It opens at once. **Import** stays off while the app checks
 
 | Element | Content and effect |
 | --- | --- |
-| Title and source line | Title **Import from XFLR5**. The line below gives the file name and the kind of file: `XFLR5 project, format 200002 (XFLR5 6.44 or later)`, `XFLR5 project, format 200001 (XFLR5 6.10 to 6.43)`, `XFLR5 plane file (XML), lengths in millimetres`, `XFLR5 wing file (XML), lengths in inches`. Length units: millimetres, centimetres, decimetres, metres, inches, feet. Another unit reads `lengths in units of 25 mm`. |
+| Title and source line | Title **Import from XFLR5**, or **Import from flow5** for a flow5 file. The line below gives the file name and the kind of file: `XFLR5 project, format 200002 (XFLR5 6.44 or later)`, `XFLR5 project, format 200001 (XFLR5 6.10 to 6.43)`, `XFLR5 plane file (XML), lengths in millimetres`, `XFLR5 wing file (XML), lengths in inches`. Length units: millimetres, centimetres, decimetres, metres, inches, feet. Another unit reads `lengths in units of 25 mm`. |
 | **Plane** | Only when the file holds more than one plane. Lists the plane names (`Plane 2` for a plane without a name). The first plane is preselected. A change of plane keeps the chosen surface when the new plane has it, otherwise the preselection of that plane (the main wing, or the stabilizer when it is the only surface). |
 | **Surface to import** | Two cards with radio buttons: **Main wing** and **Horizontal stabilizer (XFLR5: Elevator)**. A card shows the XFLR5 name of the wing, the number of sections, the span (2 × y of the tip section, in mm) and the root chord (mm): `"Main Wing": 3 sections, span 1794 mm, root chord 240 mm`. A surface that the plane does not have is disabled and gives its reason: `This plane has no elevator.` In a wing file the reason is `The wing in this file is a horizontal stabilizer (type ELEVATOR).` (main wing card) or `The wing in this file is not a horizontal stabilizer (type ELEVATOR).` Preselected: the main wing, or the stabilizer when it is the only surface. The fin and the second wing (biplane) are never offered. |
 | **Airfoils** | The airfoil table (section [Airfoil table](#airfoil-table)). |
@@ -96,7 +96,7 @@ The table has one row per distinct airfoil name of the right side of the chosen 
 
 | Column | Content |
 | --- | --- |
-| **XFLR5 airfoil** | The name as written in the file. It is matched with its leading, trailing and doubled spaces; the browser does not show these spaces. An empty name reads `(no name)`. Below it the sections that use it: `section 3` or `sections 1–2, 5` (1 = root). |
+| **XFLR5 airfoil** (**flow5 airfoil**) | The name as written in the file. It is matched with its leading, trailing and doubled spaces; the browser does not show these spaces. An empty name reads `(no name)`. Below it the sections that use it: `section 3` or `sections 1–2, 5` (1 = root). |
 | **Found** | The source that the app found for the name (table below), or after a choice **Picked** or **Not usable** (red: the chosen airfoil fails the checks). |
 | **Airfoil used** | A list. The first entry is the automatic choice, `Automatic: From the file: Clark Y`, or `Pick an airfoil` when nothing was found. Then follow the NACA (National Advisory Committee for Aeronautics) generator entries of the names in the table, the airfoils of the file, the uploaded files, the airfoils of the current project, the library airfoils and the NACA generator presets of section [Library](#library). A name that starts with a NACA designation, such as `NACA0014_Flap`, is not matched automatically; its list offers `NACA generator: NACA 0014` first. Above 20,000 entries (rows × airfoils), a list holds only its chosen entry until it is focused or pressed. |
 | **Upload .dat** | Opens a file chooser (section below). |
@@ -126,6 +126,7 @@ The automatic choice is the first source in this order whose airfoil passes the 
 - The file is read and checked as in the Airfoils tab. It becomes the choice of its row. The other rows find it by name (table above). It enters the project only when a section uses it.
 - An unusable file shows **Not usable** in its row when a row uses it, otherwise an info line in the report.
 - Each uploaded file stays in the list of every row as `Uploaded: <file>` until the dialog closes.
+- **Upload .dat files…** above the table takes several files at once. Each row then finds its file by name (order 2 of the table above); no row picks one. The hint beside the button: `Each airfoil name takes the file whose airfoil or file name matches it.` The screen-reader line: `2 files uploaded; 2 airfoil names use them.`
 - A status line, visible to screen readers only, announces the result: `test12.dat is used for "TEST 12".` or `test12.dat is not usable: <reason>`. Screen readers are untested.
 
 ### Airfoil position
@@ -185,6 +186,19 @@ The report lists every value that the import changes, converts or leaves out. Er
 - **Undo** restores the previous project, **Redo** the import.
 - The notice reads `Imported the main wing "Main Wing" of "Fixture A" from fixtures_v662.xfl: 3 sections, 2 airfoils.` For the stabilizer: `Imported the horizontal stabilizer "Elevator" of …`. A plane without a name gives `Imported the main wing "Main Wing" from <file>: …`. The first warning of the report follows in the same notice, and for more warnings `(2 more warnings in the import report.)`. The warnings of the XML reader stay in the report. The notice is longer than 66 characters, so it stays 60 ms per character (section [Screen layout](#screen-layout), row Messages).
 - **Cancel** and Escape change nothing and add no undo step.
+
+### flow5 files
+
+- **Open** reads flow5 projects (`.fl5`) of project formats 500750 (flow5 7.50 to 7.53) and 500754 (7.54 to 7.57), and flow5 plane and wing files (`.xml`, root element `xflplane` or `xflwing`). Other formats are refused with the reason: `The file is a flow5 project of format 500006, written by flow5 7.26 or older: open it in a current flow5 and save it, or export the plane as XML.`
+- The source line: `flow5 project, format 500754 (flow5 7.54 or later)`, `flow5 plane file (XML), lengths in millimetres`.
+- **Plane** lists the planes of the file in its order; flow5 sorts them by name. A plane built from a triangle mesh (STL) has no wing and offers no surface.
+- **Surface to import** lists every wing of the plane in file order: **Main wing**, **Horizontal stabilizer (flow5: Elevator)**, **Fin**, **Other wing**, numbered when a type occurs more than once (**Main wing 1**, **Main wing 2**). Not available, with the reason on the card:
+  - a fin: `Fins are not imported.`
+  - a one-sided wing: `A one-sided wing: flow5 builds only its left half. Only two-sided wings are imported.`
+  - a rolled wing other than the first main wing and the first elevator: `Rolled 30° about x: only the first main wing and the first horizontal stabilizer are imported with a roll.`
+- The wing's angles become the rigid placement of the part (**Settings** > **Part tilt** and **Part roll**, about the wing origin): `Ry_angle` the tilt, `Rx_angle` the roll. flow5 rolls both halves as one body; Wingdesigner mirrors the right half, and the report warns with the distance (`… up to 62.5 mm from flow5's left half.`).
+- A `.fl5` project holds the airfoils (**Found**: **From the file**). An XML file names them, or names `.dat` files next to it: flow5 7.54 and later write one `.dat` file per airfoil next to the XML file. Upload them with **Upload .dat files…**; each row takes the file of its name.
+- Details: [[File Formats|File-Formats]], section flow5 import.
 
 ### Dialog on narrow screens
 

@@ -2,8 +2,8 @@
 
 This page records the plan and the owner's decisions for three planned changes to Wingdesigner:
 mitred section planes, a rigid tilt of the whole part, and an import of flow5 planes. Status on
-2026-10-01: steps 1 and 2 are implemented (sections "Step 1 as built" and "Step 2 as built"); step 3
-is planned. The text of
+2026-10-01: steps 1, 2 and 3 are implemented (sections "Step 1 as built", "Step 2 as built" and "Step 3
+as built"). The text of
 the sections below describes the plan as decided. Every effort, size, review and time figure is an estimate
 scaled from the history of this repository, not measured on these changes. The section-plane figures
 are scaled from the XFLR5 import, counted as 9,444 added lines in 12.1 h wall-clock, research
@@ -365,6 +365,39 @@ A part tilt is a new project value. An app with step 1 only would drop it withou
   refuses a version 3 file (`validateProject`) instead of dropping the tilt. Step 1 shipped in 0.2.0
   as project format version 2, so this rule applies.
 - Older files (version 1, and version 2 without the tilt) open with a part tilt of 0°.
+
+## Step 3 as built
+
+Code: `src/import/fl5.js` (`.fl5` reader), `src/import/fl5xml.js` (XML reader, `readPlaneXml`),
+`src/import/xmlscan.js` (the XML tokenizer, moved out of `src/import/xflxml.js`), the flow5 branches of
+`src/import/xflr5.js` (`flow5Surfaces`, the roll, `programOf`, the airfoil source kind `flow5`) and of
+`src/ui/xflr5.js` (**Upload .dat files…**), `readProjectFile` and `readPlaneXml` in `src/main.js`.
+User-facing description: wiki pages File Formats (section flow5 import) and User Guide (section Import
+from XFLR5 and flow5, flow5 files).
+
+| Plan item | As built |
+| --- | --- |
+| F1 | XML and `.fl5` in one branch, after the XFLR5 import |
+| F2 | Project formats 500750 and 500754; below: `flow5-old` with the advice to save in a current flow5 or export XML; above: `flow5-new` |
+| F3 | Every wing listed; further two-sided, unrolled wings importable (key `wing:<index>`); a fin and a one-sided wing disabled with the reason |
+| F4 | Roll `Rx_angle` as `settings.partRoll`, tilt `Ry_angle` as `settings.partTilt`, about the wing origin; one-sided wings refused. The left half is the mirror image of the turned right half, while flow5 turns both halves as one body: a warning gives the distance (62.5 mm on the 10° rolled V-tail of the tests). |
+| F5 | Test files written by local builds of flow5 (commit 080d534 and v7.56) from own inputs, in `test/fixtures/flow5/`; drivers and build changes outside the repository; flow5's comment lines kept in the XML files |
+| F6 | **Upload .dat files…**: several files at once, matched to the rows by name (name line, then file name) |
+| Texts | A `{program}` placeholder in the mapping's messages (24 texts); flow5 versions of 9 texts (file descriptions, the elevator label, airfoil notes, metre rounding, wing file); 43 texts of the flow5 area in German |
+| Content sniffing | `xflplane` and `xflwing` roots (any case) go to the XML readers |
+| Airfoils | Source kind `flow5`, with the note of a lost frame for current-project airfoils of that kind; `flow5: <file>` in the Airfoils tab; flaps noted as deflected in flow5's analyses only (7.50 and later store the shape) |
+
+Measured on 2026-10-01:
+
+- The right half of 7 imported wings against flow5's analysis mesh of the same files: 0.0031 to
+  0.1469 mm (`test/flow5-map.test.js`; wiki page File Formats, section flow5 import, Verification).
+- Readers: the flow5 7.57 and 7.56 files, and test-writer files in the record formats of flow5 7.53 and
+  older layouts (line style of 7.12, airfoils without the bunching fields, parts below 500754, mesh
+  planes 500001 and 500003), read with the values given to flow5.
+- Size: 1,399 added lines in `src/`, 924 in test code, 237 in the documentation in English (the German
+  pages follow), plus 400,402 bytes of test files. Wall-clock: about 2 h from the cloned sources to the
+  pull request. The estimate of 9 to 12.5 h and 4,500 to 6,300 lines assumed a new mapping and dialog; the
+  XFLR5 import's mapping and dialog took the flow5 wing list with few changes.
 
 ## 3. flow5 import
 

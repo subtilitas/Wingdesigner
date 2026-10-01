@@ -580,8 +580,8 @@ With φ = 0 and m = 1 the section lies in the plane Y = y.
 (`src/geom/part.js`). Both lie within ±180°, default 0°. Sections 3.1 to 3.8, the surface of section 4
 and the build checks work in the frame of the part; the transform T applies to the fitted surface.
 
-Pivot P = (P_x, P_y, P_z): `settings.partPivot` when stored (the XFLR5 import stores the wing origin
-with P_y = 0), else the leading edge (x, y, z) of the root section. **Settings** names it below the
+Pivot P = (P_x, P_y, P_z): `settings.partPivot` when stored (the XFLR5 and flow5 imports store the
+wing origin with P_y = 0), else the leading edge (x, y, z) of the root section. **Settings** names it below the
 two fields.
 
 ```
@@ -603,7 +603,11 @@ T(p) = M (p − P) + P      M = | cos t    sin t sin r    sin t cos r |
   positive roll raises the right tip (a point outboard of the pivot, y > P_y, moves up).
 - Directions (plane normals, the reference direction x of a cap) turn by M alone.
 - Left half: the mirror image of the turned right half at the plane y = 0. A rolled root does not
-  lie in that plane, so the meshes do not merge the halves (section 5).
+  lie in that plane, so the meshes do not merge the halves (section 5). flow5 turns a two-sided wing
+  by its roll `Rx_angle` as one body, so its left half rolls the other way: the flow5 import warns
+  with the distance between the two left halves ([[File Formats|File-Formats]], section flow5 import).
+- The flow5 import stores `Ry_angle` as t and `Rx_angle` as r: flow5 turns a wing first about x, then
+  about y, both about the wing origin, with the same signs.
 - Extent: after the fit, every control point turned by T must lie within ±1,200,000 mm in x, y and z
   (`LIMITS.maxExtent`); the surface lies in the convex hull of its control points. Otherwise the
   build stops with:

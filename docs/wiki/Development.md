@@ -62,10 +62,13 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/export/threemf.js` | 3MF writer |
 | `src/export/foam.js` | Files of the foam-cutting wizard: `.dat` profiles, `segments.csv`, profile ZIP (`profileZip`), template blocks and sheet (`templateBlocks`, `templateLayout`), kerf offset (`offsetPolygon`), SVG (Scalable Vector Graphics), DXF (Drawing Exchange Format, AutoCAD R12) and PDF (Portable Document Format) writers (`layoutSvg`, `layoutDxf`, `layoutPdf`), PDF paging (`pagePlan`) |
 | `src/export/precision.js` | 32-bit coordinate check of STL and 3MF exports: `checkPrecision`, `MeshPrecisionError` |
-| `src/import/errors.js` | `XflrError`: file-level error of the XFLR5 readers, with a `code` and, for an `.xfl` project, the byte `offset` |
-| `src/import/xfl.js` | Reader of XFLR5 projects (`.xfl`): `readXfl` (windows of 4,194,304 bytes), `readXflBytes` (bytes in memory), `startsLikeXfl`, `sniffXflr5` |
+| `src/import/errors.js` | `XflrError`: file-level error of the XFLR5 and flow5 readers, with a `code` and, for an `.xfl` or `.fl5` project, the byte `offset` |
+| `src/import/xfl.js` | Reader of XFLR5 projects (`.xfl`): `readXfl` (windows of 4,194,304 bytes), `readXflBytes` (bytes in memory), `startsLikeXfl`, `sniffXflr5`; the windowed big-endian `Reader` that the `.fl5` reader shares |
+| `src/import/fl5.js` | Reader of flow5 projects (`.fl5`, formats 500750 and 500754): `readFl5`, `readFl5Bytes`; `readProjectFile` (an `.xfl` or `.fl5` project by its first number) |
+| `src/import/xmlscan.js` | XML tokenizer of both XML readers: `Scanner`, `children`, `readText`, `toNumber` |
 | `src/import/xflxml.js` | Reader of XFLR5 plane and wing files in Extensible Markup Language (XML): `readXflr5Xml` |
-| `src/import/xflr5.js` | Mapping of one XFLR5 wing to a project: surfaces of a plane (`planeSurfaces`), sections (`mapSections`), airfoil table, report and project (`mapXflr5`), airfoil checks in steps (`checkSteps`), airfoil uploads (`readAirfoilUpload`) |
+| `src/import/fl5xml.js` | Reader of flow5 plane and wing XML files: `readFlow5Xml`; `readPlaneXml` (an XFLR5 or flow5 XML file by its root element) |
+| `src/import/xflr5.js` | Mapping of one XFLR5 or flow5 wing to a project: surfaces of a plane (`planeSurfaces`; for flow5 every wing of the plane), sections (`mapSections`), airfoil table, report and project (`mapXflr5`), airfoil checks in steps (`checkSteps`), airfoil uploads (`readAirfoilUpload`) |
 | `src/model/project.js` | Project model, defaults, limits, validation |
 | `src/model/budget.js` | Warning thresholds, loft grid, time and memory estimates |
 | `src/model/io.js` | Project JSON import and export; `upgradeFoldedTilt` (a folded tilt of a version 2 file becomes **Part tilt**) |
@@ -88,7 +91,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/ui/dom.js` | DOM helpers |
 | `src/ui/styles.css` | Styles |
 | `src/i18n/index.js` | Language (`language`, `setLanguage`, `initialLanguage`), `tr()` and the number formats `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`; `index.js` merges them |
+| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `flow5`; `index.js` merges them |
 
 ### Scripts
 
@@ -131,15 +134,16 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `wingdesigner.language` | Chosen language, `en` or `de` (section [Translations](#translations)) |
 | `wingdesigner.foam` | Settings of the foam-cutting wizard: `coreLength`, `tolerance`, `kerf` (mm), `paper` (`a4`, `a3`, `letter`); each value outside its range reads as its default |
 
-### XFLR5 import
+### XFLR5 and flow5 import
 
-The import reads an XFLR5 file and builds a project from one wing of one plane in it. XFLR5 is a program for the analysis of airfoils and wings; 6.62 is its last release. The readers and the mapping in `src/import/` use no DOM API and run in Node.js. The dialog (`src/ui/xflr5.js`) and **Open** (`src/main.js`) use the DOM. The rules for the files and the formulas of the mapping are in [[File Formats|File-Formats]], section XFLR5 import; the dialog is described in the [[User Guide|User-Guide]], section Import from XFLR5.
+The import reads an XFLR5 or flow5 file and builds a project from one wing of one plane in it. XFLR5 is a program for the analysis of airfoils and wings; 6.62 is its last release. flow5 is its successor (version 7), under GPL-3.0; the flow5 readers are written from a description of the formats, not from flow5's code. The readers and the mapping in `src/import/` use no DOM API and run in Node.js. The dialog (`src/ui/xflr5.js`) and **Open** (`src/main.js`) use the DOM. The rules for the files and the formulas of the mapping are in [[File Formats|File-Formats]], section XFLR5 import; the dialog is described in the [[User Guide|User-Guide]], section Import from XFLR5 and flow5 and flow5.
 
-1. The change handler of the **Open** file input in `src/main.js` chooses the reader. Extension `.xfl`, `.wpa` or `.fl5`: the `.xfl` reader. `.xml`: the XML reader. Any other extension except `.json`, or none: first the first 4 bytes (`sniffXflr5`, and a UTF-16 byte order mark for the XML reader), then text that starts with `<?xml`, `<!` or `<explane` (XML reader); otherwise project JSON. `importXflr5` runs the reader and opens the dialog.
-2. A reader throws `XflrError` for a file that it cannot import. `code` is `not-xflr5`, `flow5`, `wpa`, `damaged`, `not-plane-xml`, `no-plane`, `fin` or `too-large`; `offset` is the byte of the damage in an `.xfl` project, else `null`. **Open** shows `Cannot open <file>: <message>` and leaves the design and the undo history as they are. Any other exception of the import shows as `Cannot open <file>: Internal error: <message>`.
+1. The change handler of the **Open** file input in `src/main.js` chooses the reader. Extension `.xfl`, `.wpa` or `.fl5`: `readProjectFile`, which reads the first number and calls the `.fl5` reader (500000 to 509999) or the `.xfl` reader. `.xml`: `readPlaneXml`, which calls the XFLR5 reader, and the flow5 reader for a flow5 root element. Any other extension except `.json`, or none: first the first 4 bytes (`sniffXflr5`, and a UTF-16 byte order mark for the XML readers), then text that starts with `<?xml`, `<!`, `<explane`, `<xflplane` or `<xflwing` (XML readers); otherwise project JSON. `importXflr5` runs the reader and opens the dialog.
+2. A reader throws `XflrError` for a file that it cannot import. `code` is `not-xflr5`, `flow5` (from the XFLR5 readers, which hand flow5 files on), `flow5-old`, `flow5-new`, `wpa`, `damaged`, `not-plane-xml`, `no-plane`, `fin` or `too-large`; `offset` is the byte of the damage in an `.xfl` project, else `null`. **Open** shows `Cannot open <file>: <message>` and leaves the design and the undo history as they are. Any other exception of the import shows as `Cannot open <file>: Internal error: <message>`.
 3. `readXfl(file)` and `readXflr5Xml(text)` return the same object, `XflrFile`: `kind` (`xfl` or `xml`), `format`, `lengthUnit` (millimetres per length unit of the file; 1000 for `.xfl`), `unitName`, `wingOnly`, `planes`, `foils`, `foilError` and `warnings`. A plane has a `name` and `wings`, the 4 XFLR5 wing slots main wing, second wing, elevator (horizontal stabilizer) and fin; a slot that the plane lacks is `null`. `foils` (`.xfl` only) maps an airfoil name to its base coordinates and flap settings. Wing sections keep the values of the file: the length unit of the file and degrees.
 4. `readXfl` reads a project through windows of 4,194,304 bytes (`WINDOW_SIZE`, `Blob.slice`). The record readers are generator functions. One yields when its next read lies outside the window; `readXfl` loads the window that starts there and resumes it. A skip only moves the offset. The analyses and the analysis results, which make up most of a project of 96.7 MB, are skipped by their counts. Reading ends after the airfoils. `readXflBytes` reads a file held in memory as one window. A file damaged after the planes gives its planes without airfoils (`foilError` and a warning).
-5. `readXflr5Xml` is a pull tokenizer without a tree, linear in the length of the text. A missing or garbled number stays NaN (not a number) and gives a warning; XFLR5 reads such text as 0.
+5. `readXflr5Xml` is a pull tokenizer without a tree (`src/import/xmlscan.js`), linear in the length of the text. A missing or garbled number stays NaN (not a number) and gives a warning; XFLR5 reads such text as 0.
+   - flow5 files: `readFl5` and `readFlow5Xml` return the same shape with `program: 'flow5'` (`kind` `fl5` or `xml`). A plane has `kind` (`wings` or `mesh`), `bodies` and `wings`, a list in file order; a wing has `type` (`main`, `elevator`, `fin`, `other`), `twoSided`, `position`, `tilt` (`Ry_angle`) and `roll` (`Rx_angle`). `readFl5` walks every record before the planes by its counts, through the windows of the `.xfl` reader, and stops after the last plane. `programOf(file)` gives `XFLR5` or `flow5` for the messages, which carry a `{program}` placeholder.
 6. `mapXflr5(file, options)` (`src/import/xflr5.js`) is a pure function. `options` holds `plane`, `surface` (`main` or `stab`), `fileName`, `name`, `project` (the current project), `library` (bundled library entries), `uploads` (read `.dat` files) and `choices` (the option key picked per XFLR5 airfoil name: `file:<name>`, `upload:<i>`, `project:<id>`, `library:<id>` or `naca:<code>`). The result holds `rows` (the airfoil table), `options` (the entries of the airfoil lists), `report` (lines with the severity `error`, `warning` or `info`), `errors`, `project` (`null` while the report holds an error) and `summary`. The steps: `mapSections` (y and z from the developed span and the dihedral, clean-up of sections at one y and of chords below 1 mm, the position; the tilt angle is returned, and the project stores it as `settings.partTilt` with `partRoll` 0 and the wing origin as `partPivot`); one airfoil per name (file, uploads, current project, library, NACA generator, similar name); the airfoil frame (`placeAirfoil`; a NACA airfoil of the current project whose points are the generated or checked section of its code gets the frame of that generated section, `checkProjectAirfoil`); `createProject` and `validateProject`. Check results are cached per airfoil object and language (`WeakMap`), because the dialog maps again after every choice.
 7. `openXflr5Dialog(file, { fileName, project, library })` calls `mapXflr5` after every choice and draws the result. The first mapping follows `checkSteps`, a generator with one step per airfoil name. The dialog runs it in slices of 50 ms (`SLICE_MS`), so that clicks, Escape and scrolling work meanwhile. A change of plane or surface runs `checkSteps` of the new wing at once for up to 50 ms; when it has not ended by then, the dialog turns **Import** off, empties the airfoil table, the preview, the stats line and the untyped project name of the previous wing, and runs the rest in slices, as for the first mapping. The candidate project is built with `buildWing` for the preview; a project above a size warning is not built, and the preview draws straight panels. The errors and warnings of the build become report lines (`buildNotes`) that do not block **Import**. The promise resolves with `{ project, summary, warnings }`, or with `null` after **Cancel**.
 8. `main.js` calls `replaceProject` (`store.replace`, one undo step), opens the **Sections** tab and shows the summary and the first warning as a message.
@@ -158,7 +162,10 @@ The import reads an XFLR5 file and builds a project from one wing of one plane i
 | `MAX_FOILS` | `LIMITS.maxAirfoils` (10,000) | Airfoils read from an `.xfl` project |
 | `MAX_FOIL_POINTS` | 2,000,000 | Airfoil points read from an `.xfl` project; airfoils beyond it are skipped and reported |
 | `MAX_XFLR5_FOIL_POINTS` | 1,000 | Points of one airfoil; XFLR5 holds at most 604 |
-| `MAX_ELEMENTS`, `MAX_DEPTH`, `MAX_ATTRIBUTES` (`src/import/xflxml.js`) | 1,000,000; 100; 100 | XML elements per file, nesting depth, attributes per element |
+| `MAX_ELEMENTS`, `MAX_DEPTH`, `MAX_ATTRIBUTES` (`src/import/xmlscan.js`) | 1,000,000; 100; 100 | XML elements per file, nesting depth, attributes per element |
+| `FL5_FORMATS` (`src/import/fl5.js`) | 500750, 500754 | `.fl5` project formats read |
+| `MAX_FLOW5_FOIL_POINTS` | 10,000 | Points of one `.fl5` airfoil |
+| `MAX_FLOW5_WINGS` (`src/import/fl5xml.js`) | 100 | Wings read per plane of a flow5 XML file |
 
 Sections per wing: `LIMITS.maxSections` (20,000). XML files: `MAX_PROJECT_BYTES` (100 MB).
 
@@ -286,11 +293,12 @@ To add a text:
 | `airfoil.js` | `src/airfoil/` |
 | `xfl.js` | `src/import/xfl.js` |
 | `xflxml.js` | `src/import/xflxml.js` |
+| `flow5.js` | `src/import/fl5.js`, `src/import/fl5xml.js`, the flow5 texts of `src/import/xflr5.js` and `src/ui/xflr5.js`, and `flow5: <file>` in `src/ui/airfoils.js` |
 | `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` and the texts of the XFLR5 import in `src/main.js` and `src/ui/airfoils.js`: title of **Open**, item in **Help**, count of further warnings, refusal of an XFLR5 file in the upload, `XFLR5: <file>` under an imported airfoil |
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` and the label and title of **Foam** in `src/main.js` |
 | `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` and the **Winglet…** button in `src/ui/sections.js` |
 
-`src/i18n/de/index.js` merges the eleven files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 33 and 141 texts.
+`src/i18n/de/index.js` merges the twelve files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 34 and 146 texts, the file of the flow5 import 43.
 
 To add a language:
 
@@ -333,6 +341,8 @@ Rules for texts:
 | XFLR5 project files for edge cases | Written by `test/xflr5-writer.js` from the description of the format in `src/import/xfl.js`; no XFLR5 code |
 | Airfoil uploads in the XFLR5 browser tests | Generated in `e2e/xflr5.spec.js`: `.dat` file `TEST 12` with 13 points, invented coordinates |
 | Screenshot of the import dialog | `test/fixtures/xflr5/fixtures_v662.xfl`, opened over the **Sport** preset, in both languages |
+| flow5 files in unit tests and browser tests | `test/fixtures/flow5/`: written by local builds of flow5 7.57 and 7.56 from own inputs, MIT, origin per file in `test/fixtures/flow5/SOURCE.md` (section [flow5 test files and tests](#flow5-test-files-and-tests)) |
+| flow5 project files for other record formats | Written by `test/fl5-writer.js` from the description of the format; no flow5 code |
 
 Third-party airfoil files are committed only under a license from the License row in [Airfoil library check](#airfoil-library-check). Third-party XFLR5 files are committed only under the MIT license (`test/fixtures/xflr5/uaslab/`).
 Sources: [[Airfoil Sources|Airfoil-Sources]].
@@ -378,6 +388,34 @@ Browser tests: `e2e/xflr5.spec.js`, 10 tests, 20 runs:
 - **Open** recognizes XFLR5 files whose name lost its extension.
 - The **Airfoils** upload refuses XFLR5 files, also an `.xfl` project above 20 MB.
 - The import dialog fits a 360 px wide phone (`mobile` only).
+
+### flow5 test files and tests
+
+Files in `test/fixtures/flow5/`, written by local builds of flow5 from Wingdesigner's own inputs (planes, wings, airfoil choices); `test/fixtures/flow5/SOURCE.md` lists them with their content. The drivers that link the flow5 libraries (GPL-3.0) and the build changes for Ubuntu 24.04 are not part of the repository, so the repository cannot regenerate these files. The files contain no flow5 code.
+
+| File | Bytes | Written by |
+| --- | ---: | --- |
+| `basic.fl5` | 8,648 | flow5 7.57: main wing, elevator, one-sided fin |
+| `full.fl5` | 116,772 | flow5 7.57: 3 planes (6 wings and 3 bodies; a triangle mesh; one wing), an airfoil analysis with saved results, a flapped airfoil |
+| `v756.fl5` | 85,968 | flow5 7.56: a sections body with its section points |
+| `basic-plane.xml`, `basic-wing.xml`, `full-plane.xml`, `full-plane-files.xml` | 3,094 to 31,093 | flow5 7.57: plane and wing XML export in metres and millimetres, airfoils by name and by `.dat` file |
+| `NACA 2412.dat`, `NACA 0009.dat`, `Flapped 2410.dat` | 2,782 to 2,785 | flow5 7.57: the airfoil files of the XML export |
+| `mesh-nodes.json` | 104,898 | flow5 7.57: the analysis mesh nodes of 7 wings, the reference of the geometry test |
+
+Unit tests (Vitest, Node.js):
+
+| File | Tests | Content |
+| --- | ---: | --- |
+| `test/flow5-fl5.test.js` | 9 | Reader of `.fl5` projects: the files of flow5 7.57 and 7.56; every body kind, airfoil analyses and results, mesh planes, the record formats of flow5 7.53 and older layouts from `test/fl5-writer.js`; the sections body with and without its section points; refusals; windows of 1,000 bytes |
+| `test/flow5-xml.test.js` | 9 | Reader of flow5 XML: plane files in millimetres and metres, `.dat` file references, wing files, `Type` and booleans, units, several planes, refusals |
+| `test/flow5-map.test.js` | 7 | Mapping: the wing list with its reasons, a further wing, roll and tilt as part placement with the warning on the mirrored left half, flow5 airfoils and their flaps, `.dat` files matched by name; the right half of 7 wings within 0.15 mm of flow5's analysis mesh |
+
+`test/fl5-writer.js` writes `.fl5` projects from the same description of the format, with the format number of each record selectable, so that the layouts of flow5 versions without a file at hand are tested.
+
+Browser tests: `e2e/flow5.spec.js`, 2 tests, 4 runs:
+
+- `.fl5` project: plane choice, the wing list with a fin and a rolled further wing disabled, the rolled elevator imported as part roll and tilt, its airfoil from the file, **Undo**.
+- flow5 plane XML with `.dat` file references: **Upload .dat files…** takes both files, each row finds its file by name.
 - The dialog in German (locale `de-DE`).
 
 ## Commands

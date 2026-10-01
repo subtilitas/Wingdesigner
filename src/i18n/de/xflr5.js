@@ -153,11 +153,11 @@ export default {
     'Höhenleitwerk „{wing}“ von „{plane}“ aus {file} importiert: {sections} Schnitte, {airfoils}.',
 
   // Dialog (src/ui/xflr5.js)
-  'Import from XFLR5': 'Aus XFLR5 importieren',
+  'Import from {program}': 'Aus {program} importieren',
   Plane: 'Flugzeug',
   'Plane {n}': 'Flugzeug {n}',
   'Surface to import': 'Zu importierende Fläche',
-  'XFLR5 airfoil': 'XFLR5-Profil',
+  '{program} airfoil': '{program}-Profil',
   Found: 'Gefunden',
   'Airfoil used': 'Verwendetes Profil',
   'Airfoil for "{name}"': 'Profil für „{name}“',
@@ -182,9 +182,9 @@ export default {
     '{count} weitere Profilnamen sind nicht aufgeführt; hochgeladene .dat-Dateien werden ihnen über den Namen zugeordnet.',
 
   // Open button and Help (src/main.js), Airfoils upload (src/ui/airfoils.js)
-  'Open a project (.json) or import a wing from XFLR5 (.xfl, .xml)': 'Ein Projekt öffnen (.json) oder einen Flügel aus XFLR5 importieren (.xfl, .xml)',
-  'Open: a project file (.json), or an XFLR5 file (.xfl, .xml) to import its main wing or horizontal stabilizer.':
-    'Öffnen: eine Projektdatei (.json) oder eine XFLR5-Datei (.xfl, .xml), um ihre Tragfläche oder ihr Höhenleitwerk zu importieren.',
+  'Open a project (.json) or import a wing from XFLR5 or flow5 (.xfl, .fl5, .xml)': 'Ein Projekt öffnen (.json) oder einen Flügel aus XFLR5 oder flow5 importieren (.xfl, .fl5, .xml)',
+  'Open: a project file (.json), or an XFLR5 or flow5 file (.xfl, .fl5, .xml) to import one of its wings.':
+    'Öffnen: eine Projektdatei (.json) oder eine XFLR5- oder flow5-Datei (.xfl, .fl5, .xml), um einen ihrer Flügel zu importieren.',
   '{file} is an XFLR5 file, not an airfoil. Use Open to import a wing from it.': '{file} ist eine XFLR5-Datei, kein Profil. Mit „Öffnen“ lässt sich daraus ein Flügel importieren.',
   '(1 more warning in the import report.)': '(1 weitere Warnung im Importbericht.)',
   '({n} more warnings in the import report.)': '({n} weitere Warnungen im Importbericht.)',

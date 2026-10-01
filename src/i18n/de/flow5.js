@@ -56,4 +56,8 @@ export default {
   'Imported the wing "{wing}" of "{plane}" from {file}: {sections} sections, {airfoils}.': 'Flügel „{wing}“ von „{plane}“ aus {file} importiert: {sections} Schnitte, {airfoils}.',
   // src/ui/airfoils.js
   'flow5: {file}': 'flow5: {file}',
+  // src/ui/xflr5.js
+  '{files} files uploaded; {rows} airfoil names use them.': '{files} Dateien hochgeladen; {rows} Profilnamen verwenden sie.',
+  'Upload .dat files…': '.dat-Dateien hochladen …',
+  'Each airfoil name takes the file whose airfoil or file name matches it.': 'Jeder Profilname erhält die Datei, deren Profil- oder Dateiname zu ihm passt.',
 };
