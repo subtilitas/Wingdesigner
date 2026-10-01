@@ -189,7 +189,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
                   changed();
                 },
               },
-              file.planes.map((p, i) => h('option', { value: String(i) }, p.name.trim() ? displayName(p.name) : tr('Plane {n}', { n: plain(i + 1) }))),
+              file.planes.map((p, i) => h('option', { value: String(i), selected: i === plane }, p.name.trim() ? displayName(p.name) : tr('Plane {n}', { n: plain(i + 1) }))),
             )
           : null;
 

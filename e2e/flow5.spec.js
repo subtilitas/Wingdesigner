@@ -28,6 +28,9 @@ test.describe('flow5 import', () => {
     // flow5 sorts its planes by name; the first one, a triangle mesh, has no wings.
     const planeSelect = dlg.getByRole('combobox', { name: 'Plane' });
     await expect(planeSelect.locator('option')).toHaveText(['Mesh plane', 'Second', 'Tandem']);
+    // The dialog opens on the first plane with a wing.
+    await expect(planeSelect).toHaveValue('1');
+    await expect(dlg.getByRole('radio', { name: /^Main wing / })).toBeChecked();
     await planeSelect.selectOption({ label: 'Tandem' });
     const radios = dlg.getByRole('radio');
     await expect(radios).toHaveCount(6);
