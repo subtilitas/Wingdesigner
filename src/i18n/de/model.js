@@ -171,6 +171,7 @@ export default {
   'Panel {n}: {param} must be between {min} and {max}.': 'Feld {n}: {param} muss zwischen {min} und {max} liegen.',
   'Panel {n} spans {w} mm of the half span; a panel needs at least 1 mm.': 'Feld {n} überspannt {w} mm der halben Spannweite; ein Feld braucht mindestens 1 mm.',
   'Panel {n}: the elliptic tip needs at least {min} mm of chord where it begins.': 'Feld {n}: das elliptische Flügelende braucht an seinem Anfang mindestens {min} mm Profiltiefe.',
+  'Panel {n} ends at x = {x} mm, z = {z} mm, beyond ±{max} mm.': 'Feld {n} endet bei x = {x} mm, z = {z} mm, außerhalb von ±{max} mm.',
   'Panel {n}: the outer chord is below {min} mm.': 'Feld {n}: die äußere Profiltiefe liegt unter {min} mm.',
   'An elliptic planform needs taper < 1.': 'Ein elliptischer Grundriss braucht eine Zuspitzung < 1.',
   '{param} must be a NACA 4- or 5-digit designation.': '{param} muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern sein.',

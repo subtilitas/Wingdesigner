@@ -909,6 +909,9 @@ describe('wizard panels', () => {
     thin.panels[0].chord = 0.0387;
     expect(wizardProblems(thin)).toEqual([]);
     expect(buildWing(wizardProject(thin)).errors).toEqual([]);
+    // 20,000 mm span, one panel at 89.9°: the tip lies at x = 5,729,572 mm.
+    const far = { ...base, span: 20000, panels: [{ span: 1, sweep: 89.9, chord: 0.2, dihedral: 0 }] };
+    expect(wizardProblems(far)).toEqual(['Panel 1 ends at x = 5729572 mm, z = 0 mm, beyond ±1000000 mm.']);
     // The extreme straight planform converts to a sweep within the panel range and builds.
     const extreme = { ...PRESETS.sport.params, span: 100, rootChord: 3000, taper: 0.1, sweep: 60, sections: 8 };
     expect(buildWing(wizardProject(extreme)).errors).toEqual([]);

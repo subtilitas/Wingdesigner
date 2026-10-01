@@ -327,6 +327,20 @@ function panelProblems(params) {
       if (w < 1) out.push(tr('Panel {n} spans {w} mm of the half span; a panel needs at least 1 mm.', { n: i + 1, w: plain(Number(w.toPrecision(3))) }));
     });
   }
+  // Every panel end stays within the coordinate limit: a long span at a steep sweep or dihedral
+  // (20,000 mm at 89.9°) would put the tip millions of mm away.
+  if (Number.isFinite(params.span)) {
+    let x = 0;
+    let z = 0;
+    list.forEach((q, i) => {
+      const dy = (q.span / total) * (params.span / 2);
+      x += dy * Math.tan((q.sweep * Math.PI) / 180);
+      z += dy * Math.tan((q.dihedral * Math.PI) / 180);
+      if (Math.abs(x) > LIMITS.maxCoordinate || Math.abs(z) > LIMITS.maxCoordinate) {
+        out.push(tr('Panel {n} ends at x = {x} mm, z = {z} mm, beyond ±{max} mm.', { n: i + 1, x: whole(Math.round(x)), z: whole(Math.round(z)), max: whole(LIMITS.maxCoordinate) }));
+      }
+    });
+  }
   // An elliptic tip keeps cos(π (m − 1) / (2 m)) of its entry chord at its last inner section
   // (m = ELLIPTIC_TIP_SECTIONS: cos 75° = 0.259), which must reach the smallest chord: 3.86 mm.
   if (params.tip === 'elliptic' && Number.isFinite(params.rootChord)) {
