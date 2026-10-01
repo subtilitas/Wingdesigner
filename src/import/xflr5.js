@@ -114,6 +114,9 @@ const FIELDS = [
 
 const SEVERITY = { error: 0, warning: 1, info: 2 };
 
+/** The program that wrote a read file, for messages: XFLR5 or flow5. */
+export const programOf = (file) => (file.program === 'flow5' ? 'flow5' : 'XFLR5');
+
 /** Order of report lines: errors, then warnings, then info. */
 export const bySeverity = (a, b) => SEVERITY[a.severity] - SEVERITY[b.severity];
 
@@ -202,6 +205,7 @@ function outline(wing, k) {
 export function planeSurfaces(file, planeIndex = 0) {
   const plane = file.planes[planeIndex];
   if (!plane) throw new RangeError(`no plane ${planeIndex}`);
+  if (file.program === 'flow5') return flow5Surfaces(file, plane);
   const k = file.lengthUnit;
   const reasons = file.wingOnly
     ? { main: tr('The wing in this file is a horizontal stabilizer (type ELEVATOR).'), stab: tr('The wing in this file is not a horizontal stabilizer (type ELEVATOR).') }
@@ -215,6 +219,48 @@ export function planeSurfaces(file, planeIndex = 0) {
   if (plane.wings[1]) others.push({ slot: 1, name: plane.wings[1].name, label: tr('Second wing') });
   if (plane.wings[3]) others.push({ slot: 3, name: plane.wings[3].name, label: tr('Fin') });
   return { surfaces, others };
+}
+
+/** A wing's angle (degrees) reduced by whole turns to −180..180; 0 for whole turns. */
+const reduced = (a) => zero(a - 360 * Math.round(a / 360));
+
+/**
+ * The surfaces of a flow5 plane: one per wing, in file order. The first main wing ('main') and the
+ * first elevator ('stab') import with their roll (Rx_angle, the part roll); every other two-sided wing
+ * ('wing:<index>': a second main wing, a canard, another wing) imports when it is not rolled. Fins and
+ * one-sided wings, of which flow5 builds the left half only, are listed as not available.
+ */
+function flow5Surfaces(file, plane) {
+  const k = file.lengthUnit;
+  const firstMain = plane.wings.findIndex((w) => w.type === 'main');
+  const firstStab = plane.wings.findIndex((w) => w.type === 'elevator');
+  const seen = { main: 0, elevator: 0, fin: 0, other: 0 };
+  const totals = { main: 0, elevator: 0, fin: 0, other: 0 };
+  for (const w of plane.wings) totals[w.type]++;
+  const label = (type) => {
+    const n = ++seen[type];
+    const many = totals[type] > 1;
+    switch (type) {
+      case 'main':
+        return many ? tr('Main wing {n}', { n: plain(n) }) : tr('Main wing');
+      case 'elevator':
+        return many ? tr('Horizontal stabilizer {n} (flow5: Elevator)', { n: plain(n) }) : tr('Horizontal stabilizer (flow5: Elevator)');
+      case 'fin':
+        return many ? tr('Fin {n}', { n: plain(n) }) : tr('Fin');
+      default:
+        return many ? tr('Other wing {n}', { n: plain(n) }) : tr('Other wing');
+    }
+  };
+  const surfaces = plane.wings.map((wing, i) => {
+    const key = i === firstMain ? 'main' : i === firstStab ? 'stab' : `wing:${i}`;
+    const rolled = Number.isFinite(wing.roll) && reduced(wing.roll) !== 0;
+    let reason = null;
+    if (wing.type === 'fin') reason = tr('Fins are not imported.');
+    else if (!wing.twoSided) reason = tr('A one-sided wing: flow5 builds only its left half. Only two-sided wings are imported.');
+    else if (rolled && key !== 'main' && key !== 'stab') reason = tr('Rolled {angle}° about x: only the first main wing and the first horizontal stabilizer are imported with a roll.', { angle: num(wing.roll) });
+    return { key, slot: i, label: label(wing.type), available: reason === null, reason, wing, ...outline(wing, k) };
+  });
+  return { surfaces, others: [] };
 }
 
 /** The surface a dialog selects first: the main wing, or the stabilizer when it is the only one. */
@@ -242,6 +288,7 @@ function unitWord(unitName) {
 
 /** One line on the kind of file, for the dialog. */
 export function describeFile(file) {
+  if (file.program === 'flow5') return describeFlow5(file);
   if (file.kind === 'xfl') {
     const format = plain(file.format);
     return file.format === 200001 ? tr('XFLR5 project, format {format} (XFLR5 6.10 to 6.43)', { format }) : tr('XFLR5 project, format {format} (XFLR5 6.44 or later)', { format });
@@ -252,6 +299,20 @@ export function describeFile(file) {
   }
   const factor = num(file.lengthUnit);
   return file.wingOnly ? tr('XFLR5 wing file (XML), lengths in units of {factor} mm', { factor }) : tr('XFLR5 plane file (XML), lengths in units of {factor} mm', { factor });
+}
+
+/** One line on a flow5 file, for the dialog. */
+function describeFlow5(file) {
+  if (file.kind === 'fl5') {
+    const format = plain(file.format);
+    return file.format === 500750 ? tr('flow5 project, format {format} (flow5 7.50 to 7.53)', { format }) : tr('flow5 project, format {format} (flow5 7.54 or later)', { format });
+  }
+  if (file.unitName) {
+    const unit = unitWord(file.unitName);
+    return file.wingOnly ? tr('flow5 wing file (XML), lengths in {unit}', { unit }) : tr('flow5 plane file (XML), lengths in {unit}', { unit });
+  }
+  const factor = num(file.lengthUnit);
+  return file.wingOnly ? tr('flow5 wing file (XML), lengths in units of {factor} mm', { factor }) : tr('flow5 plane file (XML), lengths in units of {factor} mm', { factor });
 }
 
 /** True when two sections at one y describe the same section (a duplicate XFLR5 draws as nothing). */
@@ -269,11 +330,12 @@ function identical(a, b) {
  * @returns {{sections: {index: number, x: number, y: number, z: number, chord: number, twist: number, foil: string}[], report: {severity: string, text: string}[], steep: {severity: string, text: string}[], tilt: {angle: number, x: number, z: number}|null, rolls: number[]}}
  *   `index` is the 0-based XFLR5 section number; `sections` is empty when the report has an error.
  *   `steep`: the warnings on panels above DIHEDRAL_WARN, for an import with vertical section planes.
- *   `tilt`: the tilt angle (degrees, reduced by whole turns to −180..180) about the wing origin x, z
- *   (mm), or null for a part without tilt. `rolls`: XFLR5's roll of each section's mitred plane
+ *   `tilt`: the tilt angle and, for a flow5 wing, the roll angle (degrees, each reduced by whole turns
+ *   to −180..180) about the wing origin x, z (mm): { angle, roll, x, z }, or null for a part without
+ *   either. `rolls`: XFLR5's roll of each section's mitred plane
  *   (degrees), from the panels in the frame of the part.
  */
-export function mapSections(wing, lengthUnit) {
+export function mapSections(wing, lengthUnit, program = 'XFLR5') {
   const report = [];
   const add = (severity, text) => report.push({ severity, text });
   const failed = () => report.some((r) => r.severity === 'error');
@@ -296,6 +358,9 @@ export function mapSections(wing, lengthUnit) {
     if (bad.length) add('error', tr('{field} is not a finite number in the file at {sections}.', { field, sections: sectionsText(bad) }));
   }
   const { position, tilt } = wing;
+  // A flow5 wing turns by Rx_angle about x before the tilt (Ry_angle) about y; XFLR5 has no roll.
+  const roll = wing.roll ?? 0;
+  if (!Number.isFinite(roll)) add('error', tr('The roll angle (Rx_angle) of the wing is not a finite number in the file.'));
   if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) add('error', tr('The position of the wing in the plane is not a finite number in the file.'));
   if (!Number.isFinite(tilt)) add('error', tr('The tilt angle of the wing is not a finite number in the file.'));
   if (failed()) return out([]);
@@ -305,7 +370,7 @@ export function mapSections(wing, lengthUnit) {
   const D = src.map((s) => k * s.y);
   if (D[0] <= -MIN_PANEL) add('error', tr('The root section lies at y_position {y} mm; the half wing must start at y >= 0.', { y: num(D[0]) }));
   else if (D[0] <= MIN_PANEL && D[0] !== 0) {
-    if (num(D[0]) !== num(0)) add('info', tr('Root y_position {y} mm lies within 0.1 mm of the centre and is set to 0, as XFLR5 joins the halves there.', { y: num(D[0]) }));
+    if (num(D[0]) !== num(0)) add('info', tr('Root y_position {y} mm lies within 0.1 mm of the centre and is set to 0, as {program} joins the halves there.', { program, y: num(D[0]) }));
     D[0] = 0;
   }
   const equal = [false];
@@ -330,14 +395,14 @@ export function mapSections(wing, lengthUnit) {
     if ((D[i + 1] - D[i]) * Math.cos(delta * DEG) < MIN_WIDTH) {
       upright.add(() => tr('The panel from section {a} to {b} has {angle}° dihedral: its outer end must lie further out in y than its inner end.', at));
     } else if (Math.abs(delta) > DIHEDRAL_WARN) {
-      steep.add(() => tr('The panel from section {a} to {b} has {angle}° dihedral: the vertical sections are {pct} % as thick across the panel as in XFLR5.', { ...at, pct: fixed(Math.cos(delta * DEG) * 100, 0) }));
+      steep.add(() => tr('The panel from section {a} to {b} has {angle}° dihedral: the vertical sections are {pct} % as thick across the panel as in {program}.', { program, ...at, pct: fixed(Math.cos(delta * DEG) * 100, 0) }));
     }
     if (delta !== 0) bent = true;
   }
   upright.done();
   steep.done();
   if (failed()) return out([]);
-  if (bent) add('info', tr('XFLR5 measures y_position along the panels; y and z were computed from it and the dihedral.'));
+  if (bent) add('info', tr('{program} measures y_position along the panels; y and z were computed from it and the dihedral.', { program }));
 
   // Wing frame: y and z of each section; a panel shorter than MIN_PANEL has no length, as in XFLR5.
   const items = develop(D, src).map(([y, z], i) => {
@@ -388,19 +453,23 @@ export function mapSections(wing, lengthUnit) {
     }
   }
   if (thin.length) add('warning', tr('Chords below {min} mm were raised to {min} mm, the smallest chord Wingdesigner builds, at {sections}.', { min: plain(LIMITS.minChord), sections: sectionsText(thin) }));
-  if (D[0] > 0) add('info', tr('The root lies at y = {y} mm: the two halves are built as separate bodies, as in XFLR5.', { y: num(kept[0].y) }));
+  if (D[0] > 0) add('info', tr('The root lies at y = {y} mm: the two halves are built as separate bodies, as in {program}.', { program, y: num(kept[0].y) }));
 
   rolls = sectionPlanes(kept, 'mitred').rolls;
   // Tilt about the wing origin (positive = nose up): stored for the rigid placement of the part.
   const X = k * position.x;
   const ZL = k * position.z;
-  if (tilt !== 0) {
-    // Stored within ±180°: a tilt of whole turns turns nothing.
-    const angle = zero(tilt - 360 * Math.round(tilt / 360));
-    if (angle !== 0) {
-      folded = { angle, x: X, z: ZL };
-      add('info', tr('Tilt angle {angle}° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).', { angle: num(angle) }));
-    }
+  // Stored within ±180°: an angle of whole turns turns nothing.
+  const angle = reduced(tilt);
+  const rollAngle = reduced(roll);
+  if (angle !== 0 || rollAngle !== 0) folded = { angle, roll: rollAngle, x: X, z: ZL };
+  if (rollAngle !== 0) {
+    add('info', tr('Roll angle {angle}° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).', { angle: num(rollAngle) }));
+    // flow5 turns both halves as one body; the part's left half is the mirror image of its turned right half.
+    add('warning', tr('flow5 rolls the whole wing, so its left half turns the other way; Wingdesigner builds the left half as the mirror image of the right half, up to {d} mm from flow5\'s left half.', { d: fixed(leftHalfOffset(kept, angle, rollAngle), 1) }));
+  }
+  if (angle !== 0) {
+    add('info', tr('Tilt angle {angle}° applied as in the {program} plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).', { program, angle: num(angle) }));
   }
   // Whole turns of twist (a tilt of 400°, say) give the same sections: one turn common to all keeps
   // the differences between the sections, which the spanwise interpolation uses.
@@ -414,9 +483,9 @@ export function mapSections(wing, lengthUnit) {
       q.x += X;
       q.z += ZL;
     }
-    add('info', tr('Position in the XFLR5 plane applied: the wing origin moved to x {x} mm, z {z} mm.', { x: num(X), z: num(ZL) }));
+    add('info', tr('Position in the {program} plane applied: the wing origin moved to x {x} mm, z {z} mm.', { program, x: num(X), z: num(ZL) }));
   }
-  if (Number.isFinite(position.y) && position.y !== 0) add('info', tr('Position y {y} mm is not used, as in XFLR5.', { y: num(k * position.y) }));
+  if (Number.isFinite(position.y) && position.y !== 0) add('info', tr('Position y {y} mm is not used, as in {program}.', { program, y: num(k * position.y) }));
 
   const sides = src.flatMap((s, i) => (s.leftFoil !== s.rightFoil ? [i + 1] : []));
   if (sides.length) add('warning', tr('Left and right airfoils differ at {sections}; the right-side airfoils are used.', { sections: sectionsText(sides) }));
@@ -425,6 +494,27 @@ export function mapSections(wing, lengthUnit) {
   // Values a project cannot hold are reported here, in XFLR5's section numbers.
   if (!withinLimits(sections, add)) return out([]);
   return out(sections);
+}
+
+/**
+ * Largest distance (mm) between the left half of a wing that flow5 turns as one body (roll, then tilt,
+ * about the wing origin) and the mirror image of the turned right half, over the leading and trailing
+ * edges of the sections (`kept`: wing frame, before the position moves them).
+ */
+function leftHalfOffset(kept, tilt, roll) {
+  const [ct, st, cr, sr] = [Math.cos(tilt * DEG), Math.sin(tilt * DEG), Math.cos(roll * DEG), Math.sin(roll * DEG)];
+  // Ry(tilt) · Rx(roll), as src/geom/part.js.
+  const turn = ([x, y, z]) => [ct * x + st * sr * y + st * cr * z, cr * y - sr * z, -st * x + ct * sr * y + ct * cr * z];
+  let d = 0;
+  for (const q of kept) {
+    for (const x of [q.x, q.x + q.chord]) {
+      const p = [x, q.y, q.z];
+      const a = turn([p[0], -p[1], p[2]]);
+      const b = turn(p);
+      d = Math.max(d, Math.hypot(a[0] - b[0], a[1] + b[1], a[2] - b[2]));
+    }
+  }
+  return d;
 }
 
 /**
@@ -598,7 +688,7 @@ function checkFramed(parsed, { refuseOutside = true } = {}) {
       return failed([{ severity: 'error', code: 'frame', message: problem }, ...kept], problem);
     }
     const message = tr(
-      'The coordinates are not in chord units (leading edge at x\u00a0=\u00a0{x}, y\u00a0=\u00a0{y}; trailing edge at x\u00a0=\u00a0{te}): XFLR5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file.',
+      'The coordinates are not in chord units (leading edge at x\u00a0=\u00a0{x}, y\u00a0=\u00a0{y}; trailing edge at x\u00a0=\u00a0{te}): XFLR5 and flow5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file.',
       at,
     );
     return { ok: true, name: parsed.name, points: c.points, issues: [{ severity: 'warning', code: 'frame', message }, ...kept], problem: null, frame: NO_FRAME };
@@ -690,7 +780,8 @@ const airfoilLabel = (a) => (typeof a.name === 'string' && a.name.trim() ? a.nam
  * option key ('file:<name>', 'upload:<i>', 'project:<id>', 'library:<id>', 'naca:<code>').
  */
 function airfoilSources(file, plane, fileName, { project, library, uploads }) {
-  const foils = file.kind === 'xfl' && file.foils ? file.foils : null;
+  const foils = (file.kind === 'xfl' || file.kind === 'fl5') && file.foils ? file.foils : null;
+  const flow5 = file.program === 'flow5';
   const projectAirfoils = new Map((project?.airfoils ?? []).filter((a) => a && typeof a.id === 'string' && Array.isArray(a.points)).map((a) => [a.id, a]));
   const libraryEntries = new Map(library.map((e) => [e.id, e]));
   const options = [];
@@ -700,10 +791,11 @@ function airfoilSources(file, plane, fileName, { project, library, uploads }) {
   for (const e of libraryEntries.values()) options.push({ key: `library:${e.id}`, kind: 'library', name: e.name, label: tr('Library: {name}', { name: displayName(e.name) }) });
   for (const p of NACA_PRESETS) options.push(nacaOption(p.code));
 
-  const note = (name) =>
-    plane.name.trim() === ''
-      ? tr('Airfoil "{name}" from an XFLR5 project; base shape without flap deflection.', { name: displayName(name) })
-      : tr('Airfoil "{name}" from XFLR5 plane "{plane}"; base shape without flap deflection.', { name: displayName(name), plane: displayName(plane.name) });
+  const note = (name) => {
+    const params = { name: displayName(name), plane: displayName(plane.name) };
+    if (flow5) return plane.name.trim() === '' ? tr('Airfoil "{name}" from a flow5 project; the stored shape.', params) : tr('Airfoil "{name}" from flow5 plane "{plane}"; the stored shape.', params);
+    return plane.name.trim() === '' ? tr('Airfoil "{name}" from an XFLR5 project; base shape without flap deflection.', params) : tr('Airfoil "{name}" from XFLR5 plane "{plane}"; base shape without flap deflection.', params);
+  };
 
   /**
    * The airfoil of an option key, or null for an unknown key: { ok, airfoil, shown, issues, problem, frame?, ownFrame?, unknownFrame?, foil? };
@@ -723,7 +815,7 @@ function airfoilSources(file, plane, fileName, { project, library, uploads }) {
       if (!foil) return null;
       const c = checkFileFoil(foil);
       const attribution = suggestAttribution(c.name);
-      const source = { kind: 'xflr5', file: String(fileName).slice(0, LIMITS.maxText), note: note(c.name), ...(attribution ? { attribution } : {}) };
+      const source = { kind: flow5 ? 'flow5' : 'xflr5', file: String(fileName).slice(0, LIMITS.maxText), note: note(c.name), ...(attribution ? { attribution } : {}) };
       return { ...c, shown: shownName(c.name), airfoil: { name: c.name, points: c.points, source }, foil };
     }
     if (kind === 'upload') {
@@ -742,7 +834,7 @@ function airfoilSources(file, plane, fileName, { project, library, uploads }) {
       const e = c.ok && a.source?.kind === 'library' ? libraryEntries.get(a.source.id) : undefined;
       const lib = e ? cached(checkCache, e, () => checkText(e.text, e.file)) : null;
       const ownFrame = lib?.ok && samePoints(lib.points, c.points) ? lib.ownFrame : null;
-      const unknownFrame = c.ok && (a.source?.kind === 'xflr5' || a.source?.kind === 'upload');
+      const unknownFrame = c.ok && (a.source?.kind === 'xflr5' || a.source?.kind === 'flow5' || a.source?.kind === 'upload');
       return {
         ...c,
         ...(ownFrame ? { ownFrame } : {}),
@@ -849,7 +941,9 @@ function airfoilSources(file, plane, fileName, { project, library, uploads }) {
  */
 export function* checkSteps(file, { plane: planeIndex = 0, surface, fileName = '', project = null, library = [], uploads = [] } = {}) {
   const plane = file.planes[planeIndex];
-  const wing = plane?.wings[SURFACES[surface ?? defaultSurface(file, planeIndex)]];
+  if (!plane) return;
+  const key = surface ?? defaultSurface(file, planeIndex);
+  const wing = planeSurfaces(file, planeIndex).surfaces.find((s) => s.key === key && s.available)?.wing;
   if (!wing) return;
   const names = [...new Set(wing.sections.map((s) => s.rightFoil))];
   if (names.length > LIMITS.maxAirfoils || fileAirfoilPoints(file, names, {}) > LIMITS.maxAirfoilPoints) return;
@@ -895,16 +989,22 @@ function foundLabel(found) {
 }
 
 /** Report lines on the flaps of an airfoil from an .xfl project: it is imported undeflected. */
-function flapNotes(name, foil, add) {
+function flapNotes(name, foil, add, program) {
   const { te, le } = foil.flaps;
   const params = (f) => ({ name: shownName(name), angle: num(f.angle), hinge: num(f.hingeX) });
+  // flow5 7.50 and later store the shape itself and deflect flaps in the analyses only.
+  if (program === 'flow5') {
+    if (te.on) add('info', tr('Airfoil "{name}" has a trailing-edge flap in flow5 (hinge at {hinge} % chord); flow5 deflects it in its analyses only, and the stored shape is imported.', params(te)));
+    if (le.on) add('info', tr('Airfoil "{name}" has a leading-edge flap in flow5 (hinge at {hinge} % chord); flow5 deflects it in its analyses only, and the stored shape is imported.', params(le)));
+    return;
+  }
   if (te.on) {
-    if (te.angle === 0) add('info', tr('Airfoil "{name}" has a trailing-edge flap at 0° in XFLR5 (hinge at {hinge} % chord); control surfaces are not cut.', params(te)));
-    else add('warning', tr('Airfoil "{name}" has a {angle}° trailing-edge flap in XFLR5 (hinge at {hinge} % chord); it is imported undeflected.', params(te)));
+    if (te.angle === 0) add('info', tr('Airfoil "{name}" has a trailing-edge flap at 0° in {program} (hinge at {hinge} % chord); control surfaces are not cut.', { program, ...params(te) }));
+    else add('warning', tr('Airfoil "{name}" has a {angle}° trailing-edge flap in {program} (hinge at {hinge} % chord); it is imported undeflected.', { program, ...params(te) }));
   }
   if (le.on) {
-    if (le.angle === 0) add('info', tr('Airfoil "{name}" has a leading-edge flap at 0° in XFLR5 (hinge at {hinge} % chord); control surfaces are not cut.', params(le)));
-    else add('warning', tr('Airfoil "{name}" has a {angle}° leading-edge flap in XFLR5 (hinge at {hinge} % chord); it is imported undeflected.', params(le)));
+    if (le.angle === 0) add('info', tr('Airfoil "{name}" has a leading-edge flap at 0° in {program} (hinge at {hinge} % chord); control surfaces are not cut.', { program, ...params(le) }));
+    else add('warning', tr('Airfoil "{name}" has a {angle}° leading-edge flap in {program} (hinge at {hinge} % chord); it is imported undeflected.', { program, ...params(le) }));
   }
 }
 
@@ -942,11 +1042,12 @@ function projectName(plane, wing) {
  */
 export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', name, project = null, library = [], uploads = [], choices = {} } = {}) {
   const plane = file.planes[planeIndex];
+  const program = programOf(file);
   const { surfaces, others } = planeSurfaces(file, planeIndex);
   const key = surface ?? defaultSurface(file, planeIndex);
   const chosen = surfaces.find((s) => s.key === key);
   if (!chosen) throw new RangeError(`unknown surface ${key}`);
-  const wing = chosen.wing;
+  const wing = chosen.available ? chosen.wing : null;
   // The XML reader's warnings concern the whole file (another plane, too): marked for the caller. The
   // .xfl reader's warnings concern the airfoils, which this wing uses as well.
   const report = file.warnings.map((text) => (file.kind === 'xml' ? { severity: 'warning', text, reader: true } : { severity: 'warning', text }));
@@ -955,7 +1056,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
   const result = { plane: planeIndex, surface: key, wing, surfaces, others, rows: [], options: sources.options, missing: 0, report, errors: 0, name: '', project: null, summary: '' };
 
   if (!wing) add('error', chosen.reason);
-  const geometry = wing ? mapSections(wing, file.lengthUnit) : { sections: [], report: [] };
+  const geometry = wing ? mapSections(wing, file.lengthUnit, program) : { sections: [], report: [] };
   report.push(...geometry.report);
 
   // One row per right-side airfoil name, in the order of the sections.
@@ -1004,7 +1105,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     result.rows.push(row);
     const params = { name: shownName(foilName), sections: sectionsText(numbers) };
     if (!r) {
-      if (foilName === '') add('error', tr('XFLR5 names no airfoil at {sections}: upload a .dat file or pick an airfoil.', params));
+      if (foilName === '') add('error', tr('{program} names no airfoil at {sections}: upload a .dat file or pick an airfoil.', { program, ...params }));
       else if (auto.fileProblem) add('error', tr('Airfoil "{name}" ({sections}) from the file fails the check: {problem} Upload a .dat file or pick an airfoil.', { ...params, problem: auto.fileProblem }));
       else if (auto.candidate) {
         const { key: candidateKey, problem } = auto.candidate;
@@ -1023,7 +1124,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     else inUse.set(row.key, { shown: r.shown, issues: r.issues, frame: row.frame, ownFrame: r.ownFrame ?? null, unknownFrame: r.unknownFrame === true, foil: r.foil ?? null, sections: [...numbers] });
   }
   // The flaps of each file airfoil in use, once: a picked file airfoil speaks for itself.
-  for (const { foil } of inUse.values()) if (foil) flapNotes(foil.name, foil, add);
+  for (const { foil } of inUse.values()) if (foil) flapNotes(foil.name, foil, add, program);
   for (const { shown, issues, frame: fr, ownFrame, unknownFrame, sections } of inUse.values()) {
     sections.sort((a, b) => a - b);
     const at = { name: shown, sections: sectionsText(sections) };
@@ -1037,15 +1138,15 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     // An airfoil that moves its sections, named as the airfoil in use (an airfoil picked for another
     // name, too). A move of more than FRAME_WARN of the chord changes the wing noticeably from the
     // file's numbers.
-    if (noted(fr)) add(far(fr) ? 'warning' : 'info', frameText(fr, sections.length === 1, at));
+    if (noted(fr)) add(far(fr) ? 'warning' : 'info', frameText(fr, sections.length === 1, at, program));
     // A library airfoil keeps XFLR5's table values; if XFLR5 used its coordinates, it drew these
     // sections elsewhere. The same holds for a current-project airfoil taken from the Library.
     if (ownFrame && far(ownFrame)) {
       add(
         'info',
         tr(
-          'Library airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% of chord in its own coordinates. If XFLR5 used these coordinates, it draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.',
-          { ...at, x: pct(ownFrame.x), y: pct(ownFrame.y) },
+          'Library airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% of chord in its own coordinates. If {program} used these coordinates, it draws these sections that far from the table values; upload the .dat file that {program} used to place them as in {program}.',
+          { program, ...at, x: pct(ownFrame.x), y: pct(ownFrame.y) },
         ),
       );
     }
@@ -1062,8 +1163,8 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
       add(
         'warning',
         ownFrame.incline < 0
-          ? tr('Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose up in its own coordinates, and the built sections keep this angle. If the airfoil that XFLR5 used has a level chord line, these sections sit {angle}° more nose up than in XFLR5, the trailing edge {distance} mm lower at {chord} mm chord; upload the .dat file that XFLR5 used to place them as in XFLR5.', params)
-          : tr('Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose down in its own coordinates, and the built sections keep this angle. If the airfoil that XFLR5 used has a level chord line, these sections sit {angle}° more nose down than in XFLR5, the trailing edge {distance} mm higher at {chord} mm chord; upload the .dat file that XFLR5 used to place them as in XFLR5.', params),
+          ? tr('Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose up in its own coordinates, and the built sections keep this angle. If the airfoil that {program} used has a level chord line, these sections sit {angle}° more nose up than in {program}, the trailing edge {distance} mm lower at {chord} mm chord; upload the .dat file that {program} used to place them as in {program}.', { program, ...params })
+          : tr('Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose down in its own coordinates, and the built sections keep this angle. If the airfoil that {program} used has a level chord line, these sections sit {angle}° more nose down than in {program}, the trailing edge {distance} mm higher at {chord} mm chord; upload the .dat file that {program} used to place them as in {program}.', { program, ...params }),
       );
     }
     // A current-project airfoil of an XFLR5 import or an upload keeps the table values as well: its
@@ -1072,8 +1173,8 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
       add(
         'info',
         tr(
-          'Airfoil "{name}" ({sections}) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. If the coordinates that XFLR5 used put the leading edge elsewhere, XFLR5 draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.',
-          at,
+          'Airfoil "{name}" ({sections}) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. If the coordinates that {program} used put the leading edge elsewhere, {program} draws these sections that far from the table values; upload the .dat file that {program} used to place them as in {program}.',
+          { program, ...at },
         ),
       );
     }
@@ -1087,7 +1188,10 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     add('info', u.refused ? u.problem : tr('The uploaded file {file} is not usable: {problem}', { file: displayName(u.fileName), problem: u.problem }));
   });
 
-  if (wing) {
+  if (wing && program === 'flow5') {
+    const items = surfaces.filter((s) => s.key !== key).map((s) => tr('{label} "{name}"', { label: s.label, name: shownName(s.name) }));
+    if (items.length) add('info', tr('Not imported: {list}. One surface per import; open the file again for another one.', { list: items.join(', ') }));
+  } else if (wing) {
     const items = [];
     if (key === 'main' && surfaces[1].available) items.push(tr('the horizontal stabilizer "{name}"', { name: shownName(surfaces[1].name) }));
     if (key === 'stab' && surfaces[0].available) items.push(tr('the main wing "{name}"', { name: shownName(surfaces[0].name) }));
@@ -1097,8 +1201,12 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
   if (file.kind === 'xml') {
     if (file.unitName === null) add('info', tr('Lengths converted to mm from a file unit of {factor} mm.', { factor: num(file.lengthUnit) }));
     else if (file.unitName !== 'mm') add('info', tr('Lengths converted from {unit} to mm.', { unit: unitWord(file.unitName) }));
-    if (file.unitName === 'm') add('info', tr('XFLR5 rounds lengths in metre XML files to 1 mm; the .xfl project file keeps full precision.'));
-    if (file.wingOnly) add('info', tr('A wing file holds no position or tilt angle: the part is built in its own frame.'));
+    if (file.unitName === 'm') {
+      add('info', program === 'flow5' ? tr('flow5 rounds lengths in metre XML files to 1 mm; the .fl5 project file keeps full precision.') : tr('XFLR5 rounds lengths in metre XML files to 1 mm; the .xfl project file keeps full precision.'));
+    }
+    if (file.wingOnly) {
+      add('info', program === 'flow5' ? tr('A wing file holds no position or angles: the part is built in its own frame.') : tr('A wing file holds no position or tilt angle: the part is built in its own frame.'));
+    }
   }
   add('info', tr('Not used: VLM panel counts and distributions, colours, masses, the body and the analyses.'));
   add('info', tr('The trailing edge is built as in the airfoils; Settings > Trailing edge can close it or give it a thickness.'));
@@ -1106,7 +1214,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
   if (wing) {
     result.name = typeof name === 'string' && name.trim() !== '' ? name.slice(0, LIMITS.maxName) : projectName(plane, wing);
     if (!report.some((r) => r.severity === 'error')) {
-      const candidate = withPlanes(result.name, geometry, result.rows, add);
+      const candidate = withPlanes(result.name, geometry, result.rows, add, program);
       if (candidate) {
         const v = validateProject(candidate);
         for (const e of v.errors) add('error', e);
@@ -1123,7 +1231,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
 /** Points of the file's own airfoils for the names of a wing that the user has not given another airfoil. */
 function fileAirfoilPoints(file, names, choices) {
   let points = 0;
-  if (file.kind !== 'xfl' || !file.foils) return points;
+  if ((file.kind !== 'xfl' && file.kind !== 'fl5') || !file.foils) return points;
   for (const foilName of names) if (!Object.hasOwn(choices, foilName)) points += file.foils.get(foilName)?.points.length ?? 0;
   return points;
 }
@@ -1135,19 +1243,19 @@ const far = (fr) => Math.abs(fr.chord - 1) > FRAME_WARN || Math.abs(fr.x) > FRAM
  * The report line of an airfoil that moves its sections (`at`: name and sections), for one section or
  * several, and with or without a change of chord that its figures show.
  */
-function frameText(fr, one, at) {
+function frameText(fr, one, at, program) {
   const params = { ...at, x: pct(fr.x), y: pct(fr.y), te: pct(fr.x + fr.chord) };
   // The line says "scaled" when its figures show a chord other than 100 %: a scale that rounds away
   // (the 0.0016 % of the Clark Y, 0.004 mm at 240 mm chord) applies without a word.
   const shown = (v) => Number((v * 100).toFixed(2));
   if (Math.abs(shown(fr.x + fr.chord) - shown(fr.x) - 100) < 0.005) {
     return one
-      ? tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; this section was moved so that the airfoil lies as in XFLR5.', params)
-      : tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.', params);
+      ? tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; this section was moved so that the airfoil lies as in {program}.', { program, ...params })
+      : tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; these sections were moved so that the airfoil lies as in {program}.', { program, ...params });
   }
   return one
-    ? tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; this section was moved and scaled so that the airfoil lies as in XFLR5.', params)
-    : tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; these sections were moved and scaled so that the airfoil lies as in XFLR5.', params);
+    ? tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; this section was moved and scaled so that the airfoil lies as in {program}.', { program, ...params })
+    : tr('Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; these sections were moved and scaled so that the airfoil lies as in {program}.', { program, ...params });
 }
 
 /**
@@ -1252,7 +1360,7 @@ function assemble(name, mapped, rows, add, planes, tilt) {
       mirror: true,
       tip: { mode: 'flat' },
       trailingEdge: { mode: 'asis' },
-      ...(tilt ? { partTilt: r4(tilt.angle), partRoll: 0, partPivot: { x: r4(tilt.x), y: 0, z: r4(tilt.z) } } : {}),
+      ...(tilt ? { partTilt: r4(tilt.angle), partRoll: r4(tilt.roll), partPivot: { x: r4(tilt.x), y: 0, z: r4(tilt.z) } } : {}),
     },
   });
 }
@@ -1261,7 +1369,7 @@ function assemble(name, mapped, rows, add, planes, tilt) {
  * The project of an import and the report lines on its section planes (see the header): mitred
  * unless the part is tilted or its mitred planes do not build. Null when assemble reports an error.
  */
-function withPlanes(name, geometry, rows, add) {
+function withPlanes(name, geometry, rows, add, program) {
   const mapped = geometry.sections;
   const rolled = geometry.rolls.some((r) => r !== 0);
   const vertical = (why) => {
@@ -1279,14 +1387,14 @@ function withPlanes(name, geometry, rows, add) {
   const swapped = ys.findIndex((y, i) => i > 0 && !(y > ys[i - 1]));
   const problem = swapped > 0 ? { kind: 'fold', i: swapped - 1 } : mitredPlaneProblem(candidate);
   if (!problem) {
-    if (rolled) add('info', tr('Section planes: mitred, as in XFLR5. The root section is vertical, a section between two panels lies in the bisector plane of the panels, and the tip section is square to the last panel; the airfoils keep their thickness across the panels.'));
+    if (rolled) add('info', tr('Section planes: mitred, as in {program}. The root section is vertical, a section between two panels lies in the bisector plane of the panels, and the tip section is square to the last panel; the airfoils keep their thickness across the panels.', { program }));
     return candidate;
   }
   const at = (i) => plain(mapped[i].index + 1);
   return vertical(
     problem.kind === 'fold'
-      ? tr('Section planes: vertical. Mitred planes, as in XFLR5, would fold the surface between sections {a} and {b}.', { a: at(problem.i), b: at(problem.i + 1) })
-      : tr('Section planes: vertical. The mitred plane of section {n}, as in XFLR5, would lie {angle}° from its panel, beyond the limit of 60°.', { n: at(problem.i), angle: fixed(problem.angle, 1) }),
+      ? tr('Section planes: vertical. Mitred planes, as in {program}, would fold the surface between sections {a} and {b}.', { program, a: at(problem.i), b: at(problem.i + 1) })
+      : tr('Section planes: vertical. The mitred plane of section {n}, as in {program}, would lie {angle}° from its panel, beyond the limit of 60°.', { program, n: at(problem.i), angle: fixed(problem.angle, 1) }),
   );
 }
 
@@ -1300,6 +1408,9 @@ function summary(result, plane, fileName) {
     sections: count(result.project.sections.length),
     airfoils: n === 1 ? tr('1 airfoil') : tr('{n} airfoils', { n: count(n) }),
   };
+  if (result.surface !== 'main' && result.surface !== 'stab') {
+    return plane.name.trim() === '' ? tr('Imported the wing "{wing}" from {file}: {sections} sections, {airfoils}.', params) : tr('Imported the wing "{wing}" of "{plane}" from {file}: {sections} sections, {airfoils}.', params);
+  }
   if (plane.name.trim() === '') {
     return result.surface === 'main'
       ? tr('Imported the main wing "{wing}" from {file}: {sections} sections, {airfoils}.', params)

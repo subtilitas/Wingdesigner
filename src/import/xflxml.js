@@ -15,8 +15,7 @@
 // as 0, this reader keeps NaN and warns, so that such a wing cannot be imported unnoticed. Values stay
 // in the file's unit (lengthUnit = mm per unit) and as stored: the mapping to sections comes later.
 //
-// The tokenizer needs no DOM (the tests run in Node) and is linear in the input: it keeps the names of
-// the open elements and the values read, never a tree.
+// The tokenizer (src/import/xmlscan.js) is shared with the flow5 XML reader.
 
 import { count, plain, tr } from '../i18n/index.js';
 import { MAX_PROJECT_BYTES } from '../model/io.js';
@@ -24,24 +23,19 @@ import { LIMITS } from '../model/project.js';
 import { displayName } from '../model/budget.js';
 import { XflrError } from './errors.js';
 import { MAX_PLANES } from './xfl.js';
+import { EOF, START, Scanner, TEXT, children, clip, isTrue, readText, toNumber } from './xmlscan.js';
 
-/** Most elements in one file; XFLR5 writes about 500 for a plane. */
-export const MAX_ELEMENTS = 1_000_000;
-/** Deepest nesting of elements; XFLR5 writes 6 levels. */
-export const MAX_DEPTH = 100;
-/** Most attributes of one element; XFLR5 writes one at most (the version of the root). */
-export const MAX_ATTRIBUTES = 100;
 // Planes per file: MAX_PLANES of the .xfl reader (XFLR5 writes one). Wings read per plane (XFLR5:
 // MAXWINGS); value problems listed per wing, and warnings per file, before a count of the rest.
 const MAX_WINGS = 4;
-const MAX_PROBLEMS = 5;
-const MAX_WARNINGS = 50;
+export const MAX_PROBLEMS = 5;
+export const MAX_WARNINGS = 50;
 
 /** Wing slot of each <Type>: 0 main wing, 1 second wing, 2 elevator (horizontal stabilizer), 3 fin. */
 const SLOT = { MAINWING: 0, SECONDWING: 1, ELEVATOR: 2, FIN: 3 };
 
-// Display units as XFLR5 writes length_unit_to_meter (6 significant digits), with mm per unit.
-const UNITS = [
+// Display units as XFLR5 and flow5 write length_unit_to_meter (6 significant digits), with mm per unit.
+export const UNITS = [
   ['mm', 0.001, 1],
   ['cm', 0.01, 10],
   ['dm', 0.1, 100],
@@ -53,225 +47,9 @@ const UNITS = [
 // Root elements of the XML files of flow5, XFLR5's successor.
 const FLOW5_ROOTS = new Set(['xflplane', 'xflwing', 'xflfuse', 'xflboat', 'xflsail']);
 
-// A number as Qt's toDouble() reads it (point, optional exponent), after trimming. The point is required
-// before fraction digits: an optional one lets \d+ and \d* split a long digit run in quadratic ways.
-const NUMBER = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/;
-
-// Tokens: an XML name, an attribute with its quoted value, the end of a start tag and of an end tag.
-// Sticky, so each match starts where the scanner stands; no pattern can backtrack over the input.
-const NAME = /[\p{L}_:][\p{L}\p{N}\p{M}_.:-]*/uy;
-const ATTR = /\s+([^\s=/>"'<]+)\s*=\s*(?:"([^"<]*)"|'([^'<]*)')/y;
-const TAG_END = /\s*(\/?)>/y;
-const END_TAG_END = /\s*>/y;
-
-const START = 1;
-const END = 2;
-const TEXT = 3;
-const EOF = 4;
-
-const ENTITIES = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
-
-// The five XML entities and decimal or hexadecimal character references; a reference to no Unicode
-// scalar value, or an unknown entity, stays as written.
-function decodeEntities(s) {
-  if (!s.includes('&')) return s;
-  return s.replace(/&(lt|gt|amp|quot|apos|#\d+|#x[0-9a-fA-F]+);/g, (m, e) => {
-    if (e[0] !== '#') return ENTITIES[e];
-    const cp = e[1] === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
-    return cp > 0 && cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : m;
-  });
-}
-
-/** Line number (from 1) of character `at`. */
-function lineAt(s, at) {
-  let line = 1;
-  for (let i = s.indexOf('\n'); i >= 0 && i < at; i = s.indexOf('\n', i + 1)) line++;
-  return line;
-}
-
-/** At most `max` characters of `s`, with an ellipsis when cut (names and values in messages). */
-function clip(s, max = 40) {
-  return s.length > max ? `${s.slice(0, max)}…` : s;
-}
-
-/**
- * Pull tokenizer. next() returns START, END, TEXT or EOF and sets `name` (START, END), `attrs`
- * (START of the root element: [name, value] pairs; empty for other elements, whose attributes are not
- * read), `text` and `cdata` (TEXT). A self-closing element gives START and
- * END. It skips the XML declaration, processing instructions, the DOCTYPE and comments, and throws
- * an XflrError at a malformed tag, a wrong end tag or an element left open at the end.
- */
-class Scanner {
-  constructor(s, from) {
-    this.s = s;
-    this.i = from;
-    this.open = [];
-    this.elements = 0;
-    this.selfClosed = false;
-    this.name = '';
-    this.attrs = [];
-    this.text = '';
-    this.cdata = false;
-  }
-
-  damaged(at, message) {
-    return new XflrError('damaged', message(plain(lineAt(this.s, at))));
-  }
-
-  malformed(at) {
-    return this.damaged(at, (line) => tr('The XML file is damaged at line {line}: a tag is malformed.', { line }));
-  }
-
-  unclosed(at) {
-    return this.damaged(at, (line) => tr('The XML file is damaged at line {line}: a comment, CDATA section or declaration is not closed.', { line }));
-  }
-
-  /** Index just past the next `token` from `from`, for comments, CDATA and declarations starting at `at`. */
-  past(token, from, at) {
-    const j = this.s.indexOf(token, from);
-    if (j < 0) throw this.unclosed(at);
-    return j + token.length;
-  }
-
-  /** Index just past a DOCTYPE from `from` (after "<!DOCTYPE"): its internal subset [...] and quoted strings may hold ">". */
-  pastDoctype(from, at) {
-    const s = this.s;
-    let quote = 0;
-    let subset = false;
-    for (let j = from; j < s.length; j++) {
-      const c = s.charCodeAt(j);
-      if (quote) {
-        if (c === quote) quote = 0;
-      } else if (c === 0x22 || c === 0x27) quote = c;
-      else if (c === 0x5b) subset = true;
-      else if (c === 0x5d) subset = false;
-      else if (c === 0x3e && !subset) return j + 1;
-    }
-    throw this.unclosed(at);
-  }
-
-  next() {
-    if (this.selfClosed) {
-      this.selfClosed = false;
-      this.name = this.open.pop();
-      return END;
-    }
-    const s = this.s;
-    for (;;) {
-      const i = this.i;
-      if (i >= s.length) {
-        if (this.open.length) throw new XflrError('damaged', tr('The XML file is cut off: the element <{name}> is not closed.', { name: clip(this.open.at(-1)) }));
-        return EOF;
-      }
-      if (s.charCodeAt(i) !== 0x3c) {
-        const j = s.indexOf('<', i);
-        this.i = j < 0 ? s.length : j;
-        this.text = s.slice(i, this.i);
-        this.cdata = false;
-        return TEXT;
-      }
-      const c = s.charCodeAt(i + 1);
-      if (c === 0x21) {
-        // <!-- comment -->, <![CDATA[ text ]]>, <!DOCTYPE …>
-        if (s.startsWith('<!--', i)) this.i = this.past('-->', i + 4, i);
-        else if (s.startsWith('<![CDATA[', i)) {
-          this.i = this.past(']]>', i + 9, i);
-          this.text = s.slice(i + 9, this.i - 3);
-          this.cdata = true;
-          return TEXT;
-        } else if (s.slice(i + 2, i + 9).toUpperCase() === 'DOCTYPE') this.i = this.pastDoctype(i + 9, i);
-        else throw this.malformed(i);
-        continue;
-      }
-      if (c === 0x3f) {
-        // <?xml …?> and other processing instructions
-        this.i = this.past('?>', i + 2, i);
-        continue;
-      }
-      if (c === 0x2f) {
-        NAME.lastIndex = i + 2;
-        const m = NAME.exec(s);
-        if (!m) throw this.malformed(i);
-        END_TAG_END.lastIndex = NAME.lastIndex;
-        if (!END_TAG_END.exec(s)) throw this.malformed(i);
-        const open = this.open.at(-1);
-        if (open === undefined) throw this.damaged(i, (line) => tr('The XML file is damaged at line {line}: </{name}> closes no open element.', { line, name: clip(m[0]) }));
-        if (open !== m[0]) {
-          throw this.damaged(i, (line) => tr('The XML file is damaged at line {line}: </{name}> does not close <{open}>.', { line, name: clip(m[0]), open: clip(open) }));
-        }
-        this.i = END_TAG_END.lastIndex;
-        this.name = this.open.pop();
-        return END;
-      }
-      NAME.lastIndex = i + 1;
-      const m = NAME.exec(s);
-      if (!m) throw this.malformed(i);
-      const attrs = [];
-      let j = NAME.lastIndex;
-      for (let n = 1; ; n++) {
-        ATTR.lastIndex = j;
-        const a = ATTR.exec(s);
-        if (!a) break;
-        if (n > MAX_ATTRIBUTES) throw this.malformed(i);
-        if (this.open.length === 0) attrs.push([a[1], decodeEntities(a[2] ?? a[3])]);
-        j = ATTR.lastIndex;
-      }
-      TAG_END.lastIndex = j;
-      const e = TAG_END.exec(s);
-      if (!e) throw this.malformed(i);
-      if (++this.elements > MAX_ELEMENTS) throw new XflrError('too-large', tr('The XML file holds more than {max} elements.', { max: count(MAX_ELEMENTS) }));
-      if (this.open.length >= MAX_DEPTH) throw new XflrError('too-large', tr('The XML file nests elements deeper than {max} levels.', { max: plain(MAX_DEPTH) }));
-      this.i = TAG_END.lastIndex;
-      this.open.push(m[0]);
-      this.name = m[0];
-      this.attrs = attrs;
-      this.selfClosed = e[1] === '/';
-      return START;
-    }
-  }
-}
-
-/**
- * Read the children of the element just opened, up to and including its end tag: visit(name) is
- * called with the lowercase name of each child element (XFLR5 compares names without case) and may
- * read it; what it leaves unread is skipped.
- */
-function children(sc, visit) {
-  const depth = sc.open.length;
-  for (;;) {
-    const kind = sc.next();
-    if (kind === END) return;
-    if (kind === START) {
-      visit(sc.name.toLowerCase());
-      while (sc.open.length > depth) sc.next();
-    }
-  }
-}
-
-/** Text of the element just opened, entities decoded, up to and including its end tag; child elements are skipped. */
-function readText(sc) {
-  const depth = sc.open.length;
-  const parts = [];
-  for (;;) {
-    const kind = sc.next();
-    if (kind === END && sc.open.length < depth) return parts.join('');
-    if (kind === TEXT && sc.open.length === depth) parts.push(sc.cdata ? sc.text : decodeEntities(sc.text));
-  }
-}
-
-/** Number of an element text, or NaN when it is empty, not a number or not finite (XFLR5 reads 0 then). */
-function toNumber(text) {
-  const t = text.trim();
-  if (!NUMBER.test(t)) return NaN;
-  const v = Number(t);
-  // + 0 turns -0 ("-0.000" in the file) into 0.
-  return Number.isFinite(v) ? v + 0 : NaN;
-}
-
-const isTrue = (text) => text.trim().toLowerCase() === 'true';
 
 /** Reader warnings: add(...texts) keeps the first MAX_WARNINGS, done() lists them and counts the rest. */
-function warningList() {
+export function warningList() {
   const list = [];
   let more = 0;
   return {
@@ -286,24 +64,24 @@ function warningList() {
 }
 
 /** Problems of the values of one wing: the first MAX_PROBLEMS, and how many more. */
-function problemList() {
+export function problemList() {
   return { list: [], more: 0 };
 }
 
-function note(problems, p) {
+export function note(problems, p) {
   if (problems.list.length < MAX_PROBLEMS) problems.list.push(p);
   else problems.more++;
 }
 
 /** Number of element `element` (section n, or null for a wing value); NaN and a problem when it is not a number. */
-function value(text, element, n, problems) {
+export function value(text, element, n, problems) {
   const v = toNumber(text);
   if (Number.isNaN(v)) note(problems, { element, n, text });
   return v;
 }
 
 /** Position "x, y, z": the first three parts; with fewer, 0, 0, 0 as in XFLR5. */
-function readPosition(text, scale, problems) {
+export function readPosition(text, scale, problems) {
   const parts = text.split(',', 4);
   if (parts.length < 3) {
     note(problems, { element: 'Position', n: null, text, few: true });
@@ -378,8 +156,8 @@ function planeSlot(type, isFin, index) {
   return index === 1 ? 2 : 0;
 }
 
-/** The warning texts of a wing's problems; `plane` is null for a wing outside a plane. */
-function problemTexts(plane, wingName, problems) {
+/** The warning texts of a wing's problems; `plane` is null for a wing outside a plane. `program`: XFLR5 or flow5. */
+export function problemTexts(plane, wingName, problems, program = 'XFLR5') {
   const wing = displayName(wingName);
   const out = problems.list.map((p) => {
     const at = { plane: plane === null ? '' : displayName(plane), wing, element: p.element, n: p.n === null ? '' : plain(p.n), text: clip((p.text ?? '').trim()) };
@@ -388,7 +166,7 @@ function problemTexts(plane, wingName, problems) {
         ? tr('Wing "{wing}", section {n}: {element} is missing.', at)
         : tr('Plane "{plane}", wing "{wing}", section {n}: {element} is missing.', at);
     }
-    if (p.few) return tr('Plane "{plane}", wing "{wing}": Position "{text}" holds fewer than 3 values; the wing is placed at 0, 0, 0 as in XFLR5.', at);
+    if (p.few) return tr('Plane "{plane}", wing "{wing}": Position "{text}" holds fewer than 3 values; the wing is placed at 0, 0, 0 as in {program}.', { ...at, program });
     if (p.n === null) return tr('Plane "{plane}", wing "{wing}": {element} "{text}" is not a number.', at);
     return plane === null
       ? tr('Wing "{wing}", section {n}: {element} "{text}" is not a number.', at)

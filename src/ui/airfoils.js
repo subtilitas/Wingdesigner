@@ -403,7 +403,7 @@ export class AirfoilsPanel {
         if (kept?.inUse === inUse && kept.lang === lang) return kept.li;
         const c = airfoilThumb(a.points);
         const attribution =
-          a.source?.attribution ?? (a.source?.kind === 'naca' ? tr('NACA equations') : a.source?.kind === 'xflr5' ? tr('XFLR5: {file}', { file: displayName(a.source.file ?? '') }) : '');
+          a.source?.attribution ?? (a.source?.kind === 'naca' ? tr('NACA equations') : a.source?.kind === 'xflr5' ? tr('XFLR5: {file}', { file: displayName(a.source.file ?? '') }) : a.source?.kind === 'flow5' ? tr('flow5: {file}', { file: displayName(a.source.file ?? '') }) : '');
         const li = h(
           'li',
           {},

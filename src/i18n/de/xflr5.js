@@ -36,36 +36,36 @@ export default {
   'The position of the wing in the plane is not a finite number in the file.': 'Die Position des Flügels im Flugzeug ist in der Datei keine endliche Zahl.',
   'The tilt angle of the wing is not a finite number in the file.': 'Der Einstellwinkel des Flügels ist in der Datei keine endliche Zahl.',
   'The root section lies at y_position {y} mm; the half wing must start at y >= 0.': 'Der Wurzelschnitt liegt bei y_position {y} mm; der Halbflügel muss bei y >= 0 beginnen.',
-  'Root y_position {y} mm lies within 0.1 mm of the centre and is set to 0, as XFLR5 joins the halves there.':
-    'Die y_position {y} mm der Wurzel liegt weniger als 0,1 mm von der Mitte entfernt und wird auf 0 gesetzt, da XFLR5 die Hälften dort verbindet.',
+  'Root y_position {y} mm lies within 0.1 mm of the centre and is set to 0, as {program} joins the halves there.':
+    'Die y_position {y} mm der Wurzel liegt weniger als 0,1 mm von der Mitte entfernt und wird auf 0 gesetzt, da {program} die Hälften dort verbindet.',
   'y_position decreases at {sections}; the sections must run from root to tip.':
     'Für {sections} ist y_position kleiner als beim Schnitt davor; die Schnitte müssen von der Wurzel zum Rand laufen.',
   'The chord must be greater than 0 at {sections}.': 'Für {sections} muss die Profiltiefe größer als 0 sein.',
   'All sections of the wing lie at y = {y} mm: the wing has no span.': 'Alle Schnitte des Flügels liegen bei y = {y} mm: Der Flügel hat keine Spannweite.',
   'The panel from section {a} to {b} has {angle}° dihedral: its outer end must lie further out in y than its inner end.':
     'Das Feld von Schnitt {a} bis {b} hat {angle}° V-Form: Sein äußeres Ende muss in y weiter außen liegen als sein inneres Ende.',
-  'The panel from section {a} to {b} has {angle}° dihedral: the vertical sections are {pct} % as thick across the panel as in XFLR5.':
-    'Das Feld von Schnitt {a} bis {b} hat {angle}° V-Form: Quer zum Feld haben die senkrechten Schnitte {pct} % der Dicke in XFLR5.',
+  'The panel from section {a} to {b} has {angle}° dihedral: the vertical sections are {pct} % as thick across the panel as in {program}.':
+    'Das Feld von Schnitt {a} bis {b} hat {angle}° V-Form: Quer zum Feld haben die senkrechten Schnitte {pct} % der Dicke in {program}.',
   'Further panels whose outer end does not lie further out in y: {count}.': 'Weitere Felder, deren äußeres Ende in y nicht weiter außen liegt: {count}.',
   'Further panels with more than {angle}° dihedral: {count}.': 'Weitere Felder mit mehr als {angle}° V-Form: {count}.',
-  'XFLR5 measures y_position along the panels; y and z were computed from it and the dihedral.': 'XFLR5 misst y_position entlang der Felder; y und z wurden daraus und aus der V-Form berechnet.',
+  '{program} measures y_position along the panels; y and z were computed from it and the dihedral.': '{program} misst y_position entlang der Felder; y und z wurden daraus und aus der V-Form berechnet.',
   'Sections {a} and {b} share y = {y} mm; section {a} was moved {d} mm inwards.': 'Die Schnitte {a} und {b} liegen beide bei y = {y} mm; Schnitt {a} wurde um {d} mm nach innen verschoben.',
   'Sections {a} and {b} share y = {y} mm; section {b} was moved {d} mm outwards.': 'Die Schnitte {a} und {b} liegen beide bei y = {y} mm; Schnitt {b} wurde um {d} mm nach außen verschoben.',
   'Further sections moved apart: {count}.': 'Weitere auseinandergeschobene Schnitte: {count}.',
   'Chords below {min} mm were raised to {min} mm, the smallest chord Wingdesigner builds, at {sections}.':
     'Für {sections} wurden Profiltiefen unter {min} mm auf {min} mm erhöht, die kleinste Profiltiefe, die Wingdesigner baut.',
-  'The root lies at y = {y} mm: the two halves are built as separate bodies, as in XFLR5.': 'Die Wurzel liegt bei y = {y} mm: Die beiden Hälften werden wie in XFLR5 als getrennte Körper gebaut.',
-  'Tilt angle {angle}° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).':
-    'Einstellwinkel {angle}° wie im XFLR5-Flugzeug angewendet: Das Teil dreht sich als starrer Körper um den Ursprung des Flügels (Einstellungen > Einstellwinkel des Teils).',
-  'Section planes: mitred, as in XFLR5. The root section is vertical, a section between two panels lies in the bisector plane of the panels, and the tip section is square to the last panel; the airfoils keep their thickness across the panels.':
-    'Schnittebenen: auf Gehrung wie in XFLR5. Der Wurzelschnitt steht senkrecht, ein Schnitt zwischen zwei Feldern liegt in der Winkelhalbierenden der Felder, und der Randschnitt steht rechtwinklig zum letzten Feld; die Profile behalten quer zu den Feldern ihre Dicke.',
-  'Section planes: vertical. Mitred planes, as in XFLR5, would fold the surface between sections {a} and {b}.':
-    'Schnittebenen: senkrecht. Schnittebenen auf Gehrung wie in XFLR5 würden die Fläche zwischen den Schnitten {a} und {b} falten.',
-  'Section planes: vertical. The mitred plane of section {n}, as in XFLR5, would lie {angle}° from its panel, beyond the limit of 60°.':
-    'Schnittebenen: senkrecht. Die Gehrungsebene von Schnitt {n} läge wie in XFLR5 {angle}° schräg zu ihrem Feld, über der Grenze von 60°.',
+  'The root lies at y = {y} mm: the two halves are built as separate bodies, as in {program}.': 'Die Wurzel liegt bei y = {y} mm: Die beiden Hälften werden wie in {program} als getrennte Körper gebaut.',
+  'Tilt angle {angle}° applied as in the {program} plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).':
+    'Einstellwinkel {angle}° wie im {program}-Flugzeug angewendet: Das Teil dreht sich als starrer Körper um den Ursprung des Flügels (Einstellungen > Einstellwinkel des Teils).',
+  'Section planes: mitred, as in {program}. The root section is vertical, a section between two panels lies in the bisector plane of the panels, and the tip section is square to the last panel; the airfoils keep their thickness across the panels.':
+    'Schnittebenen: auf Gehrung wie in {program}. Der Wurzelschnitt steht senkrecht, ein Schnitt zwischen zwei Feldern liegt in der Winkelhalbierenden der Felder, und der Randschnitt steht rechtwinklig zum letzten Feld; die Profile behalten quer zu den Feldern ihre Dicke.',
+  'Section planes: vertical. Mitred planes, as in {program}, would fold the surface between sections {a} and {b}.':
+    'Schnittebenen: senkrecht. Schnittebenen auf Gehrung wie in {program} würden die Fläche zwischen den Schnitten {a} und {b} falten.',
+  'Section planes: vertical. The mitred plane of section {n}, as in {program}, would lie {angle}° from its panel, beyond the limit of 60°.':
+    'Schnittebenen: senkrecht. Die Gehrungsebene von Schnitt {n} läge wie in {program} {angle}° schräg zu ihrem Feld, über der Grenze von 60°.',
   'All twists were changed by {angle}°, a whole number of turns; the sections stay the same.': 'Alle Schränkungen wurden um {angle}° geändert, ganze Umdrehungen; die Schnitte bleiben gleich.',
-  'Position in the XFLR5 plane applied: the wing origin moved to x {x} mm, z {z} mm.': 'Position im XFLR5-Flugzeug angewendet: Der Ursprung des Flügels wurde nach x {x} mm, z {z} mm verschoben.',
-  'Position y {y} mm is not used, as in XFLR5.': 'Die Position y {y} mm wird wie in XFLR5 nicht verwendet.',
+  'Position in the {program} plane applied: the wing origin moved to x {x} mm, z {z} mm.': 'Position im {program}-Flugzeug angewendet: Der Ursprung des Flügels wurde nach x {x} mm, z {z} mm verschoben.',
+  'Position y {y} mm is not used, as in {program}.': 'Die Position y {y} mm wird wie in {program} nicht verwendet.',
   'Left and right airfoils differ at {sections}; the right-side airfoils are used.': 'Für {sections} unterscheiden sich linkes und rechtes Profil; die Profile der rechten Seite werden verwendet.',
   'Section {n}: the position lies beyond ±{max} mm, the limit of Wingdesigner.': 'Schnitt {n}: Die Position liegt außerhalb von ±{max} mm, der Grenze von Wingdesigner.',
   'Section {n}: chord {chord} mm is larger than {max} mm, the limit of Wingdesigner.': 'Schnitt {n}: Die Profiltiefe {chord} mm ist größer als {max} mm, die Grenze von Wingdesigner.',
@@ -86,15 +86,15 @@ export default {
   Missing: 'Fehlt',
   'Airfoil "{name}" from an XFLR5 project; base shape without flap deflection.': 'Profil „{name}“ aus einem XFLR5-Projekt; Grundform ohne Klappenausschlag.',
   'Airfoil "{name}" from XFLR5 plane "{plane}"; base shape without flap deflection.': 'Profil „{name}“ aus dem XFLR5-Flugzeug „{plane}“; Grundform ohne Klappenausschlag.',
-  'Airfoil "{name}" has a trailing-edge flap at 0° in XFLR5 (hinge at {hinge} % chord); control surfaces are not cut.':
-    'Profil „{name}“ hat in XFLR5 eine Klappe an der Endleiste bei 0° (Drehachse bei {hinge} % der Profiltiefe); Ruder werden nicht ausgeschnitten.',
-  'Airfoil "{name}" has a {angle}° trailing-edge flap in XFLR5 (hinge at {hinge} % chord); it is imported undeflected.':
-    'Profil „{name}“ hat in XFLR5 eine um {angle}° ausgeschlagene Klappe an der Endleiste (Drehachse bei {hinge} % der Profiltiefe); es wird ohne Ausschlag importiert.',
-  'Airfoil "{name}" has a leading-edge flap at 0° in XFLR5 (hinge at {hinge} % chord); control surfaces are not cut.':
-    'Profil „{name}“ hat in XFLR5 eine Klappe an der Nasenleiste bei 0° (Drehachse bei {hinge} % der Profiltiefe); Ruder werden nicht ausgeschnitten.',
-  'Airfoil "{name}" has a {angle}° leading-edge flap in XFLR5 (hinge at {hinge} % chord); it is imported undeflected.':
-    'Profil „{name}“ hat in XFLR5 eine um {angle}° ausgeschlagene Klappe an der Nasenleiste (Drehachse bei {hinge} % der Profiltiefe); es wird ohne Ausschlag importiert.',
-  'XFLR5 names no airfoil at {sections}: upload a .dat file or pick an airfoil.': 'XFLR5 nennt für {sections} kein Profil: eine .dat-Datei hochladen oder ein Profil wählen.',
+  'Airfoil "{name}" has a trailing-edge flap at 0° in {program} (hinge at {hinge} % chord); control surfaces are not cut.':
+    'Profil „{name}“ hat in {program} eine Klappe an der Endleiste bei 0° (Drehachse bei {hinge} % der Profiltiefe); Ruder werden nicht ausgeschnitten.',
+  'Airfoil "{name}" has a {angle}° trailing-edge flap in {program} (hinge at {hinge} % chord); it is imported undeflected.':
+    'Profil „{name}“ hat in {program} eine um {angle}° ausgeschlagene Klappe an der Endleiste (Drehachse bei {hinge} % der Profiltiefe); es wird ohne Ausschlag importiert.',
+  'Airfoil "{name}" has a leading-edge flap at 0° in {program} (hinge at {hinge} % chord); control surfaces are not cut.':
+    'Profil „{name}“ hat in {program} eine Klappe an der Nasenleiste bei 0° (Drehachse bei {hinge} % der Profiltiefe); Ruder werden nicht ausgeschnitten.',
+  'Airfoil "{name}" has a {angle}° leading-edge flap in {program} (hinge at {hinge} % chord); it is imported undeflected.':
+    'Profil „{name}“ hat in {program} eine um {angle}° ausgeschlagene Klappe an der Nasenleiste (Drehachse bei {hinge} % der Profiltiefe); es wird ohne Ausschlag importiert.',
+  '{program} names no airfoil at {sections}: upload a .dat file or pick an airfoil.': '{program} nennt für {sections} kein Profil: eine .dat-Datei hochladen oder ein Profil wählen.',
   'Airfoil "{name}" ({sections}) from the file fails the check: {problem} Upload a .dat file or pick an airfoil.':
     'Profil „{name}“ ({sections}) aus der Datei besteht die Prüfung nicht: {problem} Eine .dat-Datei hochladen oder ein Profil wählen.',
   'Airfoil "{name}" ({sections}) is missing: upload a .dat file or pick an airfoil.': 'Profil „{name}“ ({sections}) fehlt: eine .dat-Datei hochladen oder ein Profil wählen.',
@@ -104,27 +104,27 @@ export default {
   'Airfoil "{name}" ({sections}): {problem}': 'Profil „{name}“ ({sections}): {problem}',
   'Airfoil "{name}" from the file fails the check: {problem} "{match}" is used instead.': 'Profil „{name}“ aus der Datei besteht die Prüfung nicht: {problem} Stattdessen wird „{match}“ verwendet.',
   'Airfoil "{name}" matched to "{match}" by a similar name.': 'Profil „{name}“ wurde über den ähnlichen Namen „{match}“ zugeordnet.',
-  'Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; this section was moved so that the airfoil lies as in XFLR5.':
-    'Profil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% und die Endleiste bei x\u00a0=\u00a0{te}\u00a0% der Profiltiefe; dieser Schnitt wurde so verschoben, dass das Profil wie in XFLR5 liegt.',
-  'Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.':
-    'Profil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% und die Endleiste bei x\u00a0=\u00a0{te}\u00a0% der Profiltiefe; diese Schnitte wurden so verschoben, dass das Profil wie in XFLR5 liegt.',
-  'Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; this section was moved and scaled so that the airfoil lies as in XFLR5.':
-    'Profil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% und die Endleiste bei x\u00a0=\u00a0{te}\u00a0% der Profiltiefe; dieser Schnitt wurde so verschoben und skaliert, dass das Profil wie in XFLR5 liegt.',
-  'Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; these sections were moved and scaled so that the airfoil lies as in XFLR5.':
-    'Profil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% und die Endleiste bei x\u00a0=\u00a0{te}\u00a0% der Profiltiefe; diese Schnitte wurden so verschoben und skaliert, dass das Profil wie in XFLR5 liegt.',
-  'Library airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% of chord in its own coordinates. If XFLR5 used these coordinates, it draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.':
-    'Das Bibliotheksprofil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% der Profiltiefe. Hat XFLR5 diese Koordinaten verwendet, zeichnet es diese Schnitte so weit von den Tabellenwerten entfernt; die .dat-Datei hochladen, die XFLR5 verwendet hat, um sie wie in XFLR5 zu setzen.',
-  'Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose up in its own coordinates, and the built sections keep this angle. If the airfoil that XFLR5 used has a level chord line, these sections sit {angle}° more nose up than in XFLR5, the trailing edge {distance} mm lower at {chord} mm chord; upload the .dat file that XFLR5 used to place them as in XFLR5.':
-    'Das Bibliotheksprofil „{name}“ ({sections}) hat in seinen eigenen Koordinaten eine Profilsehne, die {angle}° mit der Nase nach oben geneigt ist, und die gebauten Schnitte behalten diesen Winkel. Ist die Profilsehne des Profils, das XFLR5 verwendet hat, waagrecht, stehen diese Schnitte {angle}° weiter mit der Nase nach oben als in XFLR5, die Endleiste {distance} mm tiefer bei {chord} mm Profiltiefe; die .dat-Datei hochladen, die XFLR5 verwendet hat, um sie wie in XFLR5 zu setzen.',
-  'Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose down in its own coordinates, and the built sections keep this angle. If the airfoil that XFLR5 used has a level chord line, these sections sit {angle}° more nose down than in XFLR5, the trailing edge {distance} mm higher at {chord} mm chord; upload the .dat file that XFLR5 used to place them as in XFLR5.':
-    'Das Bibliotheksprofil „{name}“ ({sections}) hat in seinen eigenen Koordinaten eine Profilsehne, die {angle}° mit der Nase nach unten geneigt ist, und die gebauten Schnitte behalten diesen Winkel. Ist die Profilsehne des Profils, das XFLR5 verwendet hat, waagrecht, stehen diese Schnitte {angle}° weiter mit der Nase nach unten als in XFLR5, die Endleiste {distance} mm höher bei {chord} mm Profiltiefe; die .dat-Datei hochladen, die XFLR5 verwendet hat, um sie wie in XFLR5 zu setzen.',
-  'Airfoil "{name}" ({sections}) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. If the coordinates that XFLR5 used put the leading edge elsewhere, XFLR5 draws these sections that far from the table values; upload the .dat file that XFLR5 used to place them as in XFLR5.':
-    'Profil „{name}“ ({sections}) des aktuellen Projekts ist auf die Profiltiefe 1 skaliert gespeichert, mit der Profilnase bei (0, 0); diese Schnitte behalten daher die Tabellenwerte. Legen die Koordinaten, die XFLR5 verwendet hat, die Profilnase anderswohin, zeichnet XFLR5 diese Schnitte so weit von den Tabellenwerten entfernt; die .dat-Datei hochladen, die XFLR5 verwendet hat, um sie wie in XFLR5 zu setzen.',
+  'Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; this section was moved so that the airfoil lies as in {program}.':
+    'Profil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% und die Endleiste bei x\u00a0=\u00a0{te}\u00a0% der Profiltiefe; dieser Schnitt wurde so verschoben, dass das Profil wie in {program} liegt.',
+  'Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; these sections were moved so that the airfoil lies as in {program}.':
+    'Profil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% und die Endleiste bei x\u00a0=\u00a0{te}\u00a0% der Profiltiefe; diese Schnitte wurden so verschoben, dass das Profil wie in {program} liegt.',
+  'Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; this section was moved and scaled so that the airfoil lies as in {program}.':
+    'Profil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% und die Endleiste bei x\u00a0=\u00a0{te}\u00a0% der Profiltiefe; dieser Schnitt wurde so verschoben und skaliert, dass das Profil wie in {program} liegt.',
+  'Airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% and its trailing edge at x\u00a0=\u00a0{te}\u00a0% of chord in its own coordinates; these sections were moved and scaled so that the airfoil lies as in {program}.':
+    'Profil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% und die Endleiste bei x\u00a0=\u00a0{te}\u00a0% der Profiltiefe; diese Schnitte wurden so verschoben und skaliert, dass das Profil wie in {program} liegt.',
+  'Library airfoil "{name}" ({sections}) has its leading edge at x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% of chord in its own coordinates. If {program} used these coordinates, it draws these sections that far from the table values; upload the .dat file that {program} used to place them as in {program}.':
+    'Das Bibliotheksprofil „{name}“ ({sections}) hat in seinen eigenen Koordinaten die Profilnase bei x\u00a0=\u00a0{x}\u00a0%, y\u00a0=\u00a0{y}\u00a0% der Profiltiefe. Hat {program} diese Koordinaten verwendet, zeichnet es diese Schnitte so weit von den Tabellenwerten entfernt; die .dat-Datei hochladen, die {program} verwendet hat, um sie wie in {program} zu setzen.',
+  'Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose up in its own coordinates, and the built sections keep this angle. If the airfoil that {program} used has a level chord line, these sections sit {angle}° more nose up than in {program}, the trailing edge {distance} mm lower at {chord} mm chord; upload the .dat file that {program} used to place them as in {program}.':
+    'Das Bibliotheksprofil „{name}“ ({sections}) hat in seinen eigenen Koordinaten eine Profilsehne, die {angle}° mit der Nase nach oben geneigt ist, und die gebauten Schnitte behalten diesen Winkel. Ist die Profilsehne des Profils, das {program} verwendet hat, waagrecht, stehen diese Schnitte {angle}° weiter mit der Nase nach oben als in {program}, die Endleiste {distance} mm tiefer bei {chord} mm Profiltiefe; die .dat-Datei hochladen, die {program} verwendet hat, um sie wie in {program} zu setzen.',
+  'Library airfoil "{name}" ({sections}) has its chord line inclined {angle}° nose down in its own coordinates, and the built sections keep this angle. If the airfoil that {program} used has a level chord line, these sections sit {angle}° more nose down than in {program}, the trailing edge {distance} mm higher at {chord} mm chord; upload the .dat file that {program} used to place them as in {program}.':
+    'Das Bibliotheksprofil „{name}“ ({sections}) hat in seinen eigenen Koordinaten eine Profilsehne, die {angle}° mit der Nase nach unten geneigt ist, und die gebauten Schnitte behalten diesen Winkel. Ist die Profilsehne des Profils, das {program} verwendet hat, waagrecht, stehen diese Schnitte {angle}° weiter mit der Nase nach unten als in {program}, die Endleiste {distance} mm höher bei {chord} mm Profiltiefe; die .dat-Datei hochladen, die {program} verwendet hat, um sie wie in {program} zu setzen.',
+  'Airfoil "{name}" ({sections}) of the current project is stored scaled to unit chord, with its leading edge at (0, 0), so these sections keep the table values. If the coordinates that {program} used put the leading edge elsewhere, {program} draws these sections that far from the table values; upload the .dat file that {program} used to place them as in {program}.':
+    'Profil „{name}“ ({sections}) des aktuellen Projekts ist auf die Profiltiefe 1 skaliert gespeichert, mit der Profilnase bei (0, 0); diese Schnitte behalten daher die Tabellenwerte. Legen die Koordinaten, die {program} verwendet hat, die Profilnase anderswohin, zeichnet {program} diese Schnitte so weit von den Tabellenwerten entfernt; die .dat-Datei hochladen, die {program} verwendet hat, um sie wie in {program} zu setzen.',
   'The uploaded file {file} is not usable: {problem}': 'Die hochgeladene Datei {file} ist nicht verwendbar: {problem}',
   'The coordinates are not in chord units (leading edge at x\u00a0=\u00a0{x}, y\u00a0=\u00a0{y}; trailing edge at x\u00a0=\u00a0{te}).':
     'Die Koordinaten sind nicht in Einheiten der Profiltiefe angegeben (Profilnase bei x\u00a0=\u00a0{x}, y\u00a0=\u00a0{y}; Endleiste bei x\u00a0=\u00a0{te}).',
-  'The coordinates are not in chord units (leading edge at x\u00a0=\u00a0{x}, y\u00a0=\u00a0{y}; trailing edge at x\u00a0=\u00a0{te}): XFLR5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file.':
-    'Die Koordinaten sind nicht in Einheiten der Profiltiefe angegeben (Profilnase bei x\u00a0=\u00a0{x}, y\u00a0=\u00a0{y}; Endleiste bei x\u00a0=\u00a0{te}): So kann XFLR5 sie nicht gezeichnet haben; das Profil wird auf die Profiltiefe 1 skaliert, und seine Schnitte behalten die Werte der Datei.',
+  'The coordinates are not in chord units (leading edge at x\u00a0=\u00a0{x}, y\u00a0=\u00a0{y}; trailing edge at x\u00a0=\u00a0{te}): XFLR5 and flow5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file.':
+    'Die Koordinaten sind nicht in Einheiten der Profiltiefe angegeben (Profilnase bei x\u00a0=\u00a0{x}, y\u00a0=\u00a0{y}; Endleiste bei x\u00a0=\u00a0{te}): So können XFLR5 und flow5 sie nicht gezeichnet haben; das Profil wird auf die Profiltiefe 1 skaliert, und seine Schnitte behalten die Werte der Datei.',
   'beyond ±{max}': 'jenseits von ±{max}',
 
   // Report and summary

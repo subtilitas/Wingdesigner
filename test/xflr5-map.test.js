@@ -136,7 +136,7 @@ describe('XFLR5 mapping: geometry', () => {
 
   it('applies the position to the sections and returns the tilt about the wing origin', () => {
     const main = mapSections(FIXTURES.planes[0].wings[0], 1000);
-    expect(main.tilt).toEqual({ angle: 2, x: 0, z: 0 });
+    expect(main.tilt).toEqual({ angle: 2, roll: 0, x: 0, z: 0 });
     expect(main.sections.map((q) => q.twist)).toEqual([0, -1, -2.5]);
     expectSections(folded(main), [
       [-0.0366, 0, -2.094, 240, 2],
@@ -145,7 +145,7 @@ describe('XFLR5 mapping: geometry', () => {
     ]);
     expect(texts(main.report, 'info')).toContain('Tilt angle 2° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).');
     const stab = mapSections(FIXTURES.planes[0].wings[2], 1000);
-    expect(stab.tilt).toEqual({ angle: -1.5, x: 650, z: 40 });
+    expect(stab.tilt).toEqual({ angle: -1.5, roll: 0, x: 650, z: 40 });
     expectSections(stab.sections, [
       [650, 0, 40, 110, 0],
       [675, 230, 40, 70, 0],
@@ -809,7 +809,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     const w = FIXTURES.planes[0].wings[0];
     const mapped = mapSections(w, 1000);
     // The rows of XFLR5's wing table in the frame of the part; the tilt is returned, not folded in.
-    expect(mapped.tilt).toEqual({ angle: 2, x: 0, z: 0 });
+    expect(mapped.tilt).toEqual({ angle: 2, roll: 0, x: 0, z: 0 });
     expectSections(mapped.sections, mapSections(unplaced(w), 1000).sections.map(values));
     // With the tilt folded in, as project format version 2 stored it (spec section 6.7).
     expectSections(folded(mapped), [
@@ -898,7 +898,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     expect(unit).toMatchObject({
       severity: 'warning',
       message: expect.stringMatching(
-        /^The coordinates are not in chord units \(leading edge at x\u00a0=\u00a01\.4\d*, y\u00a0=\u00a04\.\d+; trailing edge at x\u00a0=\u00a0144\): XFLR5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file\.$/,
+        /^The coordinates are not in chord units \(leading edge at x\u00a0=\u00a01\.4\d*, y\u00a0=\u00a04\.\d+; trailing edge at x\u00a0=\u00a0144\): XFLR5 and flow5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file\.$/,
       ),
     });
     const unframed = mapXflr5(xmlFile([w, null, null, null], { lengthUnit: 1000, unitName: 'm' }), { uploads: [mm] });
@@ -1166,7 +1166,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     const mm80 = NACA9.map(([x, y]) => [80 * x, 80 * y]);
     const u = readAirfoilUpload(toSeligDat('MM80', mm80), 'mm80.dat');
     expect(u).toMatchObject({ ok: true, frame: { x: 0, y: 0, chord: 1 } });
-    const unit = nb('The coordinates are not in chord units (leading edge at x = 0, y = 0; trailing edge at x = 80): XFLR5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file.');
+    const unit = nb('The coordinates are not in chord units (leading edge at x = 0, y = 0; trailing edge at x = 80): XFLR5 and flow5 cannot have drawn them as they are, so the airfoil is scaled to unit chord and its sections keep the values of the file.');
     expect(u.issues.filter((i) => i.severity !== 'info')).toEqual([{ severity: 'warning', code: 'frame', message: unit }]);
     const r = mapXflr5(xml('xml_mm/0.plane.xml'), { uploads: [u], choices: { 'Clark Y': 'upload:0' } });
     expect(r.project.sections.map((q) => q.chord)).toEqual([240, 220, 150]);

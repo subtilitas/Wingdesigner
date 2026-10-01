@@ -3,7 +3,7 @@
 // airfoil name. The mapping (src/import/xflr5.js) runs again after every choice; its report, the
 // planform of the candidate project and the Import button follow it.
 
-import { buildNotes, bySeverity, checkSteps, defaultSurface, describeFile, mapSections, mapXflr5, planeSurfaces, readAirfoilUpload, refusedUpload, sectionsText } from '../import/xflr5.js';
+import { buildNotes, bySeverity, checkSteps, defaultSurface, describeFile, mapSections, mapXflr5, planeSurfaces, programOf, readAirfoilUpload, refusedUpload, sectionsText } from '../import/xflr5.js';
 import { buildWing } from '../geom/wing.js';
 import { wingStats } from '../geom/stats.js';
 import { bundledLibrary } from '../airfoil/bundled.js';
@@ -342,7 +342,7 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
           outline = build.stations;
         } else if (result.wing) {
           // Airfoils still missing: the planform of the mapped sections shows which wing this is.
-          outline = straight(mapSections(result.wing, file.lengthUnit).sections);
+          outline = straight(mapSections(result.wing, file.lengthUnit, programOf(file)).sections);
         }
         report = [...result.report, ...(build ? buildNotes(build) : [])].sort(bySeverity);
         if (!nameEdited) nameInput.value = result.name;
