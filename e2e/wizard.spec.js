@@ -149,6 +149,17 @@ test.describe('new-design wizard', () => {
     await expect(wizard.getByLabel('Panel 2: Outer chord (% of root)')).toHaveValue('45');
   });
 
+  test('panels: a source field without a number takes the preset value in the conversion', async ({ page }) => {
+    const wizard = await openFirstRun(page);
+    await pickPreset(wizard, 'Sport');
+    await wizard.getByLabel('Taper (tip / root chord)').fill('');
+    await wizard.getByRole('combobox', { name: 'Planform', exact: true }).selectOption('panels');
+    // The hidden Taper field held no number: the panel takes the Sport taper 0.6.
+    await expect(wizard.getByLabel('Panel 1: Outer chord (% of root)')).toHaveValue('60');
+    await expect(wizard.getByLabel('Panel 1: Leading-edge sweep (deg)')).toHaveValue('2.29061');
+    await expect(wizard.getByRole('button', { name: 'Create design' })).toBeEnabled();
+  });
+
   test('an elliptic tip needs the planform Panels', async ({ page }) => {
     const wizard = await openFirstRun(page);
     await pickPreset(wizard, 'Sport');

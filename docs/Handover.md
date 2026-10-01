@@ -14,7 +14,7 @@ how the owner works with contributors, and what the repository does not hold.
 | Release texts | The notes of `v0.2.0` and `v0.3.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
 | `main` | Release 0.3.0 (6580092), the documentation pull requests #11 to #14, the foam-cutting wizard (pull request #15, merge commit b8346e1) and the rigid part placement (pull request #16, merge commit b191975). The wizard panels and presets are the next pull request from branch `ccr-3214b8ae-4pkzqm`. |
 | Unit tests | 601 in 20 files (Vitest). |
-| Browser tests | 194 in 13 spec files, 388 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
+| Browser tests | 195 in 13 spec files, 390 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
 | Export validation | 13 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 11 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
 | Documentation | `README.md`, `README.de.md`, wiki pages in English and German in `docs/wiki/` (mirrored to the GitHub wiki by `docs.yml`), `RECORD.md`, `CHANGELOG.md`, `docs/Flow5upgrade.md`, this page. |
 

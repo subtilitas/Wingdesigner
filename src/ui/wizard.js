@@ -193,8 +193,13 @@ export function openWizard({ firstRun = false } = {}) {
         'select',
         {
           onchange: (e) => {
-            // The first switch to panels starts from the sections of the planform it leaves.
-            if (e.target.value === 'panels' && !params.panels?.length) params.panels = panelsFromParams(params);
+            // The first switch to panels starts from the sections of the planform it leaves. A field that
+            // holds no number (an empty Taper, say) takes the preset's value: the conversion hides it.
+            if (e.target.value === 'panels' && !params.panels?.length) {
+              const source = { ...params };
+              for (const k of Object.keys(RANGES)) if (!Number.isFinite(source[k])) source[k] = PRESETS[preset].params[k];
+              params.panels = panelsFromParams(source);
+            }
             params.planform = e.target.value;
             renderFields();
             refresh();

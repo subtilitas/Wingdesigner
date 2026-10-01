@@ -234,7 +234,7 @@ npm test                 # 601 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
-npm run e2e              # production build, then 194 Playwright tests on desktop 1280 x 720 and Pixel 7 (388 runs)
+npm run e2e              # production build, then 195 Playwright tests on desktop 1280 x 720 and Pixel 7 (390 runs)
 npm run coverage         # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage tables into README.md and README.de.md
 npm run coverage:check   # exit code 1 when a README coverage table differs from coverage/
