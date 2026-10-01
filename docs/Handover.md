@@ -10,7 +10,7 @@ how the owner works with contributors, and what the repository does not hold.
 | Item | State on 2026-10-01 |
 | --- | --- |
 | Version | `package.json` holds 0.3.0. Released: `v0.1.0` on 9faa12b, `v0.2.0` on 3b9a67c and `v0.3.0` on 6580092 (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | Not prepared. The section Unreleased of `CHANGELOG.md` holds the foam-cutting wizard and the rigid part placement (Added), and the top bar of 8 buttons, project format version 3, the XFLR5 import of the tilt angle and the merge rule of **Full wing as one body** (Changed). The steps: Development, section Release. |
+| Next release | Version 0.4.0 (owner decision, 2026-10-01), not prepared. The section Unreleased of `CHANGELOG.md` holds the foam-cutting wizard and the rigid part placement (Added), and the top bar of 8 buttons, project format version 3, the XFLR5 import of the tilt angle and the merge rule of **Full wing as one body** (Changed). The steps: Development, section Release. |
 | Release texts | The notes of `v0.2.0` and `v0.3.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
 | `main` | Release 0.3.0 (6580092), the documentation pull requests #11 to #14, and the foam-cutting wizard (pull request #15, merge commit b8346e1). The rigid part placement (step 2 of `docs/Flow5upgrade.md`) is the next pull request from branch `ccr-3214b8ae-4pkzqm`. |
 | Unit tests | 590 in 20 files (Vitest). |
