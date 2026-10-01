@@ -225,7 +225,7 @@ npm run coverage:check   # exit code 1 when a README coverage table differs from
 npm run airfoils:check   # validate the bundled airfoil library and the NACA presets
 npm run step:cases       # write 12 STEP files, 12 3MF files and cases.json to step-check/
 npm run screenshots      # rebuild and regenerate docs/wiki/images/
-npm run docs:check       # check page pairs, wiki links, images and coverage markers
+npm run docs:check       # check page pairs, wiki links, images, coverage markers and the release texts in CHANGELOG.md
 npm run counts:check     # compare the test counts in README, RECORD and wiki with the suites
 npm run i18n:check       # check the German translation of every text
 pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0         # Python 3.12

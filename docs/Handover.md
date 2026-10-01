@@ -11,7 +11,7 @@ how the owner works with contributors, and what the repository does not hold.
 | --- | --- |
 | Version | `package.json` holds 0.3.0. Released: `v0.1.0` on 9faa12b, `v0.2.0` on 3b9a67c and `v0.3.0` on 6580092 (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
 | Next release | Not prepared: the section Unreleased of `CHANGELOG.md` is empty. The steps: Development, section Release. |
-| Release texts | The notes of `v0.1.0`, `v0.2.0` and `v0.3.0` on GitHub hold contributor material that `CHANGELOG.md` no longer holds; the owner replaces them by hand (`RECORD.md`, Open items). |
+| Release texts | The notes of `v0.1.0`, `v0.2.0` and `v0.3.0` on GitHub hold contributor material that their sections of `CHANGELOG.md` leave out; the owner replaces them by hand (`RECORD.md`, Open items). |
 | `main` | Release 0.3.0 (6580092, the merge of pull request #10) and the record of that release in `RECORD.md`, on this page and in Development, section Release. |
 | Unit tests | 546 in 18 files (Vitest). |
 | Browser tests | 179 in 12 spec files, 358 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |

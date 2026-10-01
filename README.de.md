@@ -225,7 +225,7 @@ npm run coverage:check   # Exit-Code 1, wenn eine README-Abdeckungstabelle von c
 npm run airfoils:check   # mitgelieferte Profilbibliothek und NACA-Vorlagen prüfen
 npm run step:cases       # 12 STEP-Dateien, 12 3MF-Dateien und cases.json nach step-check/ schreiben
 npm run screenshots      # Build erzeugen und docs/wiki/images/ neu aufnehmen
-npm run docs:check       # Seitenpaare, Wiki-Links, Bilder und Abdeckungsmarker prüfen
+npm run docs:check       # Seitenpaare, Wiki-Links, Bilder, Abdeckungsmarker und die Release-Texte in CHANGELOG.md prüfen
 npm run counts:check     # Testanzahlen in README, RECORD und Wiki mit den Testsuiten vergleichen
 npm run i18n:check       # deutsche Übersetzung jedes Textes prüfen
 pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0         # Python 3.12

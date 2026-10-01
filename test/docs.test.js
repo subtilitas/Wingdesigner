@@ -61,7 +61,7 @@ describe('documentation check: wiki links in tables', () => {
 });
 
 describe('documentation check: release texts in the changelog', () => {
-  const names = (text) => changelogProblems(text, 'C.md').map((p) => p.replace(/;.*$/, ''));
+  const names = (text, constants) => changelogProblems(text, 'C.md', constants).map((p) => p.replace(/;.*$/, ''));
 
   it('reports contributor material in the version sections and skips the header', () => {
     const text = lines(
@@ -74,26 +74,32 @@ describe('documentation check: release texts in the changelog', () => {
       '',
       '### Added',
       '- `docs/Handover.md` and RECORD.md: working agreements.', // 9
-      '- `npm run docs:check` in CI checks `scripts/check-docs.mjs`; 12 unit tests.', // 10
-      '- `FRAME_TOLERANCE` and `tr()` decide it.', // 11
+      '- `npm run docs:check` in CI checks `./scripts/check-docs.mjs`; 12 unit tests, test coverage.', // 10
+      '- `FRAME_TOLERANCE` and `tr()` decide it; see the Development page and', // 11
+      '  [wing.js](https://github.com/o/r/blob/main/src/geom/wing.js).', // 12
     );
-    expect(names(text)).toEqual([
+    expect(names(text, new Set(['FRAME_TOLERANCE']))).toEqual([
       'C.md:9: release text names the handover (Handover)',
       'C.md:9: release text names RECORD.md (RECORD)',
       'C.md:10: release text names an npm script (npm run)',
-      'C.md:10: release text names a path of the repository (scripts/)',
+      'C.md:10: release text names a path of the repository (./scripts/)',
       'C.md:10: release text names continuous integration (CI)',
-      'C.md:10: release text names tests or coverage (unit tests)',
-      'C.md:11: release text names a constant of the source code (`FRAME_TOLERANCE`)',
+      'C.md:10: release text names tests (unit tests)',
+      'C.md:10: release text names test coverage (test coverage)',
+      'C.md:11: release text names the Development page (Development page)',
       'C.md:11: release text names a function of the source code (`tr()`)',
+      'C.md:11: release text names a constant of the source code (`FRAME_TOLERANCE`)',
+      'C.md:12: release text names a path of the repository (/blob/main/src/)',
     ]);
   });
 
-  it('finds a term broken over two lines once, on the line where it starts', () => {
-    expect(names(lines('## [1.0.0]', '- The check runs with npm', '  run and the browser', '  tests.'))).toEqual([
+  it('finds a term broken over two lines once, on the line where it starts, also after trailing spaces and CR', () => {
+    const expected = [
       'C.md:2: release text names an npm script (npm run)',
-      'C.md:3: release text names tests or coverage (browser tests)',
-    ]);
+      'C.md:3: release text names tests (browser tests)',
+    ];
+    expect(names(lines('## [1.0.0]', '- The check runs with npm', '  run and the browser', '  tests.'))).toEqual(expected);
+    expect(names(['## [1.0.0]', '- The check runs with npm  ', '  run and the browser', '  tests.'].join('\r\n'))).toEqual(expected);
   });
 
   it('accepts the app, its files and its user documentation', () => {
@@ -101,7 +107,9 @@ describe('documentation check: release texts in the changelog', () => {
       '## [1.0.0] - 2026-01-01',
       '- XFLR5 import: `foldedTilt` in the project JSON; `airfoils/NOTICE.md` in the app folder.',
       '- Wiki: User Guide and File Formats; the airfoil check `te-crossed`; `LICENSES.txt` in the release zip.',
+      '- STEP export: one `MANIFOLD_SOLID_BREP` per half; `FILE_NAME` holds the project name.',
+      '- Development of the upper skin; the mesh coverage of the tip cap; Cirrus and ci words.',
     );
-    expect(changelogProblems(text)).toEqual([]);
+    expect(changelogProblems(text, 'C.md', new Set(['FRAME_TOLERANCE']))).toEqual([]);
   });
 });

@@ -72,39 +72,52 @@ export function tableLinkProblems(text, file) {
 export const INTERNAL_TERMS = [
   [/handover/gi, 'the handover'],
   [/\bRECORD\b/g, 'RECORD.md'],
-  [/\bnpm run\b|\bnpx\b/g, 'an npm script'],
-  [/(?<![\w/.-])(?:scripts|test|e2e|src|public|\.github)\//g, 'a path of the repository'],
-  [/\b(?:ci|docs|release)\.yml\b|\bCI\b|continuous integration/gi, 'continuous integration'],
-  [/\b(?:unit|browser) tests?\b|\bVitest\b|\bPlaywright\b|\.spec\.js\b|\bcoverage\b/gi, 'tests or coverage'],
-  [/\bDevelopment\b|\bEntwicklung\b/g, 'the Development page'],
-  [/`[A-Z][A-Z0-9]*_[A-Z0-9_]+`/g, 'a constant of the source code'],
+  [/\bnpm\s+run\b|\bnpx\b/g, 'an npm script'],
+  [/(?<![\w/.-])(?:\.\/)?(?:scripts|test|e2e|src|public|\.github)\/|\/(?:blob|tree)\/[^/\s]+\/(?:scripts|test|e2e|src|public|\.github)\//g, 'a path of the repository'],
+  [/\b(?:ci|docs|release)\.yml\b|\bcontinuous\s+integration\b/gi, 'continuous integration'],
+  [/\bCI\b/g, 'continuous integration'],
+  [/\b(?:unit|browser)\s+tests?\b|\bVitest\b|\bPlaywright\b|\.spec\.js\b/gi, 'tests'],
+  [/\b(?:test|code|line|branch|statement|V8)\s+coverage\b|\bcoverage\s+(?:check|table|report|markers?)\b/gi, 'test coverage'],
+  [/\[\[(?:Development|Entwicklung)\b|\b(?:Development|Entwicklung)(?:\s+(?:page|wiki)\b|,\s+section\b|\s+\/\s+Entwicklung\b)/g, 'the Development page'],
   [/`[A-Za-z_$][\w$.]*\(\)`/g, 'a function of the source code'],
 ];
 
+/** Upper-case names with an underscore that the JavaScript files under `dir` declare with `const`, `let` or `var`. */
+export function sourceConstants(dir = 'src') {
+  const names = new Set();
+  for (const f of readdirSync(dir, { recursive: true })) {
+    if (!String(f).endsWith('.js')) continue;
+    for (const m of readFileSync(join(dir, String(f)), 'utf8').matchAll(/\b(?:const|let|var)\s+([A-Z][A-Z0-9]*_[A-Z0-9_]+)\b/g)) names.add(m[1]);
+  }
+  return names;
+}
+
 /**
  * Lines of the version sections of a changelog (from the first `## ` heading on) that name
- * contributor material. Each line is read together with the next one, so a term broken over two
- * lines is found and reported on the line where it starts.
+ * contributor material: a term of `INTERNAL_TERMS`, or a name of `constants` in backticks. Each line
+ * is read together with the next one, so a term broken over two lines is found and reported on the
+ * line where it starts.
  */
-export function changelogProblems(text, file = 'CHANGELOG.md') {
-  const lines = text.split('\n');
+export function changelogProblems(text, file = 'CHANGELOG.md', constants = new Set()) {
+  const lines = text.split(/\r?\n/);
   const start = lines.findIndex((l) => l.startsWith('## '));
   const problems = [];
   if (start < 0) return problems;
+  const report = (i, what, found) => problems.push(`${file}:${i + 1}: release text names ${what} (${found}); release notes describe the app, its files and its user documentation`);
   for (let i = start; i < lines.length; i++) {
-    const joined = `${lines[i]} ${(lines[i + 1] ?? '').trim()}`;
+    const line = lines[i].trimEnd();
+    const joined = `${line} ${(lines[i + 1] ?? '').trim()}`;
     for (const [pattern, what] of INTERNAL_TERMS) {
-      for (const m of joined.matchAll(pattern)) {
-        if (m.index < lines[i].length) problems.push(`${file}:${i + 1}: release text names ${what} (${m[0].trim()}); release notes describe the app, its files and its user documentation`);
-      }
+      for (const m of joined.matchAll(pattern)) if (m.index < line.length) report(i, what, m[0].replace(/\s+/g, ' '));
     }
+    for (const m of line.matchAll(/`([A-Z][A-Z0-9]*_[A-Z0-9_]+)`/g)) if (constants.has(m[1])) report(i, 'a constant of the source code', m[0]);
   }
   return problems;
 }
 
 function main() {
   const problems = [];
-  if (existsSync('CHANGELOG.md')) problems.push(...changelogProblems(readFileSync('CHANGELOG.md', 'utf8')));
+  if (existsSync('CHANGELOG.md')) problems.push(...changelogProblems(readFileSync('CHANGELOG.md', 'utf8'), 'CHANGELOG.md', sourceConstants()));
   for (const [en, de] of PAGE_PAIRS) {
     for (const f of [en, de]) if (!existsSync(f)) problems.push(`missing page ${f}`);
   }
