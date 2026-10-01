@@ -77,10 +77,10 @@ describe('cuts', () => {
     expect(proposeCuts(built(p), 1000)[0]).toBe(FOAM_LIMITS.minSegment);
     // A 20 mm longest core: the two pieces (300.2 and 300.7 mm along the dihedral) take 16 cores each,
     // 15 + 15 cuts plus the section. 0.5 mm asks for about 1,200 cores: each 300 mm piece takes at most
-    // as many parts as stay 5 mm apart in y, 300² / (300.2 · 5) = 59.9: 59 parts (58 + 58 cuts plus the section).
+    // as many parts as stay 5 mm apart in y, 300 / 5 = 60 parts (59 + 59 cuts plus the section).
     const b = built(sampleProject());
     expect(proposeCuts(b, 20)).toHaveLength(31);
-    expect(proposeCuts(b, 0.5)).toHaveLength(117);
+    expect(proposeCuts(b, 0.5)).toHaveLength(119);
     // A 1,500 mm half span in 5 mm parts reaches the segment limit: 199 cuts.
     const long = panel('vertical', 0);
     long.sections.forEach((q) => (q.y *= 2.5));
@@ -119,6 +119,11 @@ describe('cuts', () => {
     expect(proposeCuts(b, 300)).toHaveLength(1);
     expect(proposeCuts(b, 599)).toHaveLength(1);
     expect(proposeCuts(b, 601)).toEqual([]);
+    // 600 mm along a 70° panel: 205.2 mm in y. A longest core of 20 mm needs 30 cores, 6.84 mm apart in y.
+    const steep = built(panel('vertical', 70));
+    const cuts = proposeCuts(steep, 20);
+    expect(cuts).toHaveLength(29);
+    for (const s of foamSegments(steep, cuts)) expect(s.nominal).toBeLessThanOrEqual(20 + 1e-6);
   });
 
   it('normalize: sorted, inside the half wing, at least the shortest segment apart, at most the segment limit', () => {

@@ -183,8 +183,8 @@ export function proposeCuts(build, maxLength) {
     const a = ends[i - 1];
     const b = ends[i];
     const L = lineLength(build.stations, a, b);
-    // At most as many parts as keep them minSegment apart in y on a straight panel: (b − a)² / (L · minSegment).
-    const n = Math.min(cap, Math.max(1, Math.floor(((b - a) * (b - a)) / (L * FOAM_LIMITS.minSegment))), Math.max(1, Math.ceil(L / maxLength - 1e-9)));
+    // At most as many parts as keep them minSegment apart in y on a straight panel: (b − a) / minSegment.
+    const n = Math.min(cap, Math.max(1, Math.floor((b - a) / FOAM_LIMITS.minSegment)), Math.max(1, Math.ceil(L / maxLength - 1e-9)));
     for (let k = 1; k < n && cuts.length < cap; k++) cuts.push(yAtLength(build.stations, a, b, (L * k) / n));
     if (i < ends.length - 1) cuts.push(b);
   }
@@ -192,13 +192,14 @@ export function proposeCuts(build, maxLength) {
 }
 
 /**
- * Sorted cuts inside the half wing: cuts that are no number, lie within FOAM_LIMITS.minSegment of
- * root or tip, or of the cut before, and cuts beyond FOAM_LIMITS.maxSegments segments are dropped.
+ * Sorted cuts inside the half wing: cuts that are no number, lie closer than FOAM_LIMITS.minSegment
+ * (less 1e-6 mm) to root or tip, or to the cut before, and cuts beyond FOAM_LIMITS.maxSegments segments are dropped.
  * Returns { cuts, dropped, capped } (dropped: removed cuts, capped: those of them removed by the
  * segment limit).
  */
 export function normalizeCuts(build, cuts) {
-  const min = FOAM_LIMITS.minSegment;
+  // 1e-6 mm below the limit: cuts placed exactly minSegment apart keep their rounding error.
+  const min = FOAM_LIMITS.minSegment - 1e-6;
   const sorted = cuts.filter(Number.isFinite).sort((a, b) => a - b);
   const out = [];
   let capped = 0;

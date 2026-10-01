@@ -807,7 +807,7 @@ A cut is a span position y in mm. Root and tip are the ends; the cuts lie betwee
 
 | Rule | Value |
 | --- | --- |
-| Proposal | A cut at every section between root and tip. Each piece between them splits into n = min(ceil(L / L_max), floor(Δy² / (L · 5 mm))) parts of equal length along the reference line; a curved line (**Smooth** blending) gets shorter parts in y where it is steeper. L: length of the reference line of the piece; Δy: its extent in y; L_max: **Longest core**. The second bound keeps the parts at least 5 mm apart in y on a straight panel |
+| Proposal | A cut at every section between root and tip. Each piece between them splits into n = min(ceil(L / L_max), floor(Δy / 5 mm)) parts of equal length along the reference line; a curved line (**Smooth** blending) gets shorter parts in y where it is steeper. L: length of the reference line of the piece; Δy: its extent in y; L_max: **Longest core**. The second bound keeps the parts at least 5 mm apart in y on a straight panel; on a curved line a cut closer than 5 mm in y to the one before is dropped |
 | Reference line | (y, z) of the stations, linear between them. Its length counts the dihedral: 600 mm in y at 1.5° are 600.2 mm |
 | Shortest segment | 5 mm in y. A cut closer than 5 mm to the cut before it, to the root or to the tip is dropped |
 | Sections closer than 5 mm | One cut, at the first of them |
