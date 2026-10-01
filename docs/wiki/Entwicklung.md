@@ -656,3 +656,5 @@ Danach läuft `release.yml`:
 | GitHub-Release | Titel `Wingdesigner <tag>`, die ZIP-Datei als Anhang. Release-Notes: der Abschnitt von `CHANGELOG.md` ab `## [<version>]` bis zur nächsten Überschrift `## `; `See CHANGELOG.md.`, wenn der Abschnitt fehlt. Danach ein Absatz zur Verwendung (englisch): entpacken, `index.html` öffnen (getestet in Chromium) oder den Ordner mit einem statischen Webserver ausliefern; `LICENSES.txt` enthält die Lizenzen. |
 
 `release.yml` führt keine Prüfung der Testabdeckung, keine Prüfung der Profilbibliothek, keine Dokumentationsprüfung, keine STEP-Validierung, keine 3MF-Validierung und keine Browsertests aus.
+
+Nachdem `release.yml` das Release veröffentlicht hat, trägt ein neuer Pull Request von `main` den Tag-Commit, den Lauf von `release.yml`, das Datum und die Größe der ZIP-Datei in `RECORD.md`, Zeile CI, ein und aktualisiert die Zeilen Version, Next release und `main` von `docs/Handover.md`.

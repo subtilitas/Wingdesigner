@@ -656,3 +656,5 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 | GitHub release | Title `Wingdesigner <tag>`, the zip file as asset. Notes: the `CHANGELOG.md` section from `## [<version>]` to the next `## ` heading; `See CHANGELOG.md.` when the section is missing. Then a paragraph on use: unzip, open `index.html` (tested in Chromium) or serve the folder with a static web server; `LICENSES.txt` holds the licenses. |
 
 `release.yml` runs no coverage check, no airfoil library check, no documentation check, no STEP validation, no 3MF validation and no browser tests.
+
+After `release.yml` has published the release, a new pull request from `main` enters the tag commit, the `release.yml` run, the date and the size of the zip file in `RECORD.md`, row CI, and updates the rows Version, Next release and `main` of `docs/Handover.md`.

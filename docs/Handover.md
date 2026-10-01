@@ -1,17 +1,17 @@
 # Handover
 
-State of Wingdesigner on 2026-09-30, for the next person or session that works on it. Read
+State of Wingdesigner on 2026-10-01, for the next person or session that works on it. Read
 `RECORD.md` first: it holds the verified state, the decisions with their reasons, the measurements and
 the open items, each as a claim to re-check. This page adds where the work stands, what comes next,
 how the owner works with contributors, and what the repository does not hold.
 
 ## Where the work stands
 
-| Item | State on 2026-09-30 |
+| Item | State on 2026-10-01 |
 | --- | --- |
-| Version | `package.json` holds 0.3.0 (pull request #10). Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c, each with `wingdesigner-v<version>-site.zip` built by `release.yml`. |
-| Next release | Tag `v0.3.0` on the merge commit of pull request #10. `release.yml` takes the release notes from the 0.3.0 section of `CHANGELOG.md` (Added, Changed, Fixed). |
-| `main` | dd72ec5, the merge of pull request #9: wizard dihedral −60 to 60°, exact airfoil frames of the XFLR5 import, the attribution of the differences from XFLR5. |
+| Version | `package.json` holds 0.3.0. Released: `v0.1.0` on 9faa12b, `v0.2.0` on 3b9a67c and `v0.3.0` on 6580092 (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
+| Next release | Not prepared: the section Unreleased of `CHANGELOG.md` is empty. The steps: Development, section Release. |
+| `main` | Release 0.3.0 (6580092, the merge of pull request #10) and the record of that release in `RECORD.md`, on this page and in Development, section Release. |
 | Unit tests | 543 in 18 files (Vitest). |
 | Browser tests | 179 in 12 spec files, 358 runs: Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); 31 runs are skipped by design (tests for one device only). |
 | Export validation | 12 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. |
@@ -22,20 +22,7 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
 
 ## Next steps
 
-1. The owner merges pull request #10. After `ci.yml` passes on `main`, the owner tags the merge commit
-   of pull request #10, not the tip of `main`, which can hold later changes (Development, section
-   Release):
-
-   ```bash
-   git fetch origin main
-   c=$(git log origin/main --merges -1 --format=%H --grep='^Merge pull request #10[^0-9]')
-   test -n "$c" && git show -s --format='%h %s' "$c" && git tag v0.3.0 "$c" && git push origin v0.3.0
-   ```
-
-   After `release.yml` publishes the release, the next pull request (from `main`) enters the tag
-   commit, the `release.yml` run and the size of `wingdesigner-v0.3.0-site.zip` in `RECORD.md`, row
-   CI, and updates the rows Version and Next release of this page.
-2. Step 2 of `docs/Flow5upgrade.md`: a rigid tilt of the whole part. A tilted XFLR5 part imports with
+1. Step 2 of `docs/Flow5upgrade.md`: a rigid tilt of the whole part. A tilted XFLR5 part imports with
    vertical section planes and its tilt folded into the section values. The largest distance of
    XFLR5's STL (stereolithography) from the 4 tilted 35° V-tails of `initialAerodynamicSym.xfl` is
    2.87 mm for that reason (File Formats, section Differences from XFLR5; the tilts:
@@ -50,18 +37,18 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
    - Not decided: whether the statistics of a tilted part use the plane axes or the part axes.
    - The estimate of 2 to 4 h is a guess: size, user interface and exports of step 2 are not
      analysed.
-3. Step 3 of `docs/Flow5upgrade.md`: the flow5 import of Extensible Markup Language (XML) files and
+2. Step 3 of `docs/Flow5upgrade.md`: the flow5 import of Extensible Markup Language (XML) files and
    `.fl5` files, with its decisions F1 to F6 and open points.
-4. Question for the owner, not yet asked (`RECORD.md`, Open items): cambered NACA (National Advisory
+3. Question for the owner, not yet asked (`RECORD.md`, Open items): cambered NACA (National Advisory
    Committee for Aeronautics) sections of the generator get an airfoil frame, although the answer to
    Q9 reads "NACA and normalized airfoils do not move".
-5. Not measured or not tested, among the Open items of `RECORD.md`: smooth blending with rolled
+4. Not measured or not tested, among the Open items of `RECORD.md`: smooth blending with rolled
    section planes (not built), a rolled STEP file in a CAD (computer-aided design) program other than
    OpenCascade, STL and 3MF float32 precision of rolled caps, how often the fold test fires on real
    wings, the file choosers of Android and iOS, the import dialog with a screen reader, build time and
    memory on phones. The app is tested in Chromium only; Firefox and Safari are not tested (README,
    Limitations).
-6. Known failures (`RECORD.md`, Open items):
+5. Known failures (`RECORD.md`, Open items):
    - The STEP file of `Final Design.xfl`, plane 1, main wing (S1223, closed cusped trailing edge)
      holds one solid that fails the BRepCheck of OpenCascade; with a trailing-edge thickness of 0.4 mm
      both solids are valid. The cause is not analysed. The file is not in the repository.
