@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changelogProblems, tableLinkProblems, tableRows } from '../scripts/check-docs.mjs';
+import { changelogProblems, formatKeys, tableLinkProblems, tableRows } from '../scripts/check-docs.mjs';
 
 const lines = (...l) => l.join('\n');
 const split = (file, line) => `${file}:${line}: wiki link split by the | of a table cell; in tables a wiki link holds only the page title`;
@@ -77,7 +77,7 @@ describe('documentation check: release texts in the changelog', () => {
       '### Added',
       '- `docs/Handover.md` and RECORD.md: working agreements.', // 9
       '- `npm run docs:check` in CI and GitHub Actions checks `./scripts/check-docs.mjs`; 12 unit tests, 3 end-to-end tests, test coverage.', // 10
-      '- `FRAME_TOLERANCE`, `LIMITS`, `tr()`, `mapXflr5(file)`, `updateLabels` and `buildWing(', // 11
+      '- `FRAME_TOLERANCE`, `LIMITS`, `tr()`, `mapXflr5(file)`, `sectionPlanes(project)`, `updateLabels` and `buildWing(', // 11
       '  project)` decide it; `npm test`, `npm ci`; see the Development page and', // 12
       '  [wing.js](https://github.com/o/r/blob/feature/foo/src/geom/wing.js).', // 13
     );
@@ -100,6 +100,7 @@ describe('documentation check: release texts in the changelog', () => {
       'C.md:11: release text names a constant of the source code (`LIMITS`)',
       'C.md:11: release text names a function of the source code (`tr()`)',
       'C.md:11: release text names a function of the source code (`mapXflr5(file)`)',
+      'C.md:11: release text names a function of the source code (`sectionPlanes(project)`)',
       'C.md:11: release text names a function of the source code (`updateLabels`)',
       'C.md:11: release text names a function of the source code (`buildWing( project)`)',
     ]);
@@ -124,5 +125,6 @@ describe('documentation check: release texts in the changelog', () => {
       '- Development of the upper skin; the mesh coverage of the tip cap; Cirrus and ci words; every npm package of the bundle.',
     );
     expect(changelogProblems(text, 'C.md', names, keys)).toEqual([]);
+    expect(formatKeys('docs/wiki/No-Such-Page.md')).toEqual(new Set());
   });
 });

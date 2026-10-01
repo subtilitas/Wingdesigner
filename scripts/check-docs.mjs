@@ -105,8 +105,12 @@ export function sourceNames(dir = 'src') {
   return { functions, constants };
 }
 
-/** Keys of the project file that the File Formats page documents: JSON keys and first table cells. */
+/**
+ * Keys of the project file that the File Formats page documents: JSON keys and first table cells.
+ * Without the page the set is empty; the page-pair check reports the missing page.
+ */
 export function formatKeys(file = `${WIKI}/File-Formats.md`) {
+  if (!existsSync(file)) return new Set();
   const text = readFileSync(file, 'utf8');
   const keys = new Set([...text.matchAll(/"([A-Za-z_]\w*)"\s*:/g)].map((m) => m[1]));
   for (const m of text.matchAll(/^\|\s*`([A-Za-z_][\w.[\]*]*)`/gm)) for (const part of m[1].split(/[.[\]*]+/)) if (part) keys.add(part);
@@ -116,7 +120,8 @@ export function formatKeys(file = `${WIKI}/File-Formats.md`) {
 /**
  * Lines of the version sections of a changelog (from the first `## ` heading on) that name
  * contributor material: a term of `INTERNAL_TERMS`, or a code span that holds a function call, or a
- * function, class or constant that `names` lists and `keys` (the project file format) does not.
+ * bare function, class or constant name that `names` lists and `keys` (the project file format)
+ * does not.
  * Each line is read together with the next one, so a term broken over two lines is found and
  * reported on the line where it starts.
  */
@@ -143,7 +148,7 @@ export function changelogProblems(text, file = 'CHANGELOG.md', names = {}, keys 
     if (!call) continue;
     const name = call[1].split('.').pop();
     const span = m[0].replace(/\s+/g, ' ');
-    if (keys.has(name)) continue;
+    if (keys.has(name) && !call[2]) continue;
     if (constants.has(name)) report(lineOf(m.index), 'a constant of the source code', span);
     else if (call[2] || functions.has(name)) report(lineOf(m.index), 'a function of the source code', span);
   }
