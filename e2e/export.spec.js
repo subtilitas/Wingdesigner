@@ -314,7 +314,7 @@ test.describe('export dialog', () => {
     expect(file.name).toBe('Glider.json');
     const json = JSON.parse(file.bytes.toString('utf8'));
     expect(json.format).toBe('wingdesigner-project');
-    expect(json.version).toBe(2);
+    expect(json.version).toBe(3);
     expect(json.units).toBe('mm');
     expect(json.name).toBe('Glider');
     expect(json.settings.sectionPlanes).toBe('mitred');
@@ -417,6 +417,50 @@ test.describe('export dialog', () => {
     await expect(dlg.locator('.sev-error')).toBeVisible();
     for (const f of ['step', 'stl', '3mf']) await expect(dlg.getByLabel(FORMAT_LABEL[f]), `${f} radio`).toBeDisabled();
     await expect(dlg.getByLabel(FORMAT_LABEL.json)).toBeChecked();
+  });
+});
+
+test.describe('project upgrade', () => {
+  test('Open turns the folded tilt of a version 2 file into a part tilt and names it', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const project = await savedProject(page);
+    // A version 2 file of an earlier XFLR5 import: 3° folded into the sections about the origin.
+    const old = { ...project, version: 2, settings: { ...project.settings, sectionPlanes: 'vertical' }, foldedTilt: { angle: 3, x: 0, z: 0 } };
+    for (const k of ['partTilt', 'partRoll', 'partPivot']) delete old.settings[k];
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open', exact: true }).click()]);
+    await chooser.setFiles({ name: 'folded.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(old)) });
+    await expect(toastOf(page)).toHaveText(
+      'Opened folded.json. The tilt angle of 3° that the XFLR5 import folded into the sections is a rigid tilt of the whole part (Settings > Part tilt); the sections hold the values of the untilted part.',
+    );
+    await expect(toastOf(page)).not.toHaveClass(/\berror\b/);
+    // The fold is undone: every twist is 3° lower, and the part carries the tilt about the old fold axis.
+    const twists = (await tableOf(page)).map((r) => r.twist);
+    expect(twists).toEqual(project.sections.map((s) => s.twist - 3));
+    await expect.poll(async () => (await savedProject(page))?.settings).toMatchObject({ partTilt: 3, partRoll: 0, partPivot: { x: 0, y: 0, z: 0 } });
+    const saved = await savedProject(page);
+    expect([saved.version, saved.foldedTilt]).toEqual([3, undefined]);
+    await openTab(page, 'Settings');
+    await expect(page.getByRole('spinbutton', { name: /^Part tilt/ })).toHaveValue('3');
+
+    // The same version 2 project restored from browser storage next to the marker of a full storage:
+    // the start message names both, as an error.
+    await page.evaluate(
+      ([key, text]) => {
+        localStorage.setItem(key, text);
+        localStorage.setItem(`${key}.stale`, '2026-09-29 12:00 UTC');
+      },
+      [STORAGE_KEY, JSON.stringify(old)],
+    );
+    await page.reload();
+    await expect(toastOf(page)).toHaveText(
+      'This is the project as last saved; autosave stopped at 2026-09-29 12:00 UTC because browser storage was full, and later edits were not saved. The tilt angle of 3° that the XFLR5 import folded into the sections is a rigid tilt of the whole part (Settings > Part tilt); the sections hold the values of the untilted part.',
+    );
+    await expect(toastOf(page)).toHaveClass(/error/);
+    // The upgraded restore is saved at once: the next start reads version 3 and repeats no note.
+    await expect.poll(async () => (await savedProject(page))?.version).toBe(3);
+    await page.reload();
+    await expect(page.getByRole('spinbutton', { name: /^Part tilt/ })).toHaveValue('3');
+    await expect(toastOf(page)).not.toContainText('folded into the sections');
   });
 });
 

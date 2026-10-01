@@ -12,7 +12,9 @@ import { count, plain, tr, whole } from '../i18n/index.js';
 
 export const FORMAT = 'wingdesigner-project';
 // Version 2: settings.sectionPlanes and the stored folded tilt of an XFLR5 import (foldedTilt).
-export const VERSION = 2;
+// Version 3: the rigid placement of the part (settings.partTilt, partRoll, partPivot,
+// src/geom/part.js); version 2 files with a folded tilt are upgraded on Open (src/model/io.js).
+export const VERSION = 3;
 
 /**
  * Spanwise interpolation: 'linear' blends every section value (leading edge, chord, z, twist, airfoil
@@ -33,6 +35,11 @@ export const DEFAULT_SETTINGS = Object.freeze({
   panelStations: 8,
   parametrization: 'centripetal',
   mirror: true,
+  // Rigid placement of the whole part (degrees; src/geom/part.js). partPivot: { x, y, z } in mm, or
+  // null for the leading edge of the root section.
+  partTilt: 0,
+  partRoll: 0,
+  partPivot: null,
 });
 
 // minChord: smallest chord (profile depth) in mm, also the floor of a pointed tip. Below 1 mm the
@@ -45,6 +52,8 @@ export const LIMITS = Object.freeze({
   maxTwist: 360,
   // A stored panel angle (section.panelAngle, degrees): a panel stays below 90°, as y is the span.
   maxPanelAngle: 89.9999,
+  // Rigid tilt and roll of the part (settings.partTilt, settings.partRoll), degrees.
+  maxPartAngle: 180,
   // Hard size limits: beyond them a desktop browser tab runs out of memory or a change takes about
   // a minute (measurements in RECORD.md). Sizes above the warning thresholds in budget.js work, with
   // a warning that names the expected time and memory.
@@ -286,6 +295,13 @@ export function validateProject(p) {
   }
   if (!['uniform', 'chord', 'centripetal'].includes(st.parametrization)) errors.push(tr('settings.parametrization must be uniform, chord or centripetal.'));
   if (typeof st.mirror !== 'boolean') errors.push(tr('settings.mirror must be true or false.'));
+  for (const k of ['partTilt', 'partRoll']) {
+    if (!isNum(st[k]) || Math.abs(st[k]) > LIMITS.maxPartAngle) errors.push(tr('settings.{key} must be a number within ±{max} degrees.', { key: k, max: plain(LIMITS.maxPartAngle) }));
+  }
+  const pv = st.partPivot;
+  if (pv !== null && !(isObject(pv) && ['x', 'y', 'z'].every((k) => isNum(pv[k]) && Math.abs(pv[k]) <= LIMITS.maxCoordinate))) {
+    errors.push(tr('settings.partPivot must be null or an object with the numbers x, y and z within ±{max} mm.', { max: whole(LIMITS.maxCoordinate) }));
+  }
   if (p.guides) {
     for (const key of ['nose', 'end']) {
       const g = p.guides[key];

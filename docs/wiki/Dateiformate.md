@@ -267,7 +267,7 @@ Die Prüfungen laufen:
 | Schlüssel | Typ | Geschrieben | Bei **Öffnen** |
 | --- | --- | --- | --- |
 | `format` | `"wingdesigner-project"` | immer | Pflicht, muss übereinstimmen |
-| `version` | ganze Zahl `2` | immer | Pflicht, 1 oder 2. Eine Datei der Version 1 öffnet mit `settings.sectionPlanes` `"vertical"`, den Schnittebenen, mit denen sie entworfen wurde. Eine App, die nur Version 1 liest, lehnt eine Datei der Version 2 ab (`Nicht unterstützte Projektversion 2.`), statt `sectionPlanes` und `foldedTilt` zu verwerfen. |
+| `version` | ganze Zahl `3` | immer | Pflicht, 1 bis 3. Eine Datei der Version 1 öffnet mit `settings.sectionPlanes` `"vertical"`, den Schnittebenen, mit denen sie entworfen wurde. Eine Datei der Version 2 mit `foldedTilt` wird aktualisiert (Abschnitt „Aktualisierung von Dateien der Version 2“). Eine Datei der Version 1 oder 2 öffnet mit `partTilt` und `partRoll` 0 und `partPivot` null, außer die Aktualisierung ihres `foldedTilt` setzt sie: `partTilt`, `partRoll` und `partPivot` in ihren Einstellungen sind unbekannte Schlüssel dieser Version und entfallen, wie die Apps dieser Version sie verwerfen. Eine App, die nur Version 1 liest, lehnt eine Datei der Version 2 ab (`Nicht unterstützte Projektversion 2.`), statt `sectionPlanes` und `foldedTilt` zu verwerfen; Wingdesigner 0.3.0 und älter lehnen eine Datei der Version 3 ab (`Nicht unterstützte Projektversion 3.`), statt `partTilt`, `partRoll` und `partPivot` zu verwerfen. |
 | `generator` | `{ "name": "Wingdesigner", "version": "<App-Version>" }` | immer | ignoriert |
 | `exportedAt` | Zeitpunkt nach ISO 8601, UTC | immer | ignoriert |
 | `name` | Zeichenkette | immer | keine Zeichenkette: „Importierter Flügel“ (englische Oberfläche: `Imported wing`); höchstens 10 000 Zeichen |
@@ -277,7 +277,7 @@ Die Prüfungen laufen:
 | `sections` | Array | immer | Pflicht, 2 bis 20 000 Einträge |
 | `guides` | Objekt mit `nose` und `end` | immer | optional; `null` gilt als fehlend; eine fehlende Leitkurve wird aus den Schnittkanten erzeugt, ausgeschaltet |
 | `settings` | Objekt | immer, alle Schlüssel | optional; ein fehlender Schlüssel erhält seine Vorgabe; ein unbekannter Schlüssel entfällt |
-| `foldedTilt` | `{ "angle": <°>, "x": <mm>, "z": <mm> }` | nur für ein Teil mit Einstellwinkel aus einem XFLR5-Import (Abschnitt „XFLR5-Import“, Schritt 6) | optional; `null` gilt als fehlend. `angle` innerhalb von ±180°, `x` und `z` innerhalb von ±1 000 000 mm; andere Schlüssel darin entfallen. Der Einstellwinkel, den der Import in die Schnittwerte eingerechnet hat, und der Ursprung des Flügels, um den er die Schnitte gedreht hat. Der Aufbau warnt, wenn ein solches Projekt Schnittebenen **Auf Gehrung** (Mitred) verwendet. |
+| `foldedTilt` | `{ "angle": <°>, "x": <mm>, "z": <mm> }` | nur in einem Projekt, dessen Einrechnung die Aktualisierung einer Datei der Version 2 beibehält (Abschnitt „Aktualisierung von Dateien der Version 2“); der XFLR5-Import schreibt keines | optional; `null` gilt als fehlend. `angle` innerhalb von ±180°, `x` und `z` innerhalb von ±1 000 000 mm; andere Schlüssel darin entfallen. Der Einstellwinkel, den der XFLR5-Import des Formats Version 2 in die Schnittwerte eingerechnet hat, und der Ursprung des Flügels, um den er die Schnitte gedreht hat. Der Aufbau warnt, wenn ein solches Projekt Schnittebenen **Auf Gehrung** (Mitred) verwendet. In einer Datei der Version 1 ist der Schlüssel unbekannt und entfällt. |
 | `derived` | Objekt | nur wenn der Flügel ohne Fehler aufgebaut wird und die Datei höchstens 100 MB groß bleibt | ignoriert; wird neu berechnet |
 
 **Öffnen** verwirft unbekannte Schlüssel samt Inhalt: auf der obersten Ebene und in `airfoils[]`, `airfoils[].source`, `sections[]`, `guides`, `guides.nose`, `guides.end`, `settings` und `foldedTilt`.
@@ -359,6 +359,9 @@ Von der App erzeugte IDs:
 | `panelStations` | ganze Zahl `3`–`40`; der Flügelaufbau verwendet nur dann weniger, wenn das Flächengitter 5 000 000 Punkte überschreiten würde ([[Geometrie]], Abschnitt 3.2) | `8` | **Stationen je Feld mit Leitkurve, glatter Interpolation oder linearen Feldern auf Gehrung** (Spanwise stations per panel with guides, smooth mode or mitred linear panels) |
 | `parametrization` | `"uniform"`, `"chord"`, `"centripetal"` | `"centripetal"` | **Parametrisierung der Profile** (Profile parametrization) |
 | `mirror` | `true`, `false`; nur 3D-Ansicht, ohne Wirkung auf Exporte | `true` | **Gespiegelte Hälfte zeigen (y < 0)** (Show mirrored half (y < 0)) |
+| `partTilt` | −180 bis 180°; positiv = Nasenleiste hoch | `0` | **Einstellwinkel des Teils (°, positiv = Nasenleiste hoch)** (Part tilt (°, positive = leading edge up)): starre Drehung des ganzen Teils um die y-Achse durch `partPivot`, nach dem Rollwinkel ([[Geometrie]], Abschnitt 3.9) |
+| `partRoll` | −180 bis 180°; positiv = rechter Randbogen hoch | `0` | **Rollwinkel des Teils (°, positiv = rechter Randbogen hoch)** (Part roll (°, positive = right tip up)): starre Drehung des ganzen Teils um die x-Achse durch `partPivot`, vor dem Einstellwinkel |
+| `partPivot` | `null` oder `{ "x": <mm>, "y": <mm>, "z": <mm> }` mit jedem Wert innerhalb von ±1 000 000 mm | `null` | keines; die Zeile unter **Rollwinkel des Teils** nennt ihn. `null`: die Nasenleiste (x, y, z) des Wurzelschnitts. Der XFLR5-Import speichert den Ursprung des Flügels `{ "x": k·LE_x, "y": 0, "z": k·LE_z }` (Abschnitt „XFLR5-Import“, Schritt 3). |
 
 Unbekannte Schlüssel in `settings` entfallen bei **Öffnen**. **Speichern** schreibt die Schlüssel dieser Tabelle.
 
@@ -399,6 +402,8 @@ Die Datei wird abgelehnt, und die ersten 3 Meldungen erscheinen, wenn:
 - `chord` < 1 mm oder > 100 000 mm, `y` < 0, 2 Schnitte dasselbe `y` haben oder `airfoil` eine unbekannte ID nennt;
 - `x`, `y` oder `z` eines Schnitts außerhalb von −1 000 000 bis 1 000 000 mm liegt, `twist` außerhalb von −360 bis 360° oder `panelAngle` außerhalb von −89,9999 bis 89,9999°;
 - ein Wert in `settings` außerhalb der Tabelle oben liegt;
+- `settings.partTilt` oder `settings.partRoll` keine Zahl innerhalb von ±180° ist (`settings.partTilt muss eine Zahl innerhalb von ±180 Grad sein.`, ebenso mit `partRoll`);
+- `settings.partPivot` weder `null` noch ein Objekt mit den Zahlen `x`, `y` und `z` innerhalb von ±1 000 000 mm ist (`settings.partPivot muss null oder ein Objekt mit den Zahlen x, y und z innerhalb von ±1.000.000 mm sein.`);
 - `foldedTilt` vorhanden, nicht `null` und kein Objekt mit den Zahlen `angle`, `x` und `z` ist, oder `angle` außerhalb von ±180° oder `x` oder `z` außerhalb von ±1 000 000 mm liegt;
 - `guides.nose` oder `guides.end` weder ein Objekt noch `null` ist;
 - `enabled` einer Leitkurve weder `true` noch `false` ist, oder `edited` einer Leitkurve vorhanden und weder `true` noch `false` ist;
@@ -429,11 +434,34 @@ Erst beim Flügelaufbau geprüft, in dieser Reihenfolge:
 - angepasste Fläche mit nicht endlichen Koordinaten;
 - angepasste Fläche stülpt sich zwischen den Stationen um (örtliche Dicke unter 0) oder hat dort die Dicke 0 (höchstens 0,001 % der Profiltiefe zwischen 1 % und 99 % der Profiltiefe);
 - Profiltiefe der angepassten Fläche zwischen den Stationen unter 0,9 mm (die Fläche faltet sich oder schnürt sich ein);
-- Flächenzeile kreuzt sich an einem Schnitt, in der Mitte zwischen 2 Schnitten oder in der Mitte zwischen den 2 Stationen eines der 64 breitesten Stationsintervalle (Schleifengröße, mittlere Breite, über 0,05 % der örtlichen Profiltiefe).
+- Flächenzeile kreuzt sich an einem Schnitt, in der Mitte zwischen 2 Schnitten oder in der Mitte zwischen den 2 Stationen eines der 64 breitesten Stationsintervalle (Schleifengröße, mittlere Breite, über 0,05 % der örtlichen Profiltiefe);
+- `partTilt` oder `partRoll` nicht 0: Ein mit dem Teil gedrehter Kontrollpunkt der Fläche liegt in x, y oder z außerhalb von ±1 200 000 mm (`Das gedrehte Teil reicht bis x = … mm, y = … mm, z = … mm, außerhalb von ±1.200.000 mm; Einstellwinkel oder Rollwinkel des Teils verkleinern oder das Teil näher an seinen Drehpunkt legen.`).
 
 Mit `parametrization` `"chord"` oder `"uniform"` endet ein Profilfehler beim Flügelaufbau (Plausibilitätsprüfung oder `curve-shape`) mit `Die Einstellung „Zentripetal“ unter Einstellungen > Parametrisierung der Profile folgt den Punkten genauer.`
 
 Ein Fehler blockiert den Flügel und den Export nach STEP, STL und 3MF. Meldungen: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Prüfungen.
+
+### Aktualisierung von Dateien der Version 2
+
+Der XFLR5-Import des Formats Version 2 hat den Einstellwinkel eines Teils mit Einstellwinkel in die Schnittwerte eingerechnet (jeder Punkt beim Viertel der Profiltiefe um den Ursprung des Flügels gedreht, der Winkel zu jeder Schränkung addiert) und den Winkel als `foldedTilt` gespeichert. **Öffnen** und die Wiederherstellung der Browserkopie machen aus einem solchen Projekt der Version 1 oder 2 den starren Einstellwinkel der Version 3:
+
+```
+p = settings.twistPivot     c = Profiltiefe des Schnitts, wie der Aufbau sie verwendet
+                            (spitzes Flügelende: am Randschnitt max(tip.ratio · vorherige Profiltiefe, 1 mm))
+θ = foldedTilt.angle        (X, Z) = (foldedTilt.x, foldedTilt.z)
+dx = x + p·c − X            dz = z − Z
+x' = dx·cos θ − dz·sin θ + X − p·c
+z' = dx·sin θ + dz·cos θ + Z
+twist' = twist − θ          y, chord unverändert
+settings.partTilt = θ, partRoll = 0, partPivot = { x: X, y: 0, z: Z }; foldedTilt entfernt
+```
+
+- Der Drehpunkt der Schränkung jedes Schnitts dreht sich um (X, Z) zurück, sodass die Schnitte die Werte des ungedrehten Teils halten.
+- Der Hinweis nach **Öffnen** (nach `<Datei> geöffnet.`) und nach der Wiederherstellung nennt die Änderung: `Der Einstellwinkel von 3°, den der XFLR5-Import in die Schnitte eingerechnet hatte, ist ein starrer Einstellwinkel des ganzen Teils (Einstellungen > Einstellwinkel des Teils); die Schnitte halten die Werte des ungedrehten Teils.` Mit Schnittebenen **Auf Gehrung** ergänzt er `Mit Schnittebenen auf Gehrung ändert sich die Form: Der eingerechnete Einstellwinkel war nur für senkrechte Ebenen genau, der starre Einstellwinkel setzt das Teil wie XFLR5.`
+- Mit Schnittebenen **Senkrecht** baut das aktualisierte Projekt dasselbe Teil: innerhalb von 1e-6 mm in Unit-Tests mit dem Drehpunkt der Schränkung 0,25 und 0,5, einem spitzen Flügelende und **Gerade Felder** (`test/part.test.js`). **Lage der MAC** und **25 % MAC** verschieben sich bei 3° Einstellwinkel um 0,105 mm: Die Kennwerte drehen die Profilnase selbst ([[Geometrie]], Abschnitt 7).
+- Die Einrechnung bleibt, mit `foldedTilt`, wenn eine Leitkurve eingeschaltet ist oder ausgeschaltet mit bearbeiteten Punkten (Leitkurven halten nur x, als Funktion von y): `Der Einstellwinkel von 3° des XFLR5-Imports bleibt in die Schnitte eingerechnet: Eine Leitkurve ist eingeschaltet oder bearbeitet, und Leitkurven halten nur x.` Sie bleibt auch, wenn eine Schränkung ohne sie außerhalb von ±360° läge: `Der Einstellwinkel von -3° des XFLR5-Imports bleibt in die Schnitte eingerechnet: Ohne ihn läge eine Schränkung außerhalb von ±360°.` Sie bleibt auch, wenn ein Schnitt ohne sie außerhalb von ±1 000 000 mm läge (eingerechnete Schnitte nahe der Koordinatengrenze): `Der Einstellwinkel von 45° des XFLR5-Imports bleibt in die Schnitte eingerechnet: Ohne ihn läge ein Schnitt außerhalb von ±1.000.000 mm.`
+- Das aktualisierte Projekt durchläuft die Prüfungen oben erneut.
+- Eine Datei der Version 3 behält ein gespeichertes `foldedTilt` unverändert.
 
 ### Beispiel
 
@@ -442,8 +470,8 @@ Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 15
 ```json
 {
  "format": "wingdesigner-project",
- "version": 2,
- "generator": { "name": "Wingdesigner", "version": "0.3.0" },
+ "version": 3,
+ "generator": { "name": "Wingdesigner", "version": "0.4.0" },
  "exportedAt": "2026-09-30T12:00:00.000Z",
  "name": "Sportflügel 1500",
  "units": "mm",
@@ -467,7 +495,8 @@ Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 15
   "spanwise": "linear", "sectionPlanes": "mitred", "twistPivot": 0.25,
   "trailingEdge": { "mode": "thickness", "thickness": 0.5 },
   "tip": { "mode": "flat", "ratio": 0.005 },
-  "chordSamples": 60, "panelStations": 8, "parametrization": "centripetal", "mirror": true
+  "chordSamples": 60, "panelStations": 8, "parametrization": "centripetal", "mirror": true,
+  "partTilt": 0, "partRoll": 0, "partPivot": null
  },
  "derived": {
   "profiles": [
@@ -510,6 +539,7 @@ englische Texte; die Sprache ändert sie nicht.
 | Änderung in der App | nur gespeichert, wenn das Projekt die Prüfungen bei **Öffnen** besteht; sonst bleibt die letzte gültige Kopie |
 | Seite vor dem nächsten Animations-Frame verborgen oder verlassen (Neuladen, Schließen des Tabs) | die ausstehende Änderung wird sofort gespeichert (`pagehide`, `visibilitychange`) |
 | Assistent des ersten Aufrufs offen | nichts gespeichert; ein Neuladen öffnet den Assistenten erneut |
+| Gespeicherte Kopie des Formats Version 1 oder 2 mit `foldedTilt` | beim Laden aktualisiert wie bei **Öffnen** (Abschnitt „Aktualisierung von Dateien der Version 2“); ein Hinweis zeigt die Zeilen der Aktualisierung |
 | Gespeicherte Kopie besteht die Prüfungen beim Laden nicht | Text in den Schlüssel `wingdesigner.project.v1.rejected` kopiert, rote Meldung mit dem ersten Problem, der Assistent des ersten Aufrufs öffnet sich über dem Beispielflügel „Sportflügel 1500“ |
 | `localStorage` nicht verfügbar oder voll | keine Kopie; das Projekt existiert nur im geöffneten Browser-Tab |
 
@@ -614,10 +644,10 @@ Schreibweise, für die Schnitte i = 0 … n−1 von der Wurzel zum Rand: y_i, c_
 | `xOffset` | x der Profilnase des ungeschränkten Schnitts, positiv zur Endleiste |
 | `Dihedral` von Schnitt i | absoluter Winkel des Feldes außerhalb von Schnitt i, von Schnitt i bis i + 1; nicht kumulativ. Der Wert des letzten Schnitts gehört zu keinem Feld und wird nicht verwendet. |
 | `Twist` | Drehung des Schnitts um seinen Viertelpunkt der Profiltiefe; positiv = Profilnase oben; absolut je Schnitt |
-| Einstellwinkel (Tilt angle) | Anstellung des Flügels im Flugzeug: Drehung des ganzen Flügels um die y-Achse durch den Ursprung des Flügels; positiv = Nase oben |
+| Einstellwinkel (Tilt angle) | Anstellung des Flügels im Flugzeug: Drehung des ganzen Flügels um die y-Achse durch den Ursprung des Flügels; positiv = Nase oben. Wingdesigner speichert ihn als **Einstellwinkel des Teils** (`settings.partTilt`). |
 | Position | x, y, z des Flügelursprungs im Flugzeug. y wird wie in XFLR5 nicht verwendet (XFLR5 nutzt es nur bei doppelten Seitenleitwerken). |
 
-Die Reihenfolge der Schritte: Felder, Bereinigung, Einstellwinkel und Position, Profillage, Runden, Schnittebenen.
+Die Reihenfolge der Schritte: Felder, Bereinigung, Einstellwinkel und Position (die Position verschiebt die Schnitte, der Einstellwinkel wird gespeichert), Profillage, Runden, Schnittebenen.
 
 **1. Felder.** Die V-Form des Feldes außerhalb eines Schnitts gibt seine Richtung vor:
 
@@ -651,23 +681,25 @@ Schnitt i:  x = k·h_i   y = Y_i   z = Z_i   Profiltiefe = k·c_i   Schränkung 
 | zwei Schnitte bei einem y (ein Feld kürzer als 0,1 mm), identisch: gleiche Profiltiefe, `xOffset`, `Twist`, gleicher Name des rechten und des linken Profils | der innere Schnitt entfällt ohne Meldung |
 | zwei oder mehr Schnitte bei einem y, nicht identisch (so wechselt XFLR5 das Profil abrupt) | die inneren Schnitte rücken entlang des inneren Feldes um d = min(0,5 mm, ¼ der Länge des inneren Feldes) nach innen: Warnung `Die Schnitte <a> und <b> liegen beide bei y = <y> mm; Schnitt <a> wurde um <d> mm nach innen verschoben.` In einer Folge von m + 1 Schnitten bei einem y bleibt der äußerste stehen, die anderen rücken um d, d·(m−1)/m … d/m. Eine Folge an der Wurzel hat kein inneres Feld: Der innerste bleibt, die anderen rücken entlang des äußeren Feldes um d/m … d nach außen, mit d = min(0,5 mm, ¼ der Länge des äußeren Feldes): `… Schnitt <b> wurde um <d> mm nach außen verschoben.` Das Projekt braucht streng steigendes y. Die verschobenen Schnitte liegen in y weniger als 1 mm auseinander: Mit Schnittebenen **Auf Gehrung** teilen sie sich eine Ebene, die winkelhalbierende Ebene der Felder um die Folge herum, wie in XFLR5 ([[Geometrie]], Abschnitt 3.8, kurze Felder). |
 | Name des linken Profils weicht vom rechten ab | das rechte wird verwendet: Warnung `Für <sections> unterscheiden sich linkes und rechtes Profil; die Profile der rechten Seite werden verwendet.` |
-| eine Position außerhalb von ±1 000 000 mm, eine Profiltiefe über 100 000 mm, eine Schränkung außerhalb von ±360° nach dem Einstellwinkel | Fehler mit Nennung des Schnitts, z. B. `Schnitt <n>: Die Position liegt außerhalb von ±1.000.000 mm, der Grenze von Wingdesigner.` |
+| eine Position außerhalb von ±1 000 000 mm (nach der Position aus Schritt 3), eine Profiltiefe über 100 000 mm, eine Schränkung außerhalb von ±360° | Fehler mit Nennung des Schnitts, z. B. `Schnitt <n>: Die Position liegt außerhalb von ±1.000.000 mm, der Grenze von Wingdesigner.` oder `Schnitt <n>: Die Schränkung <angle>° liegt außerhalb von ±360°, der Grenze von Wingdesigner.` |
 
 `<sections>` lautet `Schnitt 3` oder `Schnitte 1–3, 5`; nach 10 Bereichen endet die Liste mit `…`. Eine Berichtszeile, die je einen Schnitt oder ein Feld nennt, erscheint für die ersten 5; die übrigen werden gezählt: `Weitere auseinandergeschobene Schnitte: <count>.`
 
-**3. Einstellwinkel und Position.** Das Teil wird gebaut, wo es im XFLR5-Flugzeug sitzt. θ ist der Einstellwinkel in Grad, LE_x und LE_z sind die Positionskomponenten in der Dateieinheit:
+**3. Einstellwinkel und Position.** Das Teil wird gebaut, wo es im XFLR5-Flugzeug sitzt. θ ist der Einstellwinkel in Grad, LE_x und LE_z sind die Positionskomponenten in der Dateieinheit. Die Position verschiebt die Schnitte; der Einstellwinkel bleibt aus den Schnittwerten heraus und dreht das gebaute Teil:
 
 ```
-xq = x + 0.25·chord        zq = z
-x' = xq·cos θ + zq·sin θ + k·LE_x − 0.25·chord
-z' = −xq·sin θ + zq·cos θ + k·LE_z
-twist' = τ + θ             y unverändert    LE_y nicht verwendet
+x' = x + k·LE_x            z' = z + k·LE_z
+y, Profiltiefe, Schränkung unverändert    LE_y nicht verwendet
+settings.partTilt  = θ, um ganze Umdrehungen auf −180 … 180° reduziert
+settings.partRoll  = 0
+settings.partPivot = { x: k·LE_x, y: 0, z: k·LE_z }      der Ursprung des Flügels
 ```
 
-- Eine Drehung um die y-Achse erhält eine senkrechte Schnittebene, sodass die Einrechnung mit Schnittebenen **Senkrecht** exakt ist; Gehrungsebenen werden nicht mitgedreht. Ein Teil mit Einstellwinkel wird deshalb mit Schnittebenen **Senkrecht** importiert (Schritt 6), und das Projekt speichert den Einstellwinkel als `foldedTilt`: `angle` θ, um ganze Umdrehungen auf −180 … 180° reduziert (ein Einstellwinkel von 400° speichert 40°), `x` = k·LE_x, `z` = k·LE_z, der Ursprung des Flügels. Ein Einstellwinkel aus ganzen Umdrehungen speichert keinen.
-- Info `Einstellwinkel -1,5° wie im XFLR5-Flugzeug angewendet: Die Schnitte sind um den Ursprung des Flügels gedreht, und jede Schränkung enthält ihn.`
+- Die Schnitte liegen im Koordinatensystem des Teils. Der Aufbau dreht das Teil mit seinen Schnittebenen um θ um die y-Achse durch den Ursprung des Flügels, Nase oben bei θ > 0, wie XFLR5 den Flügel dreht ([[Geometrie]], Abschnitt 3.9). Ein Teil mit Einstellwinkel wird daher mit Schnittebenen **Auf Gehrung** importiert wie eines ohne (Schritt 6).
+- Ein Einstellwinkel von 400° speichert 40°; −540° speichert −180°. Ein Einstellwinkel aus ganzen Umdrehungen speichert keinen: `partTilt` 0, `partRoll` 0, `partPivot` `null`. Die Werte werden auf 4 Nachkommastellen gerundet.
+- Info `Einstellwinkel -1,5° wie im XFLR5-Flugzeug angewendet: Das Teil dreht sich als starrer Körper um den Ursprung des Flügels (Einstellungen > Einstellwinkel des Teils).` Sie nennt den gespeicherten Winkel.
 - Info `Position im XFLR5-Flugzeug angewendet: Der Ursprung des Flügels wurde nach x 650 mm, z 40 mm verschoben.` Eine Position y ungleich 0: Info `Die Position y <y> mm wird wie in XFLR5 nicht verwendet.`
-- Liegt die mittlere Schränkung nach der Einrechnung außerhalb von ±180° (etwa bei einem Einstellwinkel von 400°), werden ganze Umdrehungen, die allen Schnitten gemeinsam sind, herausgenommen: Info `Alle Schränkungen wurden um -360° geändert, ganze Umdrehungen; die Schnitte bleiben gleich.`
+- Liegt die mittlere Schränkung außerhalb von ±180°, werden ganze Umdrehungen, die allen Schnitten gemeinsam sind, herausgenommen: Info `Alle Schränkungen wurden um -360° geändert, ganze Umdrehungen; die Schnitte bleiben gleich.` Der Einstellwinkel ist nicht Teil der Schränkungen.
 - Eine XML-Flügeldatei enthält weder Position noch Einstellwinkel: Info `Eine Flügeldatei enthält weder Position noch Einstellwinkel: Das Teil wird in seinem eigenen Koordinatensystem gebaut.`
 
 **4. Profillage.** XFLR5 zeichnet die gespeicherten Koordinaten eines Profils, wie sie sind: Die x-Achse der Datei liegt auf der Profilsehne des Schnitts, und ein Punkt (x, y) sitzt an der Profilnase des Schnitts plus Profiltiefe · (x, y), vor der Schränkung um den Viertelpunkt. Wingdesigner setzt die Profilnase des Profils auf den Schnittpunkt und skaliert das Profil auf die Profiltiefe 1. Der Import verschiebt und skaliert deshalb jeden Schnitt um die Lage des Profils, das er verwendet (Profillage; im Code `frame`).
@@ -697,7 +729,7 @@ chord' = c·cT            Schränkung unverändert
 ```
 
 - φ und m sind die von XFLR5: aus den V-Formen der Datei, mit den Regeln für Gehrungsebenen aus [[Geometrie]], Abschnitt 3.8. Mit Schnittebenen **Senkrecht** (Schritt 6) gilt φ = 0 und m = 1: y bleibt.
-- Die Verschiebung dreht ein Feld, dessen beide Schnitte sich verschieden verschieben: zwei Profile, oder ein Profil mit zwei Schränkungen oder Profiltiefen. Die V-Form der verschobenen Schnitte weicht dann von der der Datei ab, und der Aufbau nähme andere Neigungen und Dickenstreckungen. Mit Schnittebenen **Auf Gehrung** speichert ein Schnitt i, dessen Feld zu Schnitt i + 1 in y mindestens 1 mm breit ist, die V-Form der Datei als `panelAngle` (4 Nachkommastellen), wenn die beiden um mehr als 0,001° abweichen (`PANEL_ANGLE_TOLERANCE`). Die Registerkarte Schnitte zeigt sie in der Spalte **Feldwinkel**. Rechenbeispiel ohne Einstellwinkel: Die verschobenen Schnitte ergeben Felder mit 2,92° und 4,88°, die Datei 3° und 6°; die Schnitte speichern 3 und 6, und der Aufbau neigt die Ebenen um 0°, 4,5° und 6°, wie XFLR5.
+- Die Verschiebung dreht ein Feld, dessen beide Schnitte sich verschieden verschieben: zwei Profile, oder ein Profil mit zwei Schränkungen oder Profiltiefen. Die V-Form der verschobenen Schnitte weicht dann von der der Datei ab, und der Aufbau nähme andere Neigungen und Dickenstreckungen. Mit Schnittebenen **Auf Gehrung** speichert ein Schnitt i, dessen Feld zu Schnitt i + 1 in y mindestens 1 mm breit ist, die V-Form der Datei als `panelAngle` (4 Nachkommastellen), wenn die beiden um mehr als 0,001° abweichen (`PANEL_ANGLE_TOLERANCE`). Die Registerkarte Schnitte zeigt sie in der Spalte **Feldwinkel**. Tragfläche des Rechenbeispiels: Die verschobenen Schnitte ergeben Felder mit 2,92° und 4,88°, die Datei 3° und 6°; die Schnitte speichern 3 und 6, und der Aufbau neigt die Ebenen um 0°, 4,5° und 6°, wie XFLR5.
 - Mit l_x = 0 und cT = 1 verschiebt sich der Schnitt um c · m · l_y entlang der Aufwärtsrichtung seines geschränkten Profils, (sin t, cos t) in x und der Aufwärtsrichtung (0, −sin φ, cos φ) seiner Ebene.
 - Jeder Profilpunkt liegt dann dort, wo eine starre Drehung des Profils um den Viertelpunkt der Profiltiefe ihn hinsetzt; das Netz von XFLR5 selbst weicht geringfügig ab (Abschnitt „Unterschiede zu XFLR5“).
 - Die Tabelle in der Registerkarte **Schnitte** (Sections) weicht dann von der Flügeltabelle von XFLR5 um diese Verschiebung ab: 8,53 mm an der Wurzel des Rechenbeispiels.
@@ -710,21 +742,21 @@ chord' = c·cT            Schränkung unverändert
 
 | Teil | **Schnittebenen** | Bericht (Info) |
 | --- | --- | --- |
-| Einstellwinkel 0 oder ganze Umdrehungen, die Gehrungsebenen lassen sich bauen | **Auf Gehrung** (Mitred) | `Schnittebenen: auf Gehrung wie in XFLR5. Der Wurzelschnitt steht senkrecht, ein Schnitt zwischen zwei Feldern liegt in der Winkelhalbierenden der Felder, und der Randschnitt steht rechtwinklig zum letzten Feld; die Profile behalten quer zu den Feldern ihre Dicke.` Nur wenn eine Neigung nicht 0 ist. |
-| mit Einstellwinkel (Schritt 3) | **Senkrecht** (Vertical); `foldedTilt` gespeichert | `Schnittebenen: senkrecht. Der Einstellwinkel von 3° ist in die Schnittwerte eingerechnet, was nur für senkrechte Schnittebenen genau ist: Mit Schnittebenen auf Gehrung wie in XFLR5 läge das Teil bis zu etwa 1,58 mm neben dem von XFLR5.` Nur wenn eine Neigung nicht 0 ist. Die Schätzung ist das größte 0,75 · c · \|sin θ · sin φ\| über die Schnitte, φ = Neigung von XFLR5. Die V-Form-Warnungen aus Schritt 2 gelten. |
-| ohne Einstellwinkel, Gehrungsebenen würden die Fläche falten | **Senkrecht** | `Schnittebenen: senkrecht. Schnittebenen auf Gehrung wie in XFLR5 würden die Fläche zwischen den Schnitten 2 und 3 falten.` Die V-Form-Warnungen aus Schritt 2 gelten. |
-| ohne Einstellwinkel, eine Gehrungsebene mehr als 60° schräg zu ihrem Feld (Dickenstreckung über 2) | **Senkrecht** | `Schnittebenen: senkrecht. Die Gehrungsebene von Schnitt 1 läge wie in XFLR5 65,0° schräg zu ihrem Feld, über der Grenze von 60°.` Die V-Form-Warnungen aus Schritt 2 gelten. |
+| die Gehrungsebenen lassen sich bauen, mit oder ohne Einstellwinkel | **Auf Gehrung** (Mitred) | `Schnittebenen: auf Gehrung wie in XFLR5. Der Wurzelschnitt steht senkrecht, ein Schnitt zwischen zwei Feldern liegt in der Winkelhalbierenden der Felder, und der Randschnitt steht rechtwinklig zum letzten Feld; die Profile behalten quer zu den Feldern ihre Dicke.` Nur wenn eine Neigung nicht 0 ist. |
+| Gehrungsebenen würden die Fläche falten | **Senkrecht** (Vertical) | `Schnittebenen: senkrecht. Schnittebenen auf Gehrung wie in XFLR5 würden die Fläche zwischen den Schnitten 2 und 3 falten.` Die V-Form-Warnungen aus Schritt 2 gelten. |
+| eine Gehrungsebene mehr als 60° schräg zu ihrem Feld (Dickenstreckung über 2) | **Senkrecht** | `Schnittebenen: senkrecht. Die Gehrungsebene von Schnitt 1 läge wie in XFLR5 65,0° schräg zu ihrem Feld, über der Grenze von 60°.` Die V-Form-Warnungen aus Schritt 2 gelten. |
 
 - Die Prüfung läuft auf den Schnittwerten und den Profilen des Projekts, ohne die Fläche (`mitredPlaneProblem` in `src/geom/wing.js`): die Prüfungen auf Dickenstreckung und Faltung des Aufbaus ([[Geometrie]], Abschnitt 3.6). Sie greift daher auch dort, wo der Dialog den Flügel nicht baut (Größen über den Warnschwellen), und dort, wo der Aufbau andere Fehler hat. Schnitte, die die Profillagen aus Schritt 4 in y aneinander vorbeischieben, zählen als Faltung.
 - Beispiel einer Faltung: ein Feld mit 10° und 1,5 mm zwischen Feldern mit 0° und 30°, NACA 0012 mit 150 mm Profiltiefe. Die Ebenen der Schnitte 2 und 3, um 5° und 20° geneigt, schneiden sich 5,7 mm von Schnitt 2 entfernt, innerhalb seines Profils (±9 mm).
 - Zwei Schnitte bei einem y (Schritt 2) falten sich nicht: 0,5 mm auseinander, teilen sie sich eine Ebene.
-- Der Aufbau nimmt die Neigungen aus den Schnittpositionen des Projekts, nach den Profillagen aus Schritt 4, und aus den gespeicherten Feldwinkeln aus Schritt 4, den V-Formen von XFLR5. Die Tragfläche des Rechenbeispiels ohne ihren Einstellwinkel baut Neigungen von 0°, 4,5° und 6°, wie XFLR5; ihre Endleisten liegen innerhalb von 1e-3 mm von denen von XFLR5.
+- Ein Teil mit Einstellwinkel behält seinen Einstellwinkel mit beiden Werten in `settings.partTilt` (Schritt 3).
+- Der Aufbau nimmt die Neigungen aus den Schnittpositionen des Projekts, nach den Profillagen aus Schritt 4, und aus den gespeicherten Feldwinkeln aus Schritt 4, den V-Formen von XFLR5. Die Tragfläche des Rechenbeispiels baut Neigungen von 0°, 4,5° und 6°, wie XFLR5. Gebaut und um 2° um den Ursprung des Flügels gedreht, liegen ihre Endleisten innerhalb von 1e-3 mm von der Konstruktion von XFLR5, dem um 2° um den Ursprung des Flügels gedrehten Gehrungsschnitt (Unit-Test, Schnitte 1 und 2; berechnet für die Schnitte 1 bis 3: 2,1e-5, 4,0e-5 und 4,5e-5 mm). Derselbe Vergleich ergibt 0 mm für das Höhenleitwerk und 6,1e-5, 3,7e-5, 2,6e-5 und 5,0e-5 mm für die Schnitte 1 bis 4 von Fixture B.
 
 ### Unterschiede zu XFLR5
 
-Die Schritte 1 bis 3 ergeben die Schnittwerte der Flügeltabelle von XFLR5 mit angewendetem Einstellwinkel und angewendeter Position; Schritt 4 verschiebt sie dorthin, wo XFLR5 die Profile zeichnet, sodass die angepasste Kurve jedes Schnitts durch die Punkte der Datei geht, wo XFLR5 sie hinsetzt. Mit **Gerade Felder** (Straight panels) und Schnittebenen **Auf Gehrung**, die der Import für ein Teil ohne Einstellwinkel setzt, verbindet der gebaute Flügel die Schnitte wie XFLR5, in den Ebenen von XFLR5 (Abschnitt „Ergebnis des Imports“). Er weicht in den folgenden Punkten von der eigenen Fläche von XFLR5 ab.
+Die Schritte 1 bis 3 ergeben die Schnittwerte der Flügeltabelle von XFLR5 mit angewendeter Position, im Koordinatensystem des Teils; Schritt 4 verschiebt sie dorthin, wo XFLR5 die Profile zeichnet, sodass die angepasste Kurve jedes Schnitts durch die Punkte der Datei geht, wo XFLR5 sie hinsetzt. Mit **Gerade Felder** (Straight panels) und Schnittebenen **Auf Gehrung**, die der Import setzt, außer wenn Gehrungsebenen die Fläche falten oder ein Profil mehr als auf das 2-Fache strecken würden, verbindet der gebaute Flügel die Schnitte wie XFLR5, in den Ebenen von XFLR5, und der **Einstellwinkel des Teils** dreht ihn um den Ursprung des Flügels, wie XFLR5 den Flügel dreht (Abschnitt „Ergebnis des Imports“). Er weicht in den folgenden Punkten von der eigenen Fläche von XFLR5 ab.
 
-Gemessen an den STL-Dateien, die der Code von XFLR5 6.62 über einen lokalen Treiber geschrieben hat (100 × 10 Felder je Fläche), für 93 Flächen aus 15 echten Projekten, als größter Abstand eines XFLR5-Eckpunkts von der gebauten Fläche: höchstens 0,1 mm bei 35 Flächen, 0,3 mm bei 69 und 0,6 mm bei 80. Die übrigen 13 sind 4 V-Leitwerke mit Einstellwinkel (2,87 mm), 8 Flügel mit einer 0,5°-Klappe (2,43 und 2,65 mm) und 1 Flügel mit einem Clark YS aus 33 Punkten (0,88 mm).
+Gemessen an den STL-Dateien, die der Code von XFLR5 6.62 über einen lokalen Treiber geschrieben hat (100 × 10 Felder je Fläche), für 93 Flächen aus 15 echten Projekten, als größter Abstand eines XFLR5-Eckpunkts von der gebauten Fläche: höchstens 0,1 mm bei 35 Flächen, 0,3 mm bei 69 und 0,6 mm bei 80. Die übrigen 13 sind 4 V-Leitwerke mit Einstellwinkel (2,87 mm), 8 Flügel mit einer 0,5°-Klappe (2,43 und 2,65 mm) und 1 Flügel mit einem Clark YS aus 33 Punkten (0,88 mm). Der Vergleich lief mit dem Import des Projektformats Version 2, der den Einstellwinkel eines Teils mit Einstellwinkel in Schnitte **Senkrecht** eingerechnet hat; die Zeilen zu Teilen mit Einstellwinkel auf dieser Seite sind mit dieser Konstruktion gemessen. Der Import mit Ebenen **Auf Gehrung** und dem starren Einstellwinkel ist nicht mit diesen Dateien verglichen; die Prüfung am Rechenbeispiel steht in Schritt 6.
 
 **Woher die Abstände kommen.** Zwischen die STL von XFLR5 und den gebauten Flügel setzt der Vergleich zwei Flächen, gebaut mit einer Kopie der Bauweise von XFLR5 (`Surface::getSidePoint` und `getSidePoints` von XFLR5 6.62). Jeder Schritt der Kette ist ein Anteil des Abstands:
 
@@ -739,8 +771,8 @@ An einem Eckpunkt ist der Abstand die Vektorsumme der drei Anteile, weder ihr gr
 | Unterschied | Größe |
 | --- | --- |
 | **Profilinterpolation.** XFLR5 verbindet die Profilpunkte mit geraden Strecken; Wingdesigner legt einen kubischen B-Spline durch sie. Jede Strecke liegt um ihre Pfeilhöhe κ · L² / 8 innerhalb der Kurve (κ Krümmung, L Streckenlänge, in Einheiten der Profiltiefe), am größten an der ersten oder zweiten Strecke an der Nase. Der Abstand wächst linear mit der Profiltiefe und fällt mit dem Quadrat des Punktabstands, etwa (Punkte je Seite − 1)⁻². Die Pfeilhöhe trifft den gemessenen Abstand bei den geprüften Profilen auf 7 %; an der 9 mm langen Nasenstrecke des Clark YS unten ergibt sie 39 % weniger. Wo das wahre Profil bekannt ist, ist die angepasste Kurve die nähere Form: NACA 0006 des NACA-Generators von XFLR5 bei 394 mm Profiltiefe liegt wie gebaut 0,0017 mm vom genauen Schnitt entfernt, die Strecken von XFLR5 0,048 mm; NACA 3415 eines genauen Generators bei 400 mm 0,0013 und 0,043 mm. | Größter Anteil bei 58 Flächen. Bei der größten Profiltiefe: 0,28 mm bei E591 (61 Punkte) mit 400 mm, 0,07 mm mit 100 mm; 0,32 mm beim Rascal-Profil (61 Punkte) mit 406 mm; 0,88 mm bei einem Clark YS aus 33 Punkten mit 400 mm; 0,042 mm bei NACA 0006 (123 Punkte) mit 394 mm. |
-| **Scherung durch Schränkung.** XFLR5 dreht die Profilsehne eines geschränkten Schnitts und addiert die Dicke entlang der Normalen des ungeschränkten Feldes: im Bezugssystem des Schnitts (x, y) → (x + y · sin t, y · cos t). Den Einstellwinkel des Flügels wendet auch XFLR5 als starre Drehung an; nur die Schränkung der Datei schert. Wingdesigner dreht das Profil als starre Form. | c · sin \|t\| · max(\|y\| · \|sin θ\|) über das Profil, y seine Koordinate senkrecht zur Sehne und θ die Neigung seiner Oberfläche gegen die Sehne: 0,604, 0,465, 0,426, 0,338 und 0,109 mm berechnet, 0,593, 0,457, 0,418, 0,339 und 0,106 mm gemessen (MH 112 bei 400 und 308 mm Profiltiefe und S1223 bei 308 mm mit 2°, MH 45 bei 300 mm mit −5°, AG24 bei 300 mm mit 2°). Größter Anteil bei 9 Flächen. 0,37 mm bei 2° Schränkung der Datei und 300 mm Profiltiefe (Wurzel von Fixture B; 3° nach dem Einstellwinkel von 1°). |
-| **Senkrechte Schnittebenen** (ein Teil mit Einstellwinkel oder der Rückfall aus Schritt 6). XFLR5 baut Schnitte auf Gehrung und dreht das ganze Teil um den Einstellwinkel; der Import rechnet den Einstellwinkel in senkrechte Schnitte ein. XFLR5 schränkt einen Schnitt um eine Achse entlang seiner Felder: an einem V-Form-Knick um die Winkelhalbierende der beiden Felder, und es schneidet den Schnitt in der Gehrungsebene; am Rand um die Achse des äußeren Feldes, mit einer Randfläche senkrecht zu diesem Feld. Wingdesigner schränkt um die y-Achse und hält den Schnitt in einer Ebene mit konstantem y. | Die Unterseite des Randes von XFLR5 liegt c · \|y_l\| · sin δ jenseits des gebauten Randes (y_l der tiefste Punkt des Profils unter der Sehne, δ die V-Form des letzten Feldes): 100 · 0,0500 · sin 35° = 2,868 mm bei den 4 V-Leitwerken mit Einstellwinkel (2,868 mm gemessen), 200 · 0,0290 · sin 4° = 0,404 mm bei `skyhunter1800mm.xfl` (0,404 mm). Das Teil von `mini_talon.xfl` mit Einstellwinkel und 10° am äußeren Feld: 0,48 mm, am größten am V-Form-Knick. Größter Anteil bei 9 Flächen. Mitten der Endleiste des importierten Rechenbeispiels: Tragfläche 0,0001 mm an der Wurzel, 0,24 mm am V-Form-Knick (Schnitt 2), 0,51 mm am Rand; Höhenleitwerk 0,0001 mm; Fixture B 0,006, 0,057, 0,091 und 0,16 mm an den Schnitten 1 bis 4. |
+| **Scherung durch Schränkung.** XFLR5 dreht die Profilsehne eines geschränkten Schnitts und addiert die Dicke entlang der Normalen des ungeschränkten Feldes: im Bezugssystem des Schnitts (x, y) → (x + y · sin t, y · cos t). Den Einstellwinkel des Flügels wendet XFLR5 als starre Drehung an, ebenso Wingdesigner (**Einstellwinkel des Teils**); nur die Schränkung der Datei schert. Wingdesigner dreht das Profil als starre Form. | c · sin \|t\| · max(\|y\| · \|sin θ\|) über das Profil, y seine Koordinate senkrecht zur Sehne und θ die Neigung seiner Oberfläche gegen die Sehne: 0,604, 0,465, 0,426, 0,338 und 0,109 mm berechnet, 0,593, 0,457, 0,418, 0,339 und 0,106 mm gemessen (MH 112 bei 400 und 308 mm Profiltiefe und S1223 bei 308 mm mit 2°, MH 45 bei 300 mm mit −5°, AG24 bei 300 mm mit 2°). Größter Anteil bei 9 Flächen. 0,37 mm bei 2° Schränkung der Datei und 300 mm Profiltiefe (Wurzel von Fixture B, Einstellwinkel 1°). |
+| **Senkrechte Schnittebenen** (der Rückfall aus Schritt 6; in der gemessenen Menge auch die Teile mit Einstellwinkel, deren Einstellwinkel der Import des Projektformats Version 2 in senkrechte Schnitte eingerechnet hat). XFLR5 baut Schnitte auf Gehrung und dreht das ganze Teil um den Einstellwinkel. XFLR5 schränkt einen Schnitt um eine Achse entlang seiner Felder: an einem V-Form-Knick um die Winkelhalbierende der beiden Felder, und es schneidet den Schnitt in der Gehrungsebene; am Rand um die Achse des äußeren Feldes, mit einer Randfläche senkrecht zu diesem Feld. Wingdesigner schränkt um die y-Achse und hält den Schnitt in einer Ebene mit konstantem y. | Die Unterseite des Randes von XFLR5 liegt c · \|y_l\| · sin δ jenseits des gebauten Randes (y_l der tiefste Punkt des Profils unter der Sehne, δ die V-Form des letzten Feldes): 100 · 0,0500 · sin 35° = 2,868 mm bei den 4 V-Leitwerken mit Einstellwinkel (2,868 mm gemessen), 200 · 0,0290 · sin 4° = 0,404 mm bei `skyhunter1800mm.xfl` (0,404 mm). Das Teil von `mini_talon.xfl` mit Einstellwinkel und 10° am äußeren Feld: 0,48 mm, am größten am V-Form-Knick. Größter Anteil bei 9 Flächen, alle mit dem eingerechneten Einstellwinkel gemessen. |
 | Mit Schnittebenen **Senkrecht** ist die Dicke quer zu einem Feld mit der V-Form δ cos δ mal die von XFLR5. | 99,9 % bei 3°, 98,5 % bei 10°, 82 % bei 35° (ein V-Leitwerk, in XFLR5 als Elevator mit großer V-Form modelliert). Der Bericht warnt über 10°. Mit Schnittebenen **Auf Gehrung** liegen die 4 V-Leitwerke von `initialAerodynamicSym.xfl` mit 35° ohne Einstellwinkel innerhalb von 0,013 mm und das 40°-V-Leitwerk von `mini_talon.xfl` innerhalb von 0,025 mm (2,87 und 2,31 mm mit senkrechten Ebenen). |
 | **Stationen entlang der Profiltiefe.** Der Aufbau tastet jedes Profil vor dem Aufbau der Fläche mit **Stationen je Profilseite** (Chordwise stations per surface, Vorgabe 60) neu ab; die Bauweise des Vergleichs verwendet 200. | Größter Anteil bei 5 Flächen: 0,016 bis 0,036 mm. Unter 4e-5 mm mit 200 Stationen. |
 | **Klappen.** XFLR5 zeichnet eine Klappe mit Ausschlag; der Import baut die Grundform (Abschnitt „Profile“, Klappen). Hat ein Profil eines Feldes eine eingeschaltete Klappe, teilt XFLR5 außerdem die Punkte entlang der Profiltiefe an beiden Enden des Feldes am Drehpunkt des Profils des jeweiligen Endes, auch an einem Ende, dessen Klappe aus ist (`Surface::getSidePoints`, `surface.cpp` Zeilen 524 bis 538 von XFLR5 6.62). Ein Punkt bei 50 % der Profiltiefe an einem Ende verbindet sich dann mit einem Punkt bei 70 % am anderen, und das Feld von XFLR5 verläuft dazwischen schräg. Wingdesigner verbindet Punkte gleichen Anteils der Profiltiefe. | Größter Anteil bei 12 Flächen. 8 Flügel von `Wing Design and Analysis.xfl` mit einer 0,5°-Klappe (Drehpunkt bei 50 % im Wurzelprofil, 70 % gespeichert im äußeren Profil ohne Klappe): Schräglage 2,41 und 2,62 mm in der Mitte des Feldes (Profiltiefen 368 und 400 mm), Ausschlag 1,61 und 1,76 mm an der Endleiste (etwa 0,5 · c · sin 0,5°); 2,43 und 2,65 mm zusammen. 8 Flächen mit Klappen bei 0°: nur Schräglage, 0,004 bis 0,038 mm. |
@@ -792,7 +824,8 @@ Der Bericht wird nach jeder Wahl neu berechnet. Reihenfolge: Fehler, dann Warnun
 | zweiter Flügel, Seitenleitwerk, die andere Fläche | nicht importiert | Info | `Nicht importiert: das Höhenleitwerk „Elevator“, das Seitenleitwerk „Fin“. Eine Fläche je Import; für eine weitere die Datei erneut öffnen.` |
 | V-Form ungleich 0 | y und z berechnet | Info | `XFLR5 misst y_position entlang der Felder; y und z wurden daraus und aus der V-Form berechnet.` |
 | V-Form über 10° | beibehalten | Warnung nur mit Schnittebenen **Senkrecht** | Abschnitt „Abbildung auf Schnitte“, Schritt 2 |
-| Einstellwinkel, Position | angewendet | Info | Schritt 3 |
+| Position | auf die Schnitte angewendet | Info | Schritt 3 |
+| Einstellwinkel | als **Einstellwinkel des Teils** gespeichert | Info | Schritt 3 |
 | Schnittebenen | **Auf Gehrung** oder **Senkrecht** | Info | Schritt 6 |
 | Lücke an der Wurzel, Wurzel innerhalb von 0,1 mm um die Mitte | beibehalten, auf 0 gesetzt | Info | Schritte 1 und 2 |
 | gleiches y, Profiltiefe unter 1 mm, linkes ≠ rechtes Profil | verschoben, angehoben, rechtes verwendet | Warnung | Schritt 2 |
@@ -856,16 +889,16 @@ Zeit mit 10 000 Profilen zu je 99 Punkten: Die erste Abbildung, die jedes Profil
 | --- | --- |
 | Projektname | `<plane name> <wing name>` oder der Flügelname einer Flügeldatei; Teile gekürzt, leere Teile weggelassen. Beide leer: „Importierter Flügel“ (englische Oberfläche: `Imported wing`). Höchstens 10 000 Zeichen. Das Feld **Projektname** (Project name) des Dialogs ändert ihn; ein geleertes Feld folgt wieder dem Flugzeug und der Fläche. |
 | Schnitte | IDs `s1`, `s2` …; Werte wie im Abschnitt „Abbildung auf Schnitte“ |
-| `settings` | `twistPivot` 0,25, `spanwise` `"straight"`, `sectionPlanes` `"mitred"` oder `"vertical"` (Schritt 6), `mirror` `true`, `tip.mode` `"flat"`, `trailingEdge.mode` `"asis"`. Die übrigen Schlüssel haben ihre Vorgaben. |
-| `foldedTilt` | nur ein Teil mit Einstellwinkel: der gespeicherte Einstellwinkel und Ursprung des Flügels (Schritt 3) |
+| `settings` | `twistPivot` 0,25, `spanwise` `"straight"`, `sectionPlanes` `"mitred"` oder `"vertical"` (Schritt 6), `mirror` `true`, `tip.mode` `"flat"`, `trailingEdge.mode` `"asis"`. Ein Teil mit Einstellwinkel: `partTilt` θ, `partRoll` 0, `partPivot` der Ursprung des Flügels (Schritt 3). Die übrigen Schlüssel haben ihre Vorgaben. |
+| `foldedTilt` | nicht geschrieben |
 | `guides` | Vorgaben: aus den Schnittkanten erzeugt, ausgeschaltet |
 | Profile | ein Eintrag je verwendeter Quelle. Zeilen, die dieselbe Quelle verwenden, oder Quellen mit gleichem Namen und gleichen Punkten teilen einen Eintrag. IDs folgen den Regeln des Abschnitts „Projekt-JSON“ (`clark-y`, `naca-0009`, `clark-y-2` für denselben Namen mit anderen Punkten). Die Punkte: die geprüften Punkte (Profilnase bei (0, 0), Profiltiefe 1) für ein Profil der Datei, einen Upload und ein Bibliotheksprofil; die erzeugten Punkte für einen NACA-Schnitt (Herkunft `naca`); die gespeicherten Punkte für ein Profil des aktuellen Projekts. |
 | Meldung nach dem Import | `Tragfläche „Main Wing“ von „Fixture A“ aus fixtures_v662.xfl importiert: 3 Schnitte, 2 Profile.` Bei einem Höhenleitwerk: `Höhenleitwerk „Elevator“ von „Fixture A“ aus fixtures_v662.xfl importiert: 2 Schnitte, 1 Profil.` Ohne Flugzeugnamen: `Tragfläche „Main Wing“ aus wing.xml importiert: 3 Schnitte, 2 Profile.` Danach die erste Warnung und `(<n> weitere Warnungen im Importbericht.)`. Die Warnungen des XML-Lesers bleiben im Bericht. |
-| Nicht gespeichert | die Position (in die Schnittwerte eingerechnet), Klappenparameter und die übrigen verworfenen Daten. Die Herkunft bleibt im Projektnamen und, bei Profilen eines `.xfl`-Projekts, in `source.note`. |
+| Nicht gespeichert | die Position als solche (zu den Schnittwerten addiert; ein Teil mit Einstellwinkel behält den Ursprung des Flügels als `partPivot`), Klappenparameter und die übrigen verworfenen Daten. Die Herkunft bleibt im Projektnamen und, bei Profilen eines `.xfl`-Projekts, in `source.note`. |
 | Rückgängig | **Rückgängig** (Undo) stellt das vorherige Projekt wieder her. Die automatische Sicherung folgt dem Import. |
-| Teil mit Einstellwinkel, später auf **Auf Gehrung** gestellt | Die Umstellung wird nicht gesperrt. **Prüfungen** (Checks) zeigt die Warnung `Der Einstellwinkel von 3,00° des XFLR5-Imports ist in die Schnittwerte eingerechnet, was nur für senkrechte Schnittebenen genau ist: Mit Schnittebenen auf Gehrung liegt das Teil bis zu etwa 1,57 mm neben dem von XFLR5 (0,75 · Profiltiefe · sin(Einstellwinkel) · sin(Neigung)). Einstellungen > Schnittebenen „Senkrecht“ hält den Import genau.` Die Schätzung verwendet die Neigungen des Aufbaus. |
+| Teil mit Einstellwinkel, später auf **Senkrecht** gestellt | Die Umstellung wird nicht gesperrt. Der starre Einstellwinkel bleibt; die Schnitte liegen in Ebenen y = konst. des Teils, quer zu einem Feld mit der V-Form δ cos δ so dick wie die von XFLR5. |
 
-**Projekte früherer Importe.** Ein Projekt, das der XFLR5-Import im Format Version 1 geschrieben hat (30.09.2026), und seine Kopie im Browser enthalten einen eingerechneten Einstellwinkel ohne `foldedTilt`. Es öffnet mit Schnittebenen **Senkrecht**, die ihn genau halten. Auf **Auf Gehrung** gestellt, trägt es den Fehler des eingerechneten Einstellwinkels (0,45 mm beim Rechenbeispiel, etwa 1,6 mm bei einem 35°-V-Leitwerk mit 3° Einstellwinkel) ohne die Warnung oben. Ein erneuter Import der XFLR5-Datei speichert den Einstellwinkel.
+**Projekte früherer Importe.** Ein Projekt des Formats Version 2 aus dem XFLR5-Import eines Teils mit Einstellwinkel enthält den Einstellwinkel in die Schnittwerte eingerechnet und speichert ihn als `foldedTilt`. **Öffnen** und die Wiederherstellung der Browserkopie machen daraus den **Einstellwinkel des Teils** (Abschnitt „Projekt-JSON“, „Aktualisierung von Dateien der Version 2“): Mit Schnittebenen **Senkrecht** bleibt das Teil dasselbe, mit **Auf Gehrung** wird es das Teil, das XFLR5 baut. Mit einer eingeschalteten oder bearbeiteten Leitkurve oder einer Schränkung, die außerhalb von ±360° läge, bleibt die Einrechnung. Ein solches Projekt zeigt, auf **Auf Gehrung** gestellt, die Warnung `Der Einstellwinkel von 3,00° des XFLR5-Imports ist in die Schnittwerte eingerechnet, was nur für senkrechte Schnittebenen genau ist: Mit Schnittebenen auf Gehrung liegt das Teil bis zu etwa 1,57 mm neben dem von XFLR5 (0,75 · Profiltiefe · sin(Einstellwinkel) · sin(Neigung)). Einstellungen > Schnittebenen „Senkrecht“ hält den Import genau.` Die Schätzung verwendet die Neigungen des Aufbaus. Ein Projekt, das der XFLR5-Import im Format Version 1 geschrieben hat (30.09.2026), und seine Kopie im Browser enthalten einen eingerechneten Einstellwinkel ohne `foldedTilt`. Es öffnet mit Schnittebenen **Senkrecht**, die ihn genau halten, und **Einstellwinkel des Teils** 0°. Auf **Auf Gehrung** gestellt, trägt es den Fehler des eingerechneten Einstellwinkels (0,45 mm beim Rechenbeispiel, etwa 1,6 mm bei einem 35°-V-Leitwerk mit 3° Einstellwinkel) ohne die Warnung oben. Ein erneuter Import der XFLR5-Datei ergibt den starren Einstellwinkel.
 
 **Herkunft eines importierten Profils.** Ein Profil, das aus dem `.xfl`-Projekt stammt, erhält diese `source`:
 
@@ -898,57 +931,46 @@ L_2 = 400 mm:   Y_2 = 499.3148 + 400·cos 6° = 897.1235
                 Z_2 = 26.1680 + 400·sin 6° = 67.9794
 ```
 
-Schritt 3, Einstellwinkel θ = 2° (Schnitt 1: xq = 0 + 0,25 · 240 = 60 mm, zq = 0):
+Schritt 3: Die Position ist 0, 0, 0, daher bleiben die Schnitte. Das Projekt speichert `partTilt` 2, `partRoll` 0 und `partPivot` `{ "x": 0, "y": 0, "z": 0 }`.
+
+Schritt 4, Profillage: Das Clark Y der Datei hat seine ebene Unterseite auf der x-Achse und seinen Nasenpunkt bei (0; 0,035). Die Profilnase der angepassten Kurve liegt 3,5546 % der Profiltiefe über der Achse und 0,0016 % vor x = 0: l_x = −1,590e-5, l_y = 0,0355457, cT = 1,0000159. Damit gilt s = −3,976e-6 und u = l_x − s = −1,193e-5. Die Schnitte 1 und 2 verwenden es, in den Gehrungsebenen von XFLR5: Schnitt 1 senkrecht (φ = 0°, m = 1 / cos 3° = 1,00137), Schnitt 2 um 4,5° geneigt (m = 1 / cos 1,5° = 1,00034). Das NACA 0009 der Datei hat die Profillage eines Profils im Ursprung mit Profiltiefe 1: Schnitt 3 bleibt.
 
 ```
-x' = 60·cos 2° + 0·sin 2° − 60 = −0.0366
-z' = −60·sin 2° + 0·cos 2° = −2.0940        twist' = 0 + 2 = 2
-```
-
-Schritt 4, Profillage: Das Clark Y der Datei hat seine ebene Unterseite auf der x-Achse und seinen Nasenpunkt bei (0; 0,035). Die Profilnase der angepassten Kurve liegt 3,5546 % der Profiltiefe über der Achse und 0,0016 % vor x = 0: l_x = −1,590e-5, l_y = 0,0355457, cT = 1,0000159. Damit gilt s = −3,976e-6 und u = l_x − s = −1,193e-5. Die Schnitte 1 und 2 verwenden es (senkrechte Ebenen, m = 1). Das NACA 0009 der Datei hat die Profillage eines Profils im Ursprung mit Profiltiefe 1: Schnitt 3 bleibt.
-
-```
-Schnitt 1 (c 240, t 2°):  x = −0.0366 + 240·(s + u·cos 2° + l_y·sin 2°) = −0.0366 + 0.2939 = 0.2574
-                          z = −2.0940 + 240·(−u·sin 2° + l_y·cos 2°) = −2.0940 + 8.5259 = 6.4319
-                          Profiltiefe = 240·cT = 240.0038
-Schnitt 2 (c 220, t 1°):  x = 10.8737 + 0.1330 = 11.0066     z = 23.8836 + 7.8189 = 31.7025
-                          Profiltiefe = 220·cT = 220.0035
+Schnitt 1 (c 240, t 0°, φ 0°):     x = 0 + 240·(s + u) = −0.0038
+                                   e = 240·1.00137·l_y = 8.5427
+                                   y = 0      z = 0 + 8.5427 = 8.5427      Profiltiefe = 240·cT = 240.0038
+Schnitt 2 (c 220, t −1°, φ 4.5°):  x = 10 + 220·(s + u·cos 1° − 1.00034·l_y·sin 1°) = 10 − 0.1400 = 9.8600
+                                   e = 220·(u·sin 1° + 1.00034·l_y·cos 1°) = 7.8215
+                                   y = 499.3148 − 7.8215·sin 4.5° = 498.7011
+                                   z = 26.1680 + 7.8215·cos 4.5° = 33.9654      Profiltiefe = 220·cT = 220.0035
 ```
 
 Die Ergebnisse stammen aus den ungerundeten Werten der früheren Schritte. Schnittwerte in mm und °:
 
-| Schnitt | Schritte 1 und 2 | Schritt 3 (Einstellwinkel) | Aus der `.xfl` importiert (Schritt 4) |
-| --- | --- | --- | --- |
-| s1 | x 0, y 0, z 0, Profiltiefe 240, Schränkung 0 | x −0,0366, y 0, z −2,0940, Profiltiefe 240, Schränkung 2 | x 0,2574, y 0, z 6,4319, Profiltiefe 240,0038, Schränkung 2 |
-| s2 | x 10, y 499,3148, z 26,1680, Profiltiefe 220, Schränkung −1 | x 10,8737, y 499,3148, z 23,8836, Profiltiefe 220, Schränkung 1 | x 11,0066, y 499,3148, z 31,7025, Profiltiefe 220,0035, Schränkung 1 |
-| s3 | x 45, y 897,1235, z 67,9794, Profiltiefe 150, Schränkung −2,5 | x 47,3222, y 897,1235, z 65,0587, Profiltiefe 150, Schränkung −0,5 | x 47,3222, y 897,1235, z 65,0587, Profiltiefe 150, Schränkung −0,5 |
+| Schnitt | Schritte 1 bis 3 | Aus der `.xfl` importiert (Schritt 4) |
+| --- | --- | --- |
+| s1 | x 0, y 0, z 0, Profiltiefe 240, Schränkung 0 | x −0,0038, y 0, z 8,5427, Profiltiefe 240,0038, Schränkung 0, Feldwinkel 3 |
+| s2 | x 10, y 499,3148, z 26,1680, Profiltiefe 220, Schränkung −1 | x 9,86, y 498,7011, z 33,9654, Profiltiefe 220,0035, Schränkung −1, Feldwinkel 6 |
+| s3 | x 45, y 897,1235, z 67,9794, Profiltiefe 150, Schränkung −2,5 | x 45, y 897,1235, z 67,9794, Profiltiefe 150, Schränkung −2,5 |
 
-Der Bericht dieses Imports enthält eine Warnung (das Clark Y verschiebt seine Schnitte um mehr als 2 % der Profiltiefe: 3,55 %) und die Infos zur V-Form, zum Einstellwinkel, zur geneigten Profilsehne des Clark Y, zum Elevator und zum Seitenleitwerk, die nicht importiert werden, zu den verworfenen Daten, zur Endleiste und zu den Schnittebenen: Der Einstellwinkel von 2° ergibt Schnittebenen **Senkrecht** und `foldedTilt` `{ "angle": 2, "x": 0, "z": 0 }`; Gehrungsebenen würden das Teil bis zu etwa 0,45 mm neben das von XFLR5 legen. Die Meldung nach dem Import lautet `Tragfläche „Main Wing“ von „Fixture A“ aus fixtures_v662.xfl importiert: 3 Schnitte, 2 Profile.`, gefolgt von der Warnung zum Clark Y.
+Der Bericht dieses Imports enthält eine Warnung (das Clark Y verschiebt seine Schnitte um mehr als 2 % der Profiltiefe: 3,55 %) und die Infos zur V-Form, zum Einstellwinkel, zur geneigten Profilsehne des Clark Y, zum Elevator und zum Seitenleitwerk, die nicht importiert werden, zu den verworfenen Daten, zur Endleiste und zu den Schnittebenen: **Auf Gehrung**. Die Meldung nach dem Import lautet `Tragfläche „Main Wing“ von „Fixture A“ aus fixtures_v662.xfl importiert: 3 Schnitte, 2 Profile.`, gefolgt von der Warnung zum Clark Y. Dieselbe Tragfläche ohne ihren Einstellwinkel wird mit denselben Schnitten und ohne `partTilt` importiert.
 
 Die XML-Datei desselben Flugzeugs in Millimetern (`test/fixtures/xflr5/xml_mm/0.plane.xml`) nennt nur die Profile:
 
-- Mit einem Projekt ohne Profil namens Clark Y (etwa dem Entwurfstyp **Sportmodell** (Sport) des Assistenten) wird `Clark Y` in der Bibliothek gefunden. Ein Bibliotheksprofil erhält keine Profillage: Die Schnitte sind die Werte aus Schritt 3. Eine Info sagt, dass das Clark Y der Bibliothek in seinen eigenen Koordinaten die Profilnase 3,55 % der Profiltiefe neben (0, 0) hat.
+- Mit einem Projekt ohne Profil namens Clark Y (etwa dem Entwurfstyp **Sportmodell** (Sport) des Assistenten) wird `Clark Y` in der Bibliothek gefunden. Ein Bibliotheksprofil erhält keine Profillage: Die Schnitte sind die Werte der Schritte 1 bis 3. Eine Info sagt, dass das Clark Y der Bibliothek in seinen eigenen Koordinaten die Profilnase 3,55 % der Profiltiefe neben (0, 0) hat.
 - Ist das Clark Y der Datei als `.dat`-Datei hochgeladen, sind die Schnitte die des `.xfl`-Imports; der Upload heißt im Bericht `Clark Y (clark-y.dat)`.
 - `NACA 0009` stammt aus dem NACA-Generator.
 
 Elevator von „Fixture A“ (Platz 2): Position x 0,65 m, y 0, z 0,04 m; Einstellwinkel −1,5°; Schnitte (`y_position` 0, `Chord` 0,11, `xOffset` 0, keine V-Form, keine Schränkung) und (`y_position` 0,23, `Chord` 0,07, `xOffset` 0,025, keine V-Form, keine Schränkung); Profil NACA 0009.
 
-| Schnitt | Schritte 1 und 2 | Importiert (Einstellwinkel und Position angewendet) |
+| Schnitt | Schritte 1 und 2 | Importiert (Position angewendet) |
 | --- | --- | --- |
-| s1 | x 0, y 0, z 0, Profiltiefe 110, Schränkung 0 | x 649,9906, y 0, z 40,7199, Profiltiefe 110, Schränkung −1,5 |
-| s2 | x 25, y 230, z 0, Profiltiefe 70, Schränkung 0 | x 674,9854, y 230, z 41,1125, Profiltiefe 70, Schränkung −1,5 |
+| s1 | x 0, y 0, z 0, Profiltiefe 110, Schränkung 0 | x 650, y 0, z 40, Profiltiefe 110, Schränkung 0 |
+| s2 | x 25, y 230, z 0, Profiltiefe 70, Schränkung 0 | x 675, y 230, z 40, Profiltiefe 70, Schränkung 0 |
 
-Der Elevator hat ebenfalls einen Einstellwinkel: Schnittebenen **Senkrecht**, `foldedTilt` `{ "angle": -1.5, "x": 650, "z": 40 }`. Er hat keine V-Form, daher enthält der Bericht keine Zeile zu den Schnittebenen.
+Der Elevator hat ebenfalls einen Einstellwinkel: Schnittebenen **Auf Gehrung**, `partTilt` −1,5, `partPivot` `{ "x": 650, "y": 0, "z": 40 }`. Er hat keine V-Form, daher enthält der Bericht keine Zeile zu den Schnittebenen.
 
-Dieselbe Tragfläche ohne ihren Einstellwinkel wird mit Schnittebenen **Auf Gehrung** importiert. Die Neigungen von XFLR5 betragen 0°, 4,5° und 6°, die Dickenstreckungen 1,00137, 1,00034 und 1. Das Clark Y verschiebt Schnitt 2 um 220 · 1,00034 · 0,035546 = 7,8228 mm entlang seiner um 4,5° geneigten Ebene, daher ändert sich auch y:
-
-| Schnitt | Schritte 1 und 2 | Importiert, **Auf Gehrung** (Schritt 4) |
-| --- | --- | --- |
-| s1 | x 0, y 0, z 0, Profiltiefe 240, Schränkung 0 | x 0, y 0, z 8,5427, Profiltiefe 240, Schränkung 0 |
-| s2 | x 10, y 499,3148, z 26,1680, Profiltiefe 220, Schränkung −1 | x 9,8635, y 498,7011, z 33,9654, Profiltiefe 220, Schränkung −1 |
-| s3 | x 45, y 897,1235, z 67,9794, Profiltiefe 150, Schränkung −2,5 | x 45, y 897,1235, z 67,9794, Profiltiefe 150, Schränkung −2,5 |
-
-Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1 und 2): Schnitt 1 wandert von x 49,9886, z 8,6911 nach x 50,5467, z 19,3402, Schnitt 2 von x 109,9810, z 7,8184 nach x 110,3035, z 17,0547. Die Schränkungen betragen nach der Einrechnung 3° und 2°.
+Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1 und 2, Schnitt 2 um 1° geneigt): Schnitt 1 wandert von x 50, z 10 (Schritte 1 bis 3) nach x 50,3674, z 20,6573, Schnitt 2 von x 110, y 250, z 10 nach x 110,1572, y 249,8387, z 19,2405. Die Schränkungen bleiben 2° und 1°. Das Projekt speichert `partTilt` 1 und `partPivot` `{ "x": 50, "y": 0, "z": 10 }`.
 
 ## Körper je Datei
 
@@ -958,7 +980,8 @@ Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1
 | **Ganzer Flügel als ein Körper (Netzformate, Wurzel bei y = 0)** (Full wing as one body (mesh formats, root at y = 0)) | 2 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing` |
 | **Nur rechte Hälfte** (Right half only) | 1 Volumenkörper | 1 geschlossene Hülle | 1 Objekt: `Wing right` |
 
-- **Ganzer Flügel als ein Körper** (Full wing as one body) setzt den Wurzelschnitt bei genau y = 0 mm voraus. Sonst enthalten STL und 3MF 2 Hüllen, wie bei **Beide Hälften als getrennte Körper**.
+- **Ganzer Flügel als ein Körper** (Full wing as one body) setzt den Wurzelschnitt bei genau y = 0 mm und den **Rollwinkel des Teils** 0° voraus. Sonst enthalten STL und 3MF 2 Hüllen, wie bei **Beide Hälften als getrennte Körper**: Eine gerollte Wurzel verlässt die Ebene y = 0.
+- **Einstellwinkel des Teils** und **Rollwinkel des Teils** (`settings.partTilt`, `partRoll`): Jedes Format schreibt die rechte Hälfte um den Drehpunkt gedreht ([[Geometrie]], Abschnitt 3.9) und die linke Hälfte als ihr Spiegelbild an y = 0. Die Projekt-JSON enthält die Schnitte im Koordinatensystem des Teils.
 - **Fusion-360-Korrektur: Y nach oben (auch SolidWorks)** (Fusion 360 fix: Y up (also SolidWorks)) (STEP, STL, 3MF): Ausgeschaltet schreibt der Export die Achsen der App (x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende, z nach oben). Eingeschaltet schreibt er jeden Punkt als (x, z, −y) und jede Richtung ebenso (`src/export/axes.js`): Die Oberseite zeigt nach +Y, die Profiltiefe verläuft entlang X, `right` liegt bei Z ≤ 0 und `left` bei Z ≥ 0. Die Drehung ist eine Rotation: Orientierungen, geschlossene Hüllen und Volumen bleiben. Die Weltlage der STEP-Datei (`AXIS2_PLACEMENT_3D` im Ursprung mit z- und x-Richtung) bleibt. Die Projekt-JSON enthält immer die Achsen der App. Warum und wann: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Export.
 - **Netzdichte (STL, 3MF)** (Mesh density (STL, 3MF)): **Normal** oder **Fein (4-fache Dreiecksanzahl)** (Fine (4x triangles)). **Fein** (Fine) teilt jedes u-Intervall (Profiltiefenrichtung) und jedes v-Intervall (Spannweitenrichtung) des **Normal**-Netzes in 2. Gemessene Dreieckszahl: 3,0- bis 3,9-fach gegenüber **Normal** (Tabelle „Dateigrößen“).
 - Aufbau der Dreiecksnetze und Dreieckszahlen: [[Geometrie|Geometrie]], Abschnitt 5 „Dreiecksnetze“.
@@ -980,8 +1003,9 @@ Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1
 | Einheiten | Millimeter, Radiant, Steradiant |
 | Toleranz | 1e-7 mm (`distance_accuracy_value`) |
 | Volumenkörper | 1 `MANIFOLD_SOLID_BREP` (Volumenkörper in Randdarstellung, boundary representation) je Hälfte |
+| Lage des Teils | Punkte von Flächen, Kurven und Ebenen der Abschlussflächen um **Einstellwinkel des Teils** und **Rollwinkel des Teils** um den Drehpunkt gedreht, Richtungen (Normalen von Ebenen, Bezugsrichtungen) nur mit der Drehung; danach die Spiegelung der linken Hälfte, danach die **Fusion-360-Korrektur** |
 | Namen der Volumenkörper | `<name> right` (y ≥ 0; mit **Fusion-360-Korrektur**: Z ≤ 0), `<name> left` (gespiegelt, y ≤ 0; mit **Fusion-360-Korrektur**: Z ≥ 0) |
-| Achsen | wie in der App; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
+| Achsen | wie in der App, das Teil um **Einstellwinkel des Teils** und **Rollwinkel des Teils** gedreht; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Formdarstellung | 1 `ADVANCED_BREP_SHAPE_REPRESENTATION` mit dem Namen `<name>` enthält alle Volumenkörper |
 | Flächen | `B_SPLINE_SURFACE_WITH_KNOTS`, nicht-rational: Oberseite, Unterseite, offene Endleiste. `PLANE`: Wurzel und Rand. |
 | Kantenkurven | `B_SPLINE_CURVE_WITH_KNOTS` |
@@ -1001,7 +1025,7 @@ Abschnitt 6 „STEP-Topologie“.
 | Je Dreieck | 50 Byte: Normale (3 × `float32`), 3 Eckpunkte (9 × `float32`), Attribut `uint16` = 0 |
 | Dateigröße | 84 + 50 × Dreieckszahl Byte |
 | Einheiten | mm. STL hat kein Einheitenfeld. |
-| Achsen | wie in der App; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
+| Achsen | wie in der App, das Teil um **Einstellwinkel des Teils** und **Rollwinkel des Teils** gedreht; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Normalen | Länge 1, aus den Eckpunkten berechnet; Eckpunkte von außen gesehen gegen den Uhrzeigersinn, Normalen zeigen nach außen |
 
 ## 3MF
@@ -1011,7 +1035,7 @@ Abschnitt 6 „STEP-Topologie“.
 | Paket | Zip, Deflate-Stufe 6: `[Content_Types].xml`, `_rels/.rels`, `3D/3dmodel.model` |
 | Namensraum | `http://schemas.microsoft.com/3dmanufacturing/core/2015/02` (3MF Core) |
 | `<model>` | `unit="millimeter"`, `xml:lang="en-US"` |
-| Achsen | wie in der App; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
+| Achsen | wie in der App, das Teil um **Einstellwinkel des Teils** und **Rollwinkel des Teils** gedreht; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Metadaten | `Title` = `<name>` (Abschnitt „Dateinamen beim Export“), `Application` = `Wingdesigner` |
 | Objekte | 1 `<object type="model">` je Hülle, 1 `<build><item>` je Objekt; Namen: Tabelle „Körper je Datei“ |
 | Eckpunkte | 9 signifikante Stellen (genug für jede 32-Bit-Gleitkommazahl), kürzeste Form ohne Nullen am Ende, z. B. `1000000.12`, `0.123456789`, `12`; Beträge unter 1e-6 mm in Exponentenschreibweise, z. B. `-1e-7`; null als `0` |

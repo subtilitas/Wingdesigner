@@ -30,8 +30,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
     crosses.
   - The settings are kept in the browser; the cuts are not saved with the project. User Guide, section Foam cutting;
     Geometry, section 8; File Formats, section Foam-cutting files.
+- Rigid placement of the part: **Settings** > **Part tilt** (positive = leading edge up) and **Part roll** (positive =
+  right tip up), −180 to 180°, with Undo. The half wing is built in its own frame and turned as a rigid body, first the
+  roll about the x axis, then the tilt about the y axis, about the leading edge of the root section or, after an XFLR5
+  import, about the wing origin. STL, 3MF, STEP, the 3D view and the key figures use the turned part; sections, the
+  Planform tab and the foam-cutting wizard stay in the frame of the part. Key figures in the plane axes: MAC position
+  and 25 % MAC turn with the part, the span is measured to the turned tip, so a roll shortens it. Geometry, section
+  on the part placement.
 
 ### Changed
+
+- Project format version 3, for the part tilt and roll. Wingdesigner 0.3.0 and earlier refuse a version 3 file.
+  Version 1 and 2 files open with tilt and roll 0°, except a version 2 file of an XFLR5 import with a folded tilt,
+  which gets that tilt as part tilt (see below).
+- XFLR5 import: the tilt angle of the wing becomes the part tilt about the wing origin instead of being folded into the
+  sections, and tilted parts get **Mitred** section planes like untilted ones. On Fixture A (tilt 2°) the trailing
+  edges lie within 0.001 mm of XFLR5's construction. Projects of earlier imports (format version 2 with a folded
+  tilt) are converted on Open and on restore from browser storage, with a note; the part keeps its shape with
+  **Vertical** section planes and takes XFLR5's shape with **Mitred** ones. A project with a guide curve that is on or
+  edited, or with a twist that would leave ±360°, keeps the folded tilt and says why.
+- **Full wing as one body** merges the halves only without a part roll; with a roll the file holds two bodies.
 
 - Top bar: 8 buttons with **Foam**. At a window width of 460 px or less the buttons take 5 px of padding on each side
   instead of 8 px, at 402 px or less 3 px with 2 px gaps. The English top bar stays in 1 row at every width and

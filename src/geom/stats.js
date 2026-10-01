@@ -18,7 +18,7 @@ const GL = [
 ];
 
 /**
- * @returns {{span: number, area: number, aspectRatio: number, mac: number, macY: number, macXLE: number, rootChord: number, tipChord: number}}
+ * @returns {{span: number, area: number, aspectRatio: number, mac: number, macY: number, macXLE: number, x25: number, rootChord: number, tipChord: number}}
  *   span and lengths in mm, area in mm^2 (both halves; with the root off y = 0 the gap between the
  *   halves counts to the span but not to the area), macY = span position of the MAC on one half.
  */
@@ -83,16 +83,41 @@ export function wingStats(build) {
     }
   }
   const [A, C2, CY, CX] = I;
-  // Full wing (both halves) regardless of the display setting "Show mirrored half".
-  const span = st.length ? 2 * st[st.length - 1].y : 0;
+  const mac = A > 0 ? C2 / A : 0;
+  let macY = A > 0 ? CY / A : 0;
+  let macXLE = A > 0 ? CX / A : 0;
+  let x25 = macXLE + 0.25 * mac;
+  let tipY = st.length ? st[st.length - 1].y : 0;
+  // A part with a rigid placement (build.part): positions in the plane axes, the MAC leading edge and
+  // the 25 % MAC point turned with the part at the height of the stations; chords, area and MAC in
+  // the part's own frame.
+  const part = build.part;
+  if (part && !part.identity && st.length) {
+    const zAt = (y) => {
+      if (y <= st[0].y) return st[0].z;
+      for (let i = 1; i < st.length; i++) if (y <= st[i].y) return st[i - 1].z + ((y - st[i - 1].y) / (st[i].y - st[i - 1].y)) * (st[i].z - st[i - 1].z);
+      return st[st.length - 1].z;
+    };
+    const z = zAt(macY);
+    const le = part.point([macXLE, macY, z]);
+    x25 = part.point([macXLE + 0.25 * mac, macY, z])[0];
+    macXLE = le[0];
+    macY = le[1];
+    const tip = st[st.length - 1];
+    tipY = part.point([tip.xLE, tip.y, tip.z])[1];
+  }
+  // Full wing (both halves) regardless of the display setting "Show mirrored half". A roll beyond 90°
+  // turns the right tip to y < 0; the tips stay 2 |y| apart.
+  const span = 2 * Math.abs(tipY);
   const area = 2 * A;
   return {
     span,
     area,
     aspectRatio: area > 0 ? (span * span) / area : 0,
-    mac: A > 0 ? C2 / A : 0,
-    macY: A > 0 ? CY / A : 0,
-    macXLE: A > 0 ? CX / A : 0,
+    mac,
+    macY,
+    macXLE,
+    x25,
     rootChord: st[0]?.chord ?? 0,
     tipChord: st[st.length - 1]?.chord ?? 0,
   };

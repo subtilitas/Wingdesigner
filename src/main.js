@@ -29,6 +29,8 @@ const STORAGE_KEY = 'wingdesigner.project.v1';
 const REPO = 'https://github.com/subtilitas/Wingdesigner';
 
 let loadProblem = null;
+// What the upgrade of a version 2 project did on restore (src/model/io.js, upgradeFoldedTilt).
+let loadNotes = [];
 // Set when the saved text could not be loaded and not be copied aside: autosave stays off, so the
 // only copy is not overwritten.
 let keepSaved = false;
@@ -96,6 +98,7 @@ function loadSaved() {
     return null;
   }
   if (stale) loadProblem = tr('This is the project as last saved; autosave stopped at {time} because browser storage was full, and later edits were not saved.', { time: stale });
+  loadNotes = r.notes ?? [];
   return { project: r.project, text };
 }
 
@@ -245,7 +248,7 @@ const openInput = h('input', {
       return;
     }
     replaceProject(r.project);
-    message(tr('Opened {name}.', { name: f.name }));
+    message([tr('Opened {name}.', { name: f.name }), ...(r.notes ?? [])].join(' '));
   },
 });
 
@@ -371,7 +374,7 @@ function renderChecks() {
               [tr('Aspect ratio'), fixed(stats.aspectRatio, 2)],
               [tr('Mean aerodynamic chord (MAC)'), `${fixed(stats.mac, 1)} mm`],
               [tr('MAC position'), tr('y {y} mm, leading edge x {x} mm', { y: fixed(stats.macY, 1), x: fixed(stats.macXLE, 1) })],
-              [tr('25 % MAC (geometric reference)'), `x ${fixed(stats.macXLE + 0.25 * stats.mac, 1)} mm`],
+              [tr('25 % MAC (geometric reference)'), `x ${fixed(stats.x25, 1)} mm`],
               [tr('Root / tip chord'), `${fixed(stats.rootChord, 1)} / ${fixed(stats.tipChord, 1)} mm`],
               [
                 tr('Surface'),
@@ -722,5 +725,8 @@ window.addEventListener('keydown', (e) => {
 
 selectTab(activeTab);
 rebuild();
-if (loadProblem) message(loadProblem, true);
+// A restored project can carry both: the notice of an older save and the notes of its upgrade.
+if (loadProblem || loadNotes.length) message([loadProblem, ...loadNotes].filter(Boolean).join(' '), Boolean(loadProblem));
+// An upgraded restore is saved at once: the next start reads the version 3 project and repeats no note.
+if (saved && loadNotes.length) save(store.project);
 if (!saved) newDesign(true);

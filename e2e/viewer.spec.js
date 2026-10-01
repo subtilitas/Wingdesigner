@@ -1,6 +1,6 @@
 // 3D viewer: view buttons, mouse rotate, pan and wheel zoom, touch rotate, pan and pinch zoom, Enlarge
-// on narrow screens, the Settings display toggles (control net, section outlines, mirrored half) and
-// the pointed tip in the top view.
+// on narrow screens, the Settings display toggles (control net, section outlines, mirrored half), the
+// part roll in the front view and the pointed tip in the top view.
 //
 // The canvas is read back (helpers.js capture()): PNG bytes plus pixel statistics (opaque pixel count
 // = projected size of the wing, bounding box of the opaque pixels, control-net and section-outline
@@ -382,6 +382,29 @@ test('"Show mirrored half" shows one or both halves; stored and undoable', async
   expect(both.opaque).toBeGreaterThan(1.1 * reloadedHalf.opaque);
   await viewButton(page, 'Fit').click();
   await backTo(page, initial, 'Fit with both halves');
+});
+
+test('Part roll turns both halves up in the Front view; after a reload the first framing equals Iso', async ({ page }) => {
+  await createSport(page);
+  await viewButton(page, 'Front').click();
+  const flat = await settleView(page, (c) => c.box.w > 5 * c.box.h, 'Front view');
+  await openTab(page, 'Settings');
+  const roll = page.getByRole('spinbutton', { name: /^Part roll/ });
+  await roll.fill('20');
+  await roll.press('Enter');
+  // The right half turns 20° about the root leading edge, the left half is its mirror image: a V
+  // about 600 mm · sin 20° = 205 mm high on a span of 2 · 600 mm · cos 20° = 1128 mm.
+  const rolled = await changedFrom(page, flat, 'part roll 20°');
+  expect(rolled.box.h).toBeGreaterThan(3 * flat.box.h);
+  expect(rolled.box.w).toBeLessThan(flat.box.w);
+  await expect.poll(async () => JSON.parse(await storedProject(page)).settings.partRoll).toBe(20);
+
+  // The first fit after a reload frames the turned part and its mirror image as Iso does.
+  await page.reload();
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  const first = await settleView(page, (c) => c.opaque > 1000, 'reload with a rolled part');
+  await viewButton(page, 'Iso').click();
+  await backTo(page, first, 'Iso after a reload');
 });
 
 test('Top view: a pointed tip narrows the drawn planform to a point; Undo restores the flat tip', async ({ page }) => {

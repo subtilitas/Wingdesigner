@@ -16,7 +16,7 @@ Wingdesigner is a browser application that lofts one half wing of a radio-contro
 | Page | Content |
 | --- | --- |
 | [[User Guide]] | Screen layout, import from XFLR5, storage, language, controls, wizard, sections, planform and guide curves, airfoils, settings, checks, export, foam cutting |
-| [[Geometry]] | Airfoil curve, chordwise resampling, spanwise stations, guide curves, wing tip, surface, meshes, STEP topology, planform statistics, foam cores |
+| [[Geometry]] | Airfoil curve, chordwise resampling, spanwise stations, guide curves, wing tip, placement of the part, surface, meshes, STEP topology, planform statistics, foam cores |
 | [[File Formats]] | Airfoil import and checks, airfoil `.dat` export, project JSON, XFLR5 import (files, mapping to sections, report, limits), STEP, STL, 3MF, foam-cutting files, file sizes |
 | [[Airfoil Sources]] | External airfoil sources, their terms of use, attribution, airfoils of imported XFLR5 files, the 6 bundled airfoil files and their legal basis, rules for bundled airfoils |
 | [[Development]] | Architecture, commands, unit and browser tests, STEP and 3MF validation, foam-cutting file validation, continuous integration (CI), release |
@@ -39,7 +39,7 @@ Wingdesigner ist eine Browseranwendung, die einen Halbflügel eines ferngesteuer
 | Seite | Inhalt |
 | --- | --- |
 | [[Benutzerhandbuch]] | Bildschirmaufbau, Import aus XFLR5, Speicherung, Sprache, Bedienung, Assistent, Schnitte, Grundriss und Leitkurven, Profile, Einstellungen, Prüfungen, Export, Schaumschnitt |
-| [[Geometrie]] | Profilkurve, Neuabtastung in Profiltiefenrichtung, Stationen in Spannweitenrichtung, Leitkurven, Flügelende, Fläche, Dreiecksnetze, STEP-Topologie, Grundrisskennwerte, Schaumkerne |
+| [[Geometrie]] | Profilkurve, Neuabtastung in Profiltiefenrichtung, Stationen in Spannweitenrichtung, Leitkurven, Flügelende, Lage des Teils, Fläche, Dreiecksnetze, STEP-Topologie, Grundrisskennwerte, Schaumkerne |
 | [[Dateiformate]] | Profilimport und Plausibilitätsprüfungen, Profilexport als `.dat`, Projekt-JSON, XFLR5-Import (Dateien, Abbildung auf Schnitte, Bericht, Grenzen), STEP, STL, 3MF, Schaumschnitt-Dateien, Dateigrößen |
 | [[Profilquellen]] | Externe Profilquellen, ihre Nutzungsbedingungen, Quellenangabe, Profile importierter XFLR5-Dateien, die 6 mitgelieferten Profildateien und ihre Rechtsgrundlage, Regeln für mitgelieferte Profile |
 | [[Entwicklung]] | Architektur, Befehle, Unit- und Browsertests, STEP- und 3MF-Validierung, Validierung der Schaumschnitt-Dateien, Continuous Integration (CI), Release |

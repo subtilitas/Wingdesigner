@@ -123,6 +123,12 @@ export default {
   'Vertical (y = const)': 'Senkrecht (y = konstant)',
   'Smooth (natural cubic spline through sections)': 'Glatt (natürlicher kubischer Spline durch die Schnitte)',
   'Twist pivot (fraction of chord)': 'Drehpunkt der Schränkung (Anteil der Profiltiefe)',
+  'Part tilt (°, positive = leading edge up)': 'Einstellwinkel des Teils (°, positiv = Nasenleiste hoch)',
+  'Part roll (°, positive = right tip up)': 'Rollwinkel des Teils (°, positiv = rechter Randbogen hoch)',
+  'The part turns as a rigid body about x = {x} mm, y = {y} mm, z = {z} mm, the wing origin of the import: first the roll about the x axis, then the tilt about the y axis.':
+    'Das Teil dreht sich als starrer Körper um x = {x} mm, y = {y} mm, z = {z} mm, den Ursprung des Flügels beim Import: erst der Rollwinkel um die x-Achse, dann der Einstellwinkel um die y-Achse.',
+  'The part turns as a rigid body about the leading edge of the root section (x = {x} mm, y = {y} mm, z = {z} mm): first the roll about the x axis, then the tilt about the y axis.':
+    'Das Teil dreht sich als starrer Körper um die Nasenleiste des Wurzelschnitts (x = {x} mm, y = {y} mm, z = {z} mm): erst der Rollwinkel um die x-Achse, dann der Einstellwinkel um die y-Achse.',
   'Trailing edge mode': 'Endleistenmodus',
   'As in the airfoil files': 'Wie in den Profildateien',
   'Closed (sharp)': 'Geschlossen (scharf)',

@@ -6,11 +6,11 @@
 // absolute angle of the panel outboard of it (the last section's value is unused). XFLR5 twists a
 // section about its quarter-chord point, as Wingdesigner does with twistPivot 0.25. XFLR5 places its
 // sections in mitred planes (src/geom/planes.js), and so does the import: Straight panels with mitred
-// section planes are XFLR5's surface. Two cases import with vertical section planes. A tilted part:
-// the tilt and the position of the wing in the plane are folded into the sections, which is exact
-// for vertical planes only (a rotation about y keeps them vertical); the project stores the tilt
-// (foldedTilt). And a part whose mitred planes would fold the surface or stretch an airfoil beyond
-// the limit (mitredPlaneProblem in src/geom/wing.js).
+// section planes are XFLR5's surface. The position of the wing in the plane moves the sections; its
+// tilt angle turns the built part as a rigid body about the wing origin (settings.partTilt and
+// partPivot, src/geom/part.js), as XFLR5 does. A part whose mitred planes would fold the surface or
+// stretch an airfoil beyond the limit (mitredPlaneProblem in src/geom/wing.js) imports with vertical
+// section planes.
 //
 // Airfoils: an .xfl project holds its airfoils; a name is looked up exactly, as XFLR5 does. XML files
 // name them only. A name without an airfoil from the file goes through a chain of sources: uploaded
@@ -261,17 +261,17 @@ function identical(a, b) {
 
 /**
  * Wingdesigner sections of an XFLR5 wing: y and z from the developed y_position and the dihedral,
- * the clean-up of sections that share y or have tiny chords, then the tilt and the position of the
- * wing in the plane folded in (rotation about the wing origin, twist + tilt, translation by the
- * position x and z; the position y is not used, as in XFLR5).
+ * the clean-up of sections that share y or have tiny chords, then the position of the wing in the
+ * plane (translation by the position x and z; the position y is not used, as in XFLR5). The tilt
+ * angle is returned, not applied: the project turns the built part about the wing origin.
  * @param {object} wing Wing of an XflrFile (lengths in file units)
  * @param {number} lengthUnit millimetres per file length unit
  * @returns {{sections: {index: number, x: number, y: number, z: number, chord: number, twist: number, foil: string}[], report: {severity: string, text: string}[], steep: {severity: string, text: string}[], tilt: {angle: number, x: number, z: number}|null, rolls: number[]}}
  *   `index` is the 0-based XFLR5 section number; `sections` is empty when the report has an error.
  *   `steep`: the warnings on panels above DIHEDRAL_WARN, for an import with vertical section planes.
- *   `tilt`: the folded tilt (degrees, reduced by whole turns to −180..180) about the wing origin x, z
+ *   `tilt`: the tilt angle (degrees, reduced by whole turns to −180..180) about the wing origin x, z
  *   (mm), or null for a part without tilt. `rolls`: XFLR5's roll of each section's mitred plane
- *   (degrees), from the panels in the frame of the part, before the tilt.
+ *   (degrees), from the panels in the frame of the part.
  */
 export function mapSections(wing, lengthUnit) {
   const report = [];
@@ -391,23 +391,16 @@ export function mapSections(wing, lengthUnit) {
   if (D[0] > 0) add('info', tr('The root lies at y = {y} mm: the two halves are built as separate bodies, as in XFLR5.', { y: num(kept[0].y) }));
 
   rolls = sectionPlanes(kept, 'mitred').rolls;
-  // Tilt about the wing origin (positive = nose up), turning each quarter-chord point, then the position.
+  // Tilt about the wing origin (positive = nose up): stored for the rigid placement of the part.
   const X = k * position.x;
   const ZL = k * position.z;
   if (tilt !== 0) {
-    const c = Math.cos(tilt * DEG);
-    const s = Math.sin(tilt * DEG);
-    for (const q of kept) {
-      const xq = q.x + 0.25 * q.chord;
-      const zq = q.z;
-      q.x = xq * c + zq * s - 0.25 * q.chord;
-      q.z = -xq * s + zq * c;
-      q.twist += tilt;
-    }
-    add('info', tr('Tilt angle {angle}° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.', { angle: num(tilt) }));
     // Stored within ±180°: a tilt of whole turns turns nothing.
     const angle = zero(tilt - 360 * Math.round(tilt / 360));
-    if (angle !== 0) folded = { angle, x: X, z: ZL };
+    if (angle !== 0) {
+      folded = { angle, x: X, z: ZL };
+      add('info', tr('Tilt angle {angle}° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).', { angle: num(angle) }));
+    }
   }
   // Whole turns of twist (a tilt of 400°, say) give the same sections: one turn common to all keeps
   // the differences between the sections, which the spanwise interpolation uses.
@@ -449,7 +442,7 @@ function withinLimits(sections, add) {
     else if (!(q.chord <= LIMITS.maxChord)) {
       beyond.add(() => tr('Section {n}: chord {chord} mm is larger than {max} mm, the limit of Wingdesigner.', { n, chord: whole(Number(q.chord.toFixed(4)) + 0), max: whole(LIMITS.maxChord) }));
     } else if (!(Math.abs(q.twist) <= LIMITS.maxTwist)) {
-      beyond.add(() => tr('Section {n}: twist {angle}° (tilt included) lies beyond ±{max}°, the limit of Wingdesigner.', { n, angle: num(q.twist), max: plain(LIMITS.maxTwist) }));
+      beyond.add(() => tr('Section {n}: twist {angle}° lies beyond ±{max}°, the limit of Wingdesigner.', { n, angle: num(q.twist), max: plain(LIMITS.maxTwist) }));
     }
   }
   beyond.done();
@@ -1192,7 +1185,8 @@ function limitsText() {
 /**
  * The project of mapped sections and resolved rows, or null (reported) when the airfoils or the moved
  * sections exceed the limits. `planes`: the section-plane setting, and for mitred planes the roll
- * and stretch of every mapped section (sectionPlanes); `tilt`: the folded tilt of mapSections.
+ * and stretch of every mapped section (sectionPlanes); `tilt`: the tilt angle of mapSections, the
+ * rigid placement of the part.
  */
 function assemble(name, mapped, rows, add, planes, tilt) {
   const airfoils = [];
@@ -1251,8 +1245,15 @@ function assemble(name, mapped, rows, add, planes, tilt) {
     name,
     airfoils,
     sections,
-    settings: { twistPivot: 0.25, spanwise: 'straight', sectionPlanes: planes.mode, mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } },
-    ...(tilt ? { foldedTilt: { angle: r4(tilt.angle), x: r4(tilt.x), z: r4(tilt.z) } } : {}),
+    settings: {
+      twistPivot: 0.25,
+      spanwise: 'straight',
+      sectionPlanes: planes.mode,
+      mirror: true,
+      tip: { mode: 'flat' },
+      trailingEdge: { mode: 'asis' },
+      ...(tilt ? { partTilt: r4(tilt.angle), partRoll: 0, partPivot: { x: r4(tilt.x), y: 0, z: r4(tilt.z) } } : {}),
+    },
   });
 }
 
@@ -1268,18 +1269,9 @@ function withPlanes(name, geometry, rows, add) {
     for (const line of geometry.steep) add(line.severity, line.text);
     return assemble(name, mapped, rows, add, { mode: 'vertical' }, geometry.tilt);
   };
-  if (geometry.tilt) {
-    return vertical(
-      rolled
-        ? tr("Section planes: vertical. The tilt angle of {angle}° is folded into the section values, which is exact for vertical section planes only: with mitred planes, as in XFLR5, the part would lie up to about {distance} mm off XFLR5's.", {
-            angle: num(geometry.tilt.angle),
-            distance: fixed(Math.max(...mapped.map((q, i) => 0.75 * q.chord * Math.abs(Math.sin(geometry.tilt.angle * DEG) * Math.sin(geometry.rolls[i] * DEG)))), 2),
-          })
-        : null,
-    );
-  }
-  // Without a tilt the mapped sections lie in the frame of the part (the position only moves them).
-  const candidate = assemble(name, mapped, rows, add, { mode: 'mitred', ...sectionPlanes(mapped, 'mitred') }, null);
+  // The mapped sections lie in the frame of the part (the position only moves them); the tilt turns
+  // the built part.
+  const candidate = assemble(name, mapped, rows, add, { mode: 'mitred', ...sectionPlanes(mapped, 'mitred') }, geometry.tilt);
   if (!candidate) return candidate;
   // Sections that the airfoil frames move past each other in y cross, as a fold does. The build takes
   // the rolls from the moved sections, so a flat part can roll a little and is checked as well.
