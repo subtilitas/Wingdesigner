@@ -1,6 +1,8 @@
 // German text for src/geom/, src/export/: English key -> German text with the same {placeholders},
 // or a function of the params. See src/i18n/index.js.
 export default {
+  'The tilted or rolled part reaches x = {x} mm, y = {y} mm, z = {z} mm, beyond ±{limit} mm; reduce the part tilt or roll, or move the part towards its pivot.':
+    'Das gedrehte Teil reicht bis x = {x} mm, y = {y} mm, z = {z} mm, außerhalb von ±{limit} mm; Einstellwinkel oder Rollwinkel des Teils verkleinern oder das Teil näher an seinen Drehpunkt legen.',
   // Guide curve checks (guide.js)
   'A guide curve needs at least 2 points.': 'Eine Leitkurve braucht mindestens 2 Punkte.',
   'Guide points must be finite [x, y] pairs.': 'Leitkurvenpunkte müssen endliche [x, y]-Paare sein.',

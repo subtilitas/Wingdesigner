@@ -1,5 +1,5 @@
 // Settings tab: trailing-edge modes, pointed wing tip, its scale and the 1 mm tip chord floor,
-// spanwise interpolation, chordwise resolution, twist pivot, the mirrored-half display, project
+// spanwise interpolation, chordwise resolution, twist pivot, part tilt and roll, the mirrored-half display, project
 // name (export file names) and persistence across reloads.
 //
 // Wizard designs used here (src/model/wizard.js): "Sport" has 2 sections (root chord 240 mm, tip
@@ -38,6 +38,9 @@ const loftNote = (page) => page.locator('#pane-settings p.small').filter({ hasTe
 const chordStations = (page) => page.getByRole('spinbutton', { name: /^Chordwise stations per surface/ });
 const panelStations = (page) => page.getByRole('spinbutton', { name: /^Spanwise stations per panel/ });
 const twistPivot = (page) => page.getByRole('spinbutton', { name: /^Twist pivot/ });
+const partTilt = (page) => page.getByRole('spinbutton', { name: /^Part tilt/ });
+const partRoll = (page) => page.getByRole('spinbutton', { name: /^Part roll/ });
+const pivotLine = (page) => page.locator('#pane-settings p.small').filter({ hasText: /^The part turns/ });
 const parametrization = (page) => page.getByRole('combobox', { name: 'Profile parametrization', exact: true });
 const mirror = (page) => page.getByRole('checkbox', { name: 'Show mirrored half (y < 0)' });
 const projectName = (page) => page.locator('#pane-settings').getByRole('textbox', { name: 'Project name' });
@@ -465,6 +468,54 @@ test.describe('Settings tab', () => {
     await expect(status(page)).toHaveText(SPORT_STATUS);
   });
 
+  test('part tilt and roll turn the whole part about the root leading edge; the fields clamp to ±180°; Undo', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await openTab(page, 'Settings');
+    await choose(sectionPlanes(page), 'vertical');
+    await expect(partTilt(page)).toHaveValue('0');
+    await expect(partRoll(page)).toHaveValue('0');
+    await expect(pivotLine(page)).toHaveText(
+      'The part turns as a rigid body about the leading edge of the root section (x = 0.0 mm, y = 0.0 mm, z = 0.0 mm): first the roll about the x axis, then the tilt about the y axis.',
+    );
+    const tipOf = async () => {
+      const vs = stlVertices(parseStl((await exportFile(page, 'stl', { half: 'right' })).bytes).tris);
+      return vs.filter((p) => Math.abs(p[1] - 600) < 1e-3);
+    };
+    const flat = await tipOf();
+
+    // Tilt 10°: every tip vertex turns about the y axis through the root leading edge, y stays 600.
+    await openTab(page, 'Settings');
+    await commit(partTilt(page), 10);
+    await expect.poll(async () => (await savedProject(page)).settings.partTilt).toBe(10);
+    const t = (10 * Math.PI) / 180;
+    const turned = flat.map(([x, y, z]) => [x * Math.cos(t) + z * Math.sin(t), y, -x * Math.sin(t) + z * Math.cos(t)]);
+    const tilted = await tipOf();
+    expect(tilted).toHaveLength(turned.length);
+    const gap = Math.max(...turned.map((p) => Math.min(...tilted.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2])))));
+    expect(gap, 'largest distance of a turned tip vertex from the export (mm)').toBeLessThan(1e-3);
+    // The tilt keeps the span; area and MAC lie in the part frame.
+    await expect(status(page)).toHaveText(SPORT_STATUS);
+
+    // Roll 30°: the tip leading edge (24, 600, 15.71) moves to y = 600 cos 30° - 15.71 sin 30° = 511.76 mm,
+    // so the span is 1023.5 mm and the aspect ratio 1023.5² / 230400 mm² = 4.55.
+    await openTab(page, 'Settings');
+    await commit(partRoll(page), 30);
+    await expect(status(page)).toHaveText('Span 1024 mm · area 23.04 dm² · AR 4.55 · MAC 196.0 mm');
+
+    // Entries beyond ±180° clamp.
+    await commit(partRoll(page), 200);
+    await expect(partRoll(page)).toHaveValue('180');
+    await commit(partTilt(page), -400);
+    await expect(partTilt(page)).toHaveValue('-180');
+    await expect.poll(async () => (await savedProject(page)).settings).toMatchObject({ partTilt: -180, partRoll: 180, partPivot: null });
+
+    // Undo steps back through the edits.
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Undo' }).click();
+    await expect(partTilt(page)).toHaveValue('10');
+    await expect(partRoll(page)).toHaveValue('0');
+    await expect(status(page)).toHaveText(SPORT_STATUS);
+  });
+
   test('"Show mirrored half" changes the view only, not the key figures', async ({ page }) => {
     await createDesign(page, 'Swept flying wing');
     const both = await figures(page, 1200, { clean: true });
@@ -550,6 +601,8 @@ test.describe('Settings tab', () => {
     await commit(panelStations(page), 5);
     await choose(parametrization(page), 'chord');
     await mirror(page).uncheck();
+    await commit(partTilt(page), 2.5);
+    await commit(partRoll(page), -1);
 
     const expected = {
       spanwise: 'smooth',
@@ -561,6 +614,9 @@ test.describe('Settings tab', () => {
       panelStations: 5,
       parametrization: 'chord',
       mirror: false,
+      partTilt: 2.5,
+      partRoll: -1,
+      partPivot: null,
     };
     await expect.poll(async () => (await savedProject(page))?.settings).toEqual(expected);
     await expect.poll(async () => (await savedProject(page))?.name).toBe('Persist test');
@@ -587,6 +643,8 @@ test.describe('Settings tab', () => {
     await expect(panelStations(page)).toHaveValue('5');
     await expect(parametrization(page)).toHaveValue('chord');
     await expect(mirror(page)).not.toBeChecked();
+    await expect(partTilt(page)).toHaveValue('2.5');
+    await expect(partRoll(page)).toHaveValue('-1');
     expect((await savedProject(page)).settings).toEqual(expected);
 
     // The rebuilt wing uses them: same figures, same surface, closed edge, tip note 240 / 150.

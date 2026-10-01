@@ -4,6 +4,7 @@
 import { meshToUpAxis } from '../export/axes.js';
 import { surfacePointGrid } from './nurbs.js';
 import { stripTriangulate } from './triangulate.js';
+import { transformPositions } from './part.js';
 
 function refine(params, r) {
   if (r <= 1) return params.slice();
@@ -216,15 +217,19 @@ export function exportTriangles(build, mode = 'halves', { uRefine = 1, vRefine }
  * mode 'right': the right half as one closed shell.
  * mode 'halves': right and left halves as two closed shells (root caps included).
  * mode 'merged': one closed shell for the full wing when the root lies exactly on y = 0, otherwise like 'halves'.
+ * The rigid placement of the part (build.part, src/geom/part.js) turns the half wing before the
+ * mirror. A rolled part keeps two shells: its root no longer lies in the plane y = 0.
  * up: the up axis of the file (src/export/axes.js); the meshes are turned after mirroring and merging.
  * @returns {{name: string, mesh: {positions: Float64Array, indices: Uint32Array}}[]}
  */
 export function exportMeshes(build, mode = 'halves', { uRefine = 1, vRefine, up = 'z' } = {}) {
   const half = tessellateHalf(build, { uRefine, vRefine });
+  const part = build.part;
+  if (part && !part.identity) half.positions = transformPositions(half.positions, part);
   const right = halfWingMesh(half);
   let meshes;
   if (mode === 'right') meshes = [{ name: 'Wing right', mesh: right }];
-  else if (mode === 'merged' && build.rootY === 0) {
+  else if (mode === 'merged' && build.rootY === 0 && !(part?.roll)) {
     const full = fullWingMesh(half, build.rootY);
     meshes = [{ name: 'Wing', mesh: { positions: full.positions, indices: full.indices } }];
   } else {

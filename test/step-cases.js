@@ -1,6 +1,6 @@
 // Wing configurations covering the STEP topology variants (open/closed trailing edge,
 // linear/smooth spanwise interpolation, guide curves, root off the symmetry plane, mirroring,
-// mitred section planes).
+// mitred section planes, a rigid placement of the part).
 import { createProject } from '../src/model/project.js';
 import { naca, sampleProject } from './helpers.js';
 
@@ -67,5 +67,10 @@ export function stepCases() {
     settings: { spanwise: 'straight', sectionPlanes: 'mitred' },
   });
   cases.push({ name: 'mitred-switch-short-panel', project: sw, mirror: true });
+  // A rigid placement of the part (src/geom/part.js): the mitred gull rolled 12° and tilted 8° about a
+  // pivot off the root, so that turned surfaces, curves, cap planes and the mirror are checked together.
+  const turned = structuredClone(gull);
+  turned.settings = { ...turned.settings, partTilt: 8, partRoll: 12, partPivot: { x: 50, y: 0, z: -20 } };
+  cases.push({ name: 'part-tilt-roll', project: turned, mirror: true });
   return cases;
 }

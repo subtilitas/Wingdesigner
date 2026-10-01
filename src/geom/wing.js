@@ -16,6 +16,7 @@ import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { MAX_STRETCH, firstFold, mitredPlanes, overStretched, sectionPlanes, stretchOf, upExtent } from './planes.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
+import { partTransform } from './part.js';
 import { WARN, displayName, loftGrid, sizeWarning } from '../model/budget.js';
 import { count, fixed, language, plain, tr, whole } from '../i18n/index.js';
 
@@ -1208,6 +1209,35 @@ export function buildWing(project) {
           y: fixed(y0 + v * (y1 - y0), 1),
           x: fixed(cross.x, 1),
         })} ${tr('Increase Settings > Chord samples.')}`,
+      );
+      return result;
+    }
+  }
+  // The rigid placement of the part (src/geom/part.js) turns the surface after the build; the turned
+  // control points bound the turned surface and must stay within the extent limit.
+  const part = partTransform(settings, sections);
+  result.part = part;
+  if (!part.identity) {
+    let far = 0;
+    let at = null;
+    for (const col of surface.points) {
+      for (const P of col) {
+        const q = part.point(P);
+        const m = Math.max(Math.abs(q[0]), Math.abs(q[1]), Math.abs(q[2]));
+        if (m > far) {
+          far = m;
+          at = q;
+        }
+      }
+    }
+    if (!(far <= LIMITS.maxExtent)) {
+      errors.push(
+        tr('The tilted or rolled part reaches x = {x} mm, y = {y} mm, z = {z} mm, beyond ±{limit} mm; reduce the part tilt or roll, or move the part towards its pivot.', {
+          x: fixed(at[0], 0),
+          y: fixed(at[1], 0),
+          z: fixed(at[2], 0),
+          limit: whole(LIMITS.maxExtent),
+        }),
       );
       return result;
     }

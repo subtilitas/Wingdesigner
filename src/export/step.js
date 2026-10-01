@@ -113,13 +113,19 @@ function mapSurface(s, f) {
 }
 
 /**
- * Topology of one half wing (right side, y >= root). Geometry is transformed by `xf`: the mirror of
- * the left half, then the turn of the up axis (src/export/axes.js). `mirrored` flips orientation flags
- * so that faces stay outward after a reflection; the turn is a rotation and keeps them.
+ * Topology of one half wing (right side, y >= root). Geometry is transformed by `xf`: the rigid
+ * placement of the part (build.part, src/geom/part.js), the mirror of the left half, then the turn of
+ * the up axis (src/export/axes.js); directions by `xv`, the same without the translation of the part.
+ * `mirrored` flips orientation flags so that faces stay outward after a reflection; the placement
+ * and the turn are rotations and keep them.
  */
 function writeHalfWing(w, build, name, mirrored, up = 'z') {
   const turn = upAxisMap(up);
-  const xf = mirrored ? (P) => turn(mirrorPoint(P)) : turn;
+  const part = build.part && !build.part.identity ? build.part : null;
+  const place = part ? part.point : (P) => P;
+  const placeDir = part ? part.vector : (P) => P;
+  const xf = mirrored ? (P) => turn(mirrorPoint(place(P))) : (P) => turn(place(P));
+  const xv = mirrored ? (v) => turn(mirrorPoint(placeDir(v))) : (v) => turn(placeDir(v));
   const [SU, SL] = splitSurfaceU(build.surface, build.uLE);
   const closed = build.closedTE;
 
@@ -214,8 +220,8 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
   // Caps: plane normals are geometric vectors, so mirroring the axis keeps them outward. A rolled end
   // section has the normal (0, cos φ, sin φ); the reference direction x lies in every such plane.
   const normal = (roll, sign) => (roll ? [0, sign * Math.cos((roll * Math.PI) / 180), sign * Math.sin((roll * Math.PI) / 180)] : [0, sign, 0]);
-  faces.push(w.face(rootLoop, w.plane(xf(P.le0), xf(normal(build.rootRoll ?? 0, -1)), xf([1, 0, 0])), true, bound));
-  faces.push(w.face(tipLoop, w.plane(xf(P.le1), xf(normal(build.tipRoll ?? 0, 1)), xf([1, 0, 0])), true, bound));
+  faces.push(w.face(rootLoop, w.plane(xf(P.le0), xv(normal(build.rootRoll ?? 0, -1)), xv([1, 0, 0])), true, bound));
+  faces.push(w.face(tipLoop, w.plane(xf(P.le1), xv(normal(build.tipRoll ?? 0, 1)), xv([1, 0, 0])), true, bound));
   const shell = w.add(`CLOSED_SHELL('',(${faces.join(',')}))`);
   return w.add(`MANIFOLD_SOLID_BREP(${stepString(name)},${shell})`);
 }

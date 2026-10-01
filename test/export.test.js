@@ -567,17 +567,18 @@ describe('project JSON', () => {
     expect(validateProject(p).ok).toBe(true);
   });
 
-  it('opens version 1 files with vertical section planes, and version 2 files as saved', () => {
+  it('opens version 1 files with vertical section planes, and version 2 and 3 files as saved', () => {
     const mitred = sampleProject({ settings: { sectionPlanes: 'mitred' } });
-    const v2 = projectToJson(mitred, null);
-    expect([v2.version, v2.settings.sectionPlanes]).toEqual([2, 'mitred']);
+    const v3 = projectToJson(mitred, null);
+    expect([v3.version, v3.settings.sectionPlanes, v3.settings.partTilt]).toEqual([3, 'mitred', 0]);
+    const v2 = { ...structuredClone(v3), version: 2 };
     // A version 1 file holds no section-plane setting; its wing keeps the vertical sections it was
     // designed with, not the default of new projects.
     const v1 = structuredClone(v2);
     v1.version = 1;
     delete v1.settings.sectionPlanes;
     const old = projectFromJsonText(JSON.stringify(v1));
-    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 2, 'vertical']);
+    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 3, 'vertical']);
     expect(buildWing(old.project).surface).toEqual(buildWing(sampleProject()).surface);
     // A version 2 file without the setting takes the default, and one with it keeps it.
     const bare = structuredClone(v2);
@@ -585,11 +586,16 @@ describe('project JSON', () => {
     expect(projectFromJsonText(JSON.stringify(bare)).project.settings.sectionPlanes).toBe('mitred');
     expect(projectFromJsonText(JSON.stringify({ ...v2, settings: { ...v2.settings, sectionPlanes: 'vertical' } })).project.settings.sectionPlanes).toBe('vertical');
     // A later format is refused rather than opened without its values.
-    expect(projectFromJsonText(JSON.stringify({ ...v2, version: 3 })).errors).toEqual(['Unsupported project version 3.']);
-    // A stored folded tilt comes back with its three numbers only.
-    const tilted = projectFromJsonText(JSON.stringify({ ...v2, foldedTilt: { angle: 2, x: 10, z: -5, note: 'x' } }));
-    expect(tilted.project.foldedTilt).toEqual({ angle: 2, x: 10, z: -5 });
-    expect(projectFromJsonText(JSON.stringify(v2)).project.foldedTilt).toBeUndefined();
+    expect(projectFromJsonText(JSON.stringify({ ...v3, version: 4 })).errors).toEqual(['Unsupported project version 4.']);
+    // A version 3 file keeps a folded tilt with its three numbers only (an upgrade that kept the fold).
+    const tilted = projectFromJsonText(JSON.stringify({ ...v3, foldedTilt: { angle: 2, x: 10, z: -5, note: 'x' } }));
+    expect([tilted.project.foldedTilt, tilted.notes]).toEqual([{ angle: 2, x: 10, z: -5 }, []]);
+    expect(projectFromJsonText(JSON.stringify(v3)).project.foldedTilt).toBeUndefined();
+    // A version 2 file with a folded tilt opens with the tilt as a rigid placement of the part.
+    const upgraded = projectFromJsonText(JSON.stringify({ ...v2, foldedTilt: { angle: 2, x: 10, z: -5 } }));
+    expect(upgraded.project.foldedTilt).toBeUndefined();
+    expect(upgraded.project.settings).toMatchObject({ partTilt: 2, partRoll: 0, partPivot: { x: 10, y: 0, z: -5 } });
+    expect(upgraded.notes).toHaveLength(2);
   });
 
   it('creates projects with defaults', () => {

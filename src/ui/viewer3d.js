@@ -9,6 +9,18 @@ import { stripTriangulate } from '../geom/triangulate.js';
 import { MAX_EDGE_SAMPLES, edgeParams, refine, thinParams } from '../geom/sampling.js';
 import { tr } from '../i18n/index.js';
 
+/** Matrix of the rigid placement of the part (src/geom/part.js): identity without one. */
+export function partMatrix(part) {
+  const m = new THREE.Matrix4();
+  if (!part || part.identity) return m;
+  const R = part.matrix;
+  const p = part.pivot;
+  // p' = R (p − pivot) + pivot.
+  const t = [0, 1, 2].map((i) => p[i] - (R[i][0] * p[0] + R[i][1] * p[1] + R[i][2] * p[2]));
+  m.set(R[0][0], R[0][1], R[0][2], t[0], R[1][0], R[1][1], R[1][2], t[1], R[2][0], R[2][1], R[2][2], t[2], 0, 0, 0, 1);
+  return m;
+}
+
 function cross(a, b) {
   return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 }
@@ -201,6 +213,7 @@ export class Viewer3D {
     this.selMaterial = new THREE.LineBasicMaterial({ color: 0xe0522c });
     this.netMaterial = new THREE.LineBasicMaterial({ color: 0x9a6bd8, transparent: true, opacity: 0.6 });
     this.options = { mirror: true, controlNet: false, sections: true };
+    this.partMatrix = new THREE.Matrix4();
     this.grid = null;
     this.hasFitted = false;
 
@@ -303,14 +316,8 @@ export class Viewer3D {
       lines.add(new THREE.LineSegments(g, this.netMaterial));
     }
     half.add(lines);
-    this.wingGroup.add(half);
-    if (mirror) {
-      // Mirror at the world plane y = 0: local y maps to -(y + origin y) - origin y.
-      const left = half.clone();
-      left.scale.set(1, -1, 1);
-      left.position.set(origin[0], -origin[1], origin[2]);
-      this.wingGroup.add(left);
-    }
+    this.partMatrix = partMatrix(build.part);
+    this.addHalves(this.wingGroup, half, mirror);
     this.origin = origin;
     this.selectionGroup = new THREE.Group();
     this.wingGroup.add(this.selectionGroup);
@@ -335,12 +342,30 @@ export class Viewer3D {
     const right = new THREE.Line(polyline(pts, this.origin), this.selMaterial);
     right.position.set(...this.origin);
     right.renderOrder = 1;
-    g.add(right);
-    if (this.options.mirror) {
-      const left = right.clone();
+    this.addHalves(g, right, this.options.mirror);
+  }
+
+  /**
+   * Adds a half-wing object to `group` in the plane frame: turned by the rigid placement of the part
+   * (build.part), and, with `mirror`, its mirror image at the world plane y = 0.
+   */
+  addHalves(group, half, mirror) {
+    const placed = (obj) => {
+      const g = new THREE.Group();
+      g.matrixAutoUpdate = false;
+      g.matrix.copy(this.partMatrix);
+      // A fixed matrix sets no update flag; without it Box3.setFromObject (the first fit) keeps the
+      // world matrix of the group at identity and loses the mirror above it.
+      g.matrixWorldNeedsUpdate = true;
+      g.add(obj);
+      return g;
+    };
+    group.add(placed(half));
+    if (mirror) {
+      const left = new THREE.Group();
       left.scale.set(1, -1, 1);
-      left.position.set(this.origin[0], -this.origin[1], this.origin[2]);
-      g.add(left);
+      left.add(placed(half.clone()));
+      group.add(left);
     }
   }
 

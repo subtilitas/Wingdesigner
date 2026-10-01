@@ -3,7 +3,8 @@
 import { LIMITS } from '../model/project.js';
 import { WARN, costPhrase, loftGrid, projectSize } from '../model/budget.js';
 import { rolledPanelCount } from '../geom/planes.js';
-import { LANGUAGES, count, language, plain, tr } from '../i18n/index.js';
+import { LANGUAGES, count, fixed, language, plain, tr } from '../i18n/index.js';
+import { partPivot } from '../geom/part.js';
 import { clear, h, numberInput } from './dom.js';
 
 /** Label of the language list: the same in both languages, so it can be found in either. */
@@ -24,6 +25,19 @@ function gridNote(project) {
   else if (over) text = tr('Loft grid: {points} points; above {limit}, {cost}.', { points, limit, cost });
   else text = tr('Loft grid: {points} points.', { points });
   return h('p', { class: `small ${over ? 'sev-warning' : 'muted'}` }, text);
+}
+
+/** Where the part turns: the stored pivot of an import, else the leading edge of the root section. */
+function pivotNote(settings, sections) {
+  const [x, y, z] = partPivot(settings, sections);
+  const at = { x: fixed(x, 1), y: fixed(y, 1), z: fixed(z, 1) };
+  return h(
+    'p',
+    { class: 'small muted' },
+    settings.partPivot
+      ? tr('The part turns as a rigid body about x = {x} mm, y = {y} mm, z = {z} mm, the wing origin of the import: first the roll about the x axis, then the tilt about the y axis.', at)
+      : tr('The part turns as a rigid body about the leading edge of the root section (x = {x} mm, y = {y} mm, z = {z} mm): first the roll about the x axis, then the tilt about the y axis.', at),
+  );
 }
 
 export class SettingsPanel {
@@ -162,6 +176,20 @@ export class SettingsPanel {
               numberInput({ focusKey: 'set:te', value: s.trailingEdge.thickness, step: 0.1, min: 0, onCommit: (v) => set((q) => (q.trailingEdge = { ...q.trailingEdge, thickness: Math.max(0, v) })) }),
             )
           : null,
+        // Rigid placement of the whole part (src/geom/part.js).
+        h(
+          'label',
+          { class: 'field' },
+          tr('Part tilt (°, positive = leading edge up)'),
+          numberInput({ focusKey: 'set:partTilt', value: s.partTilt, step: 0.5, min: -LIMITS.maxPartAngle, max: LIMITS.maxPartAngle, onCommit: (v) => set((q) => (q.partTilt = Math.min(Math.max(v, -LIMITS.maxPartAngle), LIMITS.maxPartAngle))) }),
+        ),
+        h(
+          'label',
+          { class: 'field' },
+          tr('Part roll (°, positive = right tip up)'),
+          numberInput({ focusKey: 'set:partRoll', value: s.partRoll, step: 0.5, min: -LIMITS.maxPartAngle, max: LIMITS.maxPartAngle, onCommit: (v) => set((q) => (q.partRoll = Math.min(Math.max(v, -LIMITS.maxPartAngle), LIMITS.maxPartAngle))) }),
+        ),
+        pivotNote(s, this.store.project.sections),
       ),
       h(
         'fieldset',

@@ -6,7 +6,7 @@
 import { defaultGuides } from '../geom/guide.js';
 import { fixed, plain, tr } from '../i18n/index.js';
 import { syncGuidesToSpan } from './edit.js';
-import { FORMAT, SOURCE_KEYS, VERSION, resolveSettings, validateProject } from './project.js';
+import { FORMAT, LIMITS, SOURCE_KEYS, VERSION, resolveSettings, validateProject } from './project.js';
 
 // Derived numbers keep full double precision (JSON writes the shortest string that reads back to
 // the same double): rounding merged distinct span parameters and knots of close sections.
@@ -170,9 +170,55 @@ const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
 const samePoints = (a, b) => a.length === b.length && a.every((p, i) => Math.abs(p[0] - b[i][0]) <= 1e-9 && Math.abs(p[1] - b[i][1]) <= 1e-9);
 
+const DEG = Math.PI / 180;
+
 /**
- * Parse and validate project JSON text. Derived data is ignored.
- * @returns {{ok: boolean, project?: object, errors: string[]}}
+ * Upgrade of a folded tilt (version 2 files of the XFLR5 import): the tilt angle that the import
+ * folded into the sections becomes the rigid tilt of the part (settings.partTilt about the stored
+ * pivot). Each section's twist pivot point (x + p · c, z; p: Settings > Twist pivot, c: the chord the
+ * build uses, the scaled tip chord of a pointed tip) turns back about the pivot by the angle, and
+ * the angle leaves every twist. A project with an enabled guide curve, or a disabled one with edited
+ * points, keeps its folded sections (the guides hold x only, as a function of y), and so does one
+ * whose twist would leave ±LIMITS.maxTwist. Changes `project` in place; returns the notes for the
+ * user (empty without a folded tilt).
+ */
+export function upgradeFoldedTilt(project) {
+  const tilt = project.foldedTilt;
+  if (!isObject(tilt) || !isNum(tilt.angle) || tilt.angle === 0) return [];
+  const angle = plain(Number(tilt.angle.toFixed(4)) + 0);
+  const guides = ['nose', 'end'].some((k) => project.guides?.[k]?.enabled || project.guides?.[k]?.edited);
+  if (guides) return [tr('The tilt angle of {angle}° of the XFLR5 import stays folded into the sections: a guide curve is on or edited, and guide curves hold x only.', { angle })];
+  if (project.sections.some((s) => Math.abs(s.twist - tilt.angle) > LIMITS.maxTwist)) {
+    return [tr('The tilt angle of {angle}° of the XFLR5 import stays folded into the sections: without it a twist would lie beyond ±{max}°.', { angle, max: plain(LIMITS.maxTwist) })];
+  }
+  const st = project.settings;
+  const p = st.twistPivot;
+  const c = Math.cos(tilt.angle * DEG);
+  const s = Math.sin(tilt.angle * DEG);
+  const sorted = project.sections.slice().sort((a, b) => a.y - b.y);
+  const tip = sorted[sorted.length - 1];
+  // The chord the build uses at the tip of a pointed wing: tip.ratio of the previous section, at least minChord.
+  const tipChord = st.tip.mode === 'pointed' && sorted.length > 1 ? Math.max(st.tip.ratio * sorted[sorted.length - 2].chord, LIMITS.minChord) : null;
+  for (const q of project.sections) {
+    const chord = q === tip && tipChord !== null ? tipChord : q.chord;
+    const px = q.x + p * chord - tilt.x;
+    const pz = q.z - tilt.z;
+    // Inverse of the fold x' = x cos t + z sin t, z' = −x sin t + z cos t.
+    q.x = px * c - pz * s + tilt.x - p * chord;
+    q.z = px * s + pz * c + tilt.z;
+    q.twist -= tilt.angle;
+  }
+  project.settings = { ...st, partTilt: tilt.angle, partRoll: 0, partPivot: { x: tilt.x, y: 0, z: tilt.z } };
+  delete project.foldedTilt;
+  const notes = [tr('The tilt angle of {angle}° that the XFLR5 import folded into the sections is a rigid tilt of the whole part (Settings > Part tilt); the sections hold the values of the untilted part.', { angle })];
+  if (st.sectionPlanes === 'mitred') notes.push(tr('With mitred section planes the shape changes: the folded tilt was exact for vertical planes only, the rigid tilt places the part as XFLR5 does.'));
+  return notes;
+}
+
+/**
+ * Parse and validate project JSON text. Derived data is ignored. A version 2 file with a folded
+ * tilt is upgraded (upgradeFoldedTilt); `notes` names what the upgrade did.
+ * @returns {{ok: boolean, project?: object, errors: string[], notes?: string[]}}
  */
 export function projectFromJsonText(text) {
   if (String(text).length > MAX_PROJECT_BYTES) return { ok: false, errors: [tr('The file is larger than {max} MB.', { max: plain(MAX_PROJECT_BYTES / 1e6) })] };
@@ -221,5 +267,8 @@ export function projectFromJsonText(text) {
   // The build stretches a guide onto the root-to-tip span; the stored points take that span too, so
   // the planform draws and edits them where the wing uses them.
   syncGuidesToSpan(project);
-  return { ok: true, project, errors: [] };
+  const notes = data.version < 3 ? upgradeFoldedTilt(project) : [];
+  // An upgraded project must still pass the limits (the turned sections stay within ±LIMITS.maxCoordinate).
+  if (notes.length && !validateProject(project).ok) return { ok: false, errors: validateProject(project).errors };
+  return { ok: true, project, errors: [], notes };
 }

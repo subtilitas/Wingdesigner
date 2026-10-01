@@ -55,10 +55,8 @@ export default {
   'Chords below {min} mm were raised to {min} mm, the smallest chord Wingdesigner builds, at {sections}.':
     'Für {sections} wurden Profiltiefen unter {min} mm auf {min} mm erhöht, die kleinste Profiltiefe, die Wingdesigner baut.',
   'The root lies at y = {y} mm: the two halves are built as separate bodies, as in XFLR5.': 'Die Wurzel liegt bei y = {y} mm: Die beiden Hälften werden wie in XFLR5 als getrennte Körper gebaut.',
-  'Tilt angle {angle}° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.':
-    'Einstellwinkel {angle}° wie im XFLR5-Flugzeug angewendet: Die Schnitte sind um den Ursprung des Flügels gedreht, und jede Schränkung enthält ihn.',
-  "Section planes: vertical. The tilt angle of {angle}° is folded into the section values, which is exact for vertical section planes only: with mitred planes, as in XFLR5, the part would lie up to about {distance} mm off XFLR5's.":
-    'Schnittebenen: senkrecht. Der Einstellwinkel von {angle}° ist in die Schnittwerte eingerechnet, was nur für senkrechte Schnittebenen genau ist: Mit Schnittebenen auf Gehrung wie in XFLR5 läge das Teil bis zu etwa {distance} mm neben dem von XFLR5.',
+  'Tilt angle {angle}° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).':
+    'Einstellwinkel {angle}° wie im XFLR5-Flugzeug angewendet: Das Teil dreht sich als starrer Körper um den Ursprung des Flügels (Einstellungen > Einstellwinkel des Teils).',
   'Section planes: mitred, as in XFLR5. The root section is vertical, a section between two panels lies in the bisector plane of the panels, and the tip section is square to the last panel; the airfoils keep their thickness across the panels.':
     'Schnittebenen: auf Gehrung wie in XFLR5. Der Wurzelschnitt steht senkrecht, ein Schnitt zwischen zwei Feldern liegt in der Winkelhalbierenden der Felder, und der Randschnitt steht rechtwinklig zum letzten Feld; die Profile behalten quer zu den Feldern ihre Dicke.',
   'Section planes: vertical. Mitred planes, as in XFLR5, would fold the surface between sections {a} and {b}.':
@@ -72,8 +70,7 @@ export default {
   'Section {n}: the position lies beyond ±{max} mm, the limit of Wingdesigner.': 'Schnitt {n}: Die Position liegt außerhalb von ±{max} mm, der Grenze von Wingdesigner.',
   'Section {n}: chord {chord} mm is larger than {max} mm, the limit of Wingdesigner.': 'Schnitt {n}: Die Profiltiefe {chord} mm ist größer als {max} mm, die Grenze von Wingdesigner.',
   'Section {n}: the chord lies beyond {max} mm, the limit of Wingdesigner.': 'Schnitt {n}: Die Profiltiefe liegt über {max} mm, der Grenze von Wingdesigner.',
-  'Section {n}: twist {angle}° (tilt included) lies beyond ±{max}°, the limit of Wingdesigner.':
-    'Schnitt {n}: Die Schränkung {angle}° (mit Einstellwinkel) liegt außerhalb von ±{max}°, der Grenze von Wingdesigner.',
+  'Section {n}: twist {angle}° lies beyond ±{max}°, the limit of Wingdesigner.': 'Schnitt {n}: Die Schränkung {angle}° liegt außerhalb von ±{max}°, der Grenze von Wingdesigner.',
   'Further sections beyond the limits of Wingdesigner: {count}.': 'Weitere Schnitte außerhalb der Grenzen von Wingdesigner: {count}.',
 
   // Airfoils

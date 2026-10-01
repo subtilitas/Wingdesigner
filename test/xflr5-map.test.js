@@ -28,11 +28,28 @@ import { buildWing, placeSection } from '../src/geom/wing.js';
 import { fitProfile } from '../src/geom/profile.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { dist, surfacePoint } from '../src/geom/nurbs.js';
-import { panelDihedrals } from '../src/geom/planes.js';
+import { panelDihedrals, sectionPlanes } from '../src/geom/planes.js';
 import { defaultProject } from '../src/model/defaults.js';
 import { sampleProject } from './helpers.js';
 
 const DEG = Math.PI / 180;
+
+/**
+ * The sections of mapSections with its tilt folded in, as the import folded it into project format
+ * version 2: each quarter-chord point turned about the wing origin, the tilt added to every twist. With
+ * vertical section planes the folded sections build the same part as the rigid tilt
+ * (settings.partTilt); the expected values of these tests are the folded ones.
+ */
+function folded({ sections, tilt }) {
+  if (!tilt) return sections;
+  const c = Math.cos(tilt.angle * DEG);
+  const s = Math.sin(tilt.angle * DEG);
+  return sections.map((q) => {
+    const xq = q.x + 0.25 * q.chord - tilt.x;
+    const zq = q.z - tilt.z;
+    return { ...q, x: xq * c + zq * s + tilt.x - 0.25 * q.chord, z: -xq * s + zq * c + tilt.z, twist: q.twist + tilt.angle };
+  });
+}
 const xfl = (name) => readXflBytes(readFileSync(new URL(`fixtures/xflr5/${name}`, import.meta.url)));
 const xml = (name) => readXflr5Xml(readFileSync(new URL(`fixtures/xflr5/${name}`, import.meta.url), 'utf8'));
 const FIXTURES = xfl('fixtures_v662.xfl');
@@ -78,16 +95,19 @@ function expectSections(sections, rows, digits = 4) {
 }
 
 /**
- * Expect the sections at `indices` (vertical planes) to put their leading edge where XFLR5 draws the
- * airfoil's leading edge (frame.x, frame.y) of its own coordinates on the mapped section `xflr5`,
- * twisted about XFLR5's quarter chord, with frame.chord of XFLR5's chord.
+ * Expect the sections at `indices` to put their leading edge where XFLR5 draws the airfoil's leading
+ * edge (frame.x, frame.y) of its own coordinates on the mapped section `xflr5`, twisted about XFLR5's
+ * quarter chord, with frame.chord of XFLR5's chord. Vertical planes, or XFLR5's mitred planes of the
+ * mapped sections with `mitred` (roll and stretch of sectionPlanes).
  */
-function expectFramed(sections, xflr5, frame, indices = [0, 1]) {
+function expectFramed(sections, xflr5, frame, indices = [0, 1], mitred = false) {
+  const planes = mitred ? sectionPlanes(xflr5, 'mitred') : null;
   indices.forEach((i) => {
     const q = xflr5[i];
     const s = sections[i];
-    const [le] = placeSection([[0, 0]], { xLE: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist }, 0.25);
-    const [want] = placeSection([[frame.x, frame.y]], { xLE: q.x, y: q.y, z: q.z, chord: q.chord, twist: q.twist }, 0.25);
+    const at = planes ? { roll: planes.rolls[i], stretch: planes.stretches[i] } : {};
+    const [le] = placeSection([[0, 0]], { xLE: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist, ...at }, 0.25);
+    const [want] = placeSection([[frame.x, frame.y]], { xLE: q.x, y: q.y, z: q.z, chord: q.chord, twist: q.twist, ...at }, 0.25);
     for (let k = 0; k < 3; k++) expect(le[k], `section ${i + 1} axis ${k}`).toBeCloseTo(want[k], 3);
     expect(s.chord).toBeCloseTo(q.chord * frame.chord, 3);
   });
@@ -114,21 +134,28 @@ describe('XFLR5 mapping: geometry', () => {
     expect(texts(report)).toEqual(['XFLR5 measures y_position along the panels; y and z were computed from it and the dihedral.']);
   });
 
-  it('folds the tilt and the position into the sections', () => {
+  it('applies the position to the sections and returns the tilt about the wing origin', () => {
     const main = mapSections(FIXTURES.planes[0].wings[0], 1000);
-    expectSections(main.sections, [
+    expect(main.tilt).toEqual({ angle: 2, x: 0, z: 0 });
+    expect(main.sections.map((q) => q.twist)).toEqual([0, -1, -2.5]);
+    expectSections(folded(main), [
       [-0.0366, 0, -2.094, 240, 2],
       [10.8737, 499.3148, 23.8836, 220, 1],
       [47.3222, 897.1235, 65.0587, 150, -0.5],
     ]);
-    expect(texts(main.report, 'info')).toContain('Tilt angle 2° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.');
+    expect(texts(main.report, 'info')).toContain('Tilt angle 2° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).');
     const stab = mapSections(FIXTURES.planes[0].wings[2], 1000);
+    expect(stab.tilt).toEqual({ angle: -1.5, x: 650, z: 40 });
     expectSections(stab.sections, [
+      [650, 0, 40, 110, 0],
+      [675, 230, 40, 70, 0],
+    ]);
+    expectSections(folded(stab), [
       [649.9906, 0, 40.7199, 110, -1.5],
       [674.9854, 230, 41.1125, 70, -1.5],
     ]);
     expect(texts(stab.report, 'info')).toEqual([
-      'Tilt angle -1.5° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.',
+      'Tilt angle -1.5° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).',
       'Position in the XFLR5 plane applied: the wing origin moved to x 650 mm, z 40 mm.',
     ]);
     expectSections(mapSections(unplaced(FIXTURES.planes[0].wings[2]), 1000).sections, [
@@ -137,7 +164,7 @@ describe('XFLR5 mapping: geometry', () => {
     ]);
   });
 
-  it('maps a three-section wing with 2° and 6° dihedral (y 599.6345 / 997.4433, z 20.9397 / 62.7511), and folds a 2.5° tilt at (150, 0, 20) mm into it', () => {
+  it('maps a three-section wing with 2° and 6° dihedral (y 599.6345 / 997.4433, z 20.9397 / 62.7511), with a 2.5° tilt at (150, 0, 20) mm', () => {
     const sections = [sec(0, 0.25, 0, 2, 0), sec(0.6, 0.22, 0.01, 6, -1), sec(1, 0.15, 0.04, 0, -3)];
     expectSections(mapSections(wingOf(sections), 1000).sections, [
       [0, 0, 0, 250, 0],
@@ -145,7 +172,7 @@ describe('XFLR5 mapping: geometry', () => {
       [40, 997.4433, 62.7511, 150, -3],
     ]);
     // Tilt 2.5 degrees, position (0.150, 0, 0.020) m.
-    expectSections(mapSections(wingOf(sections, { tilt: 2.5, position: { x: 0.15, y: 0, z: 0.02 } }), 1000).sections, [
+    expectSections(folded(mapSections(wingOf(sections, { tilt: 2.5, position: { x: 0.15, y: 0, z: 0.02 } }), 1000)), [
       [149.9405, 0, 17.2738, 250, 2.5],
       [160.8515, 599.6345, 38.0845, 220, 1.5],
       [192.6634, 997.4433, 79.3109, 150, -0.5],
@@ -154,8 +181,9 @@ describe('XFLR5 mapping: geometry', () => {
 
   it('keeps the root gap of an elevator whose root lies at y = 20 mm, and reports it', () => {
     const w = wingOf([sec(20, 110), sec(300, 70, 25)], { tilt: -1.5, position: { x: 750, y: 0, z: 15 } });
-    const { sections, report } = mapSections(w, 1);
-    expectSections(sections, [
+    const mapped = mapSections(w, 1);
+    const { report } = mapped;
+    expectSections(folded(mapped), [
       [749.9906, 20, 15.7199, 110, -1.5],
       [774.9854, 300, 16.1125, 70, -1.5],
     ]);
@@ -267,7 +295,7 @@ describe('XFLR5 mapping: geometry', () => {
       'Section 3: chord 1e+300 mm is larger than 100000 mm, the limit of Wingdesigner.',
     ]);
     // Twists that differ by more than the limit, after the whole turns have gone.
-    expect(errors(wingOf([sec(0, 100), sec(100, 80, 0, 0, 800)]))).toEqual(['Section 2: twist 440° (tilt included) lies beyond ±360°, the limit of Wingdesigner.']);
+    expect(errors(wingOf([sec(0, 100), sec(100, 80, 0, 0, 800)]))).toEqual(['Section 2: twist 440° lies beyond ±360°, the limit of Wingdesigner.']);
     // Past 5 sections, one line counts the rest.
     expect(errors(wingOf(Array.from({ length: 8 }, (_, i) => sec(i * 10, 2e5))))).toEqual([
       ...Array.from({ length: 5 }, (_, i) => `Section ${i + 1}: chord 200000 mm is larger than 100000 mm, the limit of Wingdesigner.`),
@@ -281,16 +309,19 @@ describe('XFLR5 mapping: geometry', () => {
   });
 
   it('takes whole turns out of the twists, which give the same sections', () => {
-    const turned = mapSections(wingOf([sec(0, 100), sec(100, 80, 0, 0, 359)], { tilt: 2 }), 1);
+    const turned = mapSections(wingOf([sec(0, 100, 0, 0, 2), sec(100, 80, 0, 0, 361)]), 1);
     expect(turned.sections.map((q) => q.twist)).toEqual([-358, 1]);
     expect(texts(turned.report, 'info')).toContain('All twists were changed by -360°, a whole number of turns; the sections stay the same.');
     // A tilt of 400 degrees (XFLR5 keeps tilts up to 1000) is one of 40 degrees.
     const tilt400 = mapSections(wingOf([sec(0, 100), sec(100, 80, 0, 0, -2)], { tilt: 400 }), 1);
     const tilt40 = mapSections(wingOf([sec(0, 100), sec(100, 80, 0, 0, -2)], { tilt: 40 }), 1);
-    expect(tilt400.sections.map((q) => q.twist)).toEqual([40, 38]);
+    expect(tilt400.tilt.angle).toBe(40);
+    expect(tilt400.sections.map((q) => q.twist)).toEqual([0, -2]);
     tilt400.sections.forEach((q, i) => values(q).forEach((v, k) => expect(v).toBeCloseTo(values(tilt40.sections[i])[k], 9)));
     expect(texts(tilt400.report, 'error')).toEqual([]);
-    expect(mapXflr5(xmlFile([wingOf([sec(0, 100), sec(100, 80)], { tilt: 400 }), null, null, null]), { choices: { 'NACA 0009': 'naca:0009' } }).project.sections.map((q) => q.twist)).toEqual([40, 40]);
+    const project = mapXflr5(xmlFile([wingOf([sec(0, 100), sec(100, 80)], { tilt: 400 }), null, null, null]), { choices: { 'NACA 0009': 'naca:0009' } }).project;
+    expect(project.sections.map((q) => q.twist)).toEqual([0, 0]);
+    expect(project.settings.partTilt).toBe(40);
   });
 
   it('raises chords below 1 mm and writes no -0', () => {
@@ -774,10 +805,14 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
   /** Warnings on library airfoils whose chord line is inclined. */
   const inclineText = (r) => texts(r.report, 'warning').filter((t) => t.startsWith('Library airfoil "') && t.includes('has its chord line inclined'));
 
-  it("imports the Clark Y wing of fixture A where XFLR5 draws it: the folded rows moved by the Clark Y's own frame", () => {
-    // The rows of XFLR5's wing table with the tilt folded in (spec section 6.7).
-    const folded = mapSections(FIXTURES.planes[0].wings[0], 1000).sections;
-    expectSections(folded, [
+  it("imports the Clark Y wing of fixture A where XFLR5 draws it: mitred sections moved by the Clark Y's own frame, the 2° tilt turning the built part", () => {
+    const w = FIXTURES.planes[0].wings[0];
+    const mapped = mapSections(w, 1000);
+    // The rows of XFLR5's wing table in the frame of the part; the tilt is returned, not folded in.
+    expect(mapped.tilt).toEqual({ angle: 2, x: 0, z: 0 });
+    expectSections(mapped.sections, mapSections(unplaced(w), 1000).sections.map(values));
+    // With the tilt folded in, as project format version 2 stored it (spec section 6.7).
+    expectSections(folded(mapped), [
       [-0.0366, 0, -2.094, 240, 2],
       [10.8737, 499.3148, 23.8836, 220, 1],
       [47.3222, 897.1235, 65.0587, 150, -0.5],
@@ -788,14 +823,32 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     const fr = r.rows[0].frame;
     expect([round4(fr.x * 100), round4(fr.y * 100), round4(fr.chord * 100)]).toEqual([-0.0016, 3.5546, 100.0016]);
     expect(r.rows[1].frame).toEqual({ x: 0, y: 0, chord: 1 });
-    expect(r.project.sections.map(values)).toEqual([
-      [0.2574, 0, 6.4319, 240.0038, 2],
-      [11.0066, 499.3148, 31.7025, 220.0035, 1],
-      [47.3222, 897.1235, 65.0587, 150, -0.5],
-    ]);
-    // The leading edge of sections 1 and 2 lies where XFLR5 draws the airfoil's leading edge (fr.x, fr.y),
-    // twisted about the quarter chord, and the chord is fr.chord of XFLR5's.
-    expectFramed(r.project.sections, folded, fr);
+    // Mitred planes as XFLR5 builds them, the sections of the untilted part, the tilt about the wing origin.
+    expect(r.project.settings).toMatchObject({ sectionPlanes: 'mitred', partTilt: 2, partRoll: 0, partPivot: { x: 0, y: 0, z: 0 } });
+    expect(r.project.foldedTilt).toBeUndefined();
+    const flat = mapXflr5(xflFile([unplaced(w), null, null, null], [...FIXTURES.foils.values()]));
+    expect(r.project.sections).toEqual(flat.project.sections);
+    // The leading edge of sections 1 and 2 lies where XFLR5 draws the airfoil's leading edge (fr.x, fr.y)
+    // in its mitred plane, twisted about the quarter chord, and the chord is fr.chord of XFLR5's.
+    expectFramed(r.project.sections, mapped.sections, fr, [0, 1], true);
+    // Built and turned 2° nose up about the wing origin, as XFLR5 turns the wing: the trailing edges of
+    // sections 1 and 2 lie within 1e-3 mm of XFLR5's.
+    const build = buildWing(r.project);
+    expect(build.errors).toEqual([]);
+    const planes = sectionPlanes(mapped.sections, 'mitred');
+    const raw = FIXTURES.foils.get(w.sections[0].rightFoil).points;
+    const te = [(raw[0][0] + raw.at(-1)[0]) / 2, (raw[0][1] + raw.at(-1)[1]) / 2];
+    const c = Math.cos(2 * DEG);
+    const sn = Math.sin(2 * DEG);
+    [0, 1].forEach((i) => {
+      const q = mapped.sections[i];
+      const [p] = placeSection([te], { xLE: q.x, y: q.y, z: q.z, chord: q.chord, twist: q.twist, roll: planes.rolls[i], stretch: planes.stretches[i] }, 0.25);
+      const xflr5 = [p[0] * c + p[2] * sn, p[1], -p[0] * sn + p[2] * c];
+      const v = build.stations.find((st) => st.y === r.project.sections[i].y).v;
+      const u0 = surfacePoint(build.surface, 0, v);
+      const u1 = surfacePoint(build.surface, 1, v);
+      expect(dist(build.part.point(u0.map((k, j) => (k + u1[j]) / 2)), xflr5)).toBeLessThan(1e-3);
+    });
     expect(frameText(r)).toEqual([
       nb('Airfoil "Clark Y" (sections 1–2) has its leading edge at x = 0 %, y = 3.55 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved so that the airfoil lies as in XFLR5.'),
     ]);
@@ -902,7 +955,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     expect(naca.rows[0].frame.x * 100).toBeCloseTo(-0.0078, 4);
     expect(naca.rows[0].frame.y * 100).toBeCloseTo(0.1558, 3);
     expect(naca.rows[0].frame.x + naca.rows[0].frame.chord).toBeCloseTo(1, 12);
-    expectFramed(naca.project.sections, folded, naca.rows[0].frame);
+    expectFramed(naca.project.sections, folded, naca.rows[0].frame, [0, 1], true);
     expect(naca.project.sections[2]).toMatchObject({ x: rows[2][0], z: rows[2][2] });
     expect(texts(naca.report, 'info')).toContain(
       nb('Airfoil "NACA 2412" (sections 1–2) has its leading edge at x = -0.01 %, y = 0.16 % and its trailing edge at x = 100 % of chord in its own coordinates; these sections were moved and scaled so that the airfoil lies as in XFLR5.'),
@@ -913,7 +966,7 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     const both = mapXflr5(FIXTURES, { choices: { 'NACA 0009': 'file:Clark Y' } });
     expect(both.rows[1]).toMatchObject({ key: 'file:Clark Y', frame: fr });
     expect(frameText(both)).toEqual([expect.stringMatching(/^Airfoil "Clark Y" \(sections 1–3\) has its leading edge at x\u00a0=\u00a00\u00a0%, y\u00a0=\u00a03\.55\u00a0%.+; these sections were moved so/)]);
-    expectFramed(both.project.sections, folded, fr, [2]);
+    expectFramed(both.project.sections, folded, fr, [2], true);
     // The file's NACA 0009 picked for "Clark Y" sits at the origin: nothing moves, no line names the Clark Y.
     const none = mapXflr5(FIXTURES, { choices: { 'Clark Y': 'file:NACA 0009' } });
     expect(none.project.sections.map(values)).toEqual(rows);
@@ -996,10 +1049,13 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
     // The nose (0, 0) of the generated points, which the build puts at (-lx, -ly) / cT of its unit
     // chord, lies where XFLR5 puts the nose of the mapped section, twisted about the quarter chord.
     const mapped = mapSections(w, 1000).sections;
+    // In XFLR5's mitred planes (the tilted part imports mitred, the tilt turns the built part).
+    const planes = sectionPlanes(mapped, 'mitred');
     mapped.forEach((q, i) => {
       const s = fromXml.project.sections[i];
-      const [nose] = placeSection([[-fr.x / fr.chord, -fr.y / fr.chord]], { xLE: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist }, 0.25);
-      const [xflr5] = placeSection([[0, 0]], { xLE: q.x, y: q.y, z: q.z, chord: q.chord, twist: q.twist }, 0.25);
+      const at = { roll: planes.rolls[i], stretch: planes.stretches[i] };
+      const [nose] = placeSection([[-fr.x / fr.chord, -fr.y / fr.chord]], { xLE: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist, ...at }, 0.25);
+      const [xflr5] = placeSection([[0, 0]], { xLE: q.x, y: q.y, z: q.z, chord: q.chord, twist: q.twist, ...at }, 0.25);
       for (let k = 0; k < 3; k++) expect(nose[k]).toBeCloseTo(xflr5[k], 3);
     });
     expect(frameText(fromXml)).toEqual([
@@ -1325,27 +1381,29 @@ describe('XFLR5 mapping: section planes', () => {
     expect([turn.project.settings.sectionPlanes, turn.project.foldedTilt, planesText(turn)]).toEqual(['mitred', undefined, [MITRED]]);
   });
 
-  it('imports a tilted part with vertical section planes and stores the folded tilt', () => {
+  it('imports a tilted part with mitred section planes and turns the built part about the wing origin', () => {
     const r = mapXflr5(xmlFile([wingOf(vtail, { tilt: 3, position: { x: 100, y: 0, z: 20 } }), null, null, null]));
-    expect([r.project.settings.sectionPlanes, r.project.foldedTilt]).toEqual(['vertical', { angle: 3, x: 100, z: 20 }]);
-    // 0.75 · 120 mm · sin 3° · sin 35° at the root.
-    expect(planesText(r)).toEqual([
-      "Section planes: vertical. The tilt angle of 3° is folded into the section values, which is exact for vertical section planes only: with mitred planes, as in XFLR5, the part would lie up to about 1.58 mm off XFLR5's.",
-    ]);
-    expect(texts(r.report, 'warning')).toEqual(['The panel from section 1 to 2 has 35° dihedral: the vertical sections are 82 % as thick across the panel as in XFLR5.']);
-    expect(buildWing(r.project).warnings).toEqual([]);
-    // Switched to mitred, the build warns with the same estimate from its own rolls.
-    r.project.settings.sectionPlanes = 'mitred';
-    expect(buildWing(r.project).warnings).toEqual([
-      "The tilt angle of 3.00° of the XFLR5 import is folded into the section values, which is exact for vertical section planes only: with mitred planes the part lies up to about 1.57 mm off XFLR5's (0.75 · chord · sin(tilt angle) · sin(roll)). Settings > Section planes Vertical keeps the import exact.",
-    ]);
-    // The stored angle loses whole turns; the file's value stays in the tilt line.
+    expect([r.project.settings.sectionPlanes, r.project.settings.partTilt, r.project.settings.partPivot, r.project.foldedTilt]).toEqual(['mitred', 3, { x: 100, y: 0, z: 20 }, undefined]);
+    expect(planesText(r)).toEqual([MITRED]);
+    expect(texts(r.report, 'warning')).toEqual([]);
+    const tilted = buildWing(r.project);
+    expect([tilted.errors, tilted.warnings]).toEqual([[], []]);
+    // The same part untilted, at the position: the tilted build is its rigid turn by 3° about (100, 20).
+    const flat = buildWing(mapXflr5(xmlFile([wingOf(vtail, { position: { x: 100, y: 0, z: 20 } }), null, null, null])).project);
+    const c = Math.cos(3 * DEG);
+    const sn = Math.sin(3 * DEG);
+    for (const [u, v] of [[0, 0], [0.5, 0.3], [1, 1], [0.2, 1]]) {
+      const p = surfacePoint(flat.surface, u, v);
+      const want = [(p[0] - 100) * c + (p[2] - 20) * sn + 100, p[1], -(p[0] - 100) * sn + (p[2] - 20) * c + 20];
+      expect(dist(tilted.part.point(surfacePoint(tilted.surface, u, v)), want)).toBeLessThan(1e-9);
+    }
+    // The stored angle loses whole turns; the report names it.
     const turned = mapXflr5(xmlFile([wingOf(vtail, { tilt: 363 }), null, null, null]));
-    expect(turned.project.foldedTilt).toEqual({ angle: 3, x: 0, z: 0 });
-    expect(texts(turned.report)).toContain('Tilt angle 363° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.');
-    expect(mapXflr5(xmlFile([wingOf(vtail, { tilt: -540 }), null, null, null])).project.foldedTilt.angle).toBe(-180);
+    expect([turned.project.settings.partTilt, turned.project.settings.partPivot]).toEqual([3, { x: 0, y: 0, z: 0 }]);
+    expect(texts(turned.report)).toContain('Tilt angle 3° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).');
+    expect(mapXflr5(xmlFile([wingOf(vtail, { tilt: -540 }), null, null, null])).project.settings.partTilt).toBe(-180);
     // Round trip through the project file.
-    expect(projectFromJsonText(projectToJsonText(r.project)).project.foldedTilt).toEqual({ angle: 3, x: 100, z: 20 });
+    expect(projectFromJsonText(projectToJsonText(r.project)).project.settings).toMatchObject({ partTilt: 3, partRoll: 0, partPivot: { x: 100, y: 0, z: 20 } });
   });
 
   it('keeps mitred section planes at an airfoil switch: the two sections share the bisector plane, as in XFLR5', () => {
@@ -1436,9 +1494,9 @@ describe('XFLR5 mapping: project and report', () => {
     const p = r.project;
     expect(p.name).toBe('Fixture A Main Wing');
     expect(validateProject(p)).toEqual({ ok: true, errors: [] });
-    expect(p.settings).toMatchObject({ twistPivot: 0.25, spanwise: 'straight', sectionPlanes: 'vertical', mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } });
-    // The tilt of 2° is folded into the sections: vertical section planes keep it exact.
-    expect(p.foldedTilt).toEqual({ angle: 2, x: 0, z: 0 });
+    // Mitred section planes, as XFLR5 builds the wing; the tilt of 2° turns the built part about the wing origin.
+    expect(p.settings).toMatchObject({ twistPivot: 0.25, spanwise: 'straight', sectionPlanes: 'mitred', mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' }, partTilt: 2, partRoll: 0, partPivot: { x: 0, y: 0, z: 0 } });
+    expect(p.foldedTilt).toBeUndefined();
     expect(p.guides.nose.enabled).toBe(false);
     expect(p.guides.end.enabled).toBe(false);
     expect(p.guides.nose.points).toEqual(p.sections.map((s) => [s.x, s.y]));
@@ -1446,21 +1504,21 @@ describe('XFLR5 mapping: project and report', () => {
     expect(r.summary).toBe('Imported the main wing "Main Wing" of "Fixture A" from fixtures_v662.xfl: 3 sections, 2 airfoils.');
     expect(texts(r.report, 'info')).toEqual([
       'XFLR5 measures y_position along the panels; y and z were computed from it and the dihedral.',
-      'Tilt angle 2° applied as in the XFLR5 plane: the sections are rotated about the wing origin, and every twist includes it.',
+      'Tilt angle 2° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).',
       expect.stringMatching(/^Airfoil "Clark Y" \(sections 1–2\): The line from the leading edge to the trailing edge is inclined by -1\.97 degrees/),
       'Not imported: the horizontal stabilizer "Elevator", the fin "Fin". One surface per import; open the file again for another one.',
       'Not used: VLM panel counts and distributions, colours, masses, the body and the analyses.',
       'The trailing edge is built as in the airfoils; Settings > Trailing edge can close it or give it a thickness.',
-      "Section planes: vertical. The tilt angle of 2° is folded into the section values, which is exact for vertical section planes only: with mitred planes, as in XFLR5, the part would lie up to about 0.45 mm off XFLR5's.",
+      'Section planes: mitred, as in XFLR5. The root section is vertical, a section between two panels lies in the bisector plane of the panels, and the tip section is square to the last panel; the airfoils keep their thickness across the panels.',
     ]);
     const stab = mapXflr5(FIXTURES, { surface: 'stab', fileName: 'fixtures_v662.xfl' });
     // A flat part: mitred and vertical planes are the same, so no line on them.
-    expect([stab.project.settings.sectionPlanes, stab.project.foldedTilt]).toEqual(['vertical', { angle: -1.5, x: 650, z: 40 }]);
+    expect([stab.project.settings.sectionPlanes, stab.project.settings.partTilt, stab.project.settings.partPivot]).toEqual(['mitred', -1.5, { x: 650, y: 0, z: 40 }]);
     expect(texts(stab.report).filter((t) => t.startsWith('Section planes'))).toEqual([]);
     expect(stab.summary).toBe('Imported the horizontal stabilizer "Elevator" of "Fixture A" from fixtures_v662.xfl: 2 sections, 1 airfoil.');
     expectSections(stab.project.sections, [
-      [649.9906, 0, 40.7199, 110, -1.5],
-      [674.9854, 230, 41.1125, 70, -1.5],
+      [650, 0, 40, 110, 0],
+      [675, 230, 40, 70, 0],
     ]);
     expect(texts(stab.report, 'info')).toContain('Not imported: the main wing "Main Wing", the fin "Fin". One surface per import; open the file again for another one.');
   });
@@ -1575,8 +1633,11 @@ describe('XFLR5 mapping: project and report', () => {
     expect(validateProject(main.project).ok).toBe(true);
     expect(texts(main.report, 'info')).toContain('Position in the XFLR5 plane applied: the wing origin moved to x 234.95 mm, z 260.35 mm.');
     const stab = mapXflr5(f, { surface: 'stab' });
-    expect(stab.project.sections.map((s) => s.twist)).toEqual(Array(9).fill(0.1));
-    const x0 = 1428.75 + 0.25 * 174.625 * (Math.cos(0.1 * DEG) - 1);
+    // The 0.1° tilt of the stabilizer turns the built part about its wing origin; the sections keep
+    // their twists and lie at the position.
+    expect(stab.project.sections.map((s) => s.twist)).toEqual(Array(9).fill(0));
+    expect(stab.project.settings.partTilt).toBe(0.1);
+    const x0 = 1428.75;
     expect(mapSections(f.planes[0].wings[2], 1000).sections[0].x).toBeCloseTo(x0, 9);
     // The project holds 4 decimals, without the noise of the unit conversion (0.40005 m x 1000). The
     // Rascal airfoils span 0.99984 of the chord from their leading edge, which lies 1.6e-4 of the chord
@@ -1597,7 +1658,7 @@ describe('XFLR5 mapping: German', () => {
     const r = mapXflr5(FIXTURES, { fileName: 'fixtures_v662.xfl' });
     expect(texts(r.report, 'info')).toEqual(
       expect.arrayContaining([
-        'Einstellwinkel 2° wie im XFLR5-Flugzeug angewendet: Die Schnitte sind um den Ursprung des Flügels gedreht, und jede Schränkung enthält ihn.',
+        'Einstellwinkel 2° wie im XFLR5-Flugzeug angewendet: Das Teil dreht sich als starrer Körper um den Ursprung des Flügels (Einstellungen > Einstellwinkel des Teils).',
         'Nicht importiert: das Höhenleitwerk „Elevator“, das Seitenleitwerk „Fin“. Eine Fläche je Import; für eine weitere die Datei erneut öffnen.',
       ]),
     );

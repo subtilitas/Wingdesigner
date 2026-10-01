@@ -88,6 +88,16 @@ export default {
   'settings.spanwise must be "linear", "straight" or "smooth".': 'settings.spanwise muss "linear", "straight" oder "smooth" sein.',
   'settings.sectionPlanes must be "vertical" or "mitred".': 'settings.sectionPlanes muss "vertical" oder "mitred" sein.',
   'foldedTilt must be an object with the numbers angle, x and z.': 'foldedTilt muss ein Objekt mit den Zahlen angle, x und z sein.',
+  'settings.{key} must be a number within ±{max} degrees.': 'settings.{key} muss eine Zahl innerhalb von ±{max} Grad sein.',
+  'settings.partPivot must be null or an object with the numbers x, y and z within ±{max} mm.': 'settings.partPivot muss null oder ein Objekt mit den Zahlen x, y und z innerhalb von ±{max} mm sein.',
+  'The tilt angle of {angle}° of the XFLR5 import stays folded into the sections: a guide curve is on or edited, and guide curves hold x only.':
+    'Der Einstellwinkel von {angle}° des XFLR5-Imports bleibt in die Schnitte eingerechnet: Eine Leitkurve ist eingeschaltet oder bearbeitet, und Leitkurven halten nur x.',
+  'The tilt angle of {angle}° of the XFLR5 import stays folded into the sections: without it a twist would lie beyond ±{max}°.':
+    'Der Einstellwinkel von {angle}° des XFLR5-Imports bleibt in die Schnitte eingerechnet: Ohne ihn läge eine Schränkung außerhalb von ±{max}°.',
+  'The tilt angle of {angle}° that the XFLR5 import folded into the sections is a rigid tilt of the whole part (Settings > Part tilt); the sections hold the values of the untilted part.':
+    'Der Einstellwinkel von {angle}°, den der XFLR5-Import in die Schnitte eingerechnet hatte, ist ein starrer Einstellwinkel des ganzen Teils (Einstellungen > Einstellwinkel des Teils); die Schnitte halten die Werte des ungedrehten Teils.',
+  'With mitred section planes the shape changes: the folded tilt was exact for vertical planes only, the rigid tilt places the part as XFLR5 does.':
+    'Mit Schnittebenen auf Gehrung ändert sich die Form: Der eingerechnete Einstellwinkel war nur für senkrechte Ebenen genau, der starre Einstellwinkel setzt das Teil wie XFLR5.',
   'foldedTilt.angle must be within ±180 degrees.': 'foldedTilt.angle muss innerhalb von ±180 Grad liegen.',
   'foldedTilt.{axis} must be within ±{max} mm.': 'foldedTilt.{axis} muss innerhalb von ±{max} mm liegen.',
   'settings.trailingEdge.mode must be "asis", "closed" or "thickness".': 'settings.trailingEdge.mode muss "asis", "closed" oder "thickness" sein.',

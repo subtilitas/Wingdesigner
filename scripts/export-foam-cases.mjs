@@ -15,8 +15,9 @@ mkdirSync(out, { recursive: true });
 const cases = [];
 const options = { 'guided-elliptic': { kerf: 1 }, 'pointed-tip': { paper: 'a3' }, 'mitred-gull-15-5': { paper: 'letter' } };
 for (const c of stepCases()) {
-  // The Y-up variant differs from its case in the STEP axes only.
-  if (c.up === 'y') continue;
+  // The Y-up variant differs from its case in the STEP axes only; the cores of a placed part lie in
+  // its own frame, the same as those of its unplaced case.
+  if (c.up === 'y' || c.name === 'part-tilt-roll') continue;
   const build = buildWing(c.project);
   if (build.errors.length) throw new Error(`${c.name}: ${build.errors.join(' ')}`);
   const segments = foamSegments(build, proposeCuts(build, 300));
