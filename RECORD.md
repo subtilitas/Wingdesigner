@@ -5,7 +5,7 @@ were verified and how, and open items. Treat every statement as a claim to re-ch
 column says how. Version history lives in CHANGELOG.md and git. Where the work stands, the next
 steps and the working agreements with the owner: `docs/Handover.md`.
 
-Last updated: 2026-10-01
+Last updated: 2026-10-02
 
 ## State
 

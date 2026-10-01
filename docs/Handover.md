@@ -1,13 +1,13 @@
 # Handover
 
-State of Wingdesigner on 2026-10-01, for the next person or session that works on it. Read
+State of Wingdesigner on 2026-10-02, for the next person or session that works on it. Read
 `RECORD.md` first: it holds the verified state, the decisions with their reasons, the measurements and
 the open items, each as a claim to re-check. This page adds where the work stands, what comes next,
 how the owner works with contributors, and what the repository does not hold.
 
 ## Where the work stands
 
-| Item | State on 2026-10-01 |
+| Item | State on 2026-10-02 |
 | --- | --- |
 | Version | `package.json` holds 0.4.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
 | Next release | Not prepared. The section Unreleased of `CHANGELOG.md` holds the integral winglet and the flow5 import. The steps: Development, section Release. |
