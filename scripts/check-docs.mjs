@@ -72,7 +72,7 @@ export function tableLinkProblems(text, file) {
 export const INTERNAL_TERMS = [
   [/handover/gi, 'the handover'],
   [/\bRECORD\b/g, 'RECORD.md'],
-  [/\bnpm\s+run\b|\bnpx\b/g, 'an npm script'],
+  [/\bnpm\s+(?:run|test|ci|install|i|exec|start|version|publish)\b|\bnpx\b/g, 'an npm command'],
   [/(?<![\w/.-])(?:\.\/)?(?:scripts|test|e2e|src|public|\.github)\/|\/(?:blob|tree)\/[^/\s]+\/(?:scripts|test|e2e|src|public|\.github)\//g, 'a path of the repository'],
   [/\b(?:ci|docs|release)\.yml\b|\bcontinuous\s+integration\b/gi, 'continuous integration'],
   [/\bCI\b/g, 'continuous integration'],
@@ -117,7 +117,9 @@ export function changelogProblems(text, file = 'CHANGELOG.md', constants = new S
 
 function main() {
   const problems = [];
-  if (existsSync('CHANGELOG.md')) problems.push(...changelogProblems(readFileSync('CHANGELOG.md', 'utf8'), 'CHANGELOG.md', sourceConstants()));
+  // release.yml reads the release notes from CHANGELOG.md.
+  if (!existsSync('CHANGELOG.md')) problems.push('missing CHANGELOG.md');
+  else problems.push(...changelogProblems(readFileSync('CHANGELOG.md', 'utf8'), 'CHANGELOG.md', sourceConstants()));
   for (const [en, de] of PAGE_PAIRS) {
     for (const f of [en, de]) if (!existsSync(f)) problems.push(`missing page ${f}`);
   }
