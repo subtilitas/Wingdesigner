@@ -530,7 +530,7 @@ Counts in this file: 161 points per airfoil, 165 profile knots, 17 stations (8 p
 | Property | Value |
 | --- | --- |
 | Key | `wingdesigner.project.v1` |
-| Stored keys | same as the project JSON, without `generator`, `exportedAt`, `coordinateSystem` and `derived` |
+| Stored keys | same as the project JSON, without `generator`, `exportedAt`, `coordinateSystem` and `derived`; `version` as a saved file has it (3, or 4 with `settings.leftHalf` `"turned"`) |
 
 | Event | Behaviour |
 | --- | --- |

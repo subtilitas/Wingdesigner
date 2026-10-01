@@ -611,7 +611,7 @@ liegen innerhalb von ±180°, Vorgabe 0°. Die Abschnitte 3.1 bis 3.8, die Fläc
 Prüfungen beim Aufbau arbeiten im Koordinatensystem des Teils; die Transformation T wirkt auf die
 angepasste Fläche.
 
-Drehpunkt P = (P_x, P_y, P_z): `settings.partPivot`, wenn gespeichert (der XFLR5-Import speichert den
+Drehpunkt P = (P_x, P_y, P_z): `settings.partPivot`, wenn gespeichert (der XFLR5- und der flow5-Import speichern den
 Ursprung des Flügels mit P_y = 0), sonst die Nasenleiste (x, y, z) des Wurzelschnitts. **Einstellungen**
 nennt ihn unter den beiden Feldern.
 
@@ -634,8 +634,20 @@ T(p) = M (p − P) + P      M = | cos t    sin t sin r    sin t cos r |
   wandert nach oben); ein positiver Rollwinkel hebt den rechten Randbogen (ein Punkt außerhalb des
   Drehpunkts, y > P_y, wandert nach oben).
 - Richtungen (Normalen von Ebenen, die Bezugsrichtung x einer Abschlussfläche) drehen sich nur mit M.
-- Linke Hälfte: das Spiegelbild der gedrehten rechten Hälfte an der Ebene y = 0. Eine gerollte Wurzel
-  liegt nicht in dieser Ebene, daher fügen die Dreiecksnetze die Hälften nicht zusammen (Abschnitt 5).
+- Linke Hälfte, nach **Linke Hälfte** (Left half; `settings.leftHalf`), mit S(x, y, z) = (x, −y, z):
+  - `"mirror"` (Vorgabe): S(T(p)), das Spiegelbild der gedrehten rechten Hälfte an der Ebene y = 0.
+  - `"turned"`: T(S(p)), das Spiegelbild der ungedrehten rechten Hälfte, mit ihr gedreht: Der ganze
+    Flügel dreht sich als ein Körper, so wie flow5 einen zweiseitigen Flügel um seinen Rollwinkel
+    `Rx_angle` dreht. Die linke Hälfte rollt dann in die andere Richtung als mit `"mirror"`; der
+    flow5-Import setzt `"turned"` für einen gerollten zweiseitigen Flügel ([[Dateiformate|Dateiformate]],
+    Abschnitt flow5-Import).
+  - Bei r = 0 stimmen beide überein: Eine Drehung um die y-Achse erhält die Ebene y = 0.
+  - Eine gerollte Wurzel liegt nicht in der Ebene y = 0, daher fügen die Dreiecksnetze die Hälften nicht
+    zusammen (Abschnitt 5).
+  - Spannweite (Kennwerte): 2 |y| des gedrehten rechten Randbogens mit `"mirror"`; der Abstand in y der
+    gedrehten Randbögen mit `"turned"`.
+- Der flow5-Import speichert `Ry_angle` als t und `Rx_angle` als r: flow5 dreht einen Flügel erst um x,
+  dann um y, beide um den Ursprung des Flügels, mit denselben Vorzeichen.
 - Ausdehnung: Nach der Anpassung muss jeder mit T gedrehte Kontrollpunkt in x, y und z innerhalb von
   ±1 200 000 mm liegen (`LIMITS.maxExtent`); die Fläche liegt in der konvexen Hülle ihrer
   Kontrollpunkte. Sonst bricht der Aufbau ab mit:
@@ -729,7 +741,9 @@ Beispiel: Entwurfstyp **Sportmodell** (Sport), N = 60, d = 1, offene Endleiste: 
   zu einem Eckpunkt der Kontur summiert, sodass ein Flügel 1 000 000 mm vom Ursprung entfernt die
   Streifen behält.
 - Lage des Teils (Abschnitt 3.9): Die Eckpunkte des Halbflügels werden vor der Spiegelung mit T gedreht.
-- Linker Halbflügel: y → −y, Umlaufsinn der Dreiecke umgekehrt.
+- Linker Halbflügel: y → −y, Umlaufsinn der Dreiecke umgekehrt. Mit **Linke Hälfte** `"turned"` und
+  einem Rollwinkel des Teils kommt die Spiegelung zuerst, und T dreht die gespiegelten Eckpunkte
+  (Abschnitt 3.9).
 
 | **Flügelhälften** (Wing halves) | Hüllen |
 | --- | --- |
@@ -751,7 +765,8 @@ Toleranz: [[Dateiformate|Dateiformate]].
 
 Lage des Teils (Abschnitt 3.9): Jeder Punkt (Kontrollpunkte von Flächen und Kurven, Eckpunkte, die
 Ursprünge der Ebenen der Abschlussflächen) wird mit T gedreht, jede Richtung (Normalen der
-Abschlussflächen und Bezugsrichtungen) mit M; danach wird die linke Hälfte gespiegelt, danach dreht die
+Abschlussflächen und Bezugsrichtungen) mit M; die linke Hälfte wird nach der Drehung gespiegelt, mit **Linke Hälfte** `"turned"` davor
+(Abschnitt 3.9); danach dreht die
 **Fusion-360-Korrektur** die Achsen. Lage und Drehung sind Rotationen und erhalten die
 Orientierungsflags. Die Tabellen unten geben die Normalen im Koordinatensystem des Teils an.
 
@@ -792,6 +807,10 @@ Orientierungsflags:
 | `same_sense` der ebenen Flächen | `.T.` | `.T.` |
 | Orientierung von `FACE_OUTER_BOUND` | `.T.` | `.F.` (jede Schleife umgekehrt) |
 | Normale der Ebene | Wurzel −y, Rand (0, cos φ_tip, sin φ_tip) | als Vektoren gespiegelt: Wurzel +y, Rand (0, −cos φ_tip, sin φ_tip) (nach außen) |
+
+Lage des Teils: Punkte und Richtungen der rechten Hälfte drehen sich mit T und M, die der linken Hälfte
+mit S ∘ T oder T ∘ S (**Linke Hälfte**, Abschnitt 3.9). Die Flags bleiben wie in der Tabelle: Die
+Spiegelung kehrt die Orientierung um, die Drehung erhält sie.
 
 Prüfung: `scripts/validate_step.py` liest die von `scripts/export-step-cases.mjs` geschriebenen Dateien
 mit OpenCascade. Fälle: die 13 Fälle aus `test/step-cases.js`, 5 davon mit Schnittebenen **Auf Gehrung**

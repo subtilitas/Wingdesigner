@@ -62,10 +62,13 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/export/threemf.js` | 3MF-Export |
 | `src/export/foam.js` | Dateien des Schaumschnitt-Assistenten: `.dat`-Profile, `segments.csv`, Profil-ZIP (`profileZip`), Blöcke und Blatt der Schablonen (`templateBlocks`, `templateLayout`), Versatz für die Schnittbreite (`offsetPolygon`), Schreiber für SVG (Scalable Vector Graphics), DXF (Drawing Exchange Format, AutoCAD R12) und PDF (Portable Document Format) (`layoutSvg`, `layoutDxf`, `layoutPdf`), Seitenaufteilung des PDF (`pagePlan`) |
 | `src/export/precision.js` | Prüfung der 32-Bit-Koordinaten beim Export als STL und 3MF: `checkPrecision`, `MeshPrecisionError` |
-| `src/import/errors.js` | `XflrError`: Fehler auf Dateiebene der XFLR5-Leser, mit einem `code` und, bei einem `.xfl`-Projekt, dem Byte-`offset` |
-| `src/import/xfl.js` | Leser für XFLR5-Projekte (`.xfl`): `readXfl` (Fenster von 4 194 304 Byte), `readXflBytes` (Bytes im Speicher), `startsLikeXfl`, `sniffXflr5` |
+| `src/import/errors.js` | `XflrError`: Fehler auf Dateiebene der XFLR5- und flow5-Leser, mit einem `code` und, bei einem `.xfl`- oder `.fl5`-Projekt, dem Byte-`offset` |
+| `src/import/xfl.js` | Leser für XFLR5-Projekte (`.xfl`): `readXfl` (Fenster von 4 194 304 Byte), `readXflBytes` (Bytes im Speicher), `startsLikeXfl`, `sniffXflr5`; der fensterweise lesende Big-Endian-`Reader`, den der `.fl5`-Leser mitbenutzt |
+| `src/import/fl5.js` | Leser für flow5-Projekte (`.fl5`, Formate 500750 und 500754): `readFl5`, `readFl5Bytes`; `readProjectFile` (ein `.xfl`- oder `.fl5`-Projekt nach seiner ersten Zahl) |
+| `src/import/xmlscan.js` | XML-Tokenizer beider XML-Leser: `Scanner`, `children`, `readText`, `toNumber` |
 | `src/import/xflxml.js` | Leser für XFLR5-Flugzeug- und -Flügeldateien in der Extensible Markup Language (XML): `readXflr5Xml` |
-| `src/import/xflr5.js` | Abbildung eines XFLR5-Flügels auf ein Projekt: Flächen eines Flugzeugs (`planeSurfaces`), Schnitte (`mapSections`), Profiltabelle, Bericht und Projekt (`mapXflr5`), Profilprüfungen in Schritten (`checkSteps`), hochgeladene Profile (`readAirfoilUpload`) |
+| `src/import/fl5xml.js` | Leser für flow5-Flugzeug- und -Flügeldateien in XML: `readFlow5Xml`; `readPlaneXml` (eine XFLR5- oder flow5-XML-Datei nach ihrem Wurzelelement) |
+| `src/import/xflr5.js` | Abbildung eines XFLR5- oder flow5-Flügels auf ein Projekt: Flächen eines Flugzeugs (`planeSurfaces`; bei flow5 jeder Flügel des Flugzeugs), Schnitte (`mapSections`), Profiltabelle, Bericht und Projekt (`mapXflr5`), Profilprüfungen in Schritten (`checkSteps`), hochgeladene Profile (`readAirfoilUpload`) |
 | `src/model/project.js` | Projektmodell, Vorgaben, Grenzen, Validierung |
 | `src/model/budget.js` | Warnschwellen, Flächengitter, Schätzung von Rechenzeit und Speicher |
 | `src/model/io.js` | Import und Export der Projekt-JSON; `upgradeFoldedTilt` (ein eingerechneter Einstellwinkel einer Datei der Version 2 wird zum **Einstellwinkel des Teils**) |
@@ -88,7 +91,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/dom.js` | DOM-Hilfsfunktionen |
 | `src/ui/styles.css` | Stile |
 | `src/i18n/index.js` | Sprache (`language`, `setLanguage`, `initialLanguage`), `tr()` und die Zahlenformate `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`; `index.js` fasst sie zusammen |
+| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `flow5`; `index.js` fasst sie zusammen |
 
 ### Skripte
 
@@ -131,15 +134,16 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `wingdesigner.language` | Gewählte Sprache, `en` oder `de` (Abschnitt [Übersetzungen](#übersetzungen)) |
 | `wingdesigner.foam` | Einstellungen des Schaumschnitt-Assistenten: `coreLength`, `tolerance`, `kerf` (mm), `paper` (`a4`, `a3`, `letter`); jeder Wert außerhalb seines Bereichs gilt als seine Vorgabe |
 
-### XFLR5-Import
+### XFLR5- und flow5-Import
 
-Der Import liest eine XFLR5-Datei und baut aus einem Flügel eines Flugzeugs darin ein Projekt. XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln; 6.62 ist seine letzte Version. Die Leser und die Abbildung in `src/import/` nutzen keine DOM-API und laufen in Node.js. Der Dialog (`src/ui/xflr5.js`) und **Öffnen** (`src/main.js`) nutzen das DOM. Die Regeln für die Dateien und die Formeln der Abbildung stehen auf der Seite [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import; den Dialog beschreibt das [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Import aus XFLR5.
+Der Import liest eine XFLR5- oder flow5-Datei und baut aus einem Flügel eines Flugzeugs darin ein Projekt. XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln; 6.62 ist seine letzte Version. flow5 ist sein Nachfolger (Version 7), unter der GNU General Public License (GPL) 3.0; die flow5-Leser sind nach einer Beschreibung der Formate geschrieben, nicht nach dem Code von flow5. Die Leser und die Abbildung in `src/import/` nutzen keine DOM-API und laufen in Node.js. Der Dialog (`src/ui/xflr5.js`) und **Öffnen** (`src/main.js`) nutzen das DOM. Die Regeln für die Dateien und die Formeln der Abbildung stehen auf der Seite [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import; den Dialog beschreibt das [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Import aus XFLR5 und flow5.
 
-1. Der Änderungs-Handler der Dateiauswahl von **Öffnen** in `src/main.js` wählt den Leser. Endung `.xfl`, `.wpa` oder `.fl5`: der `.xfl`-Leser. `.xml`: der XML-Leser. Jede andere Endung außer `.json`, oder keine: zuerst die ersten 4 Byte (`sniffXflr5`, und eine UTF-16-Bytereihenfolgemarke für den XML-Leser), dann Text, der mit `<?xml`, `<!` oder `<explane` beginnt (XML-Leser); sonst Projekt-JSON. `importXflr5` ruft den Leser auf und öffnet den Dialog.
-2. Ein Leser löst `XflrError` aus, wenn er eine Datei nicht importieren kann. `code` ist `not-xflr5`, `flow5`, `wpa`, `damaged`, `not-plane-xml`, `no-plane`, `fin` oder `too-large`; `offset` ist das Byte der Beschädigung in einem `.xfl`-Projekt, sonst `null`. **Öffnen** zeigt `<file> kann nicht geöffnet werden: <message>` und lässt den Entwurf und den Rückgängig-Verlauf unverändert. Jede andere Ausnahme des Imports erscheint als `<file> kann nicht geöffnet werden: Interner Fehler: <message>`.
+1. Der Änderungs-Handler der Dateiauswahl von **Öffnen** in `src/main.js` wählt den Leser. Endung `.xfl`, `.wpa` oder `.fl5`: `readProjectFile`, das die erste Zahl liest und den `.fl5`-Leser (500000 bis 509999) oder den `.xfl`-Leser aufruft. `.xml`: `readPlaneXml`, das den XFLR5-Leser aufruft, bei einem Wurzelelement von flow5 den flow5-Leser. Jede andere Endung außer `.json`, oder keine: zuerst die ersten 4 Byte (`sniffXflr5`, und eine UTF-16-Bytereihenfolgemarke für die XML-Leser), dann Text, der mit `<?xml`, `<!`, `<explane`, `<xflplane` oder `<xflwing` beginnt (XML-Leser); sonst Projekt-JSON. `importXflr5` ruft den Leser auf und öffnet den Dialog.
+2. Ein Leser löst `XflrError` aus, wenn er eine Datei nicht importieren kann. `code` ist `not-xflr5`, `flow5` (von den XFLR5-Lesern, die flow5-Dateien weiterreichen), `flow5-old`, `flow5-new`, `wpa`, `damaged`, `not-plane-xml`, `no-plane`, `fin` oder `too-large`; `offset` ist das Byte der Beschädigung in einem `.xfl`-Projekt, sonst `null`. **Öffnen** zeigt `<file> kann nicht geöffnet werden: <message>` und lässt den Entwurf und den Rückgängig-Verlauf unverändert. Jede andere Ausnahme des Imports erscheint als `<file> kann nicht geöffnet werden: Interner Fehler: <message>`.
 3. `readXfl(file)` und `readXflr5Xml(text)` liefern dasselbe Objekt, `XflrFile`: `kind` (`xfl` oder `xml`), `format`, `lengthUnit` (Millimeter je Längeneinheit der Datei; 1000 bei `.xfl`), `unitName`, `wingOnly`, `planes`, `foils`, `foilError` und `warnings`. Ein Flugzeug hat einen `name` und `wings`, die 4 Flügelplätze von XFLR5: Tragfläche, zweiter Flügel, Höhenleitwerk (Elevator) und Seitenleitwerk; ein Platz, den das Flugzeug nicht hat, ist `null`. `foils` (nur `.xfl`) ordnet einem Profilnamen seine Basiskoordinaten und seine Klappeneinstellungen zu. Die Flügelschnitte behalten die Werte der Datei: die Längeneinheit der Datei und Grad.
 4. `readXfl` liest ein Projekt durch Fenster von 4 194 304 Byte (`WINDOW_SIZE`, `Blob.slice`). Die Leser der Datensätze sind Generatorfunktionen. Ein Leser gibt ab (`yield`), wenn sein nächster Lesezugriff außerhalb des Fensters liegt; `readXfl` lädt das Fenster, das dort beginnt, und setzt ihn fort. Ein Überspringen verschiebt nur den Offset. Die Analysen und die Analyseergebnisse, die den größten Teil eines Projekts von 96,7 MB ausmachen, werden anhand ihrer Anzahlen übersprungen. Das Lesen endet nach den Profilen. `readXflBytes` liest eine Datei im Speicher als ein Fenster. Eine Datei, die nach den Flugzeugen beschädigt ist, liefert ihre Flugzeuge ohne Profile (`foilError` und eine Warnung).
-5. `readXflr5Xml` ist ein Pull-Tokenizer ohne Baum, linear in der Länge des Textes. Eine fehlende oder unlesbare Zahl bleibt NaN (keine Zahl) und erzeugt eine Warnung; XFLR5 liest solchen Text als 0.
+5. `readXflr5Xml` ist ein Pull-Tokenizer ohne Baum (`src/import/xmlscan.js`), linear in der Länge des Textes. Eine fehlende oder unlesbare Zahl bleibt NaN (keine Zahl) und erzeugt eine Warnung; XFLR5 liest solchen Text als 0.
+   - flow5-Dateien: `readFl5` und `readFlow5Xml` liefern dieselbe Form mit `program: 'flow5'` (`kind` `fl5` oder `xml`). Ein Flugzeug hat `kind` (`wings` oder `mesh`), `bodies` und `wings`, eine Liste in der Reihenfolge der Datei; ein Flügel hat `type` (`main`, `elevator`, `fin`, `other`), `twoSided`, `position`, `tilt` (`Ry_angle`) und `roll` (`Rx_angle`). `readFl5` geht jeden Datensatz vor den Flugzeugen anhand seiner Anzahlen durch, über die Fenster des `.xfl`-Lesers, und hört nach dem letzten Flugzeug auf. `programOf(file)` liefert `XFLR5` oder `flow5` für die Meldungen, die einen Platzhalter `{program}` tragen.
 6. `mapXflr5(file, options)` (`src/import/xflr5.js`) ist eine reine Funktion. `options` enthält `plane`, `surface` (`main` oder `stab`), `fileName`, `name`, `project` (das aktuelle Projekt), `library` (Einträge der mitgelieferten Bibliothek), `uploads` (eingelesene `.dat`-Dateien) und `choices` (der gewählte Optionsschlüssel je XFLR5-Profilname: `file:<name>`, `upload:<i>`, `project:<id>`, `library:<id>` oder `naca:<code>`). Das Ergebnis enthält `rows` (die Profiltabelle), `options` (die Einträge der Profillisten), `report` (Zeilen mit der Schwere `error`, `warning` oder `info`), `errors`, `project` (`null`, solange der Bericht einen Fehler enthält) und `summary`. Die Schritte: `mapSections` (y und z aus der abgewickelten Spannweite und der V-Form, Bereinigung von Schnitten bei gleichem y und von Profiltiefen unter 1 mm, die Position; der Einstellwinkel wird zurückgegeben, und das Projekt speichert ihn als `settings.partTilt` mit `partRoll` 0 und den Ursprung des Flügels als `partPivot`); ein Profil je Name (Datei, Uploads, aktuelles Projekt, Bibliothek, NACA-Generator, ähnlicher Name); die Profillage (`placeAirfoil`; ein NACA-Profil des aktuellen Projekts, dessen Punkte der erzeugte oder geprüfte Schnitt seiner Bezeichnung sind, erhält die Profillage dieses erzeugten Schnitts, `checkProjectAirfoil`); `createProject` und `validateProject`. Prüfergebnisse werden je Profilobjekt und Sprache zwischengespeichert (`WeakMap`), weil der Dialog nach jeder Wahl erneut abbildet.
 7. `openXflr5Dialog(file, { fileName, project, library })` ruft nach jeder Wahl `mapXflr5` auf und zeichnet das Ergebnis. Die erste Abbildung folgt auf `checkSteps`, einen Generator mit einem Schritt je Profilname. Der Dialog führt ihn in Scheiben von 50 ms aus (`SLICE_MS`), damit Klicks, Escape und Scrollen währenddessen funktionieren. Ein Wechsel des Flugzeugs oder der Fläche führt `checkSteps` des neuen Flügels sofort bis zu 50 ms lang aus; ist es dann nicht fertig, schaltet der Dialog **Importieren** (Import) ab, leert Profiltabelle, Vorschau, Kennzahlenzeile und den nicht eingegebenen Projektnamen des vorigen Flügels und führt den Rest in Scheiben aus, wie bei der ersten Abbildung. Das Kandidatenprojekt wird für die Vorschau mit `buildWing` gebaut; ein Projekt über einer Größenwarnung wird nicht gebaut, und die Vorschau zeichnet gerade Felder. Die Fehler und Warnungen des Aufbaus werden zu Berichtszeilen (`buildNotes`), die **Importieren** nicht sperren. Das Promise wird mit `{ project, summary, warnings }` erfüllt, nach **Abbrechen** (Cancel) mit `null`.
 8. `main.js` ruft `replaceProject` auf (`store.replace`, ein Rückgängig-Schritt), öffnet die Registerkarte **Schnitte** und zeigt die Zusammenfassung und die erste Warnung als Meldung.
@@ -158,7 +162,10 @@ Der Import liest eine XFLR5-Datei und baut aus einem Flügel eines Flugzeugs dar
 | `MAX_FOILS` | `LIMITS.maxAirfoils` (10 000) | Aus einem `.xfl`-Projekt gelesene Profile |
 | `MAX_FOIL_POINTS` | 2 000 000 | Aus einem `.xfl`-Projekt gelesene Profilpunkte; weitere Profile werden übersprungen und gemeldet |
 | `MAX_XFLR5_FOIL_POINTS` | 1000 | Punkte eines Profils; XFLR5 fasst höchstens 604 |
-| `MAX_ELEMENTS`, `MAX_DEPTH`, `MAX_ATTRIBUTES` (`src/import/xflxml.js`) | 1 000 000; 100; 100 | XML-Elemente je Datei, Schachtelungstiefe, Attribute je Element |
+| `MAX_ELEMENTS`, `MAX_DEPTH`, `MAX_ATTRIBUTES` (`src/import/xmlscan.js`) | 1 000 000; 100; 100 | XML-Elemente je Datei, Schachtelungstiefe, Attribute je Element |
+| `FL5_FORMATS` (`src/import/fl5.js`) | 500750, 500754 | Gelesene `.fl5`-Projektformate |
+| `MAX_FLOW5_FOIL_POINTS` | 10 000 | Punkte eines `.fl5`-Profils |
+| `MAX_FLOW5_WINGS` (`src/import/fl5xml.js`) | 100 | Gelesene Flügel je Flugzeug einer flow5-XML-Datei |
 
 Schnitte je Flügel: `LIMITS.maxSections` (20 000). XML-Dateien: `MAX_PROJECT_BYTES` (100 MB).
 
@@ -286,11 +293,12 @@ Einen Text hinzufügen:
 | `airfoil.js` | `src/airfoil/` |
 | `xfl.js` | `src/import/xfl.js` |
 | `xflxml.js` | `src/import/xflxml.js` |
+| `flow5.js` | `src/import/fl5.js`, `src/import/fl5xml.js`, die flow5-Texte von `src/import/xflr5.js` und `src/ui/xflr5.js` sowie `flow5: <file>` in `src/ui/airfoils.js` |
 | `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` und die Texte des XFLR5-Imports in `src/main.js` und `src/ui/airfoils.js`: Titel von **Öffnen** (Open), Eintrag in **Hilfe** (Help), Anzahl weiterer Warnungen, Ablehnung einer XFLR5-Datei beim Hochladen, `XFLR5: <file>` unter einem importierten Profil |
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` sowie Beschriftung und Titel von **Schaum** (Foam) in `src/main.js` |
 | `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` und die Schaltfläche **Winglet …** in `src/ui/sections.js` |
 
-`src/i18n/de/index.js` fasst die elf Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 33 und 141 Texte.
+`src/i18n/de/index.js` fasst die zwölf Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 34 und 146 Texte, die Datei des flow5-Imports 42.
 
 Eine Sprache hinzufügen:
 
@@ -333,6 +341,8 @@ Regeln für Texte:
 | XFLR5-Projektdateien für Sonderfälle | Von `test/xflr5-writer.js` nach der Beschreibung des Formats in `src/import/xfl.js` geschrieben; kein Code von XFLR5 |
 | Hochgeladene Profile in den XFLR5-Browsertests | In `e2e/xflr5.spec.js` erzeugt: `.dat`-Datei `TEST 12` mit 13 Punkten, erfundene Koordinaten |
 | Screenshot des Importdialogs | `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** (Sport) geöffnet, in beiden Sprachen |
+| flow5-Dateien in Unit- und Browsertests | `test/fixtures/flow5/`: von lokalen Builds von flow5 7.57 und 7.56 aus eigenen Eingaben geschrieben, MIT, Herkunft je Datei in `test/fixtures/flow5/SOURCE.md` (Abschnitt [flow5-Testdateien und Tests](#flow5-testdateien-und-tests)) |
+| flow5-Projektdateien für andere Datensatzformate | Von `test/fl5-writer.js` nach der Beschreibung des Formats geschrieben; kein Code von flow5 |
 
 Profildateien Dritter werden nur unter einer Lizenz aus der Zeile Lizenz in [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek) eingecheckt. XFLR5-Dateien Dritter werden nur unter der MIT-Lizenz eingecheckt (`test/fixtures/xflr5/uaslab/`).
 Quellen: [[Profilquellen|Profilquellen]].
@@ -362,7 +372,7 @@ Unit-Tests (Vitest, Node.js):
 | `test/xflr5-xfl.test.js` | 39 | Leser für `.xfl`-Projekte: Byte-Aufbau von `fixtures_v662.xfl`; die alten Formate von `Rascal110.xfl`; die reservierten Blöcke von XFLR5 6.10.01 bis 6.10.04; `UltraStick25e_v662_stripped.xfl` gegen `UltraStick25e.xml`; Projekte aus `test/xflr5-writer.js` (Analysen mit Steuerverstärkungen und Ergebnispunkten, Flugzeugergebnisse, Null-Zeichenketten, Rümpfe, wiederholte Profilnamen, Klappen, bereinigte Positionen); abgelehnte Dateien (flow5, `.wpa`, JSON, Größe, Anzahlen, ungerade Zeichenkettenlängen); Beschädigung (abgeschnitten an jeder Datensatzgrenze und an jedem Byte, Beschädigung nach den Flugzeugen); Fenster beliebiger Größe; deutsche Meldungen |
 | `test/xflr5-xml.test.js` | 46 | Leser für XML-Dateien: Fixtures in Millimetern, Zoll und Metern; Flügeldateien; Einheiten; Syntax (Byte-Order-Mark, Text im 16-Bit Unicode Transformation Format (UTF-16), Kommentare, Abschnitte mit Zeichendaten (CDATA), Entitäten, Groß- und Kleinschreibung, aufgefüllte Zahlen, Exponenten); fehlende und unlesbare Zahlen; Flügelplätze nach `<Type>` und nach der Reihenfolge; abgelehnte Dateien; Grenzen; lineare Laufzeit bei langer und feindlicher Eingabe; deutsche Meldungen |
 | `test/xflr5-map.test.js` | 67 | Abbildung: y und z aus abgewickelter Spannweite und V-Form, Schränkung, Position, der als **Einstellwinkel des Teils** gespeicherte Einstellwinkel (der gedrehte Aufbau gegen die Konstruktion von XFLR5); Schnittebenen eines Imports (auf Gehrung, mit Einstellwinkel, Rückfall bei Faltung und Dickenstreckung, ein Profilwechsel in einer Ebene, die Profillage entlang einer geneigten Ebene mit den Feldwinkeln von XFLR5); Bereinigung (Schnitte bei gleichem y, Profiltiefen unter 1 mm, Grenzen); Flächen eines Flugzeugs; Profilquellen, Wahl, Uploads und Klappen; Profillage gegen die Zahlen von Fixture A und B, auch für NACA-Schnitte des aktuellen Projekts (erzeugte und geprüfte Punkte, von Hand bearbeitete Angaben); Berichtszeilen für Profile des aktuellen Projekts aus einem XFLR5-Import, einem Upload oder der Bibliothek und für Bibliotheksprofile mit geneigter Profilsehne; ein Profil der Datei, dessen Endleiste ihr eigenes Ende kreuzt; Projekt, JSON-Rundlauf und Bericht; 10 000 Profilnamen in linearer Zeit; Deutsch |
-| `test/part.test.js` | 7 von 15 | Dateien der Version 1 und 2: ihre Schlüssel der Lage des Teils verworfen; Aktualisierung eines eingerechneten Einstellwinkels des Projektformats Version 2: dasselbe Teil mit Schnittebenen **Senkrecht** (Drehpunkt der Schränkung 0,25 und 0,5, spitzes Flügelende, **Gerade Felder**) und die Verschiebung der Lage der MAC, die Hinweise mit Schnittebenen **Auf Gehrung**, die bleibende Einrechnung mit Leitkurven oder einer Schränkung außerhalb von ±360° |
+| `test/part.test.js` | 7 von 18 | Dateien der Version 1 und 2: ihre Schlüssel der Lage des Teils verworfen; Aktualisierung eines eingerechneten Einstellwinkels des Projektformats Version 2: dasselbe Teil mit Schnittebenen **Senkrecht** (Drehpunkt der Schränkung 0,25 und 0,5, spitzes Flügelende, **Gerade Felder**) und die Verschiebung der Lage der MAC, die Hinweise mit Schnittebenen **Auf Gehrung**, die bleibende Einrechnung mit Leitkurven oder einer Schränkung außerhalb von ±360° |
 | `test/airfoil.test.js` | 1 von 79 | `leadingNacaCode` |
 
 `test/xflr5-writer.js` schreibt XFLR5-Projektdateien im Big-Endian-Format aus Optionen mit Vorgabewerten, nach der Beschreibung des Formats in `src/import/xfl.js`. Zahlen, die der Leser überspringt, stehen als erkennbare Werte ungleich 0 in der Datei, sodass ein Leser, der zu viele oder zu wenige Byte überspringt, das Folgende falsch liest. `writeProject(options)` liefert `{ bytes, marks }`; `marks` listet den Offset jedes Datensatzes für die Tests mit abgeschnittenen Dateien. Die Flugzeugoption `spare: 'index'` schreibt die reservierten Blöcke des Flugzeugs und seiner Flügel wie XFLR5 6.10.01 bis 6.10.04.
@@ -380,6 +390,35 @@ Browsertests: `e2e/xflr5.spec.js`, 10 Tests, 20 Läufe:
 - Der Importdialog passt auf ein 360 px breites Smartphone (nur `mobile`).
 - Der Dialog auf Deutsch (Sprache `de-DE`).
 
+### flow5-Testdateien und Tests
+
+Dateien in `test/fixtures/flow5/`, geschrieben von lokalen Builds von flow5 aus eigenen Eingaben von Wingdesigner (Flugzeuge, Flügel, Profilwahl); `test/fixtures/flow5/SOURCE.md` listet sie mit ihrem Inhalt. Die Treiber, die die Bibliotheken von flow5 (GPL-3.0) einbinden, und die Build-Änderungen für Ubuntu 24.04 gehören nicht zum Repository, sodass das Repository diese Dateien nicht neu erzeugen kann. Die Dateien enthalten keinen Code von flow5.
+
+| Datei | Byte | Geschrieben von |
+| --- | ---: | --- |
+| `basic.fl5` | 8648 | flow5 7.57: Tragfläche, Höhenleitwerk, einseitiges Seitenleitwerk |
+| `full.fl5` | 116 772 | flow5 7.57: 3 Flugzeuge (6 Flügel und 3 Rümpfe; ein Dreiecksnetz; ein Flügel), eine Profilanalyse mit gespeicherten Ergebnissen, ein Profil mit Klappe |
+| `v756.fl5` | 85 968 | flow5 7.56: ein Rumpf aus Schnitten mit seinen Schnittpunkten |
+| `basic-plane.xml`, `basic-wing.xml`, `full-plane.xml`, `full-plane-files.xml` | 3094 bis 31 093 | flow5 7.57: XML-Export von Flugzeug und Flügel in Metern und Millimetern, Profile über den Namen und über eine `.dat`-Datei |
+| `NACA 2412.dat`, `NACA 0009.dat`, `Flapped 2410.dat` | 2782 bis 2785 | flow5 7.57: die Profildateien des XML-Exports |
+| `mesh-nodes.json` | 132 240 | flow5 7.57: die Knoten des Analysenetzes von 10 Flügeln (8 zweiseitige, 2 Seitenleitwerke), die Referenz des Geometrietests |
+
+Unit-Tests (Vitest, Node.js):
+
+| Datei | Tests | Inhalt |
+| --- | ---: | --- |
+| `test/flow5-fl5.test.js` | 9 | Leser für `.fl5`-Projekte: die Dateien von flow5 7.57 und 7.56; jede Rumpfart, Profilanalysen und Ergebnisse, Netzflugzeuge, die Datensatzformate von flow5 7.53 und ältere Aufbauten aus `test/fl5-writer.js`; der Rumpf aus Schnitten mit und ohne seine Schnittpunkte; Ablehnungen; Fenster von 1000 Byte |
+| `test/flow5-xml.test.js` | 9 | Leser für flow5-XML: Flugzeugdateien in Millimetern und Metern, Verweise auf `.dat`-Dateien, Flügeldateien, `Type` und Wahrheitswerte, Einheiten, mehrere Flugzeuge, Ablehnungen |
+| `test/flow5-map.test.js` | 8 | Abbildung: die Flügelliste und der um z gedrehte einseitige Flügel, ein weiterer Flügel, ein Seitenleitwerk als linke Hälfte des Teils, Rollwinkel und Einstellwinkel als Lage des Teils, ein gerollter zweiseitiger Flügel mit gedrehter linker Hälfte (`settings.leftHalf` `"turned"`), flow5-Profile und ihre Klappen, über den Namen zugeordnete `.dat`-Dateien; die rechte Hälfte von 8 Flügeln, die linke Hälfte beider gerollter zweiseitiger Flügel und beide Seitenleitwerke innerhalb von 0,15 mm am Analysenetz von flow5 |
+
+`test/fl5-writer.js` schreibt `.fl5`-Projekte nach derselben Beschreibung des Formats, mit wählbarer Formatnummer je Datensatz, sodass die Aufbauten von flow5-Versionen ohne vorliegende Datei getestet werden.
+
+Browsertests: `e2e/flow5.spec.js`, 3 Tests, 6 Läufe:
+
+- `.fl5`-Projekt: Flugzeugwahl, die Flügelliste, das gerollte Höhenleitwerk als Rollwinkel und Einstellwinkel des Teils mit gedrehter linker Hälfte importiert (Projektformat Version 4), sein Profil aus der Datei, **Rückgängig** (Undo).
+- flow5-Flugzeug-XML mit Verweisen auf `.dat`-Dateien: **.dat-Dateien hochladen …** (Upload .dat files…) nimmt beide Dateien, jede Zeile findet ihre Datei über den Namen.
+- `.fl5`-Projekt: das Seitenleitwerk, mit Rollwinkel des Teils 90° um den Ursprung des Flügels importiert.
+
 ## Befehle
 
 Einrichtung: `npm ci`. Voraussetzung: Node.js 24 oder neuer (`.nvmrc`: 24).
@@ -391,7 +430,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 607 Tests in 21 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 636 Tests in 24 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -437,7 +476,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-197 Tests in 14 Spec-Dateien, 394 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+200 Tests in 15 Spec-Dateien, 400 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 

@@ -6,7 +6,7 @@ import { wingStats } from './geom/stats.js';
 import { MAX_PROJECT_BYTES, omittedNote, projectFileText, projectFromJsonText } from './model/io.js';
 import { displayName, largeSizes, projectSize, sizeWarning } from './model/budget.js';
 import { defaultProject } from './model/defaults.js';
-import { validateProject } from './model/project.js';
+import { fileVersion, validateProject } from './model/project.js';
 import { Store } from './ui/store.js';
 import { Viewer3D } from './ui/viewer3d.js';
 import { SectionsPanel } from './ui/sections.js';
@@ -114,7 +114,8 @@ function save(project) {
   let length = 0;
   try {
     if (!validateProject(project).ok) return;
-    const text = JSON.stringify(project);
+    // The stored copy carries the version a saved file would: the lowest that holds the settings.
+    const text = JSON.stringify({ ...project, version: fileVersion(project.settings) });
     length = text.length;
     localStorage.setItem(STORAGE_KEY, text);
     if (autosaveFailed) {

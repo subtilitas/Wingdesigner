@@ -136,7 +136,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 
 ### XFLR5 and flow5 import
 
-The import reads an XFLR5 or flow5 file and builds a project from one wing of one plane in it. XFLR5 is a program for the analysis of airfoils and wings; 6.62 is its last release. flow5 is its successor (version 7), under GPL-3.0; the flow5 readers are written from a description of the formats, not from flow5's code. The readers and the mapping in `src/import/` use no DOM API and run in Node.js. The dialog (`src/ui/xflr5.js`) and **Open** (`src/main.js`) use the DOM. The rules for the files and the formulas of the mapping are in [[File Formats|File-Formats]], section XFLR5 import; the dialog is described in the [[User Guide|User-Guide]], section Import from XFLR5 and flow5 and flow5.
+The import reads an XFLR5 or flow5 file and builds a project from one wing of one plane in it. XFLR5 is a program for the analysis of airfoils and wings; 6.62 is its last release. flow5 is its successor (version 7), under GPL-3.0; the flow5 readers are written from a description of the formats, not from flow5's code. The readers and the mapping in `src/import/` use no DOM API and run in Node.js. The dialog (`src/ui/xflr5.js`) and **Open** (`src/main.js`) use the DOM. The rules for the files and the formulas of the mapping are in [[File Formats|File-Formats]], section XFLR5 import; the dialog is described in the [[User Guide|User-Guide]], section Import from XFLR5 and flow5.
 
 1. The change handler of the **Open** file input in `src/main.js` chooses the reader. Extension `.xfl`, `.wpa` or `.fl5`: `readProjectFile`, which reads the first number and calls the `.fl5` reader (500000 to 509999) or the `.xfl` reader. `.xml`: `readPlaneXml`, which calls the XFLR5 reader, and the flow5 reader for a flow5 root element. Any other extension except `.json`, or none: first the first 4 bytes (`sniffXflr5`, and a UTF-16 byte order mark for the XML readers), then text that starts with `<?xml`, `<!`, `<explane`, `<xflplane` or `<xflwing` (XML readers); otherwise project JSON. `importXflr5` runs the reader and opens the dialog.
 2. A reader throws `XflrError` for a file that it cannot import. `code` is `not-xflr5`, `flow5` (from the XFLR5 readers, which hand flow5 files on), `flow5-old`, `flow5-new`, `wpa`, `damaged`, `not-plane-xml`, `no-plane`, `fin` or `too-large`; `offset` is the byte of the damage in an `.xfl` project, else `null`. **Open** shows `Cannot open <file>: <message>` and leaves the design and the undo history as they are. Any other exception of the import shows as `Cannot open <file>: Internal error: <message>`.
@@ -388,6 +388,7 @@ Browser tests: `e2e/xflr5.spec.js`, 10 tests, 20 runs:
 - **Open** recognizes XFLR5 files whose name lost its extension.
 - The **Airfoils** upload refuses XFLR5 files, also an `.xfl` project above 20 MB.
 - The import dialog fits a 360 px wide phone (`mobile` only).
+- The dialog in German (locale `de-DE`).
 
 ### flow5 test files and tests
 
@@ -417,7 +418,6 @@ Browser tests: `e2e/flow5.spec.js`, 3 tests, 6 runs:
 - `.fl5` project: plane choice, the wing list, the rolled elevator imported as part roll and tilt with the left half turned (project format version 4), its airfoil from the file, **Undo**.
 - flow5 plane XML with `.dat` file references: **Upload .dat files…** takes both files, each row finds its file by name.
 - `.fl5` project: the fin imported with part roll 90° about the wing origin.
-- The dialog in German (locale `de-DE`).
 
 ## Commands
 
