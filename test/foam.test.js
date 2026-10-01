@@ -118,6 +118,19 @@ describe('cuts', () => {
     expect(performance.now() - t0, 'time (ms)').toBeLessThan(5000);
   });
 
+  it('keep every section cut when the parts between them reach the segment limit', () => {
+    // 102 sections 25 mm apart (y = 0 to 2525 mm) and a longest core of 20 mm: 100 section cuts and
+    // 101 pieces that ask for one more cut each; 99 of them get it, and every section stays a cut.
+    const p = sampleProject();
+    p.sections = Array.from({ length: 102 }, (_, i) => ({ ...p.sections[0], id: `s${i}`, y: 25 * i, z: 0, x: 0, chord: 200, twist: 0 }));
+    const b = built(p);
+    const cuts = proposeCuts(b, 20);
+    expect(cuts).toHaveLength(FOAM_LIMITS.maxSegments - 1);
+    for (let i = 1; i <= 100; i++) expect(cuts).toContain(25 * i);
+    const segs = foamSegments(b, cuts, { deviation: false });
+    expect(Math.max(...segs.map((s) => s.yb - s.ya))).toBeCloseTo(25, 9);
+  });
+
   it('merge sections closer than the shortest segment', () => {
     const p = sampleProject();
     p.sections.splice(2, 0, { ...p.sections[1], id: 'extra', y: 300.5 });
@@ -299,6 +312,25 @@ describe('deviation', () => {
     expect(Math.abs(s.deviation.max - independent)).toBeLessThan(0.02);
   });
 
+  it('finds a local bump of a guide curve between the evenly spaced planes', () => {
+    // A straight nose line x = y / 10 through 41 points 15 mm apart, the point at y = 330 mm moved 3 mm
+    // aft. As one core from 0 to 600 mm, the evenly spaced planes lie at y = 300 and 375 mm; the plane
+    // through the loft station at y = 330 mm meets the bump.
+    const p = sampleProject();
+    p.sections = [p.sections[0], p.sections[2]];
+    p.sections[1].z = 0;
+    p.guides.nose.enabled = true;
+    p.guides.nose.points = Array.from({ length: 41 }, (_, i) => [i * 1.5 + (i === 22 ? 3 : 0), i * 15]);
+    const b = built(p);
+    expect(b.stations.some((st) => Math.abs(st.y - 330) < 1e-9)).toBe(true);
+    const [one] = foamSegments(b, []);
+    expect(one.deviation.y).toBeCloseTo(330, 6);
+    expect(one.deviation.max).toBeGreaterThan(2.9);
+    // The core from 300 to 360 mm has its middle plane at the bump: the same deviation.
+    const near = foamSegments(b, [300, 360])[1];
+    expect(Math.abs(near.deviation.max - one.deviation.max)).toBeLessThan(1e-3);
+  });
+
   it('falls with the square of the segment length, and splitting reaches the limit', () => {
     const b = built(wizardProject(PRESETS.sport.params));
     const one = foamSegments(b, [])[0].deviation.max;
@@ -477,6 +509,16 @@ describe('templates', () => {
     for (let k = 1; k < strips.length; k++) expect(strips[k - 1].x0 + strips[k - 1].w - strips[k].x0).toBeCloseTo(PAGE_OVERLAP, 9);
     expect(strips.at(-1).x0 + strips.at(-1).w).toBeCloseTo(600, 9);
     for (const paper of Object.keys(PAPERS)) expect(pagePlan({ blocks: [wide] }, paper).pages).toBeGreaterThan(0);
+  });
+
+  it('count the pages of the dialog summary without storing the strips', () => {
+    // 200 blocks of 12,000 x 1,440 mm (a 100,000 mm chord at 12 % cut in 200 segments, scaled down by
+    // about 8): the same page count and split blocks as the full plan, no strips held.
+    const blocks = Array.from({ length: 200 }, (_, i) => ({ width: 12000, height: 1440, items: [], label: `b${i}` }));
+    const full = pagePlan({ blocks }, 'a4');
+    const count = pagePlan({ blocks }, 'a4', { pieces: false });
+    expect(full.pieces.length).toBeGreaterThan(50000);
+    expect([count.pages, count.split, count.pieces.length]).toEqual([full.pages, full.split, 0]);
   });
 });
 

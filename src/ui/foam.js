@@ -164,7 +164,7 @@ export function foamDialog(store, getBuild, notify = () => {}) {
     if (dropped) parts.push(dropped === 1 ? tr('1 cut was removed: closer than {min} mm to another cut, the root or the tip.', { min }) : tr('{n} cuts were removed: closer than {min} mm to another cut, the root or the tip.', { n: dropped, min }));
     const max = FOAM_LIMITS.maxSegments;
     if (capped) parts.push(capped === 1 ? tr('1 cut was removed: at most {max} segments per half.', { max }) : tr('{n} cuts were removed: at most {max} segments per half.', { n: capped, max }));
-    const pages = pagePlan(templateLayout(name, segments, { kerf: settings.kerf }), settings.paper).pages;
+    const pages = pagePlan(templateLayout(name, segments, { kerf: settings.kerf }), settings.paper, { pieces: false }).pages;
     parts.push(pages === 1 ? tr('The PDF templates take 1 page.') : tr('The PDF templates take {pages} pages.', { pages }));
     summary.className = `small${long || over ? ' sev-warning' : ''}`;
     summary.textContent = parts.join(' ');

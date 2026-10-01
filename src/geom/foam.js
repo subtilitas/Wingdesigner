@@ -18,7 +18,8 @@
 // lower corner of the block that holds both profiles of the segment.
 //
 // Deviation: the straight lines between the two end profiles against the wing surface, in
-// DEVIATION_PLANES planes parallel to the end faces: largest distance (mm) of a point of the ruled
+// DEVIATION_PLANES evenly spaced planes parallel to the end faces and in the parallel planes through
+// the loft stations inside the segment: largest distance (mm) of a point of the ruled
 // core from the cut of the wing surface in that plane. A loft with stations at the sections only
 // (Straight panels, or Linear without rolled planes and guide curves) is ruled between them and cuts
 // exactly (0 up to round-off); guide curves, Smooth blending and Linear panels with stations between
@@ -42,6 +43,7 @@ export const FOAM_LIMITS = Object.freeze({
 
 /** Planes between the end faces in which the deviation is measured. */
 export const DEVIATION_PLANES = 7;
+
 
 /** A wedge below this angle (degrees) counts as none. */
 const NO_WEDGE = 1e-3;
@@ -178,22 +180,42 @@ function sectionCuts(build) {
  * between root and tip (sections closer than FOAM_LIMITS.minSegment merged), and each piece between
  * them split into parts of equal length along the reference line (a curved line, as of Smooth
  * blending, gets its cuts by arc length). Sorted span positions (mm), root and tip excluded. A piece gets at
- * most as many parts as keep them FOAM_LIMITS.minSegment long in y, and generation stops at
- * FOAM_LIMITS.maxSegments cuts: a steep wing with a short longest core would otherwise build millions
- * of cuts that normalizeCuts drops.
+ * most as many parts as keep them FOAM_LIMITS.minSegment long in y. Within FOAM_LIMITS.maxSegments the
+ * section cuts are kept, and the pieces share the remaining cuts in proportion to the cuts they ask
+ * for: a steep wing with a short longest core would otherwise ask for millions of cuts.
  */
 export function proposeCuts(build, maxLength) {
-  const ends = [build.rootY, ...sectionCuts(build), build.tipY];
-  const cuts = [];
+  const sections = sectionCuts(build).slice(0, FOAM_LIMITS.maxSegments - 1);
+  const ends = [build.rootY, ...sections, build.tipY];
   const cap = FOAM_LIMITS.maxSegments;
-  for (let i = 1; i < ends.length && cuts.length < cap; i++) {
+  const pieces = [];
+  for (let i = 1; i < ends.length; i++) {
     const a = ends[i - 1];
     const b = ends[i];
     const L = lineLength(build.stations, a, b);
     // At most as many parts as keep them minSegment apart in y on a straight panel: (b − a) / minSegment.
     const n = Math.min(cap, Math.max(1, Math.floor((b - a) / FOAM_LIMITS.minSegment)), Math.max(1, Math.ceil(L / maxLength - 1e-9)));
-    for (let k = 1; k < n && cuts.length < cap; k++) cuts.push(yAtLength(build.stations, a, b, (L * k) / n));
-    if (i < ends.length - 1) cuts.push(b);
+    pieces.push({ a, b, L, extra: n - 1 });
+  }
+  // The section cuts come first; the cuts inside the pieces share what the segment limit leaves, in
+  // proportion to their number (largest remainders first, then the inboard pieces).
+  const budget = cap - 1 - sections.length;
+  const wanted = pieces.reduce((sum, q) => sum + q.extra, 0);
+  if (wanted > budget) {
+    const share = pieces.map((q, i) => ({ i, exact: (q.extra * budget) / wanted }));
+    for (const q of share) pieces[q.i].extra = Math.floor(q.exact);
+    let left = budget - pieces.reduce((sum, q) => sum + q.extra, 0);
+    share.sort((p, q) => q.exact - Math.floor(q.exact) - (p.exact - Math.floor(p.exact)) || p.i - q.i);
+    for (const q of share) {
+      if (left <= 0) break;
+      pieces[q.i].extra++;
+      left--;
+    }
+  }
+  const cuts = [...sections];
+  for (const q of pieces) {
+    const n = q.extra + 1;
+    for (let k = 1; k < n; k++) cuts.push(yAtLength(build.stations, q.a, q.b, (q.L * k) / n));
   }
   return normalizeCuts(build, cuts).cuts;
 }
@@ -337,10 +359,27 @@ function wedge(joint, a, up, inboard) {
   return { angle, depth: hi - lo, side: hs[deep] >= mid ? 'upper' : 'lower' };
 }
 
-/** Distance from point p to the closed polygon `poly` (2D). */
-function polygonDistance(p, poly) {
+/**
+ * Distance from point p to the closed polygon `poly` (2D), searched over the edges from index
+ * `near` − w to `near` + w. Point i of a core profile and point i of the wing cut lie at the same
+ * profile parameter, so the nearest edge lies close to index i; the window doubles while the nearest
+ * edge lies at its border, up to the whole polygon.
+ */
+function polygonDistance(p, poly, near = 0, w = 8) {
+  const n = poly.length;
+  if (2 * w + 1 >= n) return Math.sqrt(edgeDistance2(p, poly, 0, n - 1).d);
+  const r = edgeDistance2(p, poly, near - w, near + w);
+  if (r.k > near - w && r.k < near + w) return Math.sqrt(r.d);
+  return polygonDistance(p, poly, near, 2 * w);
+}
+
+/** Smallest squared distance from p to the edges k = from … to (indices modulo the length), and its k. */
+function edgeDistance2(p, poly, from, to) {
+  const n = poly.length;
   let best = Infinity;
-  for (let i = 0; i < poly.length; i++) {
+  let at = from;
+  for (let k = from; k <= to; k++) {
+    const i = ((k % n) + n) % n;
     const A = poly[i];
     const B = poly[(i + 1) % poly.length];
     const ex = B[0] - A[0];
@@ -351,24 +390,39 @@ function polygonDistance(p, poly) {
     const dx = A[0] + t * ex - p[0];
     const dy = A[1] + t * ey - p[1];
     const d = dx * dx + dy * dy;
-    if (d < best) best = d;
+    if (d < best) {
+      best = d;
+      at = k;
+    }
   }
-  return Math.sqrt(best);
+  return { d: best, k: at };
 }
 
 function deviationOf(cols, a, up, dIn, dOut, va, vb, P, xRef, hRef, build) {
   const toFlat = (p) => [p[0] - xRef, dot(p, up) - hRef];
   const A = P[0].map(toFlat);
   const B = P[1].map(toFlat);
+  // Planes: DEVIATION_PLANES evenly spaced, and the planes through the loft stations inside the
+  // segment, where a guide curve or Smooth blending bends the loft between evenly spaced planes. Each
+  // station lies in one segment, and the loft grid limit bounds stations times profile points, so the
+  // planes of all segments stay within that limit plus DEVIATION_PLANES per segment.
+  const ya0 = build.rootY + va * (build.tipY - build.rootY);
+  const yb0 = build.rootY + vb * (build.tipY - build.rootY);
+  const fractions = [];
+  for (let j = 1; j <= DEVIATION_PLANES; j++) fractions.push(j / (DEVIATION_PLANES + 1));
+  for (const st of build.stations) {
+    if (st.y <= ya0 || st.y >= yb0) continue;
+    const s = (a[1] * st.y + a[2] * st.z - dIn) / (dOut - dIn);
+    if (s > 0 && s < 1) fractions.push(s);
+  }
   let max = 0;
   let at = dIn;
-  for (let j = 1; j <= DEVIATION_PLANES; j++) {
-    const s = j / (DEVIATION_PLANES + 1);
+  for (const s of fractions) {
     const d = dIn + s * (dOut - dIn);
     const wing = cols.map((c) => toFlat(planePoint(c, a, d, va, vb)));
     for (let i = 0; i < A.length; i++) {
       const r = [A[i][0] + s * (B[i][0] - A[i][0]), A[i][1] + s * (B[i][1] - A[i][1])];
-      const dist = polygonDistance(r, wing);
+      const dist = polygonDistance(r, wing, i);
       if (dist > max) {
         max = dist;
         at = d;
@@ -377,9 +431,7 @@ function deviationOf(cols, a, up, dIn, dOut, va, vb, P, xRef, hRef, build) {
   }
   // Span position of the plane of the largest deviation: where it crosses the reference line (a curved
   // line, as of Smooth blending, is not linear in y between the cuts).
-  const ya = build.rootY + va * (build.tipY - build.rootY);
-  const yb = build.rootY + vb * (build.tipY - build.rootY);
-  const y = solveMonotonic((t) => a[1] * t + a[2] * stationValue(build.stations, t, 'z'), at, ya, yb, 1e-9, 200, 1e-12);
+  const y = solveMonotonic((t) => a[1] * t + a[2] * stationValue(build.stations, t, 'z'), at, ya0, yb0, 1e-9, 200, 1e-12);
   return { max, y };
 }
 

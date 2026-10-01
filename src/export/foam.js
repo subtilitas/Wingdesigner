@@ -441,9 +441,10 @@ const PART_LABEL = 5;
  * strips that overlap by PAGE_OVERLAP. The orientation with the fewer split blocks is taken, then the
  * one with the fewer pages, portrait on a tie. Returns { pageW, pageH, area: [w, h], pages, split
  * (blocks cut into strips), pieces: [{ page, block, x0, y0, w, h, px, py, col, row, cols, rows }] } (x0, y0: the strip's lower left corner in block coordinates; px, py: its
- * lower left corner in the printable area).
+ * lower left corner in the printable area). With { pieces: false } the strips are counted, not
+ * stored (pieces is empty): the page count of the dialog summary.
  */
-export function pagePlan(layout, paper = 'a4') {
+export function pagePlan(layout, paper = 'a4', { pieces: keep = true } = {}) {
   const [pw, ph] = PAPERS[paper] ?? PAPERS.a4;
   const plan = ([W, H]) => {
     const aw = W - 2 * PAGE_MARGIN;
@@ -451,6 +452,7 @@ export function pagePlan(layout, paper = 'a4') {
     const pieces = [];
     let page = 0;
     let free = ah;
+    let splitBlocks = 0;
     for (const [bi, b] of layout.blocks.entries()) {
       const cols = b.width <= aw ? 1 : Math.ceil((b.width - PAGE_OVERLAP) / (aw - PAGE_OVERLAP));
       const split = cols > 1 || b.height > ah;
@@ -467,13 +469,13 @@ export function pagePlan(layout, paper = 'a4') {
             page++;
             free = ah;
           }
-          pieces.push({ page, block: bi, x0, y0: yTop - h, w, h, px: 0, py: free - need, col: c, row: r, cols, rows });
+          if (keep) pieces.push({ page, block: bi, x0, y0: yTop - h, w, h, px: 0, py: free - need, col: c, row: r, cols, rows });
           free -= need + GAP;
         }
       }
+      if (cols > 1 || rows > 1) splitBlocks++;
     }
-    const split = new Set(pieces.filter((q) => q.cols > 1 || q.rows > 1).map((q) => q.block)).size;
-    return { pageW: W, pageH: H, area: [aw, ah], pages: page + 1, split, pieces };
+    return { pageW: W, pageH: H, area: [aw, ah], pages: page + 1, split: splitBlocks, pieces };
   };
   const portrait = plan([pw, ph]);
   const landscape = plan([ph, pw]);

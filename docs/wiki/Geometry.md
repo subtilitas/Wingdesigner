@@ -807,7 +807,7 @@ A cut is a span position y in mm. Root and tip are the ends; the cuts lie betwee
 
 | Rule | Value |
 | --- | --- |
-| Proposal | A cut at every section between root and tip. Each piece between them splits into n = min(ceil(L / L_max), floor(Δy / 5 mm)) parts of equal length along the reference line; a curved line (**Smooth** blending) gets shorter parts in y where it is steeper. L: length of the reference line of the piece; Δy: its extent in y; L_max: **Longest core**. The second bound keeps the parts at least 5 mm apart in y on a straight panel; on a curved line a cut closer than 5 mm in y to the one before is dropped |
+| Proposal | A cut at every section between root and tip. Each piece between them splits into n = min(ceil(L / L_max), floor(Δy / 5 mm)) parts of equal length along the reference line; a curved line (**Smooth** blending) gets shorter parts in y where it is steeper. L: length of the reference line of the piece; Δy: its extent in y; L_max: **Longest core**. The second bound keeps the parts at least 5 mm apart in y on a straight panel; on a curved line a cut closer than 5 mm in y to the one before is dropped. Within 200 segments the section cuts stay; when the pieces ask for more cuts than are left, each gets its share in proportion to the cuts it asks for (largest remainders first, then inboard) |
 | Reference line | (y, z) of the stations, linear between them. Its length counts the dihedral: 600 mm in y at 1.5° are 600.2 mm |
 | Shortest segment | 5 mm in y. A cut closer than 5 mm to the cut before it, to the root or to the tip is dropped |
 | Sections closer than 5 mm | One cut, at the first of them |
@@ -886,7 +886,7 @@ A straight panel of one airfoil at 10° dihedral:
 
 ### 8.5 Deviation
 
-The ruled core is compared with the wing in 7 planes parallel to the end faces, at s = 1/8 … 7/8 of the core length.
+The ruled core is compared with the wing in planes parallel to the end faces: 7 planes at s = 1/8 … 7/8 of the core length, and one plane through each loft station inside the segment, where a guide curve or **Smooth** blending can bend the wing between the 7 planes. Each station lies in one segment, so the loft grid limit (5,000,000 points) also bounds the planes. The nearest edge of W_s to R_s(u) is searched from the same index u outward, in a window that doubles while the nearest edge lies at its border.
 
 ```
 d_s       = d_in + s · (d_out − d_in)

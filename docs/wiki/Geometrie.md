@@ -848,7 +848,7 @@ Profilschnitte.
 
 | Regel | Wert |
 | --- | --- |
-| Vorschlag | Ein Schnitt an jedem Profilschnitt zwischen Wurzel und Rand. Jedes Stück dazwischen wird in n = min(ceil(L / L_max), floor(Δy / 5 mm)) Teile gleicher Länge entlang der Bezugslinie geteilt; eine gekrümmte Linie (**Glatt**) ergibt dort, wo sie steiler ist, kürzere Teile in y. L: Länge der Bezugslinie des Stücks; Δy: ihre Ausdehnung in y; L_max: **Längster Kern** (Longest core). Die zweite Schranke hält die Teile auf einem geraden Feld mindestens 5 mm in y auseinander; auf einer gekrümmten Linie entfällt ein Schnitt, der in y näher als 5 mm am vorigen liegt |
+| Vorschlag | Ein Schnitt an jedem Profilschnitt zwischen Wurzel und Rand. Jedes Stück dazwischen wird in n = min(ceil(L / L_max), floor(Δy / 5 mm)) Teile gleicher Länge entlang der Bezugslinie geteilt; eine gekrümmte Linie (**Glatt**) ergibt dort, wo sie steiler ist, kürzere Teile in y. L: Länge der Bezugslinie des Stücks; Δy: ihre Ausdehnung in y; L_max: **Längster Kern** (Longest core). Die zweite Schranke hält die Teile auf einem geraden Feld mindestens 5 mm in y auseinander; auf einer gekrümmten Linie entfällt ein Schnitt, der in y näher als 5 mm am vorigen liegt. Innerhalb von 200 Segmenten bleiben die Schnitte an den Profilschnitten; verlangen die Stücke mehr Schnitte als übrig sind, erhält jedes seinen Anteil im Verhältnis der verlangten Schnitte (größte Reste zuerst, dann innen) |
 | Bezugslinie | (y, z) der Stationen, linear dazwischen. Ihre Länge berücksichtigt die V-Form: 600 mm in y bei 1,5° sind 600,2 mm |
 | Kürzestes Segment | 5 mm in y. Ein Schnitt, der näher als 5 mm am vorigen Schnitt, an der Wurzel oder am Rand liegt, entfällt |
 | Profilschnitte näher als 5 mm | Ein Schnitt, am ersten von ihnen |
@@ -939,8 +939,12 @@ Ein gerades Feld aus einem Profil bei 10° V-Form:
 
 ### 8.5 Abweichung
 
-Der Kern als Regelfläche wird in 7 Ebenen parallel zu den Endflächen mit dem Flügel verglichen, bei
-s = 1/8 … 7/8 der Kernlänge.
+Der Kern als Regelfläche wird in Ebenen parallel zu den Endflächen mit dem Flügel verglichen: in 7 Ebenen
+bei s = 1/8 … 7/8 der Kernlänge und in je einer Ebene durch jede Station des Lofts innerhalb des Segments,
+wo eine Leitkurve oder **Glatt** den Flügel zwischen den 7 Ebenen biegen kann. Jede Station liegt in einem
+Segment, daher begrenzt die Grenze von 5 000 000 Gitterpunkten des Lofts auch die Ebenen. Die nächste Kante
+von W_s zu R_s(u) wird vom selben Index u aus gesucht, in einem Fenster, das sich verdoppelt, solange die
+nächste Kante an seinem Rand liegt.
 
 ```
 d_s        = d_in + s · (d_out − d_in)
