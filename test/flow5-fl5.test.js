@@ -160,6 +160,9 @@ describe('flow5 record layouts', () => {
       return copy;
     };
     expect(failure(at(500006))).toMatchObject({ code: 'flow5-old', message: 'The file is a flow5 project of format 500006, written by flow5 7.26 or older: open it in a current flow5 and save it, or export the plane as XML.' });
+    for (const format of [500751, 500752, 500753]) {
+      expect(failure(at(format))).toMatchObject({ code: 'flow5-unknown', message: `The file is a flow5 project of format ${format}, which this import does not read (formats 500750, 500754): export the plane as XML in flow5.` });
+    }
     expect(failure(at(500755))).toMatchObject({ code: 'flow5-new', message: 'The file is a flow5 project of format 500755, newer than this import reads (up to 500754, flow5 7.54 to 7.57): export the plane as XML in flow5.' });
     expect(failure(writeFl5({ planes: [] }))).toMatchObject({ code: 'no-plane', message: 'The project holds no plane.' });
     // A plane kind that flow5 writes as −1 without a plane after it.

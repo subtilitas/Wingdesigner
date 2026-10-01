@@ -993,6 +993,7 @@ Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1
 | Code | Datei | Meldung |
 | --- | --- | --- |
 | `flow5-old` | `.fl5`-Projekt eines Formats unter 500750 (flow5 7.01 bis 7.26) | `Die Datei ist ein flow5-Projekt im Format 500006, geschrieben von flow5 7.26 oder älter: in einem aktuellen flow5 öffnen und speichern oder das Flugzeug als XML exportieren.` |
+| `flow5-unknown` | `.fl5`-Projekt eines Formats von 500751 bis 500753 (kein bekannter Aufbau) | `Die Datei ist ein flow5-Projekt im Format 500752, das dieser Import nicht liest (Formate 500750, 500754): das Flugzeug in flow5 als XML exportieren.` |
 | `flow5-new` | `.fl5`-Projekt eines Formats über 500754 | `Die Datei ist ein flow5-Projekt im Format 500755, neuer als dieser Import liest (bis 500754, flow5 7.54 bis 7.57): das Flugzeug in flow5 als XML exportieren.` |
 | `no-plane` | `.fl5`-Projekt ohne Flugzeug | `Das Projekt enthält kein Flugzeug.` |
 | `damaged` | `.fl5`-Projekt, vor dem Ende der Flugzeuge abgeschnitten oder widersprüchlich; eine Flugzeugart außer 0 und 1; eine Rumpfart außer 100001 bis 100006 | `Die Datei ist bei Byte <n> beschädigt oder abgeschnitten (<part>).` `Flugzeug 1 der Datei ist von einer Art, die dieser Import nicht liest (Art -1).` |

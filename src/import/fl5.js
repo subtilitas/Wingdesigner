@@ -452,6 +452,10 @@ function* readFl5Format(r) {
   if (format > FL5_FORMATS.at(-1)) {
     throw new XflrError('flow5-new', tr('The file is a flow5 project of format {format}, newer than this import reads (up to {max}, flow5 7.54 to 7.57): export the plane as XML in flow5.', { format: plain(format), max: plain(FL5_FORMATS.at(-1)) }));
   }
+  // Formats between the read ones have no known layout.
+  if (!FL5_FORMATS.includes(format)) {
+    throw new XflrError('flow5-unknown', tr('The file is a flow5 project of format {format}, which this import does not read (formats {formats}): export the plane as XML in flow5.', { format: plain(format), formats: FL5_FORMATS.map(plain).join(', ') }));
+  }
   r.o = 4;
   return format;
 }

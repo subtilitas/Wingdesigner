@@ -6,6 +6,8 @@ export default {
     'Die Datei ist ein flow5-Projekt im Format {format}, geschrieben von flow5 7.26 oder älter: in einem aktuellen flow5 öffnen und speichern oder das Flugzeug als XML exportieren.',
   'The file is a flow5 project of format {format}, newer than this import reads (up to {max}, flow5 7.54 to 7.57): export the plane as XML in flow5.':
     'Die Datei ist ein flow5-Projekt im Format {format}, neuer als dieser Import liest (bis {max}, flow5 7.54 bis 7.57): das Flugzeug in flow5 als XML exportieren.',
+  'The file is a flow5 project of format {format}, which this import does not read (formats {formats}): export the plane as XML in flow5.':
+    'Die Datei ist ein flow5-Projekt im Format {format}, das dieser Import nicht liest (Formate {formats}): das Flugzeug in flow5 als XML exportieren.',
   'The file is {size} MB; flow5 projects above {limit} MB are not read.': 'Die Datei hat {size} MB; flow5-Projekte über {limit} MB werden nicht gelesen.',
   'The project holds no plane.': 'Das Projekt enthält kein Flugzeug.',
   'Plane {n} of the file is of a kind this import does not read (kind {kind}).': 'Flugzeug {n} der Datei ist von einer Art, die dieser Import nicht liest (Art {kind}).',

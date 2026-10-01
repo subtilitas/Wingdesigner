@@ -990,6 +990,7 @@ Fixture B (tilt angle 1°, position 50, 0, 10 mm; Clark Y at sections 1 and 2, s
 | Code | File | Message |
 | --- | --- | --- |
 | `flow5-old` | `.fl5` project of a format below 500750 (flow5 7.01 to 7.26) | `The file is a flow5 project of format 500006, written by flow5 7.26 or older: open it in a current flow5 and save it, or export the plane as XML.` |
+| `flow5-unknown` | `.fl5` project of a format from 500751 to 500753 (no known layout) | `The file is a flow5 project of format 500752, which this import does not read (formats 500750, 500754): export the plane as XML in flow5.` |
 | `flow5-new` | `.fl5` project of a format above 500754 | `The file is a flow5 project of format 500755, newer than this import reads (up to 500754, flow5 7.54 to 7.57): export the plane as XML in flow5.` |
 | `no-plane` | `.fl5` project without a plane | `The project holds no plane.` |
 | `damaged` | `.fl5` project cut off or inconsistent before the end of the planes; a plane kind other than 0 and 1; a body kind other than 100001 to 100006 | `The file is damaged or cut off at byte <n> (in <part>).` `Plane 1 of the file is of a kind this import does not read (kind -1).` |

@@ -378,12 +378,12 @@ from XFLR5 and flow5, flow5 files).
 | Plan item | As built |
 | --- | --- |
 | F1 | XML and `.fl5` in one branch, after the XFLR5 import |
-| F2 | Project formats 500750 and 500754; below: `flow5-old` with the advice to save in a current flow5 or export XML; above: `flow5-new` |
+| F2 | Project formats 500750 and 500754; below: `flow5-old` with the advice to save in a current flow5 or export XML; above: `flow5-new`; 500751 to 500753, without a known layout: `flow5-unknown` |
 | F3 | Every wing listed and importable (key `wing:<index>` beside `main` and `stab`), fins included; owner request of 2026-10-01 ("Why are other wing2 and fins disabled?") over the planned F3 scope |
 | F4 | Roll `Rx_angle` as `settings.partRoll`, tilt `Ry_angle` as `settings.partTilt`, about the wing origin, for every wing. A one-sided wing (fin) imports as flow5's half: left-side airfoils, roll −`Rx_angle`, so that the left half of the part is flow5's half; with `Ry_angle` ≠ 0 (a turn about z) it is not available. flow5 turns both halves of a two-sided wing as one body: a rolled two-sided wing imports with `settings.leftHalf` `"turned"`, the left half turned with the right half. |
 | F5 | Test files written by local builds of flow5 (commit 080d534 and v7.56) from own inputs, in `test/fixtures/flow5/`; drivers and build changes outside the repository; flow5's comment lines kept in the XML files |
 | F6 | **Upload .dat files…**: several files at once, matched to the rows by name (name line, then file name) |
-| Texts | A `{program}` placeholder in the mapping's messages (24 texts); flow5 versions of 9 texts (file descriptions, the elevator label, airfoil notes, metre rounding, wing file); 42 texts of the flow5 area in German |
+| Texts | A `{program}` placeholder in the mapping's messages (24 texts); flow5 versions of 9 texts (file descriptions, the elevator label, airfoil notes, metre rounding, wing file); 43 texts of the flow5 area in German |
 | Content sniffing | `xflplane` and `xflwing` roots (any case) go to the XML readers |
 | Airfoils | Source kind `flow5`, with the note of a lost frame for current-project airfoils of that kind; `flow5: <file>` in the Airfoils tab; flaps noted as deflected in flow5's analyses only (7.50 and later store the shape) |
 
