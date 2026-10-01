@@ -648,8 +648,8 @@ T(p) = M (p − P) + P      M = | cos t    sin t sin r    sin t cos r |
     gedrehten Randbögen mit `"turned"`.
 - Der flow5-Import speichert `Ry_angle` als t und `Rx_angle` als r: flow5 dreht einen Flügel erst um x,
   dann um y, beide um den Ursprung des Flügels, mit denselben Vorzeichen.
-- Ausdehnung: Nach der Anpassung muss jeder mit T gedrehte Kontrollpunkt in x, y und z innerhalb von
-  ±1 200 000 mm liegen (`LIMITS.maxExtent`); die Fläche liegt in der konvexen Hülle ihrer
+- Ausdehnung: Nach der Anpassung muss jeder mit T gedrehte Kontrollpunkt (mit **Linke Hälfte** `"turned"`
+  auch jeder Kontrollpunkt der linken Hälfte, T(S(p))) in x, y und z innerhalb von ±1 200 000 mm liegen (`LIMITS.maxExtent`); die Fläche liegt in der konvexen Hülle ihrer
   Kontrollpunkte. Sonst bricht der Aufbau ab mit:
   `Das gedrehte Teil reicht bis x = … mm, y = … mm, z = … mm, außerhalb von ±1.200.000 mm; Einstellwinkel oder Rollwinkel des Teils verkleinern oder das Teil näher an seinen Drehpunkt legen.`
 - Gedreht: die 3D-Ansicht (`partMatrix` in `src/ui/viewer3d.js`), die Dreiecksnetze für STL und 3MF

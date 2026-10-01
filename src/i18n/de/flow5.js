@@ -38,6 +38,7 @@ export default {
   'flow5 wing file (XML), lengths in units of {factor} mm': 'flow5-Flügeldatei (XML), Längen in Einheiten von {factor} mm',
   'flow5 plane file (XML), lengths in units of {factor} mm': 'flow5-Flugzeugdatei (XML), Längen in Einheiten von {factor} mm',
   // xflr5.js: geometry and report
+  'Plane "{plane}" has no wing to import.': 'Flugzeug „{plane}“ hat keinen Flügel zum Importieren.',
   'The roll angle (Rx_angle) of the wing is not a finite number in the file.': 'Der Rollwinkel (Rx_angle) des Flügels ist in der Datei keine endliche Zahl.',
   'Roll angle {angle}° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).':
     'Rollwinkel {angle}° (Rx_angle) wie im flow5-Flugzeug angewendet: Das Teil dreht sich als starrer Körper um den Ursprung des Flügels, vor dem Einstellwinkel (Einstellungen > Rollwinkel des Teils).',

@@ -614,7 +614,8 @@ T(p) = M (p − P) + P      M = | cos t    sin t sin r    sin t cos r |
     tips with `"turned"`.
 - The flow5 import stores `Ry_angle` as t and `Rx_angle` as r: flow5 turns a wing first about x, then
   about y, both about the wing origin, with the same signs.
-- Extent: after the fit, every control point turned by T must lie within ±1,200,000 mm in x, y and z
+- Extent: after the fit, every control point turned by T (with **Left half** `"turned"` also every
+  control point of the left half, T(S(p))) must lie within ±1,200,000 mm in x, y and z
   (`LIMITS.maxExtent`); the surface lies in the convex hull of its control points. Otherwise the
   build stops with:
   `The tilted or rolled part reaches x = … mm, y = … mm, z = … mm, beyond ±1200000 mm; reduce the part tilt or roll, or move the part towards its pivot.`

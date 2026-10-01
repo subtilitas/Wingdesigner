@@ -66,7 +66,8 @@ export function openXflr5Dialog(file, { fileName = '', project = null, library =
     // An error of the first mapping, which runs after the dialog has opened.
     let failed = null;
     try {
-      let plane = 0;
+      // The first plane with a wing to import (a flow5 plane of a triangle mesh has none).
+      let plane = Math.max(0, file.planes.findIndex((_, i) => planeSurfaces(file, i).surfaces.some((s) => s.available)));
       let surface = defaultSurface(file, plane);
       // The surface the user chose: a plane without it falls back to its default, and the choice
       // comes back with a plane that has it.

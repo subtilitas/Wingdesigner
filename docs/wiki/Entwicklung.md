@@ -298,7 +298,7 @@ Einen Text hinzufügen:
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` sowie Beschriftung und Titel von **Schaum** (Foam) in `src/main.js` |
 | `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` und die Schaltfläche **Winglet …** in `src/ui/sections.js` |
 
-`src/i18n/de/index.js` fasst die zwölf Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 34 und 146 Texte, die Datei des flow5-Imports 43.
+`src/i18n/de/index.js` fasst die zwölf Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 34 und 146 Texte, die Datei des flow5-Imports 44.
 
 Eine Sprache hinzufügen:
 

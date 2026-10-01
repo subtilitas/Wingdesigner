@@ -1214,7 +1214,8 @@ export function buildWing(project) {
     }
   }
   // The rigid placement of the part (src/geom/part.js) turns the surface after the build; the turned
-  // control points bound the turned surface and must stay within the extent limit.
+  // control points bound the turned surface and must stay within the extent limit; a left half turned
+  // with the wing (part.turnedLeft) lies elsewhere than the mirror image and is checked as well.
   const part = partTransform(settings, sections);
   result.part = part;
   if (!part.identity) {
@@ -1222,11 +1223,12 @@ export function buildWing(project) {
     let at = null;
     for (const col of surface.points) {
       for (const P of col) {
-        const q = part.point(P);
-        const m = Math.max(Math.abs(q[0]), Math.abs(q[1]), Math.abs(q[2]));
-        if (m > far) {
-          far = m;
-          at = q;
+        for (const q of part.turnedLeft ? [part.point(P), part.leftPoint(P)] : [part.point(P)]) {
+          const m = Math.max(Math.abs(q[0]), Math.abs(q[1]), Math.abs(q[2]));
+          if (m > far) {
+            far = m;
+            at = q;
+          }
         }
       }
     }

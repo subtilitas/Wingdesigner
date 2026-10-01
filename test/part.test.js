@@ -154,6 +154,15 @@ describe('build and exports of a placed part', () => {
     const b = buildWing(p);
     expect(b.surface).toBeNull();
     expect(b.errors).toEqual([expect.stringMatching(/^The tilted or rolled part reaches x = .* mm, beyond ±1200000 mm; reduce the part tilt or roll, or move the part towards its pivot\.$/)]);
+    // The part at y = 200,500 to 201,100 mm, rolled 90° about a pivot at y = 1,000,000 mm: the right half
+    // and its mirror image stay within the limit (|z| ≤ 799,500 mm), the left half turned with the wing
+    // reaches z = −(1,000,000 + 201,100) mm, beyond it.
+    const q = sampleProject();
+    q.sections.forEach((r) => (r.y += 200_500));
+    q.settings = { ...q.settings, partRoll: 90, partPivot: { x: 0, y: 1_000_000, z: 0 } };
+    expect(buildWing(q).errors).toEqual([]);
+    q.settings.leftHalf = 'turned';
+    expect(buildWing(q).errors).toEqual([expect.stringMatching(/^The tilted or rolled part reaches x = .*, z = .* mm, beyond ±1200000 mm/)]);
   });
 
   it('gives the statistics in the plane axes: the MAC leading edge and 25 % MAC turned with the part', () => {

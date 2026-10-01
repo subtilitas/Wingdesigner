@@ -97,6 +97,12 @@ describe('flow5 planes: the wing list', () => {
     expect(planeSurfaces(yawed).surfaces[2]).toMatchObject({ available: false, reason: 'A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.' });
     const r = mapXflr5(yawed, { surface: 'wing:2', fileName: 'basic.fl5' });
     expect([r.project, r.report.filter((l) => l.severity === 'error').map((l) => l.text)]).toEqual([null, ['A one-sided wing turned 3° about z (Ry_angle): a part turns about x and y only.']]);
+    // A tilt that is no number is reported, not dropped with the turn of a one-sided wing.
+    yawed.planes[0].wings[2].tilt = Number.NaN;
+    expect(mapXflr5(yawed, { surface: 'wing:2', fileName: 'basic.fl5' }).report.filter((l) => l.severity === 'error').map((l) => l.text)).toEqual(['The tilt angle of the wing is not a finite number in the file.']);
+    // A plane of a triangle mesh has no wing: an error, no surface.
+    const mesh = mapXflr5(FULL, { plane: planeOf(FULL, 'Mesh plane'), fileName: 'full.fl5' });
+    expect([mesh.project, mesh.surfaces, mesh.report.filter((l) => l.severity === 'error').map((l) => l.text)]).toEqual([null, [], ['Plane "Mesh plane" has no wing to import.']]);
     expect(describeFile(FULL)).toBe('flow5 project, format 500754 (flow5 7.54 or later)');
     expect(describeFile(readFlow5Xml(text('full-plane.xml')))).toBe('flow5 plane file (XML), lengths in millimetres');
   });

@@ -983,7 +983,7 @@ Fixture B (tilt angle 1°, position 50, 0, 10 mm; Clark Y at sections 1 and 2, s
 | XML wing file: `<xflwing version="1.0">` with `<wing>` | flow5 7.50 and later | one wing; position and angles 0 | yes |
 
 - Tested files: written by flow5 7.57 and 7.56 (`test/fixtures/flow5/`, origin in its `SOURCE.md`). Files of flow5 7.50 to 7.53 were not available; the layout of their records (project format 500750) is tested with files of the test writer `test/fl5-writer.js`.
-- A `.fl5` project holds planes of two kinds: planes of wings and bodies, and triangle-mesh planes (from an STL file), which hold no wing. Both are listed; a mesh plane offers no surface.
+- A `.fl5` project holds planes of two kinds: planes of wings and bodies, and triangle-mesh planes (from an STL file), which hold no wing. Both are listed; a mesh plane offers no surface, and its report holds the error `Plane "<name>" has no wing to import.` The dialog opens on the first plane with a wing to import.
 
 ### Refused files
 

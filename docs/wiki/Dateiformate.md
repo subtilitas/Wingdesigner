@@ -986,7 +986,7 @@ Fixture B (Einstellwinkel 1°, Position 50, 0, 10 mm; Clark Y an den Schnitten 1
 | XML-Flügeldatei: `<xflwing version="1.0">` mit `<wing>` | flow5 7.50 und neuer | ein Flügel; Position und Winkel 0 | ja |
 
 - Getestete Dateien: geschrieben von flow5 7.57 und 7.56 (`test/fixtures/flow5/`, Herkunft in ihrer `SOURCE.md`). Dateien von flow5 7.50 bis 7.53 waren nicht verfügbar; der Aufbau ihrer Datensätze (Projektformat 500750) ist mit Dateien des Testschreibers `test/fl5-writer.js` getestet.
-- Ein `.fl5`-Projekt enthält Flugzeuge zweier Arten: Flugzeuge aus Flügeln und Rümpfen und Flugzeuge aus einem Dreiecksnetz (aus einer STL-Datei), die keinen Flügel enthalten. Beide werden gelistet; ein Netzflugzeug bietet keine Fläche an.
+- Ein `.fl5`-Projekt enthält Flugzeuge zweier Arten: Flugzeuge aus Flügeln und Rümpfen und Flugzeuge aus einem Dreiecksnetz (aus einer STL-Datei), die keinen Flügel enthalten. Beide werden gelistet; ein Netzflugzeug bietet keine Fläche an, und sein Bericht enthält den Fehler `Flugzeug „<Name>“ hat keinen Flügel zum Importieren.` Der Dialog öffnet mit dem ersten Flugzeug, das einen Flügel zum Importieren hat.
 
 ### Abgelehnte Dateien
 

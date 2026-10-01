@@ -269,7 +269,8 @@ function flow5Surfaces(file, plane) {
  */
 function oneSidedAsHalf(wing) {
   if (!wing || wing.twoSided !== false) return wing;
-  return { ...wing, oneSided: true, roll: -wing.roll, tilt: 0, sections: wing.sections.map((s) => ({ ...s, rightFoil: s.leftFoil })) };
+  // A tilt that is no number stays, so that the mapping reports it.
+  return { ...wing, oneSided: true, roll: -wing.roll, tilt: Number.isFinite(wing.tilt) ? 0 : wing.tilt, sections: wing.sections.map((s) => ({ ...s, rightFoil: s.leftFoil })) };
 }
 
 /** The surface a dialog selects first: the main wing, or the stabilizer when it is the only one. */
@@ -1035,8 +1036,9 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
   const { surfaces, others } = planeSurfaces(file, planeIndex);
   const key = surface ?? defaultSurface(file, planeIndex);
   const chosen = surfaces.find((s) => s.key === key);
-  if (!chosen) throw new RangeError(`unknown surface ${key}`);
-  const wing = chosen.available ? oneSidedAsHalf(chosen.wing) : null;
+  // A plane without wings (a flow5 plane built from a triangle mesh) has no surface to choose.
+  if (!chosen && surfaces.length) throw new RangeError(`unknown surface ${key}`);
+  const wing = chosen?.available ? oneSidedAsHalf(chosen.wing) : null;
   // The XML reader's warnings concern the whole file (another plane, too): marked for the caller. The
   // .xfl reader's warnings concern the airfoils, which this wing uses as well.
   const report = file.warnings.map((text) => (file.kind === 'xml' ? { severity: 'warning', text, reader: true } : { severity: 'warning', text }));
@@ -1044,7 +1046,7 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
   const sources = airfoilSources(file, plane, fileName, { project, library, uploads });
   const result = { plane: planeIndex, surface: key, wing, surfaces, others, rows: [], options: sources.options, missing: 0, report, errors: 0, name: '', project: null, summary: '' };
 
-  if (!wing) add('error', chosen.reason);
+  if (!wing) add('error', chosen ? chosen.reason : tr('Plane "{plane}" has no wing to import.', { plane: plane.name }));
   const geometry = wing ? mapSections(wing, file.lengthUnit, program) : { sections: [], report: [] };
   report.push(...geometry.report);
 
