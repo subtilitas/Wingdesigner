@@ -495,5 +495,5 @@ Defaults without a question, as for the XFLR5 import:
 - Whether the file choosers of Android and iOS list `.fl5` files is unknown.
 - F4 applies the roll of a flow5 wing rigidly as the part roll of step 2 (owner decision,
   2026-10-01), not built without roll and a warning.
-- Whether the XFLR5 import also offers its second wing once the wings form a typed list is not
-  decided; F3 covers flow5 only.
+- Decided 2026-10-02 (owner request): the XFLR5 import offers its second wing and its fin as well
+  (File Formats, section Fin); F3 covers flow5 only.

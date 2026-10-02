@@ -610,8 +610,10 @@ Drehpunkt und die Endleiste gemeinsam haben. Ihre Aufwärtsrichtung ist (0, −s
   Kurve durch die Neigungen der Schnitte, und δ ist die V-Form der überblendeten Bezugslinie an der
   Station, atan(dz/dy) der kubischen Kurve durch die Schnittpositionen z; m = 1 / cos(φ − δ). An einem
   Schnitt ist δ die Steigung der kubischen Kurve dort, nicht die V-Form eines Feldes, daher weicht die
-  Dickenstreckung an den Schnitten von **Linear** ab. Ein Schnitt mit gespeichertem Feldwinkel setzt
-  die Neigungen; δ von **Glatt** kommt aus den Schnittpositionen.
+  Dickenstreckung an den Schnitten von **Linear** ab. Ein gespeicherter Feldwinkel addiert seinen
+  Unterschied zur V-Form seines Feldes zu δ, und ein Feld schmaler als 1 mm in y nimmt den Winkel, den
+  seine beiden Schnitte teilen (kurze Felder, unten), wie bei **Linear**. Die Prüfung „Schnittebenen,
+  Drehung“ nimmt δ allein aus den Schnittpositionen.
 - Dicke quer zu einem Feld, mit **Glatt** quer zur überblendeten Bezugslinie: m cos(φ − δ) = 1 der
   Profildicke mit **Auf Gehrung**, cos δ mit **Senkrecht**. 35°-V-Leitwerk: Die senkrechten Schnitte haben quer zum Feld 81,9 % der Dicke; die
   Wurzel auf Gehrung trägt das Profil auf das 1,221-Fache gestreckt.

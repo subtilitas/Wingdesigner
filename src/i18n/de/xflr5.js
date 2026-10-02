@@ -15,8 +15,8 @@ export default {
     'XFLR5 baut ein Seitenleitwerk aufrecht: Das Teil dreht sich um {angle}° als starrer Körper um den Ursprung des Flügels (Einstellungen > Rollwinkel des Teils).',
   'A symmetric fin: XFLR5 turns both halves upright as one body, one above and one below the wing origin: Settings > Left half is set to Turned with the right half.':
     'Ein symmetrisches Seitenleitwerk: XFLR5 dreht beide Hälften als einen Körper aufrecht, eine über und eine unter dem Ursprung des Flügels: Einstellungen > Linke Hälfte ist auf Mit der rechten Hälfte gedreht gestellt.',
-  "A double fin: XFLR5 builds two upright fins {y} mm to the right and to the left of the wing origin (position y). The part's right half is the right fin, its left half the mirror image.":
-    'Ein doppeltes Seitenleitwerk: XFLR5 baut zwei aufrechte Seitenleitwerke {y} mm rechts und links vom Ursprung des Flügels (Position y). Die rechte Hälfte des Teils ist das rechte Seitenleitwerk, seine linke Hälfte das Spiegelbild.',
+  "A double fin: XFLR5 builds two upright fins {y} mm to the right and to the left of the wing origin (position y). The part's right half is the fin XFLR5 builds from the right half of the wing, its left half the mirror image.":
+    'Ein doppeltes Seitenleitwerk: XFLR5 baut zwei aufrechte Seitenleitwerke {y} mm rechts und links vom Ursprung des Flügels (Position y). Die rechte Hälfte des Teils ist das Seitenleitwerk, das XFLR5 aus der rechten Hälfte des Flügels baut, seine linke Hälfte das Spiegelbild.',
   "A single fin: XFLR5 builds its left half only, with the left-side airfoils, at y = 0. The part's left half is that half, its right half the mirror image on top of it; Export > Wing halves > Left half only exports XFLR5's fin alone.":
     'Ein einfaches Seitenleitwerk: XFLR5 baut nur seine linke Hälfte, mit den Profilen der linken Seite, bei y = 0. Die linke Hälfte des Teils ist diese Hälfte, seine rechte Hälfte das deckungsgleiche Spiegelbild; Exportieren > Flügelhälften > Nur linke Hälfte exportiert allein das Seitenleitwerk von XFLR5.',
   'This plane has no main wing.': 'Dieses Flugzeug hat keine Tragfläche.',

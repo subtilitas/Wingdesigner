@@ -1628,6 +1628,30 @@ describe('mitred section planes', () => {
     expect(buildWing(flat).stations.every((st) => st.roll === 0 && st.stretch === 1)).toBe(true);
   });
 
+  it('stretches Smooth against the angle of a short panel and of a stored panel angle, as Linear', () => {
+    // An airfoil switch 0.5 mm wide that the airfoil frames lift 2 mm: its two sections share one plane,
+    // and the cubic, 76° steep across the switch, does not set their stretch.
+    const sw = (spanwise) =>
+      createProject({
+        airfoils: [naca('0012', 'a')],
+        sections: [[0, 0], [300, 26], [300.5, 28], [600, 52]].map(([y, z]) => ({ airfoil: 'a', x: 0, y, z, chord: 200, twist: 0 })),
+        settings: { sectionPlanes: 'mitred', spanwise },
+      });
+    const [linear, smooth] = ['linear', 'smooth'].map((s) => buildWing(sw(s)));
+    expect([linear.errors, smooth.errors]).toEqual([[], []]);
+    expect(smooth.stretches[1]).toBeCloseTo(linear.stretches[1], 12);
+    // A stored panel angle of 20° on a flat wing: the planes roll 10° and 20°, stretched against 20°.
+    const stored = (spanwise) =>
+      createProject({
+        airfoils: [naca('0012', 'a')],
+        sections: [0, 300, 600].map((y, i) => ({ airfoil: 'a', x: 0, y, z: 0, chord: 200, twist: 0, ...(i === 1 ? { panelAngle: 20 } : {}) })),
+        settings: { sectionPlanes: 'mitred', spanwise },
+      });
+    const [l2, s2] = ['linear', 'smooth'].map((s) => buildWing(stored(s)));
+    expect(s2.rolls).toEqual([0, 10, 20]);
+    s2.stretches.forEach((v, i) => expect(v, `section ${i + 1}`).toBeCloseTo(l2.stretches[i], 12));
+  });
+
   it('stops Smooth where the reference line bends beyond 60° from the plane between the sections', () => {
     // NACA 0012, panels of −34.4° and 74.0°: every section plane lies within 60° of its panels, and
     // Linear builds. The smooth reference line leaves the vertical root plane at 63.7°.

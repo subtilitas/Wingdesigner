@@ -9,8 +9,8 @@ export default {
   'The file is a flow5 XML file (root element "{root}"); only XFLR5 files can be imported.':
     'Die Datei ist eine flow5-XML-Datei (Wurzelelement „{root}“); nur XFLR5-Dateien können importiert werden.',
   'The XML file holds no plane and no wing.': 'Die XML-Datei enthält weder ein Flugzeug noch einen Flügel.',
-  'The XML wing "{name}" is a fin; only a main wing or a horizontal stabilizer can be imported.':
-    'Der XML-Flügel „{name}“ ist ein Seitenleitwerk; importiert werden können nur eine Tragfläche oder ein Höhenleitwerk.',
+  'The XML wing "{name}" is a fin; a fin imports only from a plane file, where its kind and position are known.':
+    'Der XML-Flügel „{name}“ ist ein Seitenleitwerk; ein Seitenleitwerk wird nur aus einer Flugzeugdatei importiert, in der seine Art und Position bekannt sind.',
   'The length unit of the XML file is not valid: length_unit_to_meter is "{value}".':
     'Die Längeneinheit der XML-Datei ist ungültig: length_unit_to_meter ist „{value}“.',
   'The XML file is cut off: the element <{name}> is not closed.': 'Die XML-Datei ist abgeschnitten: Das Element <{name}> ist nicht geschlossen.',

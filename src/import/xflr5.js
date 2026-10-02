@@ -244,13 +244,13 @@ export function planeSurfaces(file, planeIndex = 0) {
  * - Symmetric fin (isSymFin, or a fin wing without isFin): both halves turned −90° as one body, then
  *   by the tilt angle about y: the part's roll with the left half turned along.
  * - Double fin (isDoubleFin): the right half turned +90° and moved by the position y, the left half
- *   its mirror image at y = 0, each turned by the tilt angle about z. The part: the right half moved
- *   out by |position y|, rolled +90° about the wing origin at that y.
+ *   its mirror image at y = 0, each turned by the tilt angle about z. The part: the right half rolled
+ *   +90°, about a pivot that puts it at the position y (mapSections), the left half its mirror image.
  */
 function finAsWing(fin) {
   const flags = fin.fin ?? { isFin: true, double: false, symmetric: false };
   if (!flags.isFin || flags.symmetric) return { ...fin, finKind: 'symmetric', twoSided: true, roll: -90 };
-  if (flags.double) return { ...fin, finKind: 'double', twoSided: true, roll: 90, finOffset: Number.isFinite(fin.position.y) ? Math.abs(fin.position.y) : 0 };
+  if (flags.double) return { ...fin, finKind: 'double', twoSided: true, roll: 90, finOffset: Number.isFinite(fin.position.y) ? fin.position.y : 0 };
   return { ...fin, finKind: 'single', twoSided: false, roll: -90 };
 }
 
@@ -516,19 +516,29 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
   const rollAngle = reduced(roll);
   // A double fin: the right half moves out by the position y, and the part turns about the wing
   // origin at that y; the left half stays the mirror image.
+  // A double fin: XFLR5 rolls the right half about the wing origin and then moves it by the position
+  // y (`offset`, either sign). The part frame holds y >= 0, so the sections move by `shift` (the part
+  // that lay below the origin, and a positive offset), and the pivot P of the roll R solves
+  // (I − R) P = (offset, z) − R (shift, z) in y and z: the rolled sections land where XFLR5 builds them.
   const offset = wing.finKind === 'double' ? k * wing.finOffset : 0;
-  // Sections moved up by `below` in the part frame land `below` mm higher once rolled; a pivot moved
-  // by (below / 2, −below · sin r / (2 (1 − cos r))) in y and z takes that back (r: the roll, ≠ 0).
-  const lift = below ? [below / 2, (-below * Math.sin(rollAngle * DEG)) / (2 * (1 - Math.cos(rollAngle * DEG)))] : [0, 0];
-  const pivotY = offset + lift[0];
-  if (angle !== 0 || rollAngle !== 0) folded = { angle, roll: rollAngle, x: X, ...(pivotY ? { y: pivotY } : {}), z: ZL + lift[1], turnedLeft: rollAngle !== 0 && !wing.oneSided && wing.finKind !== 'double' };
+  const shift = below + Math.max(offset, 0);
+  let pivot = [0, ZL];
+  if (rollAngle !== 0 && (shift !== 0 || offset !== 0)) {
+    const c = Math.cos(rollAngle * DEG);
+    const s = Math.sin(rollAngle * DEG);
+    const r1 = offset - (c * shift - s * ZL);
+    const r2 = ZL - (s * shift + c * ZL);
+    const det = (1 - c) ** 2 + s * s;
+    pivot = [((1 - c) * r1 - s * r2) / det, (s * r1 + (1 - c) * r2) / det];
+  }
+  if (angle !== 0 || rollAngle !== 0) folded = { angle, roll: rollAngle, x: X, ...(pivot[0] ? { y: pivot[0] } : {}), z: pivot[1], turnedLeft: rollAngle !== 0 && !wing.oneSided && wing.finKind !== 'double' };
   if (below) {
-    add('info', tr('The fin reaches {d} mm below its origin (root y_position {y} mm): its sections start at y = 0, and the pivot of Settings > Part roll lies {dy} mm out and {dz} mm down from the wing origin, so that the fin stays where XFLR5 builds it.', { d: num(below), y: num(-below), dy: num(lift[0]), dz: num(-lift[1]) }));
+    add('info', tr('The fin reaches {d} mm below its origin (root y_position {y} mm): its sections start at y = 0, and the pivot of Settings > Part roll lies {dy} mm out and {dz} mm down from the wing origin, so that the fin stays where XFLR5 builds it.', { d: num(below), y: num(-below), dy: num(pivot[0] - offset), dz: num(ZL - pivot[1]) }));
   }
   if (rollAngle !== 0 && wing.finKind) {
     add('info', tr('XFLR5 builds a fin upright: the part turns {angle}° as a rigid body about the wing origin (Settings > Part roll).', { angle: num(rollAngle) }));
     if (wing.finKind === 'symmetric') add('info', tr('A symmetric fin: XFLR5 turns both halves upright as one body, one above and one below the wing origin: Settings > Left half is set to Turned with the right half.'));
-    if (wing.finKind === 'double') add('info', tr('A double fin: XFLR5 builds two upright fins {y} mm to the right and to the left of the wing origin (position y). The part\'s right half is the right fin, its left half the mirror image.', { y: num(offset) }));
+    if (wing.finKind === 'double') add('info', tr('A double fin: XFLR5 builds two upright fins {y} mm to the right and to the left of the wing origin (position y). The part\'s right half is the fin XFLR5 builds from the right half of the wing, its left half the mirror image.', { y: num(Math.abs(offset)) }));
   } else if (rollAngle !== 0) {
     add('info', tr('Roll angle {angle}° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).', { angle: num(rollAngle) }));
     // flow5 turns both halves as one body: the left half of the part turns with it. A one-sided wing
@@ -552,8 +562,9 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
     }
     add('info', tr('Position in the {program} plane applied: the wing origin moved to x {x} mm, z {z} mm.', { program, x: num(X), z: num(ZL) }));
   }
-  if (offset !== 0) for (const q of kept) q.y += offset;
-  else if (Number.isFinite(position.y) && position.y !== 0) add('info', tr('Position y {y} mm is not used, as in {program}.', { program, y: num(k * position.y) }));
+  // A double fin uses the position y: a positive one moves the sections (shift), a negative one the pivot.
+  if (offset > 0) for (const q of kept) q.y += offset;
+  if (wing.finKind !== 'double' && Number.isFinite(position.y) && position.y !== 0) add('info', tr('Position y {y} mm is not used, as in {program}.', { program, y: num(k * position.y) }));
 
   const sides = src.flatMap((s, i) => (s.leftFoil !== s.rightFoil ? [i + 1] : []));
   if (sides.length) add('warning', tr('Left and right airfoils differ at {sections}; the right-side airfoils are used.', { sections: sectionsText(sides) }));

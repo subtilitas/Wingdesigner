@@ -608,12 +608,13 @@ describe('XFLR5 mapping: second wing and fin', () => {
       const fin = finWing({ double: true }, { y });
       const r = mapXflr5(plane(fin), { surface: 'wing:3' });
       expect(r.errors, `y ${y}`).toBe(0);
-      expect(r.project.settings).toMatchObject({ partRoll: 90, partTilt: 0, partPivot: { x: 680, y: Math.abs(y), z: 15 }, leftHalf: 'mirror' });
-      expect(r.project.sections[0].y).toBe(Math.abs(y));
-      // XFLR5's right surfaces turned +90° at +y; with a negative position y they land at −y, the mirror image.
-      const corners = xflr5Corners({ ...fin, position: { ...fin.position, y: Math.abs(y) } }, { xTilt: -90, fin: fin.fin });
-      expect(cornerDistance(r.project, corners), `y ${y}`).toBeLessThan(1e-3);
-      if (y !== 0) expect(texts(r.report, 'info')).toContain(`A double fin: XFLR5 builds two upright fins 150 mm to the right and to the left of the wing origin (position y). The part's right half is the right fin, its left half the mirror image.`);
+      // A positive position y moves the sections; a negative one puts XFLR5's right-hand fin at −y,
+      // which the pivot of the roll does: (I − R) P = (y, 15) − R (0, 15).
+      expect(r.project.settings).toMatchObject({ partRoll: 90, partTilt: 0, partPivot: y >= 0 ? { x: 680, y, z: 15 } : { x: 680, y: -75, z: -60 }, leftHalf: 'mirror' });
+      expect(r.project.sections[0].y).toBe(Math.max(y, 0));
+      // XFLR5's corners at the position y as it stands: the right half at +y, or at −|y| for a negative one.
+      expect(cornerDistance(r.project, xflr5Corners(fin, { xTilt: -90, fin: fin.fin })), `y ${y}`).toBeLessThan(1e-3);
+      if (y !== 0) expect(texts(r.report, 'info')).toContain(`A double fin: XFLR5 builds two upright fins 150 mm to the right and to the left of the wing origin (position y). The part's right half is the fin XFLR5 builds from the right half of the wing, its left half the mirror image.`);
       expect(texts(r.report, 'info').some((t) => t.startsWith('Position y'))).toBe(false);
     }
     const tilted = finWing({ double: true }, { y: 150, tilt: -2 });

@@ -136,7 +136,7 @@ describe('XFLR5 XML fixtures', () => {
   it('refuses a wing-only fin', () => {
     const e = failure(fixture('xml_mm/0.w3.wing.xml'));
     expect(e.code).toBe('fin');
-    expect(e.message).toBe('The XML wing "Fin" is a fin; only a main wing or a horizontal stabilizer can be imported.');
+    expect(e.message).toBe('The XML wing "Fin" is a fin; a fin imports only from a plane file, where its kind and position are known.');
   });
 
   it('reads UltraStick25e.xml (genuine XFLR5 output in inches with a body)', () => {
@@ -545,7 +545,7 @@ describe('XFLR5 XML refusals', () => {
 
   it('speaks German after setLanguage', () => {
     setLanguage('de');
-    expect(failure(fixture('xml_mm/0.w3.wing.xml')).message).toBe('Der XML-Flügel „Fin“ ist ein Seitenleitwerk; importiert werden können nur eine Tragfläche oder ein Höhenleitwerk.');
+    expect(failure(fixture('xml_mm/0.w3.wing.xml')).message).toBe('Der XML-Flügel „Fin“ ist ein Seitenleitwerk; ein Seitenleitwerk wird nur aus einer Flugzeugdatei importiert, in der seine Art und Position bekannt sind.');
     expect(failure('<explane version="1.0">\n<Plane>\n</explane>').message).toBe('Die XML-Datei ist in Zeile 3 beschädigt: </explane> schließt nicht <Plane>.');
     const r = readXflr5Xml(file(plane('P', wing('A') + wing('B') + wing('C'))));
     expect(r.warnings).toEqual(['Das Flugzeug „P“ hat mehr als eine Tragfläche: „C“ ersetzt wie in XFLR5 „A“.']);

@@ -14,7 +14,7 @@ import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePo
 import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile, sampleCurve } from './profile.js';
 import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
-import { MAX_STRETCH, firstFold, mitredPlanes, overStretched, sectionPlanes, stretchOf, upExtent } from './planes.js';
+import { MAX_STRETCH, SHORT_PANEL, firstFold, mitredPlanes, overStretched, sectionPlanes, stretchOf, upExtent } from './planes.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
 import { partTransform } from './part.js';
 import { WARN, displayName, loftGrid, sizeWarning } from '../model/budget.js';
@@ -601,11 +601,17 @@ export function buildWing(project) {
   };
   let blendScalars = scalarBlender();
   const placed = new Map();
-  // Smooth: the dihedral (degrees) of the blended reference line (y, z) at y, and the turning rate of
-  // the blended roll (rad/mm). Linear: the dihedral of the panel and the roll change over the panel.
+  // Smooth: the dihedral (degrees) of the blended reference line (y, z) at y, the direction the
+  // stations move along; the angle the plane there is stretched against (`square`), as with Linear:
+  // that dihedral plus the difference a stored panel angle makes on its panel, and on a panel narrower
+  // than SHORT_PANEL the angle its two sections share (planes.panels); and the turning rate of the
+  // blended roll (rad/mm).
   const slopes = (y) => {
     const d = blendScalars.derivative(y)[0];
-    return { dihedral: Math.atan(d[2]) / DEG, rollRate: d[4] * DEG };
+    const dihedral = Math.atan(d[2]) / DEG;
+    const i = panelOf(y);
+    const square = ys[i + 1] - ys[i] < SHORT_PANEL ? planes.panels[i] : dihedral + planes.panels[i] - planes.dihedrals[i];
+    return { dihedral, square, rollRate: d[4] * DEG };
   };
   const place = (y) => {
     const raw = blendScalars(y)[0];
@@ -619,7 +625,7 @@ export function buildWing(project) {
     if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
     if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
     const roll = raw[4];
-    const stretch = planesOn ? stretchOf(roll, smooth ? slopes(y).dihedral : planes.panels[panelOf(y)]) : 1;
+    const stretch = planesOn ? stretchOf(roll, smooth ? slopes(y).square : planes.panels[panelOf(y)]) : 1;
     return { xLE, chord, z: raw[2], twist: raw[3], roll, stretch };
   };
   const placement = (y) => {
@@ -761,7 +767,7 @@ export function buildWing(project) {
     // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendCompat(y);
     if (planesOn && smooth && !turnFold && !overStretch) {
-      if (!(stretch <= MAX_STRETCH)) overStretch = { y, stretch, angle: Math.abs(roll - slopes(y).dihedral), i: panelOf(y) };
+      if (!(stretch <= MAX_STRETCH)) overStretch = { y, stretch, angle: Math.abs(roll - slopes(y).square), i: panelOf(y) };
       else {
         const { dihedral, rollRate: rate } = slopes(y);
         if (rate !== 0) {

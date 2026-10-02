@@ -315,7 +315,7 @@ export function readXflr5Xml(text) {
     const name = displayName(top.wing.name);
     if (topCount > 1) warnings.add(tr('The file holds {count} wings outside a plane; XFLR5 reads only the last one, "{name}", and so does this import.', { count: count(topCount), name }));
     // XFLR5 would take any wing as the main wing; the role here comes from its Type.
-    if (top.type === 'FIN' || top.isFin) throw new XflrError('fin', tr('The XML wing "{name}" is a fin; only a main wing or a horizontal stabilizer can be imported.', { name }));
+    if (top.type === 'FIN' || top.isFin) throw new XflrError('fin', tr('The XML wing "{name}" is a fin; a fin imports only from a plane file, where its kind and position are known.', { name }));
     const wings = [null, null, null, null];
     wings[top.type === 'ELEVATOR' ? 2 : 0] = top.wing;
     planes.push({ name: '', description: '', wings });
