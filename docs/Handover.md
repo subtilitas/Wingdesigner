@@ -45,9 +45,6 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
    memory on phones. The app is tested in Chromium only; Firefox and Safari are not tested (README,
    Limitations).
 4. Known failures (`RECORD.md`, Open items):
-   - The STEP file of `Final Design.xfl`, plane 1, main wing (S1223, closed cusped trailing edge)
-     holds one solid that fails the BRepCheck of OpenCascade; with a trailing-edge thickness of 0.4 mm
-     both solids are valid. The cause is not analysed. The file is not in the repository.
    - **Smooth** spanwise interpolation stops the build of 9 of 135 imported real surfaces.
    - Projects of the XFLR5 import in project format version 1, set to **Mitred**, carry the error of
      the folded tilt; the angle is not stored, **Open** shows a note and **Checks** a warning without a distance.
