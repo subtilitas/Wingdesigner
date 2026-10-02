@@ -1,18 +1,18 @@
 # Handover
 
-State of Wingdesigner on 2026-10-01, for the next person or session that works on it. Read
+State of Wingdesigner on 2026-10-02, for the next person or session that works on it. Read
 `RECORD.md` first: it holds the verified state, the decisions with their reasons, the measurements and
 the open items, each as a claim to re-check. This page adds where the work stands, what comes next,
 how the owner works with contributors, and what the repository does not hold.
 
 ## Where the work stands
 
-| Item | State on 2026-10-01 |
+| Item | State on 2026-10-02 |
 | --- | --- |
 | Version | `package.json` holds 0.4.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
 | Next release | Not prepared. The section Unreleased of `CHANGELOG.md` holds the integral winglet and the flow5 import. The steps: Development, section Release. |
 | Release texts | The notes of `v0.2.0` and `v0.3.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
-| `main` | The integral winglet (eb6a9cd, pull request #20) on release 0.4.0; the flow5 import follows in its own pull request. |
+| `main` | Release 0.4.0, the integral winglet (eb6a9cd, pull request #20) and the flow5 import with the setting **Left half** and the export option **Left half only** (189e9d2, pull request #21). |
 | Unit tests | `RECORD.md`, row Unit tests. |
 | Browser tests | Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); counts in `RECORD.md`, row UI. |
 | Export validation | 13 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 11 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
@@ -37,17 +37,14 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
      flow5 builds and the drivers that wrote `test/fixtures/flow5/` are outside the repository (section
      "Not in the repository"). A reader update for a new flow5 format: the notes name every record and
      its format number; `test/fl5-writer.js` takes the format numbers as options.
-3. Question for the owner, not yet asked (`RECORD.md`, Open items): cambered NACA (National Advisory
-   Committee for Aeronautics) sections of the generator get an airfoil frame, although the answer to
-   Q9 reads "NACA and normalized airfoils do not move".
-4. Not measured or not tested, among the Open items of `RECORD.md`: smooth blending with rolled
+3. Not measured or not tested, among the Open items of `RECORD.md`: smooth blending with rolled
    section planes (not built), a rolled or turned STEP file in a CAD (computer-aided design) program
    other than OpenCascade, the 93 real XFLR5 surfaces against XFLR5's STL (stereolithography) with the
    rigid tilt, STL and 3MF float32 precision of rolled caps, how often the fold test fires on real
    wings, the file choosers of Android and iOS, the import dialog with a screen reader, build time and
    memory on phones. The app is tested in Chromium only; Firefox and Safari are not tested (README,
    Limitations).
-5. Known failures (`RECORD.md`, Open items):
+4. Known failures (`RECORD.md`, Open items):
    - The STEP file of `Final Design.xfl`, plane 1, main wing (S1223, closed cusped trailing edge)
      holds one solid that fails the BRepCheck of OpenCascade; with a trailing-edge thickness of 0.4 mm
      both solids are valid. The cause is not analysed. The file is not in the repository.
