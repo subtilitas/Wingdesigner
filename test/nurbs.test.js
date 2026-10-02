@@ -146,6 +146,7 @@ describe('curves', () => {
       expect(Dn[i]).toBeCloseTo((pts[n][i] - pts[n - 1][i]) / (1 - params[n - 1]), 10);
     }
     expect(() => secantEndInterpolation([0, 0, 0.5, 1], 3)).toThrow();
+    expect(() => secantEndInterpolation([0, 0.5, 1], 1)).toThrow('secantEndInterpolation needs at least 3 points and degree 2.');
   });
 
   it('computes averaging knots with the expected structure', () => {
