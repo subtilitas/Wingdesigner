@@ -225,17 +225,6 @@ export function upgradeFoldedTilt(project) {
 }
 
 /**
- * A version 1 file that the XFLR5 import may have written: an airfoil of an `.xfl` file, or the
- * settings that import wrote for every file (also an XML file, whose airfoils come from other
- * sources): twist pivot 0.25, the trailing edge as in the airfoils, a flat tip.
- */
-function fromVersion1Import(data) {
-  if (data.airfoils.some((a) => a?.source?.kind === 'xflr5')) return true;
-  const st = resolveSettings(isObject(data.settings) ? data.settings : {});
-  return st.twistPivot === 0.25 && st.trailingEdge.mode === 'asis' && st.tip.mode === 'flat';
-}
-
-/**
  * Parse and validate project JSON text. Derived data is ignored. A version 2 file with a folded
  * tilt is upgraded (upgradeFoldedTilt); `notes` names what the upgrade did.
  * @returns {{ok: boolean, project?: object, errors: string[], notes?: string[]}}
@@ -284,9 +273,11 @@ export function projectFromJsonText(text) {
     // docs/Flow5upgrade.md), set before the defaults fill the missing settings.
     settings: resolveSettings(data.version < 2 ? { ...(isObject(data.settings) ? data.settings : {}), sectionPlanes: 'vertical' } : data.settings),
     ...(isObject(data.foldedTilt) ? { foldedTilt: { angle: data.foldedTilt.angle, x: data.foldedTilt.x, z: data.foldedTilt.z } } : {}),
-    // The XFLR5 import of format version 1 folded a tilt angle into the sections without storing it:
-    // marked so that Checks warns with mitred planes, also after the project is saved again.
-    ...(data.foldedTiltUnknown === true || (data.version === 1 && fromVersion1Import(data)) ? { foldedTiltUnknown: true } : {}),
+    // The XFLR5 import of format version 1 folded a tilt angle into the sections without storing it, and
+    // a version 1 file holds no mark of that import (an XML import has no airfoil of the file, and its
+    // settings can be edited): every version 1 file is marked, so that Checks warns with mitred planes,
+    // also after the project is saved again.
+    ...(data.foldedTiltUnknown === true || data.version === 1 ? { foldedTiltUnknown: true } : {}),
   };
   // Fill each missing guide from the section edges.
   const defaults = defaultGuides(project.sections);

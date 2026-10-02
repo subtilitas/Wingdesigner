@@ -321,19 +321,20 @@ describe('upgrade of a folded tilt (project format version 2)', () => {
   });
 
   it('drops part placement keys of version 1 and 2 files, as the apps of those versions do', () => {
+    const NOTE = "This project of format version 1 may come from the XFLR5 import: a tilt angle of the wing may be folded into the section values, which is exact for vertical section planes only. With Settings > Section planes Mitred the part can lie up to 0.75 · chord · sin(tilt angle) · sin(roll) off XFLR5's. Importing the XFLR5 file again gives the rigid tilt (Settings > Part tilt).";
     for (const version of [1, 2]) {
-      // A closed trailing edge: not the settings of the XFLR5 import of version 1 (fromVersion1Import).
-      const text = JSON.stringify({ ...projectToJson(sampleProject(), null), version, settings: { ...sampleProject().settings, trailingEdge: { mode: 'closed' }, partTilt: 5, partRoll: 'abc', partPivot: 7 } });
+      const text = JSON.stringify({ ...projectToJson(sampleProject(), null), version, settings: { ...sampleProject().settings, partTilt: 5, partRoll: 'abc', partPivot: 7 } });
       const r = projectFromJsonText(text);
       expect(r.ok, `version ${version}`).toBe(true);
       expect(r.project.settings).toMatchObject({ partTilt: 0, partRoll: 0, partPivot: null });
-      expect(r.notes).toEqual([]);
+      // Every version 1 file may come from the XFLR5 import of that version (foldedTiltUnknown).
+      expect(r.notes).toEqual(version === 1 ? [NOTE] : []);
     }
     // foldedTilt belongs to version 2: a version 1 file keeps its sections.
-    const base = sampleProject({ settings: { trailingEdge: { mode: 'closed' } } });
+    const base = sampleProject();
     const r1 = projectFromJsonText(JSON.stringify({ ...projectToJson(base, null), version: 1, foldedTilt: { angle: 3, x: 0, z: 0 } }));
     expect(r1.ok).toBe(true);
-    expect([r1.project.foldedTilt, r1.project.settings.partTilt, r1.notes]).toEqual([undefined, 0, []]);
+    expect([r1.project.foldedTilt, r1.project.settings.partTilt, r1.notes]).toEqual([undefined, 0, [NOTE]]);
     r1.project.sections.forEach((q, i) => expect([q.x, q.z, q.twist]).toEqual([base.sections[i].x, base.sections[i].z, base.sections[i].twist]));
     // A version 1 file of the XFLR5 import may hold a folded tilt it does not store: Open says so.
     const imported = structuredClone(base);
@@ -352,11 +353,10 @@ describe('upgrade of a folded tilt (project format version 2)', () => {
     const warn = (planes) => buildWing({ ...again.project, settings: { ...again.project.settings, sectionPlanes: planes } }).warnings.filter((w) => w.startsWith('A tilt angle of the XFLR5 import of format version 1'));
     expect([warn('vertical').length, warn('mitred').length]).toEqual([0, 1]);
     expect(validateProject({ ...again.project, foldedTiltUnknown: 'yes' }).errors).toContain('foldedTiltUnknown must be true or false.');
-    // An XML import of version 1 has no XFLR5 airfoil but the settings that import wrote; other version 1
-    // projects (the wizard closes or thickens the trailing edge) get no mark.
-    const xml = { ...projectToJson(base, null), version: 1, settings: { twistPivot: 0.25, spanwise: 'linear', mirror: true, tip: { mode: 'flat' }, trailingEdge: { mode: 'asis' } } };
-    expect(projectFromJsonText(JSON.stringify(xml)).project.foldedTiltUnknown).toBe(true);
-    const wizard = { ...xml, settings: { ...xml.settings, trailingEdge: { mode: 'thickness', thickness: 0.4 } } };
-    expect(projectFromJsonText(JSON.stringify(wizard)).project.foldedTiltUnknown).toBeUndefined();
+    // A version 1 file holds no mark of the import (an XML import has no airfoil of the file): every
+    // version 1 file is marked; a version 2 or 3 file without the key is not.
+    const plain1 = { ...projectToJson(base, null), version: 1 };
+    expect(projectFromJsonText(JSON.stringify(plain1)).project.foldedTiltUnknown).toBe(true);
+    expect(projectFromJsonText(JSON.stringify({ ...plain1, version: 3 })).project.foldedTiltUnknown).toBeUndefined();
   });
 });
