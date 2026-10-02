@@ -1272,6 +1272,12 @@ export function buildWing(project) {
       }),
     );
   }
+  // The XFLR5 import of format version 1 folded a tilt angle without storing it (project.foldedTiltUnknown).
+  if (planesOn && !tilt && project.foldedTiltUnknown && R.some((r) => r !== 0)) {
+    warnings.push(
+      tr("A tilt angle of the XFLR5 import of format version 1 may be folded into the section values; the angle is not stored. The fold is exact for vertical section planes only: with mitred planes the part lies up to 0.75 · chord · sin(tilt angle) · sin(roll) off XFLR5's. Settings > Section planes Vertical keeps the import exact; importing the XFLR5 file again gives the rigid tilt."),
+    );
+  }
   let dev = 0;
   let devY = y0;
   let over = false;

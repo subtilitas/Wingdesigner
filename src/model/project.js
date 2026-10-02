@@ -291,6 +291,7 @@ export function validateProject(p) {
   if (p.foldedTilt !== undefined && p.foldedTilt !== null && !(isObject(p.foldedTilt) && isNum(p.foldedTilt.angle) && isNum(p.foldedTilt.x) && isNum(p.foldedTilt.z))) {
     errors.push(tr('foldedTilt must be an object with the numbers angle, x and z.'));
   }
+  if (p.foldedTiltUnknown !== undefined && typeof p.foldedTiltUnknown !== 'boolean') errors.push(tr('foldedTiltUnknown must be true or false.'));
   if (!['asis', 'closed', 'thickness'].includes(st.trailingEdge.mode)) errors.push(tr('settings.trailingEdge.mode must be "asis", "closed" or "thickness".'));
   if (!isNum(st.trailingEdge.thickness) || st.trailingEdge.thickness < 0) errors.push(tr('settings.trailingEdge.thickness must be >= 0.'));
   if (!['flat', 'pointed'].includes(st.tip.mode)) errors.push(tr('settings.tip.mode must be "flat" or "pointed".'));

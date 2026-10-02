@@ -35,6 +35,7 @@ export function projectToJson(project, build, meta = {}) {
     guides: structuredClone(project.guides),
     settings: resolveSettings(structuredClone(project.settings)),
     ...(project.foldedTilt ? { foldedTilt: structuredClone(project.foldedTilt) } : {}),
+    ...(project.foldedTiltUnknown ? { foldedTiltUnknown: true } : {}),
   };
   if (build && build.surface) {
     out.derived = {
@@ -272,6 +273,11 @@ export function projectFromJsonText(text) {
     // docs/Flow5upgrade.md), set before the defaults fill the missing settings.
     settings: resolveSettings(data.version < 2 ? { ...(isObject(data.settings) ? data.settings : {}), sectionPlanes: 'vertical' } : data.settings),
     ...(isObject(data.foldedTilt) ? { foldedTilt: { angle: data.foldedTilt.angle, x: data.foldedTilt.x, z: data.foldedTilt.z } } : {}),
+    // The XFLR5 import of format version 1 folded a tilt angle into the sections without storing it, and
+    // a version 1 file holds no mark of that import (an XML import has no airfoil of the file, and its
+    // settings can be edited): every version 1 file is marked, so that Checks warns with mitred planes,
+    // also after the project is saved again.
+    ...(data.foldedTiltUnknown === true || data.version === 1 ? { foldedTiltUnknown: true } : {}),
   };
   // Fill each missing guide from the section edges.
   const defaults = defaultGuides(project.sections);
@@ -292,6 +298,11 @@ export function projectFromJsonText(text) {
   // the planform draws and edits them where the wing uses them.
   syncGuidesToSpan(project);
   const notes = data.version < 3 ? upgradeFoldedTilt(project) : [];
+  // The XFLR5 import of format version 1 folded a tilt angle into the sections without storing it:
+  // exact with the vertical planes the file opens with, not with mitred planes.
+  if (data.version === 1 && project.foldedTiltUnknown) {
+    notes.push(tr('This project of format version 1 may come from the XFLR5 import: a tilt angle of the wing may be folded into the section values, which is exact for vertical section planes only. With Settings > Section planes Mitred the part can lie up to 0.75 · chord · sin(tilt angle) · sin(roll) off XFLR5\'s. Importing the XFLR5 file again gives the rigid tilt (Settings > Part tilt).'));
+  }
   // An upgraded project must still pass the limits (the turned sections stay within ±LIMITS.maxCoordinate).
   if (notes.length && !validateProject(project).ok) return { ok: false, errors: validateProject(project).errors };
   return { ok: true, project, errors: [], notes };
