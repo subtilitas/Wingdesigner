@@ -537,6 +537,28 @@ describe('XFLR5 mapping: airfoils', () => {
     expect(buildWing(r.project).errors).toEqual([]);
   });
 
+  it('builds an airfoil switch and a chord step at one y, which the import moves 0.5 mm apart, with smooth spanwise interpolation', () => {
+    // Root 250 mm NACA 2412, at 300 mm the switch to NACA 0012 and a chord step to 200 mm, tip 150 mm.
+    // The natural cubic spline through these sections overshot by thousands of millimetres.
+    const w = wingOf([sec(0, 0.25, 0, 0, 0, 'Root'), sec(0.3, 0.25, 0, 0, 0, 'Root'), sec(0.3, 0.2, 0, 0, 0, 'Tip'), sec(0.6, 0.15, 0.03, 0, -2, 'Tip')]);
+    const r = mapXflr5(xflFile([w, null, null, null], [foilOf('Root', NACA2412), foilOf('Tip', NACA12)]));
+    expect(texts(r.report, 'error')).toEqual([]);
+    expect(r.project.sections.map((s) => s.y)).toEqual([0, 299.5, 300, 600]);
+    const p = { ...r.project, settings: { ...r.project.settings, spanwise: 'smooth' } };
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    // Chord and leading-edge x stay within the two sections of every panel.
+    const ys = p.sections.map((s) => s.y);
+    for (const st of b.stations) {
+      const j = Math.min(ys.findIndex((y) => y >= st.y) || 1, ys.length - 1);
+      const [A, B] = [p.sections[j - 1], p.sections[j]];
+      expect(st.chord).toBeGreaterThanOrEqual(Math.min(A.chord, B.chord) - 1e-9);
+      expect(st.chord).toBeLessThanOrEqual(Math.max(A.chord, B.chord) + 1e-9);
+      expect(st.xLE).toBeGreaterThanOrEqual(Math.min(A.x, B.x) - 1e-9);
+      expect(st.xLE).toBeLessThanOrEqual(Math.max(A.x, B.x) + 1e-9);
+    }
+  });
+
   it('refuses file airfoils that the clean-up rejects, and uploads that do not parse', () => {
     const w = wingOf([sec(0, 0.2, 0, 0, 0, 'NaN foil'), sec(0.5, 0.15, 0, 0, 0, 'NaN foil')]);
     const r = mapXflr5(xflFile([w, null, null, null], [foilOf('NaN foil', [...NACA12.slice(0, 5), [NaN, 0], ...NACA12.slice(5)])]));

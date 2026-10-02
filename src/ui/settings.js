@@ -86,7 +86,7 @@ export class SettingsPanel {
             [
               ['linear', tr('Linear between sections')],
               ['straight', tr('Straight panels (straight lines between sections, as XFLR5)')],
-              ['smooth', tr('Smooth (natural cubic spline through sections)')],
+              ['smooth', tr('Smooth (shape-preserving cubic through sections)')],
             ],
             (v) => set((q) => (q.spanwise = v)),
             tr('Spanwise interpolation'),

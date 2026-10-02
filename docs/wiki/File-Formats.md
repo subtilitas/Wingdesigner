@@ -374,7 +374,7 @@ Unknown keys inside `settings` are dropped on **Open**. **Save** writes the keys
 | `profiles[]` | one entry per airfoil that a section uses: `airfoil` (id), `name`, `curve`, `leadingEdgeParameter` (curve parameter at the LE) |
 | `guides.nose`, `guides.end` | guide curve, control points `[x, y]` in mm; `null` when the guide is disabled |
 | `stations[]` | every spanwise station: `y` (mm), `v` (span fraction 0–1), `xLE`, `z`, `chord` (mm), `twist` (°), `roll` (°, roll of the station plane about x) and `stretch` (thickness factor), [[Geometry]], section 3.8 |
-| `surface` | surface of the right half: `degreeU` (3), `degreeV` (1 when no panel has intermediate stations: `spanwise` `"straight"`, and `"linear"` without guides and without panels between mitred planes of different roll; with intermediate stations (a guide enabled, or `"linear"` panels between mitred planes of different roll): 3, or 2 or 1 when the loft grid limit lowers the stations per panel to 2 or 1; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
+| `surface` | surface of the right half: `degreeU` (3), `degreeV` (1 when no panel has intermediate stations: `spanwise` `"straight"`, and `"linear"` without guides and without panels between mitred planes of different roll; with intermediate stations (a guide enabled, `"smooth"`, or `"linear"` panels between mitred planes of different roll): 3, or 2 or 1 when the loft grid limit lowers the stations per panel to 2 or 1), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
 
 - Curve object: `degree`, `knots`, `controlPoints`. All curves and the surface are non-rational; no `weights` key is written.
 - `profiles[].curve.controlPoints`: `[x, y]` in normalized airfoil coordinates (chord 1).
@@ -428,8 +428,7 @@ Checked only when the wing is built, in this order:
 - interpolated section values are finite numbers (leading-edge x, chord, z, cosine of the twist);
 - interpolated leading-edge x, trailing-edge x and z within ±1,200,000 mm, chord at most 100,000 mm;
 - `sectionPlanes` `"mitred"` with `spanwise` `"linear"`: along a panel the section planes turn faster than its airfoils allow, so the surface folds; at a section both panels next to it count ([[Geometry]], section 3.6);
-- `spanwise` `"smooth"`: an interpolated value (leading-edge x, chord, z, twist or a profile point height) lies more than 2 × the range of its section values outside that range;
-- blended profile thickness below 0 (`spanwise` `"smooth"`: overshoot; `"linear"`: upper and lower surface of a section airfoil cross);
+- blended profile thickness below 0 (upper and lower surface of a section airfoil cross);
 - thickness after the trailing-edge setting below 0;
 - upper and lower surface touch after blending or after the trailing-edge setting: thickness at a chord station between 1 % and 99 % chord at or below 0.001 % chord;
 - chord below 1 mm;

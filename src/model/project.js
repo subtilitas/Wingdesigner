@@ -28,7 +28,8 @@ export const fileVersion = (settings) => (settings?.leftHalf === 'turned' ? 4 : 
  * Spanwise interpolation: 'linear' blends every section value (leading edge, chord, z, twist, airfoil
  * shape) linearly and fits the loft to it; 'straight' joins the points of equal chord fraction of two
  * neighbouring sections with straight lines (a ruled surface, as XFLR5 builds its panels); 'smooth'
- * blends with a natural cubic spline through all sections.
+ * blends with a shape-preserving cubic (src/geom/spanwise.js) that stays within the values of the two
+ * sections of every panel.
  */
 export const SPANWISE = Object.freeze(['linear', 'straight', 'smooth']);
 
@@ -86,7 +87,7 @@ export const LIMITS = Object.freeze({
   // Guide x reaches the trailing edge of any valid section (x + chord), where disabled end lines lie.
   maxGuideCoordinate: 1_100_000,
   // Extent of the built geometry: every leading edge, trailing edge and z within this bound covers
-  // an end line at its limit less the largest chord. Only interpolation overshoot goes beyond it.
+  // an end line at its limit less the largest chord. Only guide curves go beyond it.
   maxExtent: 1_200_000,
   tipRatio: [0.001, 0.01],
   chordSamples: [16, 200],

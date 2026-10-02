@@ -208,18 +208,19 @@ zurückläuft: „Die Oberseite läuft an … Punkten in x zurück; die Grenze l
 
 ### 3.1 Interpolation der Schnittwerte
 
-Jede Größe f eines Schnitts (x, z, Profiltiefe, Schränkung und die 2N + 1 Konturpunkte) wird als
-gewichtete Summe mit Gewichten w_i(y) interpoliert:
+Jede Größe f eines Schnitts (x, z, Profiltiefe, Schränkung und die 2N + 1 Konturpunkte) wird entlang
+der Spannweite interpoliert. **Linear** und **Gerade Felder** bilden eine gewichtete Summe mit
+Gewichten w_i(y):
 
 ```
 f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 ```
 
-| **Interpolation in Spannweitenrichtung** (Spanwise interpolation) | Gewichte w_i(y) | Bedingung |
+| **Interpolation in Spannweitenrichtung** (Spanwise interpolation) | Interpolation | Bedingung |
 | --- | --- | --- |
 | **Linear zwischen den Schnitten** (Linear between sections) | Hutfunktionen: linear zwischen den beiden benachbarten Schnitten | jede Anzahl von Schnitten |
 | **Gerade Felder (gerade Linien zwischen den Schnitten, wie XFLR5)** (Straight panels (straight lines between sections, as XFLR5)) | Hutfunktionen, wie **Linear**, für die Prüfstellen aus Abschnitt 3.6; die Fläche selbst verbindet die platzierten Schnitte mit geraden Linien (unten) | jede Anzahl von Schnitten; keine Leitkurve eingeschaltet |
-| **Glatt (natürlicher kubischer Spline durch die Schnitte)** (Smooth (natural cubic spline through sections)) | Kardinalfunktionen eines natürlichen kubischen Splines durch die Schnittpositionen y_i (zweite Ableitung 0 an Wurzel und Rand) | 3 oder mehr Schnitte; bei 2 Schnitten gelten die Hutfunktionen |
+| **Glatt (formerhaltende kubische Kurve durch die Schnitte)** (Smooth (shape-preserving cubic through sections)) | je Feld ein kubisches Hermite-Polynom durch die beiden Schnittwerte, mit den Steigungen eines natürlichen kubischen Splines durch alle Schnitte, so begrenzt, dass kein Wert den Bereich der beiden Schnitte seines Feldes verlässt (unten) | 3 oder mehr Schnitte; bei 2 Schnitten gelten die Hutfunktionen |
 
 - y außerhalb von [y_root, y_tip] wird auf den Bereich begrenzt.
 - **Linear** überblendet das normierte Profil, die Profiltiefe und die Schränkung getrennt: In der Mitte
@@ -248,19 +249,57 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 - **Gerade Felder** mit eingeschalteter Leitkurve stoppen den Aufbau: „Gerade Felder folgen keinen
   Leitkurven: die Leitkurven in der Registerkarte Grundriss ausschalten oder Einstellungen >
   Interpolation in Spannweitenrichtung auf „Linear“ oder „Glatt“ setzen.“
-- **Glatt** (Smooth): Die Berechnung wertet den Spline jedes überblendeten Werts direkt aus. Ein
-  Tridiagonalsystem der Größe Schnitte − 2 (Thomas-Algorithmus, ohne Pivotsuche; das System
-  ist diagonaldominant) liefert die zweiten Ableitungen aller Werte an den Schnitten, eine
-  rechte Seite je Wert. n Schnitte mit m Werten: einmal O(n · m) Rechenschritte, dann O(m) je
-  Spannweitenposition aus den beiden benachbarten Schnitten. Das Ergebnis gleicht der
-  gewichteten Summe mit den Kardinalfunktionen bis auf Rundungsfehler.
-- **Glatt**: Die Kardinalfunktionen verlassen zwischen den Schnitten den Bereich [0, 1]
-  (3 gleich verteilte Schnitte: kleinstes Gewicht −0,096). Große Dicken- oder Tiefenänderungen
-  und ungleiche Abstände verstärken das Überschwingen.
-- **Glatt**, Fehler beim Aufbau (Abschnitt 3.6): ein interpolierter Wert liegt um mehr als das 2-Fache
-  des Bereichs seiner Schnittwerte außerhalb dieses Bereichs; eine negative interpolierte Dicke; ein
-  interpoliertes x der Profilnase, x der Endleiste oder z außerhalb von ±1 200 000 mm oder eine
-  Profiltiefe über 100 000 mm.
+- **Glatt** (Smooth), Konstruktion (`src/geom/spanwise.js`), für jeden interpolierten Wert f mit den
+  Schnittwerten f_i bei y_i, den Feldlängen h_i = y_(i+1) − y_i und den Sekanten
+  d_i = (f_(i+1) − f_i) / h_i:
+  1. Natürlicher kubischer Spline durch die Schnittwerte (zweite Ableitung 0 an Wurzel und Rand): Ein
+     Tridiagonalsystem der Größe Schnitte − 2 (Thomas-Algorithmus, ohne Pivotsuche; das System ist
+     diagonaldominant) liefert die zweiten Ableitungen D_i, eine rechte Seite je Wert. Steigung am
+     Schnitt i: m_i = d_i − h_i (2 D_i + D_(i+1)) / 6; am Randschnitt m = d + h (D_(n−2) + 2 D_(n−1)) / 6
+     des letzten Feldes.
+  2. Begrenzung (Fritsch und Carlson, 1980): m_i = 0, wo die Sekanten der beiden Felder am Schnitt i
+     verschiedene Vorzeichen haben oder eine von ihnen 0 ist; sonst wird |m_i| auf
+     3 · min(|d_(i−1)|, |d_i|) begrenzt. Wurzel- und Randschnitt haben ein Feld. Eine übergelaufene
+     Steigung (NaN, keine Zahl) wird 0.
+  3. Im Feld i, mit t = (y − y_i) / h_i:
+
+     ```
+     f(y) = f_i H00(t) + f_(i+1) H01(t) + h_i m_i H10(t) + h_i m_(i+1) H11(t)
+     H00 = (1 − t)² (1 + 2t)   H01 = t² (3 − 2t)   H10 = t (1 − t)²   H11 = −t² (1 − t)
+     ```
+
+  Liegen beide Steigungen eines Feldes zwischen dem 0- und dem 3-Fachen seiner Sekante, ist das
+  kubische Polynom im Feld monoton und bleibt zwischen den beiden Schnittwerten. Die Steigung ist an
+  den Schnitten stetig (C1). Wo die Steigungen des Splines die Grenzen schon einhalten, gleicht die
+  Interpolation dem natürlichen kubischen Spline. n Schnitte mit m Werten: einmal O(n · m)
+  Rechenschritte, dann O(m) je Spannweitenposition aus den beiden benachbarten Schnitten.
+- **Glatt**, Profilform: Für jede Tiefenstation k interpoliert **Glatt** den Mittelwert
+  (P_(N−k) + P_(N+k)) / 2 und die Differenz P_(N−k) − P_(N+k) des oberen und des unteren Punkts
+  (Abschnitt 3.6: Dicke t_k), nicht die beiden Punkte einzeln. Die Dicke des interpolierten Profils
+  bleibt zwischen den Dicken der beiden Schnitte des Feldes.
+- **Glatt**, Folgen: x der Profilnase, Profiltiefe, z, Schränkung, Mittellinie und Dicke bleiben in
+  jedem Feld innerhalb der Werte seiner beiden Schnitte. Ein Schnitt, an dem ein Wert ein lokales
+  Maximum oder Minimum hat (die Profiltiefe eines gekrümmten Grundrisses, x einer gewellten Kante),
+  erhält dort die Steigung 0. Ein Feld zwischen zwei gleichen Werten bleibt konstant, z. B. ein Profil,
+  das von der Wurzel bis zum nächsten Schnitt gleich bleibt. Ein Profilwechsel, ein Tiefensprung oder
+  ein Schränkungssprung zwischen zwei Schnitten im Abstand 0,5 mm, wie der XFLR5-Import sie legt
+  (Schnitt um min(0,5 mm, 1/4 des Feldes) verschoben), findet innerhalb dieser 0,5 mm statt. Zum
+  Vergleich: Der natürliche kubische Spline durch 250, 250, 200 und 150 mm Profiltiefe bei y = 0, 300,
+  300,5 und 600 mm erreicht 6 018,68 mm bei y = 173,4 mm.
+- **Glatt** gegen den natürlichen kubischen Spline durch dieselben Schnitte, größter Abstand der
+  Stationspunkte beider Flächen (**Stationen je Feld** 8): Vorlagen des Assistenten mit 2 Schnitten
+  (**Trainer**, **Sportmodell** (Sport), **Delta-Jet** (Delta jet), **Brettnurflügel** (Plank),
+  **Leitwerk** (Tail surface)) 0 mm (Hutfunktionen); **Segelflugmodell** (Glider) 0,19 mm,
+  **Doppeldelta** (Double delta) 0,19 mm und **Pfeilnurflügel** (Swept flying wing) 0,56 mm (das
+  Profil des Wurzelfeldes, von der Wurzel bis Schnitt 2 gleich); **Hochleistungssegler** (Sailplane)
+  2,55 mm (Profiltiefe des Wurzelfeldes: Der Spline erreicht 210,85 mm über der Wurzeltiefe von
+  210 mm, die Interpolation bleibt höchstens bei ihr); **Batwing** 14,53 mm (Profiltiefe bei
+  y = 267 mm: Der Spline erreicht 614,49 mm zwischen Schnitten mit 581,9 und 606,9 mm).
+  XFLR5- und flow5-Testdateien (`test/fixtures/`), Flächen mit 3 oder mehr Schnitten: 0,95 bis 1,58 mm
+  (Fixture A und B, `basic.fl5` 1,47 mm), `Rascal110.xfl` 1,36 mm (Flügel) und 5,74 mm
+  (Höhenleitwerk), `UltraStick25e` 115,37 mm (Flügel; der Spline erreicht bei y = 484,8 mm eine
+  Profiltiefe von 369,92 mm zwischen Schnitten mit 260,35 und 250,82 mm, die Interpolation 257,20 mm)
+  und 85,15 mm (Höhenleitwerk).
 
 ### 3.2 Lage der Stationen
 
@@ -270,7 +309,7 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | **Gerade Felder** (keine Leitkurve) | 1 (der Schnitt) | – | 1 |
 | **Linear**, eine Leitkurve eingeschaltet | K (der Schnitt und K − 1 Zwischenstationen) | kosinusförmig | min(3, K): 3 bei K ≥ 3; 2 oder 1, wenn die Grenze des Flächengitters K auf 2 oder 1 senkt |
 | **Linear**, keine Leitkurve, **Schnittebenen** (Section planes) = **Auf Gehrung** (Mitred), die beiden Schnitte des Feldes in Ebenen verschiedener Neigung φ | K (der Schnitt und K − 1 Zwischenstationen) | kosinusförmig | wie oben; Felder ohne Zwischenstationen sind gerade Strecken, auf diesen Grad erhöht (Abschnitt 4) |
-| **Glatt** | K (der Schnitt und K − 1 Zwischenstationen) | kosinusförmig | 3 (Stationen − 1 bei weniger als 4 Stationen) |
+| **Glatt** | K (der Schnitt und K − 1 Zwischenstationen) | kosinusförmig | wie **Linear** mit Leitkurve |
 
 Der Randschnitt ist die letzte Station. Anzahl der Stationen: D · K + (Schnitte − 1 − D) + 1, dazu die
 zusätzlichen Stationen unten (**Linear** und **Glatt**; **Gerade Felder** fügen keine hinzu). D ist die
@@ -485,17 +524,16 @@ Prüfungen in der Reihenfolge des Codes. Jede Zeile ist ein Fehler; es wird kein
 | Flächengitter | mehr als 5 000 000 Gitterpunkte mit den verwendeten Stationen je Feld (Abschnitt 3.2) |
 | Schnittebenen, Faltung | Schnittebenen **Auf Gehrung**, **Gerade Felder**: Die Ebenen zweier benachbarter Schnitte verschiedener Neigung schneiden sich in einer Geraden parallel zu x. Die Fläche zwischen ihnen faltet sich, wenn diese Gerade durch eines der beiden platzierten Profile geht (seine Ausdehnung entlang der Aufwärtsrichtung seiner Ebene, mit Profiltiefe, Schränkung und Dickenstreckung), wenn die beiden Profile auf verschiedenen Seiten der Geraden liegen oder wenn das innere Profil weiter außen liegt als die Ebene des äußeren (`planeFold` in `src/geom/planes.js`). Meldung: „Schnitte a und b: Ihre Gehrungsebenen schneiden sich … mm von der Position (y, z) von Schnitt a entfernt, innerhalb der Profile, daher faltet sich die Fläche zwischen ihnen. Das Feld verlängern, die Änderung der V-Form verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.“ Beispiel: Felder mit 0°, 40° (10 mm lang) und 80°, NACA 0012 bei 300 mm Profiltiefe: Die um 20° und 60° geneigten Ebenen schneiden sich 14,6 mm von Schnitt 2 entfernt, innerhalb seiner ±19,2 mm; bei 150 mm Profiltiefe (±9,6 mm) wird die Fläche gebaut. Felder bei **Linear**: die Prüfung „Schnittebenen, Drehung“. |
 | Schnittwerte | x_LE, c, z oder cos(Schränkung) einer Prüfposition ist keine endliche Zahl. Meldung: „Die Schnittwerte ergeben bei y = … mm nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen.“ |
-| Ausdehnung der Geometrie | an einer Prüfposition: x_LE, x_LE + c (Endleiste) oder z außerhalb von ±1 200 000 mm (`LIMITS.maxExtent`) oder c über 100 000 mm. Ursachen: Überschwingen bei **Glatt**; eine Leitkurve nahe ±1 200 000 mm, bei der die hinzugerechnete oder abgezogene Profiltiefe die Ausdehnung verlässt; Nasenlinie und Endlinie mehr als 100 000 mm voneinander entfernt. Meldung: „Bei y = … mm verlässt der Flügel die Projektgrenzen (x der Profilnase … mm, z … mm, Profiltiefe … mm; Grenzen ±1.200.000 mm und 100.000 mm Profiltiefe). Die Leitkurven prüfen oder lineare Interpolation verwenden.“ |
+| Ausdehnung der Geometrie | an einer Prüfposition: x_LE, x_LE + c (Endleiste) oder z außerhalb von ±1 200 000 mm (`LIMITS.maxExtent`) oder c über 100 000 mm. Die Interpolationen bleiben innerhalb der Schnittwerte (Abschnitt 3.1), daher sind die Ursachen Leitkurven: eine Leitkurve nahe ±1 200 000 mm, bei der die hinzugerechnete oder abgezogene Profiltiefe die Ausdehnung verlässt; Nasenlinie und Endlinie mehr als 100 000 mm voneinander entfernt. Meldung: „Bei y = … mm verlässt der Flügel die Projektgrenzen (x der Profilnase … mm, z … mm, Profiltiefe … mm; Grenzen ±1.200.000 mm und 100.000 mm Profiltiefe). Die Leitkurven prüfen.“ |
 | Schnittebenen, Drehung | Schnittebenen **Auf Gehrung**, **Linear**: An einer Prüfposition in einem Feld, dessen zwei Ebenen verschieden sind, ändert sich die Neigung φ entlang y um dφ/dy = (φ_(i+1) − φ_i) / (y_(i+1) − y_i). Ein Punkt in der Höhe t in der Ebene seiner Station (entlang der Aufwärtsrichtung, mit Profiltiefe, Schränkung und Dickenstreckung) wandert mit der Rate cos φ + tan δ · sin φ − t · dφ/dy je mm Spannweite durch diese Ebene; t ist der höchste Punkt des Profils bei dφ/dy > 0, der tiefste bei dφ/dy < 0; δ ist die V-Form aus den Schnittpositionen, die Richtung, in der sich die Station bewegt, auch wo das Feld einen Feldwinkel speichert. An der Position eines Schnitts werden beide benachbarten Felder geprüft. Bei 0 oder darunter faltet sich die Fläche, auch wo sich die Ebenen der Stationen um die Position nicht schneiden. Meldung: „Schnitte a und b: Bei y = … mm drehen sich die Gehrungsebenen zwischen ihnen schneller, als die Profile es zulassen, daher faltet sich die Fläche. Das Feld verlängern, die Änderung der V-Form verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.“ Beispiel: NACA 0018 mit 217 mm Profiltiefe, Neigungen 0° und 46,9° über ein 21,7 mm langes Feld: an der Wurzel 1 − 30,4 mm · 0,0377/mm < 0; die Ebenen der Feldenden schneiden sich 46 mm oberhalb in der Wurzelebene, außerhalb des Profils. **Gerade Felder** sind zwischen den Schnitten Regelflächen; für sie gilt die Prüfung „Schnittebenen, Faltung“. |
-| Überschwingen bei **Glatt** | Nur **Glatt**. An einer Prüfposition liegt ein interpolierter Wert um mehr als 2 × (max − min) seiner Schnittwerte außerhalb von [min, max] (`OVERSHOOT_LIMIT` = 2). Werte: x_LE (keine Leitkurve eingeschaltet), Profiltiefe (nicht beide Leitkurven eingeschaltet), z, Schränkung und die Höhe z_unit jedes Konturpunkts k = 1 … 2N − 1. Die Meldung nennt den Wert mit dem größten Überschwingen (`x der Profilnase`, `Profiltiefe`, `z`, `Schränkung`, `Höhe der Oberseite bei x = … % der Profiltiefe` oder `Höhe der Unterseite bei x = … % der Profiltiefe`), sein y, den Bereich der Schnittwerte und den kleinsten Abstand zwischen 2 Schnitten. Abhilfe laut Meldung: **Linear**, gleichmäßiger verteilte Schnitte oder weniger dicht liegende Schnitte. |
-| Interpolierte Dicke | min t_k < −1e-9 an einer Prüfposition. **Glatt**: Überschwingen (Abschnitt 3.1); Abhilfe laut Meldung: **Linear** oder mehr Schnitte. **Linear**: Ober- und Unterseite eines Profils kreuzen sich an dieser Tiefenstation; Abhilfe laut Meldung: Profile prüfen oder **Stationen je Profilseite** (Chordwise stations per surface) erhöhen. Die Meldung nennt y und x. |
+| Interpolierte Dicke | min t_k < −1e-9 an einer Prüfposition. Beide Interpolationen halten t_k zwischen den Werten der beiden Schnitte des Feldes (Abschnitt 3.1), daher ist die Ursache ein Schnittprofil, dessen Ober- und Unterseite sich an dieser Tiefenstation kreuzen; Abhilfe laut Meldung: Profile prüfen oder **Stationen je Profilseite** (Chordwise stations per surface) erhöhen. Die Meldung nennt y und x. |
 | Dicke nach der Einstellung **Endleiste** (Trailing edge) | min t_k < −1e-9 nach der Änderung der Endleistendicke aus Abschnitt 3.7. Geprüft an Positionen mit c ≥ 1 mm. **Feste Dicke in mm** (Fixed thickness in mm): Endleistendicke auf 5 % der Profiltiefe begrenzt. Ursache: Das Profil ist innen dünner als die eingestellte Endleistendicke. |
 | Berührung der Profilseiten | min t_k ≤ 1e-5 (0,001 % der Profiltiefe) an den Tiefenstationen s_k von 0,01 bis 0,99, nach der Einstellung **Endleiste** aus Abschnitt 3.7. Geprüft an Positionen mit c ≥ 1 mm. Die Meldung nennt y und x. **Wie in den Profildateien** (As in the airfoil files): Abhilfe **Linear** oder mehr Schnitte; andere Modi: Abhilfe **Wie in den Profildateien** oder eine dickere Endleiste. |
-| Profiltiefe | kleinste Profiltiefe < 1 mm; die Meldung nennt Profiltiefe und zugehöriges y |
+| Profiltiefe | kleinste Profiltiefe < 1 mm; die Meldung nennt Profiltiefe und zugehöriges y. Die Interpolationen halten die Profiltiefe zwischen den Profiltiefen der Schnitte von mindestens 1 mm, daher setzen nur Nasenlinie und Endlinie zusammen eine kleinere Profiltiefe (ihren Abstand). |
 | Profiltiefe, Hinweis | wie oben, Minimum am Rand, Profiltiefe > −0,01 mm, **Flügelende** = **Flach** (Flat): die Meldung ergänzt „Für ein Flügelende, das in einer Spitze endet, Einstellungen > Flügelende auf ‚Spitz‘ setzen.“ |
 | Stationsebenen | Schnittebenen **Auf Gehrung**, nach der Anpassung: Bei zwei benachbarten Stationen verschiedener Neigung liegt ein Punkt der äußeren Station, vom selben Punkt der inneren Station aus gesehen, nicht jenseits der Ebenen beider Stationen. Meldung: „Die Fläche faltet sich zwischen den Stationen bei y = … mm und y = … mm (Feld von Schnitt a bis b): Ihre Schnittebenen kreuzen sich innerhalb der Profile. Das Feld verlängern, die Änderung der V-Form verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.“ |
 | Angepasste Fläche, endlich | nach der Flächenanpassung und den zusätzlichen Stationen (Abschnitt 4): eine Koordinate eines Kontrollpunkts ist keine endliche Zahl. Meldung: „Die angepasste Fläche hat nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen.“ |
-| Dicke der angepassten Fläche | an jeder Position der angepassten Fläche: örtliche Dicke < −1e-9 (hinter 99 % der Profiltiefe: < −min(1e-4, 0,1 mm / c)) an einer verglichenen Tiefenstation („Die angepasste Fläche stülpt sich zwischen den Stationen … um“), oder ≤ 1e-5 (0,001 % der Profiltiefe) an einer verglichenen Tiefenstation von 1 % bis 99 % der Profiltiefe („Die angepasste Fläche hat zwischen den Stationen … die Dicke null“). Die Meldung nennt y und die Dicke. Ursache laut Meldung: Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven oder ungleich verteilte Schnitte im Modus **Glatt**). Abhilfe laut Meldung: Leitkurven glätten, Schnitte gleichmäßiger verteilen oder Schnitte hinzufügen. |
+| Dicke der angepassten Fläche | an jeder Position der angepassten Fläche: örtliche Dicke < −1e-9 (hinter 99 % der Profiltiefe: < −min(1e-4, 0,1 mm / c)) an einer verglichenen Tiefenstation („Die angepasste Fläche stülpt sich zwischen den Stationen … um“), oder ≤ 1e-5 (0,001 % der Profiltiefe) an einer verglichenen Tiefenstation von 1 % bis 99 % der Profiltiefe („Die angepasste Fläche hat zwischen den Stationen … die Dicke null“). Die Meldung nennt y und die Dicke. Ursache laut Meldung: Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven). Abhilfe laut Meldung: Leitkurven glätten oder Schnitte hinzufügen. |
 | Profiltiefe der angepassten Fläche | an jeder Position der angepassten Fläche: c_fit < 0,9 mm (1 mm Mindesttiefe abzüglich 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)), im Raum auf die vorgesehene Profiltiefenrichtung der Station bei y projiziert. Meldung: „Die angepasste Fläche faltet sich oder schnürt sich zwischen den Stationen … ein“ |
 | Selbstüberschneidung der Fläche | eine Flächenzeile an einem Schnitt, in der Mitte zwischen 2 benachbarten Schnitten oder in der Mitte zwischen den 2 Stationen eines der 64 breitesten Stationsintervalle (zusätzliche Stationen eingeschlossen) überschneidet sich in der Ebene ihrer Station (Abschnitt 1.4) mit einer Schleifengröße (mittlere Breite) über 5e-4 · c; 4 Abtastwerte je Knotenintervall (Abschnitt 1.4) |
 
@@ -670,8 +708,13 @@ Tensorprodukt-B-Spline-Fläche S(u, v) durch das Stationsgitter Q (2N + 1 Punkte
 | Richtung | Parameter | Grad | Knotenvektor |
 | --- | --- | --- | --- |
 | u (um das Profil) | Mittel der Parametrisierungen aller Stationen; u_0 = 0, u_2N = 1 | 3 | geklemmt, durch Mittelwertbildung; bei geschlossener Endleiste durch Mittelwertbildung für vorgegebene Endableitungen (The NURBS Book, Gl. 9.22) |
-| v (Spannweite), **Linear**, **Gerade Felder** | v = (y − y_root) / (y_tip − y_root) | 1, wenn kein Feld Zwischenstationen hat; sonst die kleinste Zahl von Stationsintervallen eines Feldes mit Zwischenstationen, höchstens 3 (min(3, K); 2 oder 1, wenn die Grenze des Flächengitters K senkt, Abschnitt 3.2) | eine Interpolation je Feld; ein Feld aus 2 Stationen ist die gerade Strecke zwischen ihnen, auf diesen Grad erhöht; Felder an den Schnitten mit innerer Knotenvielfachheit p verbunden (C0: stetig in der Lage, Knicke an den Schnitten) |
-| v (Spannweite), **Glatt** (Smooth) | ebenso | 3 (Stationen − 1 bei weniger als 4 Stationen) | eine Interpolation über alle Stationen, Mittelwertbildung (C2: stetig bis zur zweiten Ableitung) |
+| v (Spannweite) | v = (y − y_root) / (y_tip − y_root) | 1, wenn kein Feld Zwischenstationen hat; sonst die kleinste Zahl von Stationsintervallen eines Feldes mit Zwischenstationen, höchstens 3 (min(3, K); 2 oder 1, wenn die Grenze des Flächengitters K senkt, Abschnitt 3.2) | eine Interpolation je Feld; ein Feld aus 2 Stationen ist die gerade Strecke zwischen ihnen, auf diesen Grad erhöht; Felder an den Schnitten mit innerer Knotenvielfachheit p verbunden (C0: stetig in der Lage, Knicke an den Schnitten) |
+
+Mit **Glatt** haben die Stationswerte an den Schnitten eine stetige Steigung (Abschnitt 3.1); jedes
+Feld wird trotzdem für sich interpoliert, daher ist die Fläche dort C0. Eine Interpolation über alle
+Stationen schwingt neben einem kurzen Feld mit schneller Änderung aus: NACA 2415 auf NACA 2408 zwischen
+Schnitten im Abstand 0,5 mm neben einem 300 mm langen Feld stülpt diese Fläche um (örtliche Dicke
+−34,5 % der Profiltiefe bei y = 304,9 mm, **Stationen je Feld** 8).
 
 Ablauf:
 
