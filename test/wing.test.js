@@ -165,6 +165,23 @@ describe('spanwise interpolation', () => {
     for (let y = 0; y <= 300; y += 10) expect(f(y)).toBe(250);
   });
 
+  it('gives the derivative of the blend in y: the panel secant when linear, the cubic slope when smooth', () => {
+    const ys = [0, 300, 300.5, 600, 900];
+    const vals = [250, 250, 200, 150, 120];
+    const linear = spanwiseBlender(ys, 'linear', vals.map((v) => [[v]]));
+    // At a section the panel inboard of it (the root: the first panel); outside the sections that of the end panel.
+    expect([150, 300, 300.25, 450, 0, -5, 950].map((y) => linear.derivative(y)[0][0])).toEqual([0, 0, -100, -50 / 299.5, 0, 0, -30 / 300]);
+    expect(spanwiseBlender([10], 'linear', [[[3, 4]]]).derivative(10)).toEqual([[0, 0]]);
+    const blend = spanwiseBlender(ys, 'smooth', vals.map((v) => [[v]]));
+    const e = 1e-4;
+    for (const y of [17, 299.9, 300.25, 450, 777, 899.99]) {
+      const fd = (blend(y + e)[0][0] - blend(y - e)[0][0]) / (2 * e);
+      expect(blend.derivative(y)[0][0]).toBeCloseTo(fd, 4);
+    }
+    // Continuous at the sections: both panels give the slope of the section.
+    for (const y of ys.slice(1, -1)) expect(blend.derivative(y - 1e-9)[0][0]).toBeCloseTo(blend.derivative(y)[0][0], 4);
+  });
+
   it('blends point lists', () => {
     expect(blendPoints([0.25, 0.75], [[[0, 0]], [[4, 8]]])).toEqual([[3, 6]]);
     expect(blendScalar([0.25, 0.75], [4, 8])).toBe(7);
@@ -1550,6 +1567,12 @@ describe('mitred section planes', () => {
       });
     const message = 'Sections 1 and 2: at y = 0.0 mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical.';
     for (const K of [3, 4, 8]) for (const scale of [1, 7]) expect(buildWing(turning(K, scale)).errors, `K ${K}, scale ${scale}`).toEqual([message]);
+    // Smooth turns the planes along the cubic blend of the rolls and checks every check position.
+    for (const K of [3, 8]) {
+      const smooth = turning(K);
+      smooth.settings.spanwise = 'smooth';
+      expect(buildWing(smooth).errors, `smooth, K ${K}`).toEqual([message]);
+    }
     // End planes that meet within the airfoils: the ruled Straight panel folds; the Linear panel turns
     // its planes in between and does not (NACA 0021, chords 400 and 100 mm, a 33 mm flat panel, then 80°).
     const turnOut = (spanwise) =>
@@ -1562,7 +1585,7 @@ describe('mitred section planes', () => {
         ],
         settings: { sectionPlanes: 'mitred', spanwise, panelStations: 12 },
       });
-    expect(buildWing(turnOut('linear')).errors).toEqual([]);
+    expect([buildWing(turnOut('linear')).errors, buildWing(turnOut('smooth')).errors]).toEqual([[], []]);
     expect(buildWing(turnOut('straight')).errors[0]).toMatch(/^Sections 1 and 2: their mitred planes meet 39\.3 mm from the position \(y, z\) of section 1/);
     // Straight panels are ruled between the sections: the check of the two end planes decides.
     const straight = turning(3);
@@ -1573,15 +1596,100 @@ describe('mitred section planes', () => {
     longer.sections[1].y = 43.4;
     longer.sections[1].z = 51.6;
     expect(buildWing(longer).errors).toEqual([]);
+    longer.settings.spanwise = 'smooth';
+    expect(buildWing(longer).errors).toEqual([]);
   });
 
-  it('builds Smooth spanwise interpolation with vertical section planes and says so in the info lines', () => {
+  it('builds Smooth with the rolls of the sections blended by the cubic and the stretch from the slope of the reference line', () => {
     const b = buildWing(gull({ spanwise: 'smooth' }));
-    expect([b.errors, b.sectionPlanes, b.rolls, b.infos]).toEqual([[], 'vertical', [0, 0, 0], ['Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels.']]);
+    expect([b.errors, b.infos, b.sectionPlanes, b.surface.degreeV]).toEqual([[], [], 'mitred', 3]);
+    // The section planes are those of Linear: root 0°, the bisector of the break, the tip square to the last panel.
+    const pl = sectionPlanes(gull().sections, 'mitred');
+    b.rolls.forEach((r, i) => expect(r).toBeCloseTo(pl.rolls[i], 12));
+    // Between the sections the roll follows the cubic blend of the section rolls, and the stretch
+    // 1/cos(roll − δ) keeps the airfoil thickness across the blended reference line of dihedral δ.
+    const secs = gull().sections;
+    const ys = secs.map((q) => q.y);
+    const zBlend = spanwiseBlender(ys, 'smooth', secs.map((q) => [[q.z]]));
+    const rollBlend = spanwiseBlender(ys, 'smooth', pl.rolls.map((r) => [[r]]));
+    const inner = b.stations.filter((st) => !ys.includes(st.y));
+    expect(inner.length).toBeGreaterThan(4);
+    for (const st of b.stations) {
+      const dihedral = Math.atan(zBlend.derivative(st.y)[0][0]) / DEG;
+      expect(st.roll).toBeCloseTo(rollBlend(st.y)[0][0], 9);
+      expect(st.stretch).toBeCloseTo(1 / Math.cos((st.roll - dihedral) * DEG), 9);
+    }
+    // At the root the plane stays vertical; the smooth reference line leaves it at the slope of the
+    // cubic, not of the first panel.
+    expect(b.stretches[0]).toBeCloseTo(1 / Math.cos(Math.atan(zBlend.derivative(0)[0][0])), 9);
+    // A flat wing builds as before, with vertical planes and no stretch.
     const flat = gull({ spanwise: 'smooth' });
     flat.sections.forEach((q) => (q.z = 0));
-    expect(buildWing(flat).infos).toEqual([]);
-    expect(buildWing(gull({ spanwise: 'smooth', sectionPlanes: 'vertical' })).infos).toEqual([]);
+    expect(buildWing(flat).stations.every((st) => st.roll === 0 && st.stretch === 1)).toBe(true);
+  });
+
+  it('stretches Smooth against the angle of a short panel, as Linear, and against stored panel angles blended along the span', () => {
+    // An airfoil switch 0.5 mm wide that the airfoil frames lift 2 mm: its two sections share one plane,
+    // and the cubic, 76° steep across the switch, does not set their stretch.
+    const sw = (spanwise) =>
+      createProject({
+        airfoils: [naca('0012', 'a')],
+        sections: [[0, 0], [300, 26], [300.5, 28], [600, 52]].map(([y, z]) => ({ airfoil: 'a', x: 0, y, z, chord: 200, twist: 0 })),
+        settings: { sectionPlanes: 'mitred', spanwise },
+      });
+    const [linear, smooth] = ['linear', 'smooth'].map((s) => buildWing(sw(s)));
+    expect([linear.errors, smooth.errors]).toEqual([[], []]);
+    expect(smooth.stretches[1]).toBeCloseTo(linear.stretches[1], 12);
+    // The same switch on a flat wing: the short panel is no stored angle, so no Smooth station stretches.
+    const step = createProject({
+      airfoils: [naca('0012', 'a')],
+      sections: [[0, 0], [300, 0], [300.5, 2], [600, 2]].map(([y, z]) => ({ airfoil: 'a', x: 0, y, z, chord: 200, twist: 0 })),
+      settings: { sectionPlanes: 'mitred', spanwise: 'smooth' },
+    });
+    const flatStep = buildWing(step);
+    expect(flatStep.errors).toEqual([]);
+    for (const st of flatStep.stations) expect(st.stretch, `y ${st.y}`).toBeCloseTo(1, 12);
+    // A stored panel angle of 20° on the outer panel of a flat wing: the planes roll 0°, 10° and 20°.
+    // Smooth blends what the stored angle adds (0°, 10°, 20° at the sections, the mean of the panels
+    // next to a section) like the rolls, so every station plane is square to the blended angle: the
+    // stretch is 1 and continuous. Ignoring the stored angle would stretch the tip 1/cos 20° = 1.064 times.
+    const stored = (spanwise) =>
+      createProject({
+        airfoils: [naca('0012', 'a')],
+        sections: [0, 300, 600].map((y, i) => ({ airfoil: 'a', x: 0, y, z: 0, chord: 200, twist: 0, ...(i === 1 ? { panelAngle: 20 } : {}) })),
+        settings: { sectionPlanes: 'mitred', spanwise },
+      });
+    const [l2, s2] = ['linear', 'smooth'].map((s) => buildWing(stored(s)));
+    expect([l2.rolls, s2.rolls]).toEqual([[0, 10, 20], [0, 10, 20]]);
+    expect(l2.stretches[1]).toBeCloseTo(1 / Math.cos(10 * DEG), 12);
+    for (const st of s2.stations) expect(st.stretch, `y ${st.y}`).toBeCloseTo(1, 12);
+    // The limit of 60° holds within the rounding of Linear: a straight wing at 60.01° builds both ways
+    // (the vertical root plane stretched 2.0006 times).
+    const steep = (spanwise) =>
+      createProject({
+        airfoils: [naca('0012', 'a')],
+        sections: [0, 1, 2].map((k) => ({ airfoil: 'a', x: 0, y: 300 * k * Math.cos(60.01 * DEG), z: 300 * k * Math.sin(60.01 * DEG), chord: 200, twist: 0 })),
+        settings: { sectionPlanes: 'mitred', spanwise },
+      });
+    for (const spanwise of ['linear', 'smooth']) expect(buildWing(steep(spanwise)).errors, spanwise).toEqual([]);
+  });
+
+  it('stops Smooth where the reference line bends beyond 60° from the plane between the sections', () => {
+    // NACA 0012, panels of −34.4° and 74.0°: every section plane lies within 60° of its panels, and
+    // Linear builds. The smooth reference line leaves the vertical root plane at 63.7°.
+    const bent = (spanwise) =>
+      createProject({
+        airfoils: [naca('0012', 'a')],
+        sections: [[0, 0, 200], [54, -37, 136], [84, 67, 161]].map(([y, z, chord]) => ({ airfoil: 'a', x: 0, y, z, chord, twist: 0 })),
+        settings: { sectionPlanes: 'mitred', spanwise },
+      });
+    expect([buildWing(bent('linear')).errors, buildWing(bent('straight')).errors]).toEqual([[], []]);
+    expect(buildWing(bent('smooth')).errors).toEqual([
+      'Sections 1 and 2: at y = 0.0 mm the mitred section plane lies 63.7° from the smooth reference line, which stretches the airfoil 2.254 times (limit 2, 60°). Reduce the dihedral change there, add sections or set Settings > Section planes to Vertical.',
+    ]);
+    const vertical = bent('smooth');
+    vertical.settings.sectionPlanes = 'vertical';
+    expect(buildWing(vertical).errors).toEqual([]);
   });
 
   it('finds where two rolled planes meet and whether the loft between them folds', () => {

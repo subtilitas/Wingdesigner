@@ -53,7 +53,7 @@ User Guide (Settings, Checks).
 | R6 | Stretch limit 2 (60°) as a build error, a plane that rounds to 60.0° builds; fold test between neighbouring sections of **Straight panels** before the loft, at every check position of a **Linear** panel whose planes turn (at a section for both panels next to it), and between neighbouring stations after the fit |
 | Plane angles of an import | Optional section field `panelAngle`, the angle of the panel to the next section, and the Sections column **Panel angle**; the import stores XFLR5's dihedral where airfoil frames turn a panel (owner decision "Store XFLR5's angles"; stored as the panel angle, because the roll alone leaves the stretch of the moved sections) |
 | Short panels | A panel less than 1 mm wide in y counts as no panel; its sections share the bisector plane of the panels around it (owner decision "Bisector for short panels") |
-| Smooth | Vertical planes and an info line (owner decision (b)) |
+| Smooth | Mitred planes since 2026-10-02 (owner request): the section rolls blended by the shape-preserving cubic, the stretch from the slope of the blended reference line, the stretch and turning checks at every check position. Before: vertical planes and an info line (owner decision (b)) |
 | Folded tilt with **Mitred** | Warning in Checks with the estimate 0.75 · c · sin(tilt) · sin(roll) (owner decision) |
 | Imports of pull request #5 | Documented on the File Formats page, not converted (owner decision) |
 
@@ -238,7 +238,8 @@ Options not taken:
 
 ### Open points
 
-- Smooth spanwise interpolation with mitred sections is not built; its thickness and the fold at the
+- Built on 2026-10-02 (table above, Geometry section 3.8); the rest of this point records decision (b).
+  Smooth spanwise interpolation with mitred sections is not built; its thickness and the fold at the
   root are not measured. The prototype blends the section rolls along the span and takes the stretch
   from the straight panels. Until that construction is built, measured and covered by the fold check
   at every station, smooth mode is not built with a rolled section plane. Under R2 this touches the
@@ -494,5 +495,5 @@ Defaults without a question, as for the XFLR5 import:
 - Whether the file choosers of Android and iOS list `.fl5` files is unknown.
 - F4 applies the roll of a flow5 wing rigidly as the part roll of step 2 (owner decision,
   2026-10-01), not built without roll and a warning.
-- Whether the XFLR5 import also offers its second wing once the wings form a typed list is not
-  decided; F3 covers flow5 only.
+- Decided 2026-10-02 (owner request): the XFLR5 import offers its second wing and its fin as well
+  (File Formats, section Fin); F3 covers flow5 only.

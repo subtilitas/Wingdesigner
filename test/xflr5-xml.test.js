@@ -118,10 +118,25 @@ describe('XFLR5 XML fixtures', () => {
     for (const bytes of [le, be]) expect(readXflr5Xml(decodeText(new Uint8Array(bytes)))).toEqual(utf8);
   });
 
+  it('reads the fin flags isFin, isDoubleFin and isSymFin; false where missing, as in XFLR5', () => {
+    const text = fixture('xml_mm/0.plane.xml').toString('utf8');
+    expect(readXflr5Xml(text).planes[0].wings.map((w) => w?.fin ?? null)).toEqual([
+      { isFin: false, double: false, symmetric: false },
+      null,
+      { isFin: false, double: false, symmetric: false },
+      { isFin: true, double: false, symmetric: false },
+    ]);
+    const [before, fin] = text.split('<Name>Fin</Name>');
+    const double = readXflr5Xml(`${before}<Name>Fin</Name>${fin.replace('<isDoubleFin>false', '<isDoubleFin>TRUE').replace('<isSymFin>false', '<isSymFin>true')}`);
+    expect(double.planes[0].wings[3].fin).toEqual({ isFin: true, double: true, symmetric: true });
+    const bare = readXflr5Xml(file(plane('P', wing('Fin', { type: 'FIN' }))));
+    expect(bare.planes[0].wings[3].fin).toEqual({ isFin: false, double: false, symmetric: false });
+  });
+
   it('refuses a wing-only fin', () => {
     const e = failure(fixture('xml_mm/0.w3.wing.xml'));
     expect(e.code).toBe('fin');
-    expect(e.message).toBe('The XML wing "Fin" is a fin; only a main wing or a horizontal stabilizer can be imported.');
+    expect(e.message).toBe('The XML wing "Fin" is a fin; a fin imports only from a plane file, where its kind and position are known.');
   });
 
   it('reads UltraStick25e.xml (genuine XFLR5 output in inches with a body)', () => {
@@ -530,7 +545,7 @@ describe('XFLR5 XML refusals', () => {
 
   it('speaks German after setLanguage', () => {
     setLanguage('de');
-    expect(failure(fixture('xml_mm/0.w3.wing.xml')).message).toBe('Der XML-Flügel „Fin“ ist ein Seitenleitwerk; importiert werden können nur eine Tragfläche oder ein Höhenleitwerk.');
+    expect(failure(fixture('xml_mm/0.w3.wing.xml')).message).toBe('Der XML-Flügel „Fin“ ist ein Seitenleitwerk; ein Seitenleitwerk wird nur aus einer Flugzeugdatei importiert, in der seine Art und Position bekannt sind.');
     expect(failure('<explane version="1.0">\n<Plane>\n</explane>').message).toBe('Die XML-Datei ist in Zeile 3 beschädigt: </explane> schließt nicht <Plane>.');
     const r = readXflr5Xml(file(plane('P', wing('A') + wing('B') + wing('C'))));
     expect(r.warnings).toEqual(['Das Flugzeug „P“ hat mehr als eine Tragfläche: „C“ ersetzt wie in XFLR5 „A“.']);

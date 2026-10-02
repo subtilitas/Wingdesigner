@@ -30,8 +30,8 @@ const DEG = Math.PI / 180;
 /** Stretch of a section in a plane rolled by `roll` on a panel of `dihedral` (degrees). */
 export const stretchOf = (roll, dihedral) => 1 / Math.cos((roll - dihedral) * DEG);
 
-/** Whether a build uses mitred planes: Smooth builds vertical section planes (see buildWing). */
-export const mitredPlanes = (settings) => settings.sectionPlanes === 'mitred' && settings.spanwise !== 'smooth';
+/** Whether a build uses mitred planes, with every spanwise interpolation (see buildWing). */
+export const mitredPlanes = (settings) => settings.sectionPlanes === 'mitred';
 
 /**
  * Linear panels whose two section planes differ (they get the stations per panel of a guide curve),

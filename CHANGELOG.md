@@ -6,6 +6,36 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Added
+
+- XFLR5 import of the second wing (biplane) and the fin. The second wing imports as the main wing does. The fin
+  imports upright, as XFLR5 6.62 builds it: rolled 90° or −90° about its origin (**Part roll**).
+  - A single fin is the left half of the part, with the left-side airfoils; **Export** > **Wing halves** >
+    **Left half only** writes it alone.
+  - A symmetric fin turns both halves as one body (**Left half**: **Turned with the right half**).
+  - A double fin is two fins at ±(position y): the fin XFLR5 builds from the right half of the wing, and its mirror
+    image.
+  - A single or double fin that reaches below its origin (a negative root y_position, as on the Rascal 110 fin at
+    −82.55 mm) moves up to y = 0, and the pivot of the part roll moves so that the fin stays in place.
+  - A single or double fin with a tilt angle is not available: XFLR5 turns it about z.
+  - The fin card of the import dialog states the height of the fin.
+
+### Changed
+
+- **Smooth** spanwise interpolation builds **Mitred** section planes: the sections lie in the planes of **Linear**,
+  the roll between them follows the shape-preserving cubic through the section rolls, and the thickness stretch
+  follows the slope of the blended reference line, so the wing stays as thick as its airfoil across that line.
+  Wings with dihedral move against the vertical planes **Smooth** built: the profile points of the stations of the
+  wizard presets by up to 1.9 mm (Sailplane), of the sample wing by 0.70 mm. Between the sections **Checks** stops a stretch above 2 (60° between a
+  station plane and the blended reference line) and planes that turn faster than the airfoils allow; with
+  **Vertical** section planes **Smooth** builds as before.
+- **Winglet…** accepts **Smooth** spanwise interpolation.
+
+### Removed
+
+- The info line "Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or
+  Straight panels."
+
 ## [0.5.0] - 2026-10-02
 
 ### Added

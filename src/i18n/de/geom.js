@@ -51,8 +51,8 @@ export default {
   'At y = {y} mm the wing leaves the project limits (leading-edge x {x} mm, z {z} mm, chord {chord} mm; limits ±{extent} mm and {maxChord} mm chord).':
     'Bei y = {y} mm verlässt der Flügel die Projektgrenzen (x der Profilnase {x} mm, z {z} mm, Profiltiefe {chord} mm; Grenzen ±{extent} mm und {maxChord} mm Profiltiefe).',
   'Check the guide curves.': 'Die Leitkurven prüfen.',
-  'Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels.':
-    'Glatte Interpolation in Spannweitenrichtung baut senkrechte Schnittebenen; Schnittebenen auf Gehrung brauchen „Linear“ oder „Gerade Felder“.',
+  'Sections {a} and {b}: at y = {y} mm the mitred section plane lies {angle}° from the smooth reference line, which stretches the airfoil {stretch} times (limit {limit}, 60°). Reduce the dihedral change there, add sections or set Settings > Section planes to Vertical.':
+    'Schnitte {a} und {b}: Bei y = {y} mm liegt die Gehrungsebene {angle}° schräg zur glatten Bezugslinie, das streckt das Profil auf das {stretch}-Fache (Grenze {limit}, 60°). Die Änderung der V-Form dort verringern, Schnitte hinzufügen oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.',
   'Section {n}: its mitred plane lies {angle}° from the panel next to it, which stretches the airfoil {stretch} times (limit {limit}, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical.':
     'Schnitt {n}: Seine Gehrungsebene liegt {angle}° schräg zum benachbarten Feld, das streckt das Profil auf das {stretch}-Fache (Grenze {limit}, 60°). Die Änderung der V-Form dort verringern oder Einstellungen > Schnittebenen auf „Senkrecht“ setzen.',
   'Sections {a} and {b}: at y = {y} mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical.':

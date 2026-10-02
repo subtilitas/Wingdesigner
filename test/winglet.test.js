@@ -60,24 +60,27 @@ describe('winglet sections', () => {
 });
 
 describe('winglet on the presets', () => {
-  it('builds a closed wing on every preset with a flat tip and no guide curves', () => {
+  it('builds a closed wing on every preset with a flat tip and no guide curves, Linear and Smooth', () => {
     for (const [key, preset] of Object.entries(PRESETS)) {
       if (key === 'batwing') continue;
-      const p = wizardProject({ ...preset.params, tip: 'flat' });
-      p.guides.nose.enabled = false;
-      p.guides.end.enabled = false;
-      const before = p.sections.length;
-      const w = defaultWinglet(p);
-      expect(wingletProblems(p, w), key).toEqual([]);
-      const added = addWinglet(p, w);
-      expect(p.sections).toHaveLength(before + added.length);
-      const b = buildWing(p);
-      expect(b.errors, key).toEqual([]);
-      for (const m of exportMeshes(b, 'halves')) expect(edgeCheck(m.mesh).closed, key).toBe(true);
+      for (const spanwise of ['linear', 'smooth']) {
+        const p = wizardProject({ ...preset.params, tip: 'flat' });
+        p.guides.nose.enabled = false;
+        p.guides.end.enabled = false;
+        p.settings.spanwise = spanwise;
+        const before = p.sections.length;
+        const w = defaultWinglet(p);
+        expect(wingletProblems(p, w), key).toEqual([]);
+        const added = addWinglet(p, w);
+        expect(p.sections).toHaveLength(before + added.length);
+        const b = buildWing(p);
+        expect(b.errors, `${key} ${spanwise}`).toEqual([]);
+        for (const m of exportMeshes(b, 'halves')) expect(edgeCheck(m.mesh).closed, `${key} ${spanwise}`).toBe(true);
+      }
     }
   });
 
-  it('builds cant angles from −89° to 89° with blend radii from 0 to 0.6 tip chords on the Sport wing', () => {
+  it('builds cant angles from −89° to 89° with blend radii from 0 to 0.6 tip chords on the Sport wing, Smooth except two', () => {
     for (const cant of [-89, -45, 0, 45, 75, 89]) {
       for (const rf of [0, 0.3, 0.6]) {
         const p = sport();
@@ -85,6 +88,12 @@ describe('winglet on the presets', () => {
         expect(wingletProblems(p, w), `${cant}° ${rf}`).toEqual([]);
         addWinglet(p, w);
         expect(buildWing(p).errors, `${cant}° ${rf}`).toEqual([]);
+        // Smooth: at ±89° with 0.3 tip chords the cubic bends the reference line where the arc meets the
+        // straight part, and the mitred planes there turn faster than the airfoils allow.
+        p.settings.spanwise = 'smooth';
+        const errors = buildWing(p).errors;
+        if (Math.abs(cant) === 89 && rf === 0.3) expect(errors[0], `smooth ${cant}° ${rf}`).toMatch(/^Sections \d and \d: at y = 64\d\.\d mm the mitred section planes between them turn faster than the airfoils allow/);
+        else expect(errors, `smooth ${cant}° ${rf}`).toEqual([]);
       }
     }
   });

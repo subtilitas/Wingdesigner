@@ -10,12 +10,12 @@ how the owner works with contributors, and what the repository does not hold.
 | Item | State on 2026-10-02 |
 | --- | --- |
 | Version | `package.json` holds 0.5.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 (2026-10-02), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | Not planned: `CHANGELOG.md`, section Unreleased, is empty; the version number is unknown. The owner pushes the tag on the merge commit of the release pull request (section Working with the owner). |
+| Next release | Not planned; the version number is unknown. `CHANGELOG.md`, section Unreleased: the XFLR5 import of the second wing and the fin, **Smooth** with mitred section planes. The owner pushes the tag on the merge commit of the release pull request (section Working with the owner). |
 | Release texts | The notes of `v0.2.0`, `v0.3.0` and `v0.5.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
 | `main` | Release 0.5.0 (5c0b5e7, pull request #26). |
 | Unit tests | `RECORD.md`, row Unit tests. |
 | Browser tests | Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); counts in `RECORD.md`, row UI. |
-| Export validation | 14 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 11 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
+| Export validation | 15 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 13 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
 | Documentation | `README.md`, `README.de.md`, wiki pages in English and German in `docs/wiki/` (mirrored to the GitHub wiki by `docs.yml`), `RECORD.md`, `CHANGELOG.md`, `docs/Flow5upgrade.md`, this page. |
 
 `npm run counts:check` keeps the counts of the READMEs, `RECORD.md` and the wiki pages equal to the
@@ -38,8 +38,9 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
      "Not in the repository"). A reader update for a new flow5 format: the notes name every record and
      its format number; `test/fl5-writer.js` takes the format numbers as options.
 3. Not measured or not tested, among the Open items of `RECORD.md`: smooth blending with rolled
-   section planes (not built), a rolled or turned STEP file in a CAD (computer-aided design) program
-   other than OpenCascade, the 93 real XFLR5 surfaces against XFLR5's STL (stereolithography) with the
+   section planes against another program, the XFLR5 fin against XFLR5's STL (stereolithography), a
+   symmetric or double fin of a real file, a rolled or turned STEP file in a CAD (computer-aided design) program
+   other than OpenCascade, the 93 real XFLR5 surfaces against XFLR5's STL with the
    rigid tilt, STL and 3MF float32 precision of rolled caps, how often the fold test fires on real
    wings, the file choosers of Android and iOS, the import dialog with a screen reader, build time and
    memory on phones. The app is tested in Chromium only; Firefox and Safari are not tested (README,

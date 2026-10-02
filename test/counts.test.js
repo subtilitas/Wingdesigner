@@ -38,12 +38,16 @@ function docs(k = {}) {
 npm run e2e              # production build, then ${v.tests} Playwright tests on desktop 1280 x 720 and Pixel 7 (${v.runs} runs)
 npm run step:cases       # write ${v.cases} STEP files, ${v.cases} 3MF files and cases.json to step-check/
 | STEP | CI: \`scripts/validate_step.py\` reads ${v.cases} test wings with OpenCascade |
-| 3MF | CI: \`scripts/validate_3mf.py\` reads the ${v.cases} test wings with lib3mf |`,
+| 3MF | CI: \`scripts/validate_3mf.py\` reads the ${v.cases} test wings with lib3mf |
+| Foam | CI: \`scripts/validate_foam.py\` reads the files of ${v.cases} test wings with ezdxf |
+npm run foam:cases       # write the foam-cutting files of ${v.cases} test wings and cases.json to foam-check/`,
     'README.de.md': `npm test                 # ${v.unitDe} Unit-Tests (Vitest)
 npm run e2e              # Produktions-Build, dann ${v.tests} Playwright-Tests auf Desktop 1280 x 720 und Pixel 7 (${v.runs} Läufe)
 npm run step:cases       # ${v.cases} STEP-Dateien, ${v.cases} 3MF-Dateien und cases.json nach step-check/ schreiben
 | STEP | CI: \`scripts/validate_step.py\` liest ${v.cases} Testflügel mit OpenCascade |
-| 3MF | CI: \`scripts/validate_3mf.py\` liest die ${v.cases} Testflügel mit lib3mf |`,
+| 3MF | CI: \`scripts/validate_3mf.py\` liest die ${v.cases} Testflügel mit lib3mf |
+| Schaum | CI: \`scripts/validate_foam.py\` liest die Dateien von ${v.cases} Testflügeln mit ezdxf |
+npm run foam:cases       # Schaumschnitt-Dateien von ${v.cases} Testflügeln und cases.json nach foam-check/ schreiben`,
     'docs/wiki/Development.md': `| \`npm test\` | \`vitest run\` | Unit tests \`test/**/*.test.js\` in Node.js: ${v.unit} tests in ${v.files} files |
 | \`npm run step:cases\` | \`node scripts/export-step-cases.mjs step-check\` | ${v.cases} STEP files, ${v.cases} 3MF files and \`cases.json\` in \`step-check/\` |
 
@@ -64,6 +68,10 @@ Cases from \`test/step-cases.js\`. Base wing:
 | Case | Change from the base wing | Solids |
 | --- | --- | ---: |
 ${v.caseRows}
+
+| \`npm run foam:cases\` | \`node scripts/export-foam-cases.mjs foam-check\` | Profile ZIP, SVG, DXF and PDF of ${v.cases} test wings |
+
+The script takes the wings without \`mitred-vtail-35-y-up\` and \`part-tilt-roll\` (${v.cases} cases).
 `,
     'docs/wiki/Entwicklung.md': `| \`npm test\` | \`vitest run\` | Unit-Tests \`test/**/*.test.js\` in Node.js: ${v.unitDe} Tests in ${v.files} Dateien |
 | \`npm run step:cases\` | \`node scripts/export-step-cases.mjs step-check\` | ${v.cases} STEP-Dateien, ${v.cases} 3MF-Dateien und \`cases.json\` in \`step-check/\` |
@@ -81,6 +89,10 @@ Testfälle aus \`test/step-cases.js\`. Basisflügel:
 | Fall | Abweichung vom Basisflügel | Volumenkörper |
 | --- | --- | ---: |
 ${v.caseRows}
+
+| \`npm run foam:cases\` | \`node scripts/export-foam-cases.mjs foam-check\` | Profil-ZIP, SVG, DXF und PDF von ${v.cases} Testflügeln |
+
+Das Skript nimmt die Flügel ohne \`mitred-vtail-35-y-up\` und \`part-tilt-roll\` (${v.cases} Testfälle).
 `,
     'docs/wiki/Geometry.md': `Cases: the ${v.cases} cases of \`test/step-cases.js\`.`,
     'docs/wiki/Geometrie.md': `Fälle: die ${v.cases} Fälle aus \`test/step-cases.js\`.`,
@@ -88,7 +100,8 @@ ${v.caseRows}
 | UI | Views | Playwright: ${v.specs} spec files on desktop and Pixel 7. ${v.tests} tests, ${v.runs} runs on 2026-09-29 (local, Chromium 141): ${v.passed} passed, ${v.skipped} skipped (tests for one device only), 0 failed. |
 | Unit tests (\`test/\`) | ${v.unit} tests in ${v.files} files (Vitest) | \`npm test\` on 2026-09-29: ${v.unit} of ${v.unit} pass |
 | STEP export | Solids | \`scripts/validate_step.py\` with OpenCascade (cadquery-ocp 8.0.1): ${v.cases} cases, all valid |
-| 3MF | Meshes | \`scripts/validate_3mf.py\` with lib3mf 2.5.0 in strict mode: ${v.cases} cases, no reader warnings |`,
+| 3MF | Meshes | \`scripts/validate_3mf.py\` with lib3mf 2.5.0 in strict mode: ${v.cases} cases, no reader warnings |
+| Foam | Files | ezdxf and pypdf read the files of ${v.cases} test wings, all pass |`,
   };
 }
 
@@ -114,6 +127,17 @@ describe('test count check', () => {
     expect(p.filter((x) => x.startsWith('RECORD.md:3:'))).toHaveLength(3);
   });
 
+  it('counts the foam-cutting wings as the STEP cases without the Y-up copy and the placed part', () => {
+    const c = counts();
+    c.cases = [...CASES, { name: 'alpha-y-up', mirror: true, up: 'y' }, { name: 'part-tilt-roll', mirror: true }];
+    const d = docs({ cases: 4 });
+    const p = checkCounts(d, c).filter((x) => /foam/.test(x));
+    // 9 statements of the foam count, each stating 4 where the suite has 2.
+    expect(p).toHaveLength(9);
+    expect(p).toContain('README.md:6: foam-cutting validation wings: stated 4, the suite has 2');
+    expect(p.every((x) => x.endsWith('stated 4, the suite has 2'))).toBe(true);
+  });
+
   it('checks the unit tests of one file where a table row or a parenthesis states them', () => {
     const c = counts();
     c.unit.perFile = { 'test/a.test.js': 39, 'test/b.test.js': 79 };
@@ -127,11 +151,11 @@ describe('test count check', () => {
     stale['docs/wiki/Entwicklung.md'] += rows(39, 80, 'von 79');
     stale['RECORD.md'] += '\nUnit tests: `test/gone.test.js` (4).';
     expect(checkCounts(stale, c)).toEqual([
-      'docs/wiki/Development.md:29: test/a.test.js: stated 38, the file has 39 tests',
-      'docs/wiki/Development.md:30: test/b.test.js: stated 1 of 78, the file has 79 tests',
-      'docs/wiki/Development.md:32: test/a.test.js: stated 38, the file has 39 tests',
-      'docs/wiki/Entwicklung.md:26: test/b.test.js: stated 80 of 79, more than the file has',
-      'RECORD.md:6: test/gone.test.js holds no unit tests',
+      'docs/wiki/Development.md:33: test/a.test.js: stated 38, the file has 39 tests',
+      'docs/wiki/Development.md:34: test/b.test.js: stated 1 of 78, the file has 79 tests',
+      'docs/wiki/Development.md:36: test/a.test.js: stated 38, the file has 39 tests',
+      'docs/wiki/Entwicklung.md:30: test/b.test.js: stated 80 of 79, more than the file has',
+      'RECORD.md:7: test/gone.test.js holds no unit tests',
     ]);
     // Without per-file counts (older callers) the rows are not checked.
     delete c.unit.perFile;

@@ -118,11 +118,12 @@ function readSection(sc, n, scale, problems) {
 
 /**
  * One <wing>. `scale` converts its lengths to the file's unit; `top` marks a wing outside a plane,
- * whose Position and Tilt_angle XFLR5 ignores (it writes 0 there).
+ * whose Position and Tilt_angle XFLR5 ignores (it writes 0 there). `wing.fin` holds the flags that
+ * set how XFLR5 builds a fin (isFin, isDoubleFin, isSymFin; false when missing, as in XFLR5).
  * @returns {{wing: object, type: string, isFin: boolean, problems: {list: object[], more: number}}}
  */
 function readWing(sc, scale, top) {
-  const wing = { name: '', description: '', symmetric: true, position: { x: 0, y: 0, z: 0 }, tilt: 0, sections: [] };
+  const wing = { name: '', description: '', symmetric: true, position: { x: 0, y: 0, z: 0 }, tilt: 0, sections: [], fin: { isFin: false, double: false, symmetric: false } };
   const problems = problemList();
   let type = 'OTHERWING';
   let isFin = false;
@@ -134,6 +135,8 @@ function readWing(sc, scale, top) {
     } else if (name === 'description') wing.description = readText(sc);
     else if (name === 'symetric') wing.symmetric = isTrue(readText(sc));
     else if (name === 'isfin') isFin = isTrue(readText(sc));
+    else if (name === 'isdoublefin') wing.fin.double = isTrue(readText(sc));
+    else if (name === 'issymfin') wing.fin.symmetric = isTrue(readText(sc));
     else if (name === 'position' && !top) wing.position = readPosition(readText(sc), scale, problems);
     else if (name === 'tilt_angle' && !top) wing.tilt = value(readText(sc), 'Tilt_angle', null, problems);
     else if (name === 'sections') {
@@ -146,6 +149,7 @@ function readWing(sc, scale, top) {
       });
     }
   });
+  wing.fin.isFin = isFin;
   return { wing, type, isFin, problems };
 }
 
@@ -311,7 +315,7 @@ export function readXflr5Xml(text) {
     const name = displayName(top.wing.name);
     if (topCount > 1) warnings.add(tr('The file holds {count} wings outside a plane; XFLR5 reads only the last one, "{name}", and so does this import.', { count: count(topCount), name }));
     // XFLR5 would take any wing as the main wing; the role here comes from its Type.
-    if (top.type === 'FIN' || top.isFin) throw new XflrError('fin', tr('The XML wing "{name}" is a fin; only a main wing or a horizontal stabilizer can be imported.', { name }));
+    if (top.type === 'FIN' || top.isFin) throw new XflrError('fin', tr('The XML wing "{name}" is a fin; a fin imports only from a plane file, where its kind and position are known.', { name }));
     const wings = [null, null, null, null];
     wings[top.type === 'ELEVATOR' ? 2 : 0] = top.wing;
     planes.push({ name: '', description: '', wings });
