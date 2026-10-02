@@ -372,6 +372,8 @@ export function secantEndInterpolation(params, p) {
   const n = params.length - 1;
   // Degree 1 would put p + 2 equal knots at each end: the end derivatives need degree 2 or more.
   if (n < 2 || p < 2) throw new Error('secantEndInterpolation needs at least 3 points and degree 2.');
+  // n + 3 control points carry a degree of at most n + 2.
+  if (p > n + 2) throw new Error('secantEndInterpolation needs a degree of at most the number of points plus 1.');
   for (let k = 1; k <= n; k++) if (!(params[k] >= params[k - 1])) throw new Error('Interpolation parameters must be nondecreasing.');
   if (!(params[1] > params[0] && params[n] > params[n - 1])) throw new Error('The end parameters must differ from their neighbours.');
   const m = n + p + 3;

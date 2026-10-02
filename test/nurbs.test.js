@@ -147,6 +147,9 @@ describe('curves', () => {
     }
     expect(() => secantEndInterpolation([0, 0, 0.5, 1], 3)).toThrow();
     expect(() => secantEndInterpolation([0, 0.5, 1], 1)).toThrow('secantEndInterpolation needs at least 3 points and degree 2.');
+    expect(() => secantEndInterpolation([0, 0.5, 1], 5)).toThrow('secantEndInterpolation needs a degree of at most the number of points plus 1.');
+    // Degree n + 2: 5 control points, 5 + 4 + 1 knots.
+    expect(secantEndInterpolation([0, 0.5, 1], 4).knots).toHaveLength(10);
   });
 
   it('computes averaging knots with the expected structure', () => {
