@@ -10,7 +10,7 @@
 
 import { LIMITS as AIRFOIL_LIMITS, checkAirfoil } from '../airfoil/sanity.js';
 import { setTrailingEdgeGap } from '../airfoil/geometry.js';
-import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, paramsApart, surfacePoint } from './nurbs.js';
+import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, paramsApart, secantEndInterpolation, surfacePoint } from './nurbs.js';
 import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile, sampleCurve } from './profile.js';
 import { spanwiseBlender } from './spanwise.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
@@ -1007,16 +1007,20 @@ export function buildWing(project) {
     paramsU[0] = 0;
     paramsU[M - 1] = 1;
     const degU = 3;
-    const knotsU = averagingKnots(paramsU, degU);
-    const luU = collocationFactor(paramsU, degU, knotsU);
+    // At a closed trailing edge both ends leave in the direction of the first chord station (secant
+    // end tangents). Free ends take their tangents from the curvature further in; at a cusp (9e-6 to
+    // 5e-5 chord thick at the first station, 7e-4 chord from the trailing edge) the upper tangent can
+    // then lie below the lower one, the surfaces cross next to the trailing edge, and the end caps of
+    // the STEP solid have self-intersecting outlines.
+    const ends = closedTE ? secantEndInterpolation(paramsU, degU) : null;
+    const knotsU = ends ? ends.knots : averagingKnots(paramsU, degU);
+    const luU = ends ? null : collocationFactor(paramsU, degU, knotsU);
     const rowCtrl = rows.map((row) => {
-      const out = row.map(() => [0, 0, 0]);
+      const out = [];
       for (let c = 0; c < 3; c++) {
-        const x = collocationSolve(
-          luU,
-          row.map((q) => q[c]),
-        );
-        for (let j = 0; j < M; j++) out[j][c] = x[j];
+        const values = row.map((q) => q[c]);
+        const x = ends ? ends.solve(values) : collocationSolve(luU, values);
+        for (let j = 0; j < x.length; j++) (out[j] ??= [0, 0, 0])[c] = x[j];
       }
       return out;
     });

@@ -47,6 +47,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   planes only. With **Mitred** section planes
   **Checks** warns, also after the project is saved again.
 
+### Fixed
+
+- STEP export of a closed, cusped trailing edge (zero thickness and wedge angle, as on the S1223): the chordwise fit
+  takes secant end tangents to the first chord station, so that the upper surface stays above the lower one at the
+  trailing edge. With free end tangents the surfaces crossed up to 0.046 mm from the trailing edge (1.2e-4 mm deep at
+  240 mm chord), and OpenCascade's BRepCheck reported the end cap of one half as a self-intersecting wire. A closed
+  trailing edge gives 2 more control points per station row; the STEP validation has a 14th case, `cusped-closed`.
+
 ## [0.4.0] - 2026-10-01
 
 ### Added

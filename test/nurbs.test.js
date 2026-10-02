@@ -16,6 +16,7 @@ import {
   knotMultiplicities,
   normalizeKnots,
   parametrize,
+  secantEndInterpolation,
   solveMonotonic,
   splitCurve,
   splitSurfaceU,
@@ -120,6 +121,35 @@ describe('curves', () => {
         });
       }
     }
+  });
+
+  it('interpolates with secant end tangents', () => {
+    const pts = [
+      [0, 0, 0],
+      [1, 2, 0.5],
+      [2.5, 2.2, 1],
+      [4, 0.5, 0],
+      [5, -1, -1],
+      [7, 0, 0],
+    ];
+    const params = parametrize(pts, 'centripetal');
+    const { knots, solve } = secantEndInterpolation(params, 3);
+    const coords = [0, 1, 2].map((c) => solve(pts.map((q) => q[c])));
+    const c = { degree: 3, knots, points: coords[0].map((_, j) => coords.map((x) => x[j])) };
+    expect(c.points.length).toBe(pts.length + 2);
+    params.forEach((t, k) => expect(dist(curvePoint(c, t), pts[k])).toBeLessThan(1e-10));
+    const n = pts.length - 1;
+    const [, D0] = curveDerivatives(c, 0, 1);
+    const [, Dn] = curveDerivatives(c, 1, 1);
+    for (let i = 0; i < 3; i++) {
+      expect(D0[i]).toBeCloseTo((pts[1][i] - pts[0][i]) / params[1], 10);
+      expect(Dn[i]).toBeCloseTo((pts[n][i] - pts[n - 1][i]) / (1 - params[n - 1]), 10);
+    }
+    expect(() => secantEndInterpolation([0, 0, 0.5, 1], 3)).toThrow();
+    expect(() => secantEndInterpolation([0, 0.5, 1], 1)).toThrow('secantEndInterpolation needs at least 3 points and degree 2.');
+    expect(() => secantEndInterpolation([0, 0.5, 1], 5)).toThrow('secantEndInterpolation needs a degree of at most the number of points plus 1.');
+    // Degree n + 2: 5 control points, 5 + 4 + 1 knots.
+    expect(secantEndInterpolation([0, 0.5, 1], 4).knots).toHaveLength(10);
   });
 
   it('computes averaging knots with the expected structure', () => {

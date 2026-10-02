@@ -106,9 +106,9 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 
 | Format | File | Content | Verification |
 | --- | --- | --- | --- |
-| STEP, Application Protocol 214 (AP214), ISO (International Organization for Standardization) 10303-21 text | `.step` | One closed B-rep (boundary representation) solid per half. Faces: upper and lower B-spline surface (the exact loft surface), ruled trailing-edge face (open trailing edge only), planar root and tip caps. | CI: `scripts/validate_step.py` reads 13 test wings with OpenCascade (cadquery-ocp 8.0.1). Pass: shapes valid, shells closed and oriented, volume within 0.05 % of the mesh volume, cap edges within 1e-6 mm of their planes. |
+| STEP, Application Protocol 214 (AP214), ISO (International Organization for Standardization) 10303-21 text | `.step` | One closed B-rep (boundary representation) solid per half. Faces: upper and lower B-spline surface (the exact loft surface), ruled trailing-edge face (open trailing edge only), planar root and tip caps. | CI: `scripts/validate_step.py` reads 14 test wings with OpenCascade (cadquery-ocp 8.0.1). Pass: shapes valid, shells closed and oriented, volume within 0.05 % of the mesh volume, cap edges within 1e-6 mm of their planes. |
 | STL, binary | `.stl` | Closed triangle mesh; one shell per body. | Unit tests: every directed edge occurs once and its reverse once; volume from the parsed float32 file within 0.0005 % of the mesh volume. |
-| 3MF | `.3mf` | Same meshes; one object per shell; unit millimetre. | Unit tests: 3 package parts, unit millimetre, 1 object and 1 build item per shell, vertex count. CI: `scripts/validate_3mf.py` reads the 13 test wings with lib3mf 2.5.0 in strict mode. Pass: no warnings while reading, triangle count per object as written, every object manifold and oriented. Slicer software: not tested. |
+| 3MF | `.3mf` | Same meshes; one object per shell; unit millimetre. | Unit tests: 3 package parts, unit millimetre, 1 object and 1 build item per shell, vertex count. CI: `scripts/validate_3mf.py` reads the 14 test wings with lib3mf 2.5.0 in strict mode. Pass: no warnings while reading, triangle count per object as written, every object manifold and oriented. Slicer software: not tested. |
 | Foam-cutting files (wizard **Foam**) | `.zip`, `.svg`, `.pdf`, `.dxf` | End profile pairs (`.dat`), `segments.csv`, 1:1 templates. Contents: [File Formats](https://github.com/subtilitas/Wingdesigner/wiki/File-Formats), section Foam-cutting files. | CI: `scripts/validate_foam.py` reads the files of 11 test wings with ezdxf 1.4.4 (DXF audit without errors, closed profile polylines; without kerf, their width and height match the `.dat` files within 0.001 mm) and pypdf 6.19.0 (page count, page size, page labels); the SVG with an XML parser. Hot-wire cutting programs, computer-aided design (CAD) programs, laser cutters, printers: not tested. |
 | Project JSON | `.json` | Airfoil coordinates, sections, guide curves, settings. Derived NURBS data, only when the wing builds without errors. When the file with the derived data would exceed 100 MB, **Save** and the JSON export leave it out and show `The file leaves out the derived NURBS data: with it, the file would exceed 100 MB, the largest project file Open reads. Open recomputes it; STEP export writes the exact surfaces.` Derived data: curve of every airfoil used by a section, each enabled guide curve (null when off), spanwise stations, wing surface (degrees, knots, control points). Import ignores the derived data and recomputes it. | Unit tests: write, read back and rebuild gives the same sections, guide curves, airfoil points and surface control points; validation of every field. |
 
@@ -235,7 +235,7 @@ Version history: [CHANGELOG.md](CHANGELOG.md). Verified state and open items: [R
 npm ci
 npx playwright install chromium   # browser for end-to-end (e2e) tests and screenshots (or set PW_CHROMIUM=/path/to/chrome)
 npm run dev              # development server on http://localhost:5173
-npm test                 # 636 unit tests (Vitest)
+npm test                 # 638 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
@@ -244,7 +244,7 @@ npm run coverage         # unit tests with coverage report in coverage/
 npm run coverage:readme  # write the coverage tables into README.md and README.de.md
 npm run coverage:check   # exit code 1 when a README coverage table differs from coverage/
 npm run airfoils:check   # validate the bundled airfoil library and the NACA presets
-npm run step:cases       # write 13 STEP files, 13 3MF files and cases.json to step-check/
+npm run step:cases       # write 14 STEP files, 14 3MF files and cases.json to step-check/
 npm run foam:cases       # write the foam-cutting files of 11 test wings and cases.json to foam-check/
 npm run screenshots      # rebuild and regenerate docs/wiki/images/
 npm run docs:check       # check page pairs, wiki links, images, coverage markers and the release texts in CHANGELOG.md

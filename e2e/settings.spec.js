@@ -5,7 +5,8 @@
 // Wizard designs used here (src/model/wizard.js): "Sport" has 2 sections (root chord 240 mm, tip
 // 144 mm, NACA 2412/2410), "Swept flying wing" has 3 sections (280 / 203 / 126 mm). Both start
 // with a fixed trailing-edge thickness of rootChord * 0.002 (at least 0.3 mm) and a flat tip.
-// The loft has 2 * chordSamples + 1 control points around the profile (default 60 -> 121).
+// The loft has 2 * chordSamples + 1 control points around the profile (default 60 -> 121), 2 more with a
+// closed trailing edge.
 import {
   STATUS_RE,
   checksValue,
@@ -625,7 +626,8 @@ test.describe('Settings tab', () => {
     await expect.poll(async () => (await savedProject(page))?.name).toBe('Persist test');
     await openTab(page, 'Checks');
     const surface = await checksValue(page, 'Surface').innerText();
-    expect(surface).toMatch(surfaceRe(3, 33, 6));
+    // Closed trailing edge: 2 · 16 + 3 control points around the profile (end derivatives fixed).
+    expect(surface).toMatch(surfaceRe(3, 35, 6));
     const before = await figures(page);
     await openTab(page, 'Settings');
 

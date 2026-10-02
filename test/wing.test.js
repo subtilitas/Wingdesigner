@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { OVERSHOOT_LIMIT, buildWing, interpolateAlongV, joinCurves, mitredPlaneProblem, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { MAX_STRETCH, firstFold, overStretched, planeFold, rolledPanelCount, sectionPlanes, stretchOf, upExtent } from '../src/geom/planes.js';
 import { syncGuidesToSpan } from '../src/model/edit.js';
-import { curvePoint, dist, interpolateCurve, knotMultiplicities, surfacePoint } from '../src/geom/nurbs.js';
+import { curvePoint, dist, interpolateCurve, knotMultiplicities, solveMonotonic, surfacePoint } from '../src/geom/nurbs.js';
 import { solve } from '../src/geom/linalg.js';
 import { CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleDeviation, resampleProfile } from '../src/geom/profile.js';
 import { blendPoints, blendScalar, spanwiseBlender, spanwiseWeights } from '../src/geom/spanwise.js';
@@ -15,7 +15,7 @@ import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { LIMITS, createProject, resolveSettings, validateProject } from '../src/model/project.js';
 import { loftGrid } from '../src/model/budget.js';
 import { projectFromJsonText, projectToJsonText } from '../src/model/io.js';
-import { naca, sampleProject } from './helpers.js';
+import { cuspedAirfoil, naca, sampleProject } from './helpers.js';
 import { setLanguage, tr } from '../src/i18n/index.js';
 
 describe('profile curves', () => {
@@ -278,6 +278,41 @@ describe('wing surface', () => {
     const m = buildWing(mixed);
     expect(m.closedTE).toBe(false);
     expect(m.warnings[0]).toMatch(/opened/);
+  });
+
+  it('keeps the upper surface above the lower one at a closed cusped trailing edge', () => {
+    // Root and tip of a wing with a cusped airfoil (zero thickness and wedge angle at the trailing
+    // edge). Free end tangents of the chordwise fit cross the surfaces up to 0.046 mm from the
+    // trailing edge of the 240 mm root, 1.2e-4 mm deep; secant end tangents keep them apart.
+    const b = buildWing(
+      createProject({
+        name: 'Cusped',
+        airfoils: [cuspedAirfoil()],
+        sections: [
+          { airfoil: 'cusp', x: 0, y: 0, z: 0, chord: 240, twist: 0 },
+          { airfoil: 'cusp', x: 48, y: 600, z: 24, chord: 168, twist: -2 },
+          { airfoil: 'cusp', x: 120, y: 960, z: 48, chord: 96, twist: -3 },
+        ],
+        settings: { spanwise: 'straight', sectionPlanes: 'vertical' },
+      }),
+    );
+    expect(b.errors).toEqual([]);
+    expect(b.closedTE).toBe(true);
+    for (const v of [0, 1]) {
+      const T = surfacePoint(b.surface, 0, v);
+      const L = surfacePoint(b.surface, b.uLE, v);
+      const len = dist(L, T);
+      // Chord direction (trailing edge to leading edge) and the up direction in the vertical plane.
+      const c = [(L[0] - T[0]) / len, 0, (L[2] - T[2]) / len];
+      const n = [c[2], 0, -c[0]];
+      const along = (P) => (P[0] - T[0]) * c[0] + (P[2] - T[2]) * c[2];
+      const up = (P) => (P[0] - T[0]) * n[0] + (P[2] - T[2]) * n[2];
+      const at = (u0, u1, d) => surfacePoint(b.surface, solveMonotonic((u) => along(surfacePoint(b.surface, u, v)), d, u0, u1, 1e-12), v);
+      for (let d = 0.002; d <= 0.3; d += 0.002) {
+        const thickness = up(at(0, 0.05 * b.uLE, d)) - up(at(1 - 0.05 * (1 - b.uLE), 1, d));
+        expect(thickness).toBeGreaterThan(0);
+      }
+    }
   });
 
   it('joins clamped curves with C0 knots', () => {

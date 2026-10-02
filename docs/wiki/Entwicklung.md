@@ -430,14 +430,14 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 636 Tests in 24 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 638 Tests in 24 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit-Code 1, wenn eine README-Tabelle von `coverage/coverage-summary.json` abweicht; Exit-Code 2, wenn diese Datei oder eine Markierung fehlt |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Prüfungen unter [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek); Exit-Code 1 bei einem Problem |
 | `npm run e2e` | `npm run build && playwright test` | Browsertests in `e2e/` gegen `vite preview` auf Port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 13 STEP-Dateien, 13 3MF-Dateien und `cases.json` in `step-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 14 STEP-Dateien, 14 3MF-Dateien und `cases.json` in `step-check/` |
 | `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profil-ZIP, SVG, DXF und PDF von 11 Testflügeln und `cases.json` in `foam-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Dateien im Format Portable Network Graphics (PNG): 14 in `docs/wiki/images/` (Englisch) und 14 in `docs/wiki/images/de/` (Deutsch) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
@@ -542,6 +542,7 @@ x und z: Lage der Profilnase.
 | `guided-elliptic` | Nasenlinie und Endlinie mit je 4 Punkten; Endleistendicke 0,5 mm | 2 |
 | `root-offset-half` | Alle Schnitte um +35 mm in y verschoben (Wurzel bei y = 35 mm); nicht gespiegelt | 1 |
 | `reflex-closed` | NACA 23112 (S-Schlag) an den Schnitten 1 und 2, NACA 0008 am Rand; geschlossene Endleiste | 2 |
+| `cusped-closed` | Nicht der Basisflügel: 3 Schnitte eines synthetischen Profils mit geschlossener, spitz auslaufender Endleiste (`cuspedAirfoil` in `test/helpers.js`: Dicke und Keilwinkel an der Endleiste null, Wölbungsneigung dort −0,7), Profiltiefen 240, 168 und 96 mm bei y 0, 600 und 960 mm, Schränkung 0°, −2° und −3°; **Gerade Felder** | 2 |
 | `pointed-tip` | Spitzer Rand, Verhältnis 0,002 (1/500); Endleistendicke 0,4 mm | 2 |
 | `pointed-elliptic-closed` | Spitzer Rand, Verhältnis 0,005 (1/200); Nasenlinie und Endlinie treffen sich bei x = 115 mm, y = 600 mm; geschlossene Endleiste | 2 |
 | `symmetric-0009` | NACA 0009 an jedem Schnitt | 2 |
