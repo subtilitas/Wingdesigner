@@ -366,7 +366,7 @@ test.describe('Settings tab', () => {
     expect(await figures(page)).toEqual(linear);
   });
 
-  test('section planes: mitred by default with stations in the panel, vertical on choice; Smooth builds vertical with an info line', async ({ page }) => {
+  test('section planes: mitred by default with stations in the panel, vertical on choice, mitred with Smooth', async ({ page }) => {
     await createDesign(page, 'Sport');
     await openTab(page, 'Settings');
     await expect(sectionPlanes(page)).toHaveValue('mitred');
@@ -394,15 +394,16 @@ test.describe('Settings tab', () => {
     const [, tipVertical] = await tipOf();
     expect(Math.abs(tipVertical - 600)).toBeLessThan(1e-3);
 
-    // Smooth with mitred planes builds vertical planes and says so; the error and warning count stays 0.
+    // Smooth with mitred planes rolls the tip as Linear does, without an info line; the error and
+    // warning count stays 0.
     await openTab(page, 'Settings');
     await choose(sectionPlanes(page), 'mitred');
     await choose(spanwise(page), 'smooth');
     await openTab(page, 'Checks');
-    await expect(page.locator('#pane-checks li.sev-info')).toHaveText(['Info: Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels.']);
+    await expect(page.locator('#pane-checks li.sev-info')).toHaveCount(0);
     await expect(checksValue(page, 'Surface')).toHaveText(surfaceRe(3, 121, 9));
     const [, tipSmooth] = await tipOf();
-    expect(Math.abs(tipSmooth - 600)).toBeLessThan(1e-3);
+    expect(tipSmooth > 600.1 && tipSmooth < 600.2, `smooth mitred tip reaches y = ${tipSmooth}`).toBe(true);
     await expect(status(page)).toHaveText(STATUS_RE);
   });
 

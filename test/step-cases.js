@@ -66,6 +66,11 @@ export function stepCases() {
   gull.sections[1].z = 300 * Math.tan(15 * DEG);
   gull.sections[2].z = gull.sections[1].z - 300 * Math.tan(5 * DEG);
   cases.push({ name: 'mitred-gull-15-5', project: gull, mirror: true });
+  // The same gull with Smooth: the section rolls blended by the cubic, the stretch from the slope of
+  // the blended reference line, the root plane vertical against a reference line at the cubic's slope.
+  const smoothGull = structuredClone(gull);
+  smoothGull.settings = { ...smoothGull.settings, spanwise: 'smooth' };
+  cases.push({ name: 'mitred-gull-smooth', project: smoothGull, mirror: true });
   // An XFLR5 airfoil switch: sections 0.5 mm apart in y share the bisector plane of the 0° and 10°
   // panels around them; the outer panel stores 10.5° (panelAngle), which the tip plane is square to.
   const tan10 = Math.tan(10 * DEG);

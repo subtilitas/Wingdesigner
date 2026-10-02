@@ -35,7 +35,7 @@ function pivotNote(settings, sections) {
     'p',
     { class: 'small muted' },
     settings.partPivot
-      ? tr('The part turns as a rigid body about x = {x} mm, y = {y} mm, z = {z} mm, the wing origin of the import: first the roll about the x axis, then the tilt about the y axis.', at)
+      ? tr('The part turns as a rigid body about x = {x} mm, y = {y} mm, z = {z} mm, the pivot stored by the import: first the roll about the x axis, then the tilt about the y axis.', at)
       : tr('The part turns as a rigid body about the leading edge of the root section (x = {x} mm, y = {y} mm, z = {z} mm): first the roll about the x axis, then the tilt about the y axis.', at),
   );
 }

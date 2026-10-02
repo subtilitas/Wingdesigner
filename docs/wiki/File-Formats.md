@@ -350,7 +350,7 @@ Ids made by the app:
 | Key | Values | Default | **Settings** control |
 | --- | --- | --- | --- |
 | `spanwise` | `"linear"`, `"straight"`, `"smooth"` | `"linear"` | **Spanwise interpolation**. `"straight"`: **Straight panels (straight lines between sections, as XFLR5)**; an app that knows only `"linear"` and `"smooth"` refuses the file (`settings.spanwise must be "linear" or "smooth".`). |
-| `sectionPlanes` | `"mitred"`, `"vertical"` | `"mitred"`; a version 1 file opens with `"vertical"` | **Section planes**: **Mitred (square to the panels, as XFLR5)** or **Vertical (y = const)** ([[Geometry]], section 3.8). `"smooth"` builds vertical planes with either value. |
+| `sectionPlanes` | `"mitred"`, `"vertical"` | `"mitred"`; a version 1 file opens with `"vertical"` | **Section planes**: **Mitred (square to the panels, as XFLR5)** or **Vertical (y = const)** ([[Geometry]], section 3.8), with every `spanwise` value. |
 | `twistPivot` | `0`–`1`, fraction of chord | `0.25` | **Twist pivot (fraction of chord)** |
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Trailing edge** |
 | `trailingEdge.thickness` | ≥ 0 mm; used with `"thickness"`; limited to 5 % of the local chord | `0.4` | **Trailing-edge thickness (mm)** |
@@ -424,7 +424,7 @@ Checked only when the wing is built, in this order:
 - `curve-shape`: the NURBS profile curve crosses itself (loop size, mean width, above 0.05 % chord) or runs back in x (above 0.01 % chord);
 - guide curves: y strictly increasing; the curve does not double back in span direction; x of every control point of the curve within ±1,200,000 mm;
 - `spanwise` `"straight"` with a guide curve on;
-- `sectionPlanes` `"mitred"` (not with `"smooth"`): a section plane more than 60° from a panel next to it (thickness stretch above 2; a plane that rounds to 60.0° builds), or, with `spanwise` `"straight"`, the planes of 2 neighbouring sections meet within the airfoils ([[Geometry]], section 3.6);
+- `sectionPlanes` `"mitred"`: a section plane more than 60° from a panel next to it (thickness stretch above 2; a plane that rounds to 60.0° builds), with `spanwise` `"smooth"` also a station plane more than 60° from the blended reference line, or, with `spanwise` `"straight"`, the planes of 2 neighbouring sections meet within the airfoils ([[Geometry]], section 3.6);
 - interpolated section values are finite numbers (leading-edge x, chord, z, cosine of the twist);
 - interpolated leading-edge x, trailing-edge x and z within ±1,200,000 mm, chord at most 100,000 mm;
 - `sectionPlanes` `"mitred"` with `spanwise` `"linear"`: along a panel the section planes turn faster than its airfoils allow, so the surface folds; at a section both panels next to it count ([[Geometry]], section 3.6);
@@ -618,9 +618,9 @@ XFLR5 has 4 wing slots per plane.
 | Slot | Wing | In `.xfl` | In XML | Offered |
 | --- | --- | --- | --- | --- |
 | 0 | main wing | always | `<Type>MAINWING</Type>` | yes |
-| 1 | second wing (biplane) | when the plane has the flag `biplane` | `SECONDWING` | no |
+| 1 | second wing (biplane) | when the plane has the flag `biplane` | `SECONDWING` | yes |
 | 2 | elevator (horizontal stabilizer) | when the plane has the flag `stab` | `ELEVATOR` | yes |
-| 3 | fin | when the plane has the flag `fin` | `FIN` | no |
+| 3 | fin | when the plane has the flag `fin` | `FIN` | yes, upright as XFLR5 builds it (section "Fin") |
 
 - An `.xfl` project stores all 4 slots. Unused slots hold default wings, such as an "Elevator" with 2 sections; the flags decide which slot exists.
 - An XML file lists only the wings that exist.
@@ -628,8 +628,9 @@ XFLR5 has 4 wing slots per plane.
 - A later wing for a slot that is taken replaces the earlier one, as in XFLR5: warning `Plane "<plane>" has more than one main wing: "<name>" replaces "<previous>", as in XFLR5.`
 - XML wing file (a top-level `<wing>`, no `<Plane>`): the `<Type>` gives the surface. `ELEVATOR`: horizontal stabilizer. `FIN` or `<isFin>true</isFin>`: refused. Every other type: wing. Position and tilt angle are 0. Several top-level wings: only the last is read, with a warning. Top-level wings in a plane file are ignored, with a warning.
 - Several planes: the dialog shows the **Plane** select only for more than one plane. The first plane is preselected; for a flow5 file the first plane with a wing to import. A plane without a name is listed as `Plane <n>`.
-- The dialog offers **Main wing** and **Horizontal stabilizer (XFLR5: Elevator)**. Each option shows `"<wing name>": <n> sections, span <span> mm, root chord <chord> mm`. The span is twice the y of the last section (Y_(n−1) of step 1 in section "Mapping to sections"), both halves. An option that the plane lacks is disabled with its reason: `This plane has no main wing.`, `This plane has no elevator.`, `The wing in this file is a horizontal stabilizer (type ELEVATOR).` or `The wing in this file is not a horizontal stabilizer (type ELEVATOR).`
-- The second wing, the fin and the other surface are not imported; the report says so (section "Report"). One surface is imported at a time; opening the file again offers the other.
+- The dialog offers **Main wing** and **Horizontal stabilizer (XFLR5: Elevator)**, then **Second wing** and **Fin** where the plane has them. Each option shows `"<wing name>": <n> sections, span <span> mm, root chord <chord> mm`. The span is twice the y of the last section (Y_(n−1) of step 1 in section "Mapping to sections"), both halves. The fin shows its height instead: `"<wing name>": <n> sections, height <height> mm, root chord <chord> mm`, Y_(n−1) − k·y_0 for a single or double fin, 2·Y_(n−1) for a symmetric fin. An option that the plane lacks is disabled with its reason: `This plane has no main wing.`, `This plane has no elevator.`, `The wing in this file is a horizontal stabilizer (type ELEVATOR).` or `The wing in this file is not a horizontal stabilizer (type ELEVATOR).`
+- One surface is imported at a time; the report names the other wings of the plane (section "Report"), and opening the file again offers them.
+- The second wing imports as the main wing does: its position moves the sections, its tilt angle turns the part.
 
 ### Mapping to sections
 
@@ -642,7 +643,7 @@ Notation, for the sections i = 0 … n−1 from the root to the tip: y_i, c_i, h
 | `Dihedral` of section i | absolute angle of the panel outboard of section i, from section i to i + 1; not cumulative. The value of the last section belongs to no panel and is not used. |
 | `Twist` | rotation of the section about its quarter-chord point; positive = leading edge up; absolute per section |
 | Tilt angle | incidence of the wing in the plane: rotation of the whole wing about the y axis through the wing origin; positive = nose up. Wingdesigner stores it as **Part tilt** (`settings.partTilt`). |
-| Position | x, y, z of the wing origin in the plane. y is not used, as in XFLR5 (which uses it only for double fins). |
+| Position | x, y, z of the wing origin in the plane. y is not used, as in XFLR5, except for a double fin (section "Fin"). |
 
 The order of the steps: panels, clean-up, tilt and position (the position moves the sections, the tilt angle is stored), airfoil frame, rounding, section planes.
 
@@ -667,7 +668,7 @@ section i:  x = k·h_i   y = Y_i   z = Z_i   chord = k·c_i   twist = τ_i
 | fewer than 2 sections | error `The wing needs at least 2 sections (found <n>).` |
 | a value that is not a finite number: `y_position`, `Chord`, `xOffset`, `Twist`, `Dihedral` (not the last section's) | error `<field> is not a finite number in the file at <sections>.` |
 | position x or z, or tilt angle, not a finite number (XML files only; an `.xfl` file sets such a value to 0, section "How the file is read") | error `The position of the wing in the plane is not a finite number in the file.` or `The tilt angle of the wing is not a finite number in the file.` |
-| root at y_position −0.1 mm or less | error `The root section lies at y_position <y> mm; the half wing must start at y >= 0.` |
+| root at y_position −0.1 mm or less | error `The root section lies at y_position <y> mm; the half wing must start at y >= 0.`; a single or double fin moves up instead (section "Fin") |
 | y_position decreases by 0.1 mm or more | error `y_position decreases at <sections>; the sections must run from root to tip.` |
 | chord 0 or less | error `The chord must be greater than 0 at <sections>.` |
 | chord above 0 and below 1 mm (`LIMITS.minChord`) | raised to 1 mm: warning `Chords below 1 mm were raised to 1 mm, the smallest chord Wingdesigner builds, at <sections>.` |
@@ -695,7 +696,7 @@ settings.partPivot = { x: k·LE_x, y: 0, z: k·LE_z }      the wing origin
 - The sections lie in the frame of the part. The build turns the part, with its section planes, by θ about the y axis through the wing origin, nose up for θ > 0, as XFLR5 turns the wing ([[Geometry]], section 3.9). So a tilted part imports with **Mitred** section planes as an untilted one does (step 6).
 - A tilt of 400° stores 40°; −540° stores −180°. A tilt of whole turns stores none: `partTilt` 0, `partRoll` 0, `partPivot` `null`. The values are rounded to 4 decimals.
 - Info `Tilt angle -1.5° applied as in the XFLR5 plane: the part turns as a rigid body about the wing origin (Settings > Part tilt).` It names the stored angle.
-- Info `Position in the XFLR5 plane applied: the wing origin moved to x 650 mm, z 40 mm.` A position y other than 0: info `Position y <y> mm is not used, as in XFLR5.`
+- Info `Position in the XFLR5 plane applied: the wing origin moved to x 650 mm, z 40 mm.` A position y other than 0: info `Position y <y> mm is not used, as in XFLR5.`, except for a double fin.
 - When the mean twist lies beyond ±180°, a whole number of turns common to all sections is taken out: info `All twists were changed by -360°, a whole number of turns; the sections stay the same.` The tilt angle is not part of the twists.
 - An XML wing file holds no position and no tilt angle: info `A wing file holds no position or tilt angle: the part is built in its own frame.`
 
@@ -748,6 +749,22 @@ chord' = c·cT            twist unchanged
 - Two sections at one y (step 2) do not fold: 0.5 mm apart, they share one plane.
 - A tilted part keeps its tilt angle in `settings.partTilt` with either value (step 3).
 - The build takes the rolls from the section positions of the project, after the airfoil frames of step 4, and from the stored panel angles of step 4, which are XFLR5's dihedrals. The main wing of the worked example builds rolls of 0°, 4.5° and 6°, as XFLR5. Built and turned 2° about the wing origin, its trailing edges lie within 1e-3 mm of XFLR5's construction, the mitred section turned 2° about the wing origin (unit test, sections 1 and 2; computed for sections 1 to 3: 2.1e-5, 4.0e-5 and 4.5e-5 mm). The same comparison gives 0 mm for the elevator and 6.1e-5, 3.7e-5, 2.6e-5 and 5.0e-5 mm for sections 1 to 4 of Fixture B.
+
+### Fin
+
+XFLR5 6.62 builds a fin upright: `Plane::createSurfaces` turns it −90° about x before the tilt angle. The fin flags set how (`.xfl`: the plane flags after `fin`; XML: `<isFin>`, `<isDoubleFin>`, `<isSymFin>` of the fin, false when missing):
+
+| Kind | Flags | XFLR5 (`Wing::createSurfaces`) | Import |
+| --- | --- | --- | --- |
+| single | neither `isDoubleFin` nor `isSymFin` | the left half only, with the left-side airfoils, turned −90° about x and by the tilt angle about z, at y = 0 | the left half of the part: the left-side airfoils, **Part roll** 90°, **Left half** Mirror image; the right half is the mirror image on top of it. **Export** > **Wing halves** > **Left half only** writes the fin alone. |
+| symmetric | `isSymFin`, or a fin wing without `isFin` | both halves turned −90° about x as one body, then by the tilt angle about y: one half above and one below the wing origin | **Part roll** −90°, **Part tilt** the tilt angle, **Left half** Turned with the right half (project format version 4) |
+| double | `isDoubleFin`, not `isSymFin` | the right half turned +90° about x and moved by LE_y, the left half the mirror image at −LE_y; each turned by the tilt angle about z | the sections moved by k·\|LE_y\| in y, **Part roll** 90° about the pivot (k·LE_x, k·\|LE_y\|, k·LE_z), **Left half** Mirror image |
+
+- A single or double fin with a tilt angle other than 0 (reduced by whole turns) is turned about z, which a part cannot: the option is disabled with `A fin with a tilt angle of <angle>°: XFLR5 turns this fin about z, and a part turns about x and y only.`
+- A single or double fin can reach below its origin: a root y_position of −0.1 mm or less. Its sections move up by d = −k·y_0, so that the root lies at y = 0, and the pivot moves by d/2 in y and by −d/2 in z: rolled 90°, the sections land where XFLR5 builds them. Info `The fin reaches <d> mm below its origin (root y_position <y> mm): its sections start at y = 0, and the pivot of Settings > Part roll lies <d/2> mm out and <d/2> mm down from the wing origin, so that the fin stays where XFLR5 builds it.` Example: the fin of `Rascal110.xfl`, root y_position −3.25 in (−82.55 mm), pivot (1308.1, 41.275, 41.275) mm.
+- Info lines: `XFLR5 builds a fin upright: the part turns <angle>° as a rigid body about the wing origin (Settings > Part roll).`; for a single fin `A single fin: XFLR5 builds its left half only, with the left-side airfoils, at y = 0. …`; for a symmetric fin `A symmetric fin: XFLR5 turns both halves upright as one body, one above and one below the wing origin: Settings > Left half is set to Turned with the right half.`; for a double fin `A double fin: XFLR5 builds two upright fins <y> mm to the right and to the left of the wing origin (position y). …`
+- A fin in an XML wing file (outside a plane) is refused (section "Refused files").
+- Checked (`test/xflr5-map.test.js`) against a transcription of the corner construction of XFLR5 6.62 (`Wing::createSurfaces`, `Plane::createSurfaces`): the leading and trailing edge of every section. A 3-section fin with panels of 4° and 12° as a single, symmetric (tilt angle 3°) and double fin (LE_y 150, −150 and 0 mm), a double fin reaching 40 mm below its origin and a second wing with 1.5° tilt angle and 5° dihedral: within 0.001 mm. The fins of `fixtures_v662.xfl` and its XML export, `Rascal110.xfl`, `UltraStick25e_v662_stripped.xfl` and `UltraStick25e.xml` (all single fins without twist): within 1e-6 mm. Not compared with the STL that XFLR5 writes.
 
 ### Differences from XFLR5
 
@@ -819,7 +836,8 @@ The report is calculated again after every choice. Order: errors, then warnings,
 
 | Data | Treatment | Severity | Message |
 | --- | --- | --- | --- |
-| second wing, fin, the other surface | not imported | info | `Not imported: the horizontal stabilizer "Elevator", the fin "Fin". One surface per import; open the file again for another one.` |
+| the other wings of the plane | not imported | info | `Not imported: the horizontal stabilizer "Elevator", the fin "Fin". One surface per import; open the file again for another one.` |
+| fin | upright, section "Fin" | info | section "Fin" |
 | dihedral other than 0 | y and z computed | info | `XFLR5 measures y_position along the panels; y and z were computed from it and the dihedral.` |
 | dihedral above 10° | kept | warning with **Vertical** section planes only | section "Mapping to sections", step 2 |
 | position | applied to the sections | info | step 3 |
@@ -835,7 +853,7 @@ The report is calculated again after every choice. Order: errors, then warnings,
 | `.xfl` with more than 10,000 airfoils, or airfoils beyond 2,000,000 points | not read | warning | `Only the first 10,000 of the <n> airfoils of the file were read.` `1 airfoil was not read: the airfoils of the file hold more than 2,000,000 points together.` |
 | XML file: a wing that replaces another, more than 4 wings, wings outside a plane, a `<Units>` after a plane, a value that is not a number, a `Position` with fewer than 3 values | as in XFLR5 | warning | texts in sections "Wings and surfaces" and "How the file is read". The warnings concern the whole file, so the report of every plane lists them; the toast leaves them out. |
 
-The dropped data: the fin, the second wing, the other surface, the body, masses, analyses and results, VLM (vortex lattice method) panel counts and distributions, colours, descriptions, left-side airfoils, flap deflections, the last section's dihedral and the position y.
+The dropped data: the other wings of the plane, the body, masses, analyses and results, VLM (vortex lattice method) panel counts and distributions, colours, descriptions, left-side airfoils, flap deflections, the last section's dihedral and the position y (except for a double fin).
 
 **Report: airfoils**
 
@@ -1228,7 +1246,7 @@ One sheet. `width` and `height` in mm, `viewBox` in mm (1 unit = 1 mm), white ba
 
 ### Verification
 
-Independent readers of 11 test wings (the STEP cases without the Y-up copy), each cut as proposed for a longest core of 300 mm, one with a 1 mm kerf, one on A3, one on Letter: ezdxf 1.4.4 reads every DXF with its recover module and its audit finds no error; every profile polyline is closed and has the expected vertex count, and without kerf its width and height equal those of its `mm/` `.dat` file within 0.001 mm. pypdf 6.19.0 reads every PDF in strict mode: page count and size as computed, a page label on every page. Every SVG parses as XML with one profile polygon per segment end. The script reads every ZIP with the Python standard library: the expected entries, 121 points in every `.dat` file, one `segments.csv` row per segment.
+Independent readers of 13 test wings (the STEP cases without the Y-up copy and the placed part), each cut as proposed for a longest core of 300 mm, one with a 1 mm kerf, one on A3, one on Letter: ezdxf 1.4.4 reads every DXF with its recover module and its audit finds no error; every profile polyline is closed and has the expected vertex count, and without kerf its width and height equal those of its `mm/` `.dat` file within 0.001 mm. pypdf 6.19.0 reads every PDF in strict mode: page count and size as computed, a page label on every page. Every SVG parses as XML with one profile polygon per segment end. The script reads every ZIP with the Python standard library: the expected entries, 121 points in every `.dat` file, one `segments.csv` row per segment.
 
 Not tested: hot-wire cutting programs (Jedicut, GMFC, DevFoam and others) with these files; CAD programs and laser cutters with the DXF; printers with the PDF and SVG.
 

@@ -80,9 +80,9 @@ test.describe('XFLR5 import', () => {
 
     const dlg = await openImport(page, { name: '0.plane.xml', mimeType: 'text/xml', buffer: xmlWithElevatorTip('TEST 12') });
     await expect(dlg.locator('.xflr5-source')).toHaveText('0.plane.xml · XFLR5 plane file (XML), lengths in millimetres');
-    // One plane: no plane choice. The main wing and the stabilizer are offered, the fin is not.
+    // One plane: no plane choice. The main wing, the stabilizer and the fin are offered.
     await expect(dlg.getByRole('combobox', { name: 'Plane', exact: true })).toHaveCount(0);
-    await expect(dlg.getByRole('group', { name: 'Surface to import' }).getByRole('radio')).toHaveCount(2);
+    await expect(dlg.getByRole('group', { name: 'Surface to import' }).getByRole('radio')).toHaveCount(3);
     const main = dlg.getByRole('radio', { name: /^Main wing/ });
     const stab = dlg.getByRole('radio', { name: /^Horizontal stabilizer/ });
     await expect(main).toBeChecked();
@@ -91,7 +91,7 @@ test.describe('XFLR5 import', () => {
     await expect(main).toHaveAccessibleName('Main wing "Main Wing": 3 sections, span 1794 mm, root chord 240 mm');
     await expect(dlg.getByRole('img', { name: 'Planform preview' })).toBeVisible();
     await expect(stab).toHaveAccessibleName('Horizontal stabilizer (XFLR5: Elevator) "Elevator": 2 sections, span 460 mm, root chord 110 mm');
-    await expect(dlg.getByRole('radio', { name: /Fin/ })).toHaveCount(0);
+    await expect(dlg.getByRole('radio', { name: /^Fin/ })).toHaveAccessibleName('Fin "Fin": 2 sections, height 160 mm, root chord 120 mm');
     await expect(dlg.getByRole('textbox', { name: 'Project name' })).toHaveValue('Fixture A Main Wing');
 
     await stab.check();
@@ -289,6 +289,24 @@ test.describe('XFLR5 import', () => {
     await page.keyboard.press('Escape');
     await expect(importDialog(page)).toHaveCount(0);
     await expect(sectionRows(page)).toHaveCount(4);
+  });
+
+  test('XML plane file: the fin, upright at the fin position as XFLR5 builds it', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    const dlg = await openImport(page, fixturePath('xml_mm/0.plane.xml'));
+    const fin = dlg.getByRole('radio', { name: /^Fin/ });
+    await fin.check();
+    await expect(dlg.getByRole('textbox', { name: 'Project name' })).toHaveValue('Fixture A Fin');
+    await expect(reportOf(dlg).filter({ hasText: 'XFLR5 builds a fin upright: the part turns 90° as a rigid body about the wing origin (Settings > Part roll).' })).toHaveCount(1);
+    await expect(reportOf(dlg).filter({ hasText: 'A single fin: XFLR5 builds its left half only' })).toHaveCount(1);
+    await expect(reportOf(dlg).filter({ hasText: 'Not imported: the main wing "Main Wing", the horizontal stabilizer "Elevator".' })).toHaveCount(1);
+    await dlg.getByRole('button', { name: /^Import/ }).click();
+    await expect(importDialog(page)).toHaveCount(0);
+    await expect(toastOf(page)).toHaveText('Imported the wing "Fin" of "Fixture A" from 0.plane.xml: 2 sections, 1 airfoil.');
+    await expect.poll(async () => (await savedProject(page))?.name).toBe('Fixture A Fin');
+    const saved = await savedProject(page);
+    expect(saved.settings).toMatchObject({ partRoll: 90, partTilt: 0, partPivot: { x: 680, y: 0, z: 0 }, leftHalf: 'mirror' });
+    await expect(sectionRows(page)).toHaveCount(2);
   });
 
   test('Cancel keeps the design and adds no undo step', async ({ page }) => {

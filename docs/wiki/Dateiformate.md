@@ -350,7 +350,7 @@ Von der App erzeugte IDs:
 | Schlüssel | Werte | Vorgabe | Bedienelement in **Einstellungen** (Settings) |
 | --- | --- | --- | --- |
 | `spanwise` | `"linear"`, `"straight"`, `"smooth"` | `"linear"` | **Interpolation in Spannweitenrichtung** (Spanwise interpolation). `"straight"`: **Gerade Felder (gerade Linien zwischen den Schnitten, wie XFLR5)** (Straight panels (straight lines between sections, as XFLR5)); eine App, die nur `"linear"` und `"smooth"` kennt, lehnt die Datei ab (`settings.spanwise muss "linear" oder "smooth" sein.`). |
-| `sectionPlanes` | `"mitred"`, `"vertical"` | `"mitred"`; eine Datei der Version 1 öffnet mit `"vertical"` | **Schnittebenen** (Section planes): **Auf Gehrung (senkrecht zu den Feldern, wie XFLR5)** (Mitred (square to the panels, as XFLR5)) oder **Senkrecht (y = konstant)** (Vertical (y = const)) ([[Geometrie]], Abschnitt 3.8). `"smooth"` baut mit beiden Werten senkrechte Ebenen. |
+| `sectionPlanes` | `"mitred"`, `"vertical"` | `"mitred"`; eine Datei der Version 1 öffnet mit `"vertical"` | **Schnittebenen** (Section planes): **Auf Gehrung (senkrecht zu den Feldern, wie XFLR5)** (Mitred (square to the panels, as XFLR5)) oder **Senkrecht (y = konstant)** (Vertical (y = const)) ([[Geometrie]], Abschnitt 3.8). Mit jedem Wert von `spanwise`. |
 | `twistPivot` | `0`–`1`, Anteil der Profiltiefe | `0.25` | **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)) |
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Endleiste** (Trailing edge) |
 | `trailingEdge.thickness` | ≥ 0 mm; wirkt bei `"thickness"`; begrenzt auf 5 % der örtlichen Profiltiefe | `0.4` | **Endleistendicke (mm)** (Trailing-edge thickness (mm)) |
@@ -424,7 +424,7 @@ Erst beim Flügelaufbau geprüft, in dieser Reihenfolge:
 - `curve-shape`: Die NURBS-Profilkurve kreuzt sich selbst (Schleifengröße, mittlere Breite, über 0,05 % der Profiltiefe) oder läuft in x zurück (über 0,01 % der Profiltiefe);
 - Leitkurven: y streng steigend; die Kurve läuft in Spannweitenrichtung nicht zurück; x jedes Kontrollpunkts der Kurve innerhalb von ±1 200 000 mm;
 - `spanwise` `"straight"` mit eingeschalteter Leitkurve;
-- `sectionPlanes` `"mitred"` (nicht mit `"smooth"`): eine Schnittebene mehr als 60° schräg zu einem benachbarten Feld (Dickenstreckung über 2; eine Ebene, die gerundet 60,0° schräg liegt, wird gebaut), oder, mit `spanwise` `"straight"`, die Ebenen zweier benachbarter Schnitte schneiden sich innerhalb der Profile ([[Geometrie]], Abschnitt 3.6);
+- `sectionPlanes` `"mitred"`: eine Schnittebene mehr als 60° schräg zu einem benachbarten Feld (Dickenstreckung über 2; eine Ebene, die gerundet 60,0° schräg liegt, wird gebaut), mit `spanwise` `"smooth"` auch eine Stationsebene mehr als 60° schräg zur überblendeten Bezugslinie, oder, mit `spanwise` `"straight"`, die Ebenen zweier benachbarter Schnitte schneiden sich innerhalb der Profile ([[Geometrie]], Abschnitt 3.6);
 - interpolierte Schnittwerte sind endliche Zahlen (x der Profilnase, Profiltiefe, z, Kosinus der Schränkung);
 - interpoliertes x der Profilnase, x der Endleiste und z innerhalb von ±1 200 000 mm, Profiltiefe höchstens 100 000 mm;
 - `sectionPlanes` `"mitred"` mit `spanwise` `"linear"`: Entlang eines Feldes drehen sich die Schnittebenen schneller, als seine Profile es zulassen, daher faltet sich die Fläche; an einem Schnitt zählen beide benachbarten Felder ([[Geometrie]], Abschnitt 3.6);
@@ -621,9 +621,9 @@ XFLR5 hat 4 Flügelplätze je Flugzeug.
 | Platz | Flügel | In `.xfl` | In XML | Angeboten |
 | --- | --- | --- | --- | --- |
 | 0 | Tragfläche | immer | `<Type>MAINWING</Type>` | ja |
-| 1 | zweiter Flügel (Doppeldecker) | wenn das Flugzeug die Markierung `biplane` hat | `SECONDWING` | nein |
+| 1 | zweiter Flügel (Doppeldecker) | wenn das Flugzeug die Markierung `biplane` hat | `SECONDWING` | ja |
 | 2 | Elevator (Höhenleitwerk) | wenn das Flugzeug die Markierung `stab` hat | `ELEVATOR` | ja |
-| 3 | Seitenleitwerk | wenn das Flugzeug die Markierung `fin` hat | `FIN` | nein |
+| 3 | Seitenleitwerk | wenn das Flugzeug die Markierung `fin` hat | `FIN` | ja, aufrecht, wie XFLR5 es baut (Abschnitt „Seitenleitwerk“) |
 
 - Ein `.xfl`-Projekt speichert alle 4 Plätze. Unbenutzte Plätze enthalten Standardflügel, etwa einen „Elevator“ mit 2 Schnitten; die Markierungen entscheiden, welcher Platz existiert.
 - Eine XML-Datei führt nur die Flügel auf, die existieren.
@@ -631,8 +631,9 @@ XFLR5 hat 4 Flügelplätze je Flugzeug.
 - Ein späterer Flügel für einen belegten Platz ersetzt den früheren, wie in XFLR5: Warnung `Das Flugzeug „<plane>“ hat mehr als eine Tragfläche: „<name>“ ersetzt wie in XFLR5 „<previous>“.`
 - XML-Flügeldatei (ein `<wing>` auf oberster Ebene, kein `<Plane>`): Das `<Type>` bestimmt die Fläche. `ELEVATOR`: Höhenleitwerk. `FIN` oder `<isFin>true</isFin>`: abgelehnt. Jeder andere Typ: Tragfläche. Position und Einstellwinkel sind 0. Mehrere Flügel auf oberster Ebene: Nur der letzte wird gelesen, mit einer Warnung. Flügel auf oberster Ebene in einer Flugzeugdatei werden mit einer Warnung ignoriert.
 - Mehrere Flugzeuge: Der Dialog zeigt die Auswahlliste **Flugzeug** (Plane) nur bei mehr als einem Flugzeug. Das erste Flugzeug ist vorgewählt; bei einer flow5-Datei das erste Flugzeug mit einem Flügel zum Importieren. Ein Flugzeug ohne Namen steht als `Flugzeug <n>` in der Liste.
-- Der Dialog bietet **Tragfläche** (Main wing) und **Höhenleitwerk (XFLR5: Elevator)** (Horizontal stabilizer (XFLR5: Elevator)) unter **Zu importierende Fläche** (Surface to import). Jede Option zeigt `„<wing name>“: <n> Schnitte, Spannweite <span> mm, Wurzeltiefe <chord> mm`. Die Spannweite ist das Doppelte des y des letzten Schnitts (Y_(n−1) aus Schritt 1 im Abschnitt „Abbildung auf Schnitte“), beide Hälften. Eine Option, die das Flugzeug nicht hat, ist mit ihrem Grund abgeschaltet: `Dieses Flugzeug hat keine Tragfläche.`, `Dieses Flugzeug hat kein Höhenleitwerk.`, `Der Flügel in dieser Datei ist ein Höhenleitwerk (Typ ELEVATOR).` oder `Der Flügel in dieser Datei ist kein Höhenleitwerk (Typ ELEVATOR).`
-- Der zweite Flügel, das Seitenleitwerk und die andere Fläche werden nicht importiert; der Bericht sagt es (Abschnitt „Bericht“). Es wird jeweils eine Fläche importiert; wird die Datei erneut geöffnet, steht die andere zur Wahl.
+- Der Dialog bietet **Tragfläche** (Main wing) und **Höhenleitwerk (XFLR5: Elevator)** (Horizontal stabilizer (XFLR5: Elevator)) unter **Zu importierende Fläche** (Surface to import), dann **Zweiter Flügel** (Second wing) und **Seitenleitwerk** (Fin), wo das Flugzeug sie hat. Jede Option zeigt `„<wing name>“: <n> Schnitte, Spannweite <span> mm, Wurzeltiefe <chord> mm`. Die Spannweite ist das Doppelte des y des letzten Schnitts (Y_(n−1) aus Schritt 1 im Abschnitt „Abbildung auf Schnitte“), beide Hälften. Das Seitenleitwerk zeigt stattdessen seine Höhe: `„<wing name>“: <n> Schnitte, Höhe <height> mm, Wurzeltiefe <chord> mm`, Y_(n−1) − k·y_0 bei einem einfachen oder doppelten Seitenleitwerk, 2·Y_(n−1) bei einem symmetrischen. Eine Option, die das Flugzeug nicht hat, ist mit ihrem Grund abgeschaltet: `Dieses Flugzeug hat keine Tragfläche.`, `Dieses Flugzeug hat kein Höhenleitwerk.`, `Der Flügel in dieser Datei ist ein Höhenleitwerk (Typ ELEVATOR).` oder `Der Flügel in dieser Datei ist kein Höhenleitwerk (Typ ELEVATOR).`
+- Es wird jeweils eine Fläche importiert; der Bericht nennt die anderen Flügel des Flugzeugs (Abschnitt „Bericht“), und wird die Datei erneut geöffnet, stehen sie zur Wahl.
+- Der zweite Flügel wird wie die Tragfläche importiert: Seine Position verschiebt die Schnitte, sein Einstellwinkel dreht das Teil.
 
 ### Abbildung auf Schnitte
 
@@ -645,7 +646,7 @@ Schreibweise, für die Schnitte i = 0 … n−1 von der Wurzel zum Rand: y_i, c_
 | `Dihedral` von Schnitt i | absoluter Winkel des Feldes außerhalb von Schnitt i, von Schnitt i bis i + 1; nicht kumulativ. Der Wert des letzten Schnitts gehört zu keinem Feld und wird nicht verwendet. |
 | `Twist` | Drehung des Schnitts um seinen Viertelpunkt der Profiltiefe; positiv = Profilnase oben; absolut je Schnitt |
 | Einstellwinkel (Tilt angle) | Anstellung des Flügels im Flugzeug: Drehung des ganzen Flügels um die y-Achse durch den Ursprung des Flügels; positiv = Nase oben. Wingdesigner speichert ihn als **Einstellwinkel des Teils** (`settings.partTilt`). |
-| Position | x, y, z des Flügelursprungs im Flugzeug. y wird wie in XFLR5 nicht verwendet (XFLR5 nutzt es nur bei doppelten Seitenleitwerken). |
+| Position | x, y, z des Flügelursprungs im Flugzeug. y wird wie in XFLR5 nicht verwendet, außer bei einem doppelten Seitenleitwerk (Abschnitt „Seitenleitwerk“). |
 
 Die Reihenfolge der Schritte: Felder, Bereinigung, Einstellwinkel und Position (die Position verschiebt die Schnitte, der Einstellwinkel wird gespeichert), Profillage, Runden, Schnittebenen.
 
@@ -670,7 +671,7 @@ Schnitt i:  x = k·h_i   y = Y_i   z = Z_i   Profiltiefe = k·c_i   Schränkung 
 | weniger als 2 Schnitte | Fehler `Der Flügel braucht mindestens 2 Schnitte (gefunden: <n>).` |
 | ein Wert, der keine endliche Zahl ist: `y_position`, `Chord`, `xOffset`, `Twist`, `Dihedral` (nicht der des letzten Schnitts) | Fehler `Für <sections> ist <field> in der Datei keine endliche Zahl.` |
 | Position x oder z oder Einstellwinkel keine endliche Zahl (nur XML-Dateien; eine `.xfl`-Datei setzt einen solchen Wert auf 0, Abschnitt „Einlesen der Datei“) | Fehler `Die Position des Flügels im Flugzeug ist in der Datei keine endliche Zahl.` oder `Der Einstellwinkel des Flügels ist in der Datei keine endliche Zahl.` |
-| Wurzel bei y_position −0,1 mm oder weniger | Fehler `Der Wurzelschnitt liegt bei y_position <y> mm; der Halbflügel muss bei y >= 0 beginnen.` |
+| Wurzel bei y_position −0,1 mm oder weniger | Fehler `Der Wurzelschnitt liegt bei y_position <y> mm; der Halbflügel muss bei y >= 0 beginnen.`; ein einfaches oder doppeltes Seitenleitwerk wird stattdessen nach oben verschoben (Abschnitt „Seitenleitwerk“) |
 | y_position nimmt um 0,1 mm oder mehr ab | Fehler `Für <sections> ist y_position kleiner als beim Schnitt davor; die Schnitte müssen von der Wurzel zum Rand laufen.` |
 | Profiltiefe 0 oder weniger | Fehler `Für <sections> muss die Profiltiefe größer als 0 sein.` |
 | Profiltiefe über 0 und unter 1 mm (`LIMITS.minChord`) | auf 1 mm angehoben: Warnung `Für <sections> wurden Profiltiefen unter 1 mm auf 1 mm erhöht, die kleinste Profiltiefe, die Wingdesigner baut.` |
@@ -698,7 +699,7 @@ settings.partPivot = { x: k·LE_x, y: 0, z: k·LE_z }      der Ursprung des Flü
 - Die Schnitte liegen im Koordinatensystem des Teils. Der Aufbau dreht das Teil mit seinen Schnittebenen um θ um die y-Achse durch den Ursprung des Flügels, Nase oben bei θ > 0, wie XFLR5 den Flügel dreht ([[Geometrie]], Abschnitt 3.9). Ein Teil mit Einstellwinkel wird daher mit Schnittebenen **Auf Gehrung** importiert wie eines ohne (Schritt 6).
 - Ein Einstellwinkel von 400° speichert 40°; −540° speichert −180°. Ein Einstellwinkel aus ganzen Umdrehungen speichert keinen: `partTilt` 0, `partRoll` 0, `partPivot` `null`. Die Werte werden auf 4 Nachkommastellen gerundet.
 - Info `Einstellwinkel -1,5° wie im XFLR5-Flugzeug angewendet: Das Teil dreht sich als starrer Körper um den Ursprung des Flügels (Einstellungen > Einstellwinkel des Teils).` Sie nennt den gespeicherten Winkel.
-- Info `Position im XFLR5-Flugzeug angewendet: Der Ursprung des Flügels wurde nach x 650 mm, z 40 mm verschoben.` Eine Position y ungleich 0: Info `Die Position y <y> mm wird wie in XFLR5 nicht verwendet.`
+- Info `Position im XFLR5-Flugzeug angewendet: Der Ursprung des Flügels wurde nach x 650 mm, z 40 mm verschoben.` Eine Position y ungleich 0: Info `Die Position y <y> mm wird wie in XFLR5 nicht verwendet.`, außer bei einem doppelten Seitenleitwerk.
 - Liegt die mittlere Schränkung außerhalb von ±180°, werden ganze Umdrehungen, die allen Schnitten gemeinsam sind, herausgenommen: Info `Alle Schränkungen wurden um -360° geändert, ganze Umdrehungen; die Schnitte bleiben gleich.` Der Einstellwinkel ist nicht Teil der Schränkungen.
 - Eine XML-Flügeldatei enthält weder Position noch Einstellwinkel: Info `Eine Flügeldatei enthält weder Position noch Einstellwinkel: Das Teil wird in seinem eigenen Koordinatensystem gebaut.`
 
@@ -751,6 +752,22 @@ chord' = c·cT            Schränkung unverändert
 - Zwei Schnitte bei einem y (Schritt 2) falten sich nicht: 0,5 mm auseinander, teilen sie sich eine Ebene.
 - Ein Teil mit Einstellwinkel behält seinen Einstellwinkel mit beiden Werten in `settings.partTilt` (Schritt 3).
 - Der Aufbau nimmt die Neigungen aus den Schnittpositionen des Projekts, nach den Profillagen aus Schritt 4, und aus den gespeicherten Feldwinkeln aus Schritt 4, den V-Formen von XFLR5. Die Tragfläche des Rechenbeispiels baut Neigungen von 0°, 4,5° und 6°, wie XFLR5. Gebaut und um 2° um den Ursprung des Flügels gedreht, liegen ihre Endleisten innerhalb von 1e-3 mm von der Konstruktion von XFLR5, dem um 2° um den Ursprung des Flügels gedrehten Gehrungsschnitt (Unit-Test, Schnitte 1 und 2; berechnet für die Schnitte 1 bis 3: 2,1e-5, 4,0e-5 und 4,5e-5 mm). Derselbe Vergleich ergibt 0 mm für das Höhenleitwerk und 6,1e-5, 3,7e-5, 2,6e-5 und 5,0e-5 mm für die Schnitte 1 bis 4 von Fixture B.
+
+### Seitenleitwerk
+
+XFLR5 6.62 baut ein Seitenleitwerk aufrecht: `Plane::createSurfaces` dreht es vor dem Einstellwinkel um −90° um x. Die Markierungen des Seitenleitwerks bestimmen, wie (`.xfl`: die Markierungen des Flugzeugs nach `fin`; XML: `<isFin>`, `<isDoubleFin>`, `<isSymFin>` des Seitenleitwerks, false, wenn sie fehlen):
+
+| Art | Markierungen | XFLR5 (`Wing::createSurfaces`) | Import |
+| --- | --- | --- | --- |
+| einfach | weder `isDoubleFin` noch `isSymFin` | nur die linke Hälfte, mit den Profilen der linken Seite, um −90° um x und um den Einstellwinkel um z gedreht, bei y = 0 | die linke Hälfte des Teils: die Profile der linken Seite, **Rollwinkel des Teils** 90°, **Linke Hälfte** Spiegelbild; die rechte Hälfte ist das deckungsgleiche Spiegelbild. **Exportieren** > **Flügelhälften** > **Nur linke Hälfte** schreibt allein das Seitenleitwerk. |
+| symmetrisch | `isSymFin`, oder ein Seitenleitwerksflügel ohne `isFin` | beide Hälften als ein Körper um −90° um x gedreht, dann um den Einstellwinkel um y: eine Hälfte über und eine unter dem Ursprung des Flügels | **Rollwinkel des Teils** −90°, **Einstellwinkel des Teils** der Einstellwinkel, **Linke Hälfte** Mit der rechten Hälfte gedreht (Projektformat Version 4) |
+| doppelt | `isDoubleFin`, nicht `isSymFin` | die rechte Hälfte um +90° um x gedreht und um LE_y verschoben, die linke Hälfte das Spiegelbild bei −LE_y; jede um den Einstellwinkel um z gedreht | die Schnitte um k·\|LE_y\| in y verschoben, **Rollwinkel des Teils** 90° um den Drehpunkt (k·LE_x, k·\|LE_y\|, k·LE_z), **Linke Hälfte** Spiegelbild |
+
+- Ein einfaches oder doppeltes Seitenleitwerk mit einem Einstellwinkel ungleich 0 (um ganze Umdrehungen verringert) wird um z gedreht, was ein Teil nicht kann: Die Option ist abgeschaltet mit `Ein Seitenleitwerk mit einem Einstellwinkel von <angle>°: XFLR5 dreht dieses Seitenleitwerk um z, und ein Teil dreht sich nur um x und y.`
+- Ein einfaches oder doppeltes Seitenleitwerk kann unter seinen Ursprung reichen: eine y_position der Wurzel von −0,1 mm oder weniger. Seine Schnitte werden um d = −k·y_0 nach oben verschoben, sodass die Wurzel bei y = 0 liegt, und der Drehpunkt um d/2 in y und um −d/2 in z: Um 90° gerollt liegen die Schnitte dort, wo XFLR5 sie baut. Info `Das Seitenleitwerk reicht <d> mm unter seinen Ursprung (y_position der Wurzel <y> mm): Seine Schnitte beginnen bei y = 0, und der Drehpunkt von Einstellungen > Rollwinkel des Teils liegt <d/2> mm außen und <d/2> mm unter dem Ursprung des Flügels, damit das Seitenleitwerk dort bleibt, wo XFLR5 es baut.` Beispiel: das Seitenleitwerk von `Rascal110.xfl`, y_position der Wurzel −3,25 in (−82,55 mm), Drehpunkt (1308,1, 41,275, 41,275) mm.
+- Info-Zeilen: `XFLR5 baut ein Seitenleitwerk aufrecht: Das Teil dreht sich um <angle>° als starrer Körper um den Ursprung des Flügels (Einstellungen > Rollwinkel des Teils).`; bei einem einfachen Seitenleitwerk `Ein einfaches Seitenleitwerk: XFLR5 baut nur seine linke Hälfte, mit den Profilen der linken Seite, bei y = 0. …`; bei einem symmetrischen `Ein symmetrisches Seitenleitwerk: XFLR5 dreht beide Hälften als einen Körper aufrecht, eine über und eine unter dem Ursprung des Flügels: Einstellungen > Linke Hälfte ist auf Mit der rechten Hälfte gedreht gestellt.`; bei einem doppelten `Ein doppeltes Seitenleitwerk: XFLR5 baut zwei aufrechte Seitenleitwerke <y> mm rechts und links vom Ursprung des Flügels (Position y). …`
+- Ein Seitenleitwerk in einer XML-Flügeldatei (außerhalb eines Flugzeugs) wird abgelehnt (Abschnitt „Abgelehnte Dateien“).
+- Geprüft (`test/xflr5-map.test.js`) gegen eine Übertragung der Eckpunkt-Konstruktion von XFLR5 6.62 (`Wing::createSurfaces`, `Plane::createSurfaces`): Profilnase und Endleiste jedes Schnitts. Ein Seitenleitwerk mit 3 Schnitten und Feldern mit 4° und 12° als einfaches, symmetrisches (Einstellwinkel 3°) und doppeltes Seitenleitwerk (LE_y 150, −150 und 0 mm), ein doppeltes Seitenleitwerk, das 40 mm unter seinen Ursprung reicht, und ein zweiter Flügel mit 1,5° Einstellwinkel und 5° V-Form: innerhalb von 0,001 mm. Die Seitenleitwerke von `fixtures_v662.xfl` und seinem XML-Export, `Rascal110.xfl`, `UltraStick25e_v662_stripped.xfl` und `UltraStick25e.xml` (alle einfach, ohne Schränkung): innerhalb von 1e-6 mm. Nicht mit der STL verglichen, die XFLR5 schreibt.
 
 ### Unterschiede zu XFLR5
 
@@ -822,7 +839,8 @@ Der Bericht wird nach jeder Wahl neu berechnet. Reihenfolge: Fehler, dann Warnun
 
 | Daten | Behandlung | Schwere | Meldung |
 | --- | --- | --- | --- |
-| zweiter Flügel, Seitenleitwerk, die andere Fläche | nicht importiert | Info | `Nicht importiert: das Höhenleitwerk „Elevator“, das Seitenleitwerk „Fin“. Eine Fläche je Import; für eine weitere die Datei erneut öffnen.` |
+| Seitenleitwerk | aufrecht, Abschnitt „Seitenleitwerk“ | Info | Abschnitt „Seitenleitwerk“ |
+| die anderen Flügel des Flugzeugs | nicht importiert | Info | `Nicht importiert: das Höhenleitwerk „Elevator“, das Seitenleitwerk „Fin“. Eine Fläche je Import; für eine weitere die Datei erneut öffnen.` |
 | V-Form ungleich 0 | y und z berechnet | Info | `XFLR5 misst y_position entlang der Felder; y und z wurden daraus und aus der V-Form berechnet.` |
 | V-Form über 10° | beibehalten | Warnung nur mit Schnittebenen **Senkrecht** | Abschnitt „Abbildung auf Schnitte“, Schritt 2 |
 | Position | auf die Schnitte angewendet | Info | Schritt 3 |
@@ -838,7 +856,7 @@ Der Bericht wird nach jeder Wahl neu berechnet. Reihenfolge: Fehler, dann Warnun
 | `.xfl` mit mehr als 10 000 Profilen oder Profilen über 2 000 000 Punkten | nicht gelesen | Warnung | `Nur die ersten 10.000 der <n> Profile der Datei wurden gelesen.` `1 Profil wurde nicht gelesen: Die Profile der Datei haben zusammen mehr als 2.000.000 Punkte.` |
 | XML-Datei: ein Flügel, der einen anderen ersetzt, mehr als 4 Flügel, Flügel außerhalb eines Flugzeugs, ein `<Units>` nach einem Flugzeug, ein Wert, der keine Zahl ist, eine `Position` mit weniger als 3 Werten | wie in XFLR5 | Warnung | Texte in den Abschnitten „Flügel und Flächen“ und „Einlesen der Datei“. Die Warnungen betreffen die ganze Datei, daher führt der Bericht jedes Flugzeugs sie auf; die Meldung nach dem Import lässt sie weg. |
 
-Die verworfenen Daten: das Seitenleitwerk, der zweite Flügel, die andere Fläche, der Rumpf, Massen, Analysen und Ergebnisse, VLM-Panelanzahlen und -verteilungen (VLM: Vortex-Lattice-Verfahren, vortex lattice method), Farben, Beschreibungen, Profile der linken Seite, Klappenausschläge, die V-Form des letzten Schnitts und die Position y.
+Die verworfenen Daten: die anderen Flügel des Flugzeugs, der Rumpf, Massen, Analysen und Ergebnisse, VLM-Panelanzahlen und -verteilungen (VLM: Vortex-Lattice-Verfahren, vortex lattice method), Farben, Beschreibungen, Profile der linken Seite, Klappenausschläge, die V-Form des letzten Schnitts und die Position y (außer bei einem doppelten Seitenleitwerk).
 
 **Bericht: Profile**
 
@@ -1232,7 +1250,7 @@ Ein Blatt. `width` und `height` in mm, `viewBox` in mm (1 Einheit = 1 mm), weiß
 
 ### Prüfung
 
-Unabhängige Leseprogramme an 11 Testflügeln (den STEP-Testfällen ohne die Kopie mit Y nach oben), jeder so geschnitten, wie für einen längsten Kern von 300 mm vorgeschlagen, einer mit 1 mm Schnittbreite, einer auf A3, einer auf Letter: ezdxf 1.4.4 liest jedes DXF mit seinem Modul recover, und seine Prüfung (audit) findet keinen Fehler; jede Profil-Polylinie ist geschlossen und hat die erwartete Anzahl an Eckpunkten, und ohne Schnittbreite stimmen ihre Breite und Höhe innerhalb 0,001 mm mit denen ihrer `.dat`-Datei in `mm/` überein. pypdf 6.19.0 liest jedes PDF im strikten Modus: Seitenzahl und Seitengröße wie berechnet, eine Seitenbeschriftung auf jeder Seite. Jedes SVG lässt sich als XML lesen und enthält ein Profil-Polygon je Segmentende. Das Skript liest jedes ZIP mit der Python-Standardbibliothek: die erwarteten Einträge, 121 Punkte in jeder `.dat`-Datei, eine Zeile in `segments.csv` je Segment.
+Unabhängige Leseprogramme an 13 Testflügeln (den STEP-Testfällen ohne die Kopie mit Y nach oben und das gedrehte Teil), jeder so geschnitten, wie für einen längsten Kern von 300 mm vorgeschlagen, einer mit 1 mm Schnittbreite, einer auf A3, einer auf Letter: ezdxf 1.4.4 liest jedes DXF mit seinem Modul recover, und seine Prüfung (audit) findet keinen Fehler; jede Profil-Polylinie ist geschlossen und hat die erwartete Anzahl an Eckpunkten, und ohne Schnittbreite stimmen ihre Breite und Höhe innerhalb 0,001 mm mit denen ihrer `.dat`-Datei in `mm/` überein. pypdf 6.19.0 liest jedes PDF im strikten Modus: Seitenzahl und Seitengröße wie berechnet, eine Seitenbeschriftung auf jeder Seite. Jedes SVG lässt sich als XML lesen und enthält ein Profil-Polygon je Segmentende. Das Skript liest jedes ZIP mit der Python-Standardbibliothek: die erwarteten Einträge, 121 Punkte in jeder `.dat`-Datei, eine Zeile in `segments.csv` je Segment.
 
 Nicht getestet: Programme für den Heißdrahtschnitt (Jedicut, GMFC, DevFoam und andere) mit diesen Dateien; CAD-Programme und Laserschneider mit dem DXF; Drucker mit PDF und SVG.
 

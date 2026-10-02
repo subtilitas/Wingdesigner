@@ -271,6 +271,17 @@ describe('XFLR5 .xfl reader: written test files', () => {
     });
   });
 
+  it('reads the double-fin and symmetric-fin flags of a plane into its fin', () => {
+    const flags = [
+      [false, false],
+      [true, false],
+      [false, true],
+      [true, true],
+    ];
+    const r = readXflBytes(writeProject({ planes: flags.map(([doubleFin, symFin]) => ({ doubleFin, symFin })) }).bytes);
+    expect(r.planes.map((p) => p.wings[3].fin)).toEqual(flags.map(([double, symmetric]) => ({ isFin: true, double, symmetric })));
+  });
+
   it('sets absent wing slots to null by the plane flags, whatever the slots hold', () => {
     const r = readXflBytes(writeProject({ planes: [{ biplane: false, stab: false, fin: false }, { biplane: true, stab: true, fin: false }] }).bytes);
     expect(r.planes[0].wings.map((w) => w?.name ?? null)).toEqual(['Main Wing', null, null, null]);

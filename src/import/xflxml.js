@@ -118,11 +118,12 @@ function readSection(sc, n, scale, problems) {
 
 /**
  * One <wing>. `scale` converts its lengths to the file's unit; `top` marks a wing outside a plane,
- * whose Position and Tilt_angle XFLR5 ignores (it writes 0 there).
+ * whose Position and Tilt_angle XFLR5 ignores (it writes 0 there). `wing.fin` holds the flags that
+ * set how XFLR5 builds a fin (isFin, isDoubleFin, isSymFin; false when missing, as in XFLR5).
  * @returns {{wing: object, type: string, isFin: boolean, problems: {list: object[], more: number}}}
  */
 function readWing(sc, scale, top) {
-  const wing = { name: '', description: '', symmetric: true, position: { x: 0, y: 0, z: 0 }, tilt: 0, sections: [] };
+  const wing = { name: '', description: '', symmetric: true, position: { x: 0, y: 0, z: 0 }, tilt: 0, sections: [], fin: { isFin: false, double: false, symmetric: false } };
   const problems = problemList();
   let type = 'OTHERWING';
   let isFin = false;
@@ -134,6 +135,8 @@ function readWing(sc, scale, top) {
     } else if (name === 'description') wing.description = readText(sc);
     else if (name === 'symetric') wing.symmetric = isTrue(readText(sc));
     else if (name === 'isfin') isFin = isTrue(readText(sc));
+    else if (name === 'isdoublefin') wing.fin.double = isTrue(readText(sc));
+    else if (name === 'issymfin') wing.fin.symmetric = isTrue(readText(sc));
     else if (name === 'position' && !top) wing.position = readPosition(readText(sc), scale, problems);
     else if (name === 'tilt_angle' && !top) wing.tilt = value(readText(sc), 'Tilt_angle', null, problems);
     else if (name === 'sections') {
@@ -146,6 +149,7 @@ function readWing(sc, scale, top) {
       });
     }
   });
+  wing.fin.isFin = isFin;
   return { wing, type, isFin, problems };
 }
 

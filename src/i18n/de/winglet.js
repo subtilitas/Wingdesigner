@@ -28,8 +28,8 @@ export default {
     'Zuerst die Leitkurven ausschalten: Sie halten x als Funktion von y und würden sich über das Winglet dehnen.',
   'The wing ends in a point (Settings > Wing tip = Pointed): a winglet needs a flat tip.':
     'Der Flügel endet spitz (Einstellungen > Flügelende = Spitz): Ein Winglet braucht ein flaches Flügelende.',
-  'A winglet needs Settings > Section planes = Mitred and a spanwise interpolation other than Smooth: vertical section planes make it cos(cant) as thick, 0.26 times at 75°.':
-    'Ein Winglet braucht Einstellungen > Schnittebenen = Auf Gehrung und eine Interpolation in Spannweitenrichtung außer Glatt: Senkrechte Schnittebenen machen es cos(Neigung) so dick, 0,26-mal bei 75°.',
+  'A winglet needs Settings > Section planes = Mitred: vertical section planes make it cos(cant) as thick, 0.26 times at 75°.':
+    'Ein Winglet braucht Einstellungen > Schnittebenen = Auf Gehrung: Senkrechte Schnittebenen machen es cos(Neigung) so dick, 0,26-mal bei 75°.',
   'Winglet: the blend arc is {arc} mm long, not shorter than the height; reduce the blend radius or increase the height.':
     'Winglet: Der Übergangsbogen ist {arc} mm lang, nicht kürzer als die Höhe; den Übergangsradius verkleinern oder die Höhe vergrößern.',
   'Winglet panel {n} spans {dy} mm in y, less than {min} mm; reduce the cant angle or increase the blend radius or the height.':

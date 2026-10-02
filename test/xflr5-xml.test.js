@@ -118,6 +118,21 @@ describe('XFLR5 XML fixtures', () => {
     for (const bytes of [le, be]) expect(readXflr5Xml(decodeText(new Uint8Array(bytes)))).toEqual(utf8);
   });
 
+  it('reads the fin flags isFin, isDoubleFin and isSymFin; false where missing, as in XFLR5', () => {
+    const text = fixture('xml_mm/0.plane.xml').toString('utf8');
+    expect(readXflr5Xml(text).planes[0].wings.map((w) => w?.fin ?? null)).toEqual([
+      { isFin: false, double: false, symmetric: false },
+      null,
+      { isFin: false, double: false, symmetric: false },
+      { isFin: true, double: false, symmetric: false },
+    ]);
+    const [before, fin] = text.split('<Name>Fin</Name>');
+    const double = readXflr5Xml(`${before}<Name>Fin</Name>${fin.replace('<isDoubleFin>false', '<isDoubleFin>TRUE').replace('<isSymFin>false', '<isSymFin>true')}`);
+    expect(double.planes[0].wings[3].fin).toEqual({ isFin: true, double: true, symmetric: true });
+    const bare = readXflr5Xml(file(plane('P', wing('Fin', { type: 'FIN' }))));
+    expect(bare.planes[0].wings[3].fin).toEqual({ isFin: false, double: false, symmetric: false });
+  });
+
   it('refuses a wing-only fin', () => {
     const e = failure(fixture('xml_mm/0.w3.wing.xml'));
     expect(e.code).toBe('fin');

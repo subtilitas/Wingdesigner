@@ -6,6 +6,19 @@ export default {
   'Horizontal stabilizer (XFLR5: Elevator)': 'Höhenleitwerk (XFLR5: Elevator)',
   'Second wing': 'Zweiter Flügel',
   Fin: 'Seitenleitwerk',
+  '"{name}": {n} sections, height {height} mm, root chord {chord} mm': '„{name}“: {n} Schnitte, Höhe {height} mm, Wurzeltiefe {chord} mm',
+  'A fin with a tilt angle of {angle}°: XFLR5 turns this fin about z, and a part turns about x and y only.':
+    'Ein Seitenleitwerk mit einem Einstellwinkel von {angle}°: XFLR5 dreht dieses Seitenleitwerk um z, und ein Teil dreht sich nur um x und y.',
+  'The fin reaches {d} mm below its origin (root y_position {y} mm): its sections start at y = 0, and the pivot of Settings > Part roll lies {dy} mm out and {dz} mm down from the wing origin, so that the fin stays where XFLR5 builds it.':
+    'Das Seitenleitwerk reicht {d} mm unter seinen Ursprung (y_position der Wurzel {y} mm): Seine Schnitte beginnen bei y = 0, und der Drehpunkt von Einstellungen > Rollwinkel des Teils liegt {dy} mm außen und {dz} mm unter dem Ursprung des Flügels, damit das Seitenleitwerk dort bleibt, wo XFLR5 es baut.',
+  'XFLR5 builds a fin upright: the part turns {angle}° as a rigid body about the wing origin (Settings > Part roll).':
+    'XFLR5 baut ein Seitenleitwerk aufrecht: Das Teil dreht sich um {angle}° als starrer Körper um den Ursprung des Flügels (Einstellungen > Rollwinkel des Teils).',
+  'A symmetric fin: XFLR5 turns both halves upright as one body, one above and one below the wing origin: Settings > Left half is set to Turned with the right half.':
+    'Ein symmetrisches Seitenleitwerk: XFLR5 dreht beide Hälften als einen Körper aufrecht, eine über und eine unter dem Ursprung des Flügels: Einstellungen > Linke Hälfte ist auf Mit der rechten Hälfte gedreht gestellt.',
+  "A double fin: XFLR5 builds two upright fins {y} mm to the right and to the left of the wing origin (position y). The part's right half is the right fin, its left half the mirror image.":
+    'Ein doppeltes Seitenleitwerk: XFLR5 baut zwei aufrechte Seitenleitwerke {y} mm rechts und links vom Ursprung des Flügels (Position y). Die rechte Hälfte des Teils ist das rechte Seitenleitwerk, seine linke Hälfte das Spiegelbild.',
+  "A single fin: XFLR5 builds its left half only, with the left-side airfoils, at y = 0. The part's left half is that half, its right half the mirror image on top of it; Export > Wing halves > Left half only exports XFLR5's fin alone.":
+    'Ein einfaches Seitenleitwerk: XFLR5 baut nur seine linke Hälfte, mit den Profilen der linken Seite, bei y = 0. Die linke Hälfte des Teils ist diese Hälfte, seine rechte Hälfte das deckungsgleiche Spiegelbild; Exportieren > Flügelhälften > Nur linke Hälfte exportiert allein das Seitenleitwerk von XFLR5.',
   'This plane has no main wing.': 'Dieses Flugzeug hat keine Tragfläche.',
   'This plane has no elevator.': 'Dieses Flugzeug hat kein Höhenleitwerk.',
   'The wing in this file is a horizontal stabilizer (type ELEVATOR).': 'Der Flügel in dieser Datei ist ein Höhenleitwerk (Typ ELEVATOR).',

@@ -30,6 +30,8 @@ const deviationTolerance = (chord) => Math.min(PLANFORM_TOLERANCE, 0.1 * chord);
 /** Span samples for the chord check (in addition to stations and guide breakpoints). */
 const CHORD_CHECK_SAMPLES = 256;
 
+const DEG = Math.PI / 180;
+
 /**
  * Fitted chord (mm, along the intended chord direction) below which the build stops: the 1 mm
  * minimum chord less the 10 % deviation that small chords may keep.
@@ -489,17 +491,15 @@ export function buildWing(project) {
   const y0 = ys[0];
   const y1 = ys[ys.length - 1];
   const dense = guideOn.nose || guideOn.end || settings.spanwise === 'smooth';
-  // Section planes. Smooth builds vertical planes: the mitred construction for a spline along the
-  // span is not built (owner decision of 2026-09-30, docs/Flow5upgrade.md).
+  // Section planes. Smooth blends the rolls of the sections with the shape-preserving cubic, as every
+  // other section value; the stretch then follows the local slope of the blended reference line.
   const planesOn = mitredPlanes(settings);
+  const smooth = settings.spanwise === 'smooth' && sections.length >= 3;
   const planes = sectionPlanes(sections, planesOn ? 'mitred' : 'vertical');
   const R = planes.rolls;
   result.sectionPlanes = planesOn ? 'mitred' : 'vertical';
   result.rolls = R.slice();
   result.stretches = planes.stretches.slice();
-  if (settings.sectionPlanes === 'mitred' && !planesOn && sectionPlanes(sections, 'mitred').rolls.some((r) => r !== 0)) {
-    infos.push(tr('Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels.'));
-  }
   // The stretch 1/cos(angle between a section plane and its panel) grows without bound; the build
   // stops at MAX_STRETCH instead of clamping it.
   const stretched = overStretched(planes.stretches);
@@ -601,6 +601,12 @@ export function buildWing(project) {
   };
   let blendScalars = scalarBlender();
   const placed = new Map();
+  // Smooth: the dihedral (degrees) of the blended reference line (y, z) at y, and the turning rate of
+  // the blended roll (rad/mm). Linear: the dihedral of the panel and the roll change over the panel.
+  const slopes = (y) => {
+    const d = blendScalars.derivative(y)[0];
+    return { dihedral: Math.atan(d[2]) / DEG, rollRate: d[4] * DEG };
+  };
   const place = (y) => {
     const raw = blendScalars(y)[0];
     let xLE = raw[0];
@@ -613,7 +619,7 @@ export function buildWing(project) {
     if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
     if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
     const roll = raw[4];
-    const stretch = planesOn ? stretchOf(roll, planes.panels[panelOf(y)]) : 1;
+    const stretch = planesOn ? stretchOf(roll, smooth ? slopes(y).dihedral : planes.panels[panelOf(y)]) : 1;
     return { xLE, chord, z: raw[2], twist: raw[3], roll, stretch };
   };
   const placement = (y) => {
@@ -633,6 +639,8 @@ export function buildWing(project) {
   // Actual tip chord: with both guides on, the guides set it, and a gap wider than the scaled tip
   // chord leaves a blunt tip.
   result.tipChord = pointed ? placement(y1).chord : null;
+  // Smooth: the stretch at a section follows the slope of the blended reference line there.
+  if (planesOn && smooth) result.stretches = ys.map((y) => placement(y).stretch);
   if (pointed && result.tipChord > tipChord + PLANFORM_TOLERANCE) {
     warnings.push(
       tr('Pointed tip: nose line and end line end {gap} mm apart, so the tip chord is {chord} mm instead of {scaled} mm; move their last points together to close the tip.', {
@@ -716,13 +724,18 @@ export function buildWing(project) {
   };
   let nonFiniteY = null;
   let farPlacement = null;
-  // Planes that turn along a Linear panel (roll blended linearly in y, dφ/dy per panel in rad/mm): a
-  // point at height t in the plane of its station moves across that plane at the rate
-  // cos φ + tan δ · sin φ − t · dφ/dy per mm of span. At 0 or below the surface folds, also where the
-  // planes of the stations around it do not cross. Straight panels are ruled between the sections,
-  // whose planes the section check above covers.
-  const rollRate = planesOn && !straight ? ys.slice(0, -1).map((y, i) => ((R[i + 1] - R[i]) * Math.PI) / 180 / (ys[i + 1] - y)) : null;
+  // Planes that turn along a Linear or Smooth panel (roll φ blended in y, dφ/dy in rad/mm): a point at
+  // height t in the plane of its station moves across that plane at the rate
+  // cos φ + tan δ · sin φ − t · dφ/dy per mm of span, δ the dihedral of the reference line there. At
+  // 0 or below the surface folds, also where the planes of the stations around it do not cross.
+  // Linear: dφ/dy and δ are constant per panel. Smooth: both follow the cubic blend at every check
+  // position. Straight panels are ruled between the sections, whose planes the section check above
+  // covers.
+  const rollRate = planesOn && !straight && !smooth ? ys.slice(0, -1).map((y, i) => ((R[i + 1] - R[i]) * Math.PI) / 180 / (ys[i + 1] - y)) : null;
   let turnFold = null;
+  // Smooth: the stretch at every check position, which the blend of the rolls and the bend of the
+  // reference line set between the sections (the section check above covers the sections).
+  let overStretch = null;
   for (const y of [...checkYs].sort((a, b) => a - b)) {
     if (!(y >= y0 && y <= y1)) continue;
     const { chord, xLE, z, twist, roll, stretch } = placement(y);
@@ -747,6 +760,16 @@ export function buildWing(project) {
     // again after the trailing-edge setting, whose linear taper can pull the surfaces through each
     // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendCompat(y);
+    if (planesOn && smooth && !turnFold && !overStretch) {
+      if (!(stretch <= MAX_STRETCH)) overStretch = { y, stretch, angle: Math.abs(roll - slopes(y).dihedral), i: panelOf(y) };
+      else {
+        const { dihedral, rollRate: rate } = slopes(y);
+        if (rate !== 0) {
+          const [low, high] = upExtent(shape, { chord, twist, stretch }, pivot);
+          if (!(Math.cos(roll * DEG) + Math.tan(dihedral * DEG) * Math.sin(roll * DEG) - (rate > 0 ? high : low) * rate > 0)) turnFold = { y, i: panelOf(y) };
+        }
+      }
+    }
     if (rollRate && !turnFold) {
       // At a section both panels next to it count: it ends the inner one and starts the outer one. At a
       // bisector the stretch is the same for both.
@@ -798,6 +821,19 @@ export function buildWing(project) {
         extent: whole(LIMITS.maxExtent),
         maxChord: whole(LIMITS.maxChord),
       })} ${tr('Check the guide curves.')}`,
+    );
+    return result;
+  }
+  if (overStretch) {
+    errors.push(
+      tr('Sections {a} and {b}: at y = {y} mm the mitred section plane lies {angle}° from the smooth reference line, which stretches the airfoil {stretch} times (limit {limit}, 60°). Reduce the dihedral change there, add sections or set Settings > Section planes to Vertical.', {
+        a: plain(overStretch.i + 1),
+        b: plain(overStretch.i + 2),
+        y: fixed(overStretch.y, 1),
+        angle: fixed(overStretch.angle, 1),
+        stretch: fixed(overStretch.stretch, 3),
+        limit: plain(MAX_STRETCH),
+      }),
     );
     return result;
   }

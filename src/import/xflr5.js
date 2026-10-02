@@ -1,6 +1,7 @@
 // XFLR5 import, second step: from a read XFLR5 file (src/import/xfl.js for .xfl projects,
 // src/import/xflxml.js for XML plane and wing files) to a Wingdesigner project. One surface per
-// import: the main wing (XFLR5 wing slot 0) or the horizontal stabilizer (slot 2, the "elevator").
+// import: the main wing (XFLR5 wing slot 0), the second wing (slot 1), the horizontal stabilizer
+// (slot 2, the "elevator") or the fin (slot 3), which XFLR5 builds upright (finAsWing).
 //
 // Geometry: XFLR5 measures y_position along the panels, and the dihedral of a section is the
 // absolute angle of the panel outboard of it (the last section's value is unused). XFLR5 twists a
@@ -178,29 +179,38 @@ function develop(D, sections) {
   return out;
 }
 
-/** Name, section count, span of both halves and root chord (mm) of a wing, for the surface choice. */
-function outline(wing, k) {
+/**
+ * Name, section count, span of both halves and root chord (mm) of a wing, for the surface choice. An
+ * XFLR5 fin (`fin`: its kind) states its height instead: from root to tip of one fin for a single or
+ * double fin, both halves for a symmetric fin.
+ */
+function outline(wing, k, fin = null) {
   const n = wing.sections.length;
   const pos = n ? develop(wing.sections.map((s) => k * s.y), wing.sections) : [];
   const span = n ? 2 * pos[n - 1][0] : NaN;
+  const height = !n ? NaN : fin === 'symmetric' ? span : pos[n - 1][0] - k * wing.sections[0].y;
   const rootChord = n ? k * wing.sections[0].chord : NaN;
-  const params = { name: shownName(wing.name), n: count(n), span: Number.isFinite(span) ? fixed(span, 0) : '?', chord: Number.isFinite(rootChord) ? fixed(rootChord, 0) : '?' };
+  const shown = (v) => (Number.isFinite(v) ? fixed(v, 0) : '?');
+  const params = { name: shownName(wing.name), n: count(n), span: shown(span), height: shown(height), chord: shown(rootChord) };
   const detail =
     n === 0
       ? tr('"{name}": no sections', params)
       : n === 1
         ? tr('"{name}": 1 section, root chord {chord} mm', params)
-        : tr('"{name}": {n} sections, span {span} mm, root chord {chord} mm', params);
+        : fin
+          ? tr('"{name}": {n} sections, height {height} mm, root chord {chord} mm', params)
+          : tr('"{name}": {n} sections, span {span} mm, root chord {chord} mm', params);
   return { name: wing.name, sections: n, span, rootChord, detail };
 }
 
 /**
  * The surfaces of one plane: the main wing and the horizontal stabilizer with their availability,
- * and the wings that are not offered (the second wing and the fin).
+ * then the second wing ('wing:1') and the fin ('wing:3') where the plane has them. `others` is empty:
+ * every wing of the plane is offered.
  * @param {object} file XflrFile of a reader
  * @param {number} [planeIndex]
- * @returns {{surfaces: object[], others: {slot: number, name: string, label: string}[]}}
- *   surfaces: [{ key: 'main'|'stab', slot, label, available, reason, wing, name, sections, span, rootChord, detail }]
+ * @returns {{surfaces: object[], others: object[]}}
+ *   surfaces: [{ key: 'main'|'stab'|'wing:1'|'wing:3', slot, label, available, reason, wing, name, sections, span, rootChord, detail }]
  */
 export function planeSurfaces(file, planeIndex = 0) {
   const plane = file.planes[planeIndex];
@@ -215,10 +225,33 @@ export function planeSurfaces(file, planeIndex = 0) {
     const wing = plane.wings[slot] ?? null;
     return { key, slot, label: labels[key], available: wing !== null, reason: wing ? null : reasons[key], wing, ...(wing ? outline(wing, k) : {}) };
   });
-  const others = [];
-  if (plane.wings[1]) others.push({ slot: 1, name: plane.wings[1].name, label: tr('Second wing') });
-  if (plane.wings[3]) others.push({ slot: 3, name: plane.wings[3].name, label: tr('Fin') });
-  return { surfaces, others };
+  const second = plane.wings[1];
+  if (second) surfaces.push({ key: 'wing:1', slot: 1, label: tr('Second wing'), available: true, reason: null, wing: second, ...outline(second, k) });
+  const fin = plane.wings[3];
+  if (fin) {
+    const wing = finAsWing(fin);
+    const reason = wing.finKind !== 'symmetric' && Number.isFinite(wing.tilt) && reduced(wing.tilt) !== 0 ? tr('A fin with a tilt angle of {angle}°: XFLR5 turns this fin about z, and a part turns about x and y only.', { angle: num(wing.tilt) }) : null;
+    surfaces.push({ key: 'wing:3', slot: 3, label: tr('Fin'), available: reason === null, reason, wing, ...outline(fin, k, wing.finKind) });
+  }
+  return { surfaces, others: [] };
+}
+
+/**
+ * The XFLR5 fin as a wing of the mapping, built as XFLR5 6.62 builds it (Plane::createSurfaces and
+ * Wing::createSurfaces): turned −90° about x, then by its tilt angle.
+ * - Single fin: XFLR5 builds the left half only, with the left-side airfoils, and turns it by the tilt
+ *   angle about z. As a one-sided wing (oneSidedAsHalf) it is the left half of the part.
+ * - Symmetric fin (isSymFin, or a fin wing without isFin): both halves turned −90° as one body, then
+ *   by the tilt angle about y: the part's roll with the left half turned along.
+ * - Double fin (isDoubleFin): the right half turned +90° and moved by the position y, the left half
+ *   its mirror image at y = 0, each turned by the tilt angle about z. The part: the right half moved
+ *   out by |position y|, rolled +90° about the wing origin at that y.
+ */
+function finAsWing(fin) {
+  const flags = fin.fin ?? { isFin: true, double: false, symmetric: false };
+  if (!flags.isFin || flags.symmetric) return { ...fin, finKind: 'symmetric', twoSided: true, roll: -90 };
+  if (flags.double) return { ...fin, finKind: 'double', twoSided: true, roll: 90, finOffset: Number.isFinite(fin.position.y) ? Math.abs(fin.position.y) : 0 };
+  return { ...fin, finKind: 'single', twoSided: false, roll: -90 };
 }
 
 /** A wing's angle (degrees) reduced by whole turns to −180..180; 0 for whole turns. */
@@ -372,7 +405,8 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
     if (bad.length) add('error', tr('{field} is not a finite number in the file at {sections}.', { field, sections: sectionsText(bad) }));
   }
   const { position, tilt } = wing;
-  // A flow5 wing turns by Rx_angle about x before the tilt (Ry_angle) about y; XFLR5 has no roll.
+  // A flow5 wing turns by Rx_angle about x before the tilt (Ry_angle) about y; XFLR5 turns only its
+  // fin about x (finAsWing).
   const roll = wing.roll ?? 0;
   if (!Number.isFinite(roll)) add('error', tr('The roll angle (Rx_angle) of the wing is not a finite number in the file.'));
   if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) add('error', tr('The position of the wing in the plane is not a finite number in the file.'));
@@ -382,6 +416,10 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
   // Developed span positions (mm) and the panels between them. A root within MIN_PANEL of the centre
   // is the centre: XFLR5 separates the two halves only beyond it, and Wingdesigner joins them at y = 0.
   const D = src.map((s) => k * s.y);
+  // A single or double fin may reach below its origin (a root y_position below 0): its sections move
+  // up to y = 0, and the pivot of the roll moves so that the rolled fin stays where XFLR5 builds it.
+  const below = (wing.finKind === 'single' || wing.finKind === 'double') && D[0] <= -MIN_PANEL && Number.isFinite(D[0]) ? -D[0] : 0;
+  if (below) for (let i = 0; i < n; i++) D[i] += below;
   if (D[0] <= -MIN_PANEL) add('error', tr('The root section lies at y_position {y} mm; the half wing must start at y >= 0.', { y: num(D[0]) }));
   else if (D[0] <= MIN_PANEL && D[0] !== 0) {
     if (num(D[0]) !== num(0)) add('info', tr('Root y_position {y} mm lies within 0.1 mm of the centre and is set to 0, as {program} joins the halves there.', { program, y: num(D[0]) }));
@@ -476,8 +514,22 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
   // Stored within ±180°: an angle of whole turns turns nothing.
   const angle = reduced(tilt);
   const rollAngle = reduced(roll);
-  if (angle !== 0 || rollAngle !== 0) folded = { angle, roll: rollAngle, x: X, z: ZL, turnedLeft: rollAngle !== 0 && !wing.oneSided };
-  if (rollAngle !== 0) {
+  // A double fin: the right half moves out by the position y, and the part turns about the wing
+  // origin at that y; the left half stays the mirror image.
+  const offset = wing.finKind === 'double' ? k * wing.finOffset : 0;
+  // Sections moved up by `below` in the part frame land `below` mm higher once rolled; a pivot moved
+  // by (below / 2, −below · sin r / (2 (1 − cos r))) in y and z takes that back (r: the roll, ≠ 0).
+  const lift = below ? [below / 2, (-below * Math.sin(rollAngle * DEG)) / (2 * (1 - Math.cos(rollAngle * DEG)))] : [0, 0];
+  const pivotY = offset + lift[0];
+  if (angle !== 0 || rollAngle !== 0) folded = { angle, roll: rollAngle, x: X, ...(pivotY ? { y: pivotY } : {}), z: ZL + lift[1], turnedLeft: rollAngle !== 0 && !wing.oneSided && wing.finKind !== 'double' };
+  if (below) {
+    add('info', tr('The fin reaches {d} mm below its origin (root y_position {y} mm): its sections start at y = 0, and the pivot of Settings > Part roll lies {dy} mm out and {dz} mm down from the wing origin, so that the fin stays where XFLR5 builds it.', { d: num(below), y: num(-below), dy: num(lift[0]), dz: num(-lift[1]) }));
+  }
+  if (rollAngle !== 0 && wing.finKind) {
+    add('info', tr('XFLR5 builds a fin upright: the part turns {angle}° as a rigid body about the wing origin (Settings > Part roll).', { angle: num(rollAngle) }));
+    if (wing.finKind === 'symmetric') add('info', tr('A symmetric fin: XFLR5 turns both halves upright as one body, one above and one below the wing origin: Settings > Left half is set to Turned with the right half.'));
+    if (wing.finKind === 'double') add('info', tr('A double fin: XFLR5 builds two upright fins {y} mm to the right and to the left of the wing origin (position y). The part\'s right half is the right fin, its left half the mirror image.', { y: num(offset) }));
+  } else if (rollAngle !== 0) {
     add('info', tr('Roll angle {angle}° (Rx_angle) applied as in the flow5 plane: the part turns as a rigid body about the wing origin, before the tilt (Settings > Part roll).', { angle: num(rollAngle) }));
     // flow5 turns both halves as one body: the left half of the part turns with it. A one-sided wing
     // has one half only, which the left half of the part is exactly (oneSidedAsHalf).
@@ -500,7 +552,8 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
     }
     add('info', tr('Position in the {program} plane applied: the wing origin moved to x {x} mm, z {z} mm.', { program, x: num(X), z: num(ZL) }));
   }
-  if (Number.isFinite(position.y) && position.y !== 0) add('info', tr('Position y {y} mm is not used, as in {program}.', { program, y: num(k * position.y) }));
+  if (offset !== 0) for (const q of kept) q.y += offset;
+  else if (Number.isFinite(position.y) && position.y !== 0) add('info', tr('Position y {y} mm is not used, as in {program}.', { program, y: num(k * position.y) }));
 
   const sides = src.flatMap((s, i) => (s.leftFoil !== s.rightFoil ? [i + 1] : []));
   if (sides.length) add('warning', tr('Left and right airfoils differ at {sections}; the right-side airfoils are used.', { sections: sectionsText(sides) }));
@@ -1187,10 +1240,13 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
     const items = surfaces.filter((s) => s.key !== key).map((s) => tr('{label} "{name}"', { label: s.label, name: shownName(s.name) }));
     if (items.length) add('info', tr('Not imported: {list}. One surface per import; open the file again for another one.', { list: items.join(', ') }));
   } else if (wing) {
-    const items = [];
-    if (key === 'main' && surfaces[1].available) items.push(tr('the horizontal stabilizer "{name}"', { name: shownName(surfaces[1].name) }));
-    if (key === 'stab' && surfaces[0].available) items.push(tr('the main wing "{name}"', { name: shownName(surfaces[0].name) }));
-    for (const o of others) items.push(o.slot === 1 ? tr('the second wing "{name}"', { name: shownName(o.name) }) : tr('the fin "{name}"', { name: shownName(o.name) }));
+    const named = {
+      0: (n) => tr('the main wing "{name}"', n),
+      1: (n) => tr('the second wing "{name}"', n),
+      2: (n) => tr('the horizontal stabilizer "{name}"', n),
+      3: (n) => tr('the fin "{name}"', n),
+    };
+    const items = surfaces.filter((s) => s.key !== key && s.wing).map((s) => named[s.slot]({ name: shownName(s.name) }));
     if (items.length) add('info', tr('Not imported: {list}. One surface per import; open the file again for another one.', { list: items.join(', ') }));
   }
   if (file.kind === 'xml') {
@@ -1203,8 +1259,10 @@ export function mapXflr5(file, { plane: planeIndex = 0, surface, fileName = '', 
       add('info', program === 'flow5' ? tr('A wing file holds no position or angles: the part is built in its own frame.') : tr('A wing file holds no position or tilt angle: the part is built in its own frame.'));
     }
   }
-  if (wing?.oneSided) {
+  if (wing?.oneSided && program === 'flow5') {
     add('info', tr('A one-sided wing: flow5 builds its left half only, with the left-side airfoils. The part\'s left half is that half, its right half the mirror image (on top of it for a fin at y = 0); Export > Wing halves > Left half only exports flow5\'s half alone.'));
+  } else if (wing?.oneSided) {
+    add('info', tr('A single fin: XFLR5 builds its left half only, with the left-side airfoils, at y = 0. The part\'s left half is that half, its right half the mirror image on top of it; Export > Wing halves > Left half only exports XFLR5\'s fin alone.'));
   }
   add('info', tr('Not used: VLM panel counts and distributions, colours, masses, the body and the analyses.'));
   add('info', tr('The trailing edge is built as in the airfoils; Settings > Trailing edge can close it or give it a thickness.'));
@@ -1358,7 +1416,7 @@ function assemble(name, mapped, rows, add, planes, tilt) {
       mirror: true,
       tip: { mode: 'flat' },
       trailingEdge: { mode: 'asis' },
-      ...(tilt ? { partTilt: r4(tilt.angle), partRoll: r4(tilt.roll), partPivot: { x: r4(tilt.x), y: 0, z: r4(tilt.z) }, leftHalf: tilt.turnedLeft ? 'turned' : 'mirror' } : {}),
+      ...(tilt ? { partTilt: r4(tilt.angle), partRoll: r4(tilt.roll), partPivot: { x: r4(tilt.x), y: r4(tilt.y ?? 0), z: r4(tilt.z) }, leftHalf: tilt.turnedLeft ? 'turned' : 'mirror' } : {}),
     },
   });
 }

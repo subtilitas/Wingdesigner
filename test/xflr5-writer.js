@@ -188,6 +188,8 @@ export function plane(
     biplane = false,
     stab = true,
     fin = true,
+    doubleFin = false,
+    symFin = true,
     positions = [
       [0, 0, 0, 0],
       [0, 0, 0.1, 0],
@@ -202,7 +204,7 @@ export function plane(
   w.mark('plane').i32(format).str(name).str(description);
   if (format >= 100002) styleFl5(w, style);
   for (const o of wings) wing(w, { spare, ...o });
-  w.mark('flags').bool(biplane).bool(stab).bool(fin).bool(false).bool(true).bool(false);
+  w.mark('flags').bool(biplane).bool(stab).bool(fin).bool(doubleFin).bool(symFin).bool(false);
   w.mark('positions');
   for (const p of positions) for (const v of p) w.f64(v);
   w.mark('body flag').bool(!!bodyOptions).f64(0.01).f64(0.02);

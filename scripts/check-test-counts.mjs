@@ -122,24 +122,35 @@ export function statements(c) {
   const limitsPerProject = limits && new Set(Object.values(limits.perProject)).size === 1 ? Object.values(limits.perProject)[0] : null;
   const oneProject = c.run ? Object.values(c.run.onlyIn).reduce((s, o) => s + Object.values(o).reduce((a, b) => a + b, 0), 0) : null;
   const cases = c.cases.length;
+  // The foam-cutting test wings: the STEP cases without the Y-up copy and the placed part, as
+  // scripts/export-foam-cases.mjs skips them.
+  const foam = c.cases.filter((s) => s.up !== 'y' && s.name !== 'part-tilt-roll').length;
   return [
     { file: 'README.md', what: 'unit tests', re: re(String.raw`npm test +# {n} unit tests \(Vitest\)`), n: 1, expect: [unit[0]] },
     { file: 'README.md', what: 'browser tests and runs', re: re(String.raw`then {n} Playwright tests on [^\n]*? \({n} runs\)`), n: 1, expect: [e2e[0], e2e[2]] },
     { file: 'README.md', what: 'files written by npm run step:cases', re: re(String.raw`write {n} STEP files, {n} 3MF files and cases\.json`), n: 1, expect: [cases, cases] },
     { file: 'README.md', what: 'STEP and 3MF validation wings', re: re(String.raw`reads (?:the )?{n} test wings`), n: 2, expect: [cases] },
+    { file: 'README.md', what: 'foam-cutting validation wings', re: re(String.raw`reads the files of {n} test wings`), n: 1, expect: [foam] },
+    { file: 'README.md', what: 'files written by npm run foam:cases', re: re(String.raw`write the foam-cutting files of {n} test wings`), n: 1, expect: [foam] },
     { file: 'README.de.md', what: 'unit tests', re: re(String.raw`npm test +# {n} Unit-Tests \(Vitest\)`), n: 1, expect: [unit[0]] },
     { file: 'README.de.md', what: 'browser tests and runs', re: re(String.raw`dann {n} Playwright-Tests auf [^\n]*? \({n} Läufe\)`), n: 1, expect: [e2e[0], e2e[2]] },
     { file: 'README.de.md', what: 'files written by npm run step:cases', re: re(String.raw`# {n} STEP-Dateien, {n} 3MF-Dateien und cases\.json nach`), n: 1, expect: [cases, cases] },
     { file: 'README.de.md', what: 'STEP and 3MF validation wings', re: re(String.raw`liest (?:die )?{n} Testflügel`), n: 2, expect: [cases] },
+    { file: 'README.de.md', what: 'foam-cutting validation wings', re: re(String.raw`liest die Dateien von {n} Testflügeln`), n: 1, expect: [foam] },
+    { file: 'README.de.md', what: 'files written by npm run foam:cases', re: re(String.raw`Schaumschnitt-Dateien von {n} Testflügeln und cases\.json`), n: 1, expect: [foam] },
     { file: 'docs/wiki/Development.md', what: 'unit tests and files', re: re(String.raw`Node\.js: {n} tests in {n} files \|`), n: 1, expect: unit },
     { file: 'docs/wiki/Development.md', what: 'browser tests, spec files and runs', re: re(String.raw`^{n} tests in {n} spec files, {n} runs \(both projects\)`, 'gm'), n: 1, expect: e2e },
     { file: 'docs/wiki/Development.md', what: 'tests that run in one project only', re: re(String.raw`^{n} tests run in one project only`, 'gm'), n: 1, expect: [oneProject] },
     { file: 'docs/wiki/Development.md', what: 'files written by npm run step:cases', re: re(String.raw`{n} STEP files, {n} 3MF files and \`cases\.json\``), n: 1, expect: [cases, cases] },
+    { file: 'docs/wiki/Development.md', what: 'files written by npm run foam:cases', re: re(String.raw`DXF and PDF of {n} test wings`), n: 1, expect: [foam] },
+    { file: 'docs/wiki/Development.md', what: 'foam-cutting cases', re: re(String.raw`\`part-tilt-roll\` \({n} cases\)`), n: 1, expect: [foam] },
     { file: 'docs/wiki/Development.md', what: 'no test marked test.fail', re: /^No test is marked `test\.fail`\.$/gm, n: c.e2e.marked === 0 && (c.run?.marked ?? 0) === 0 ? 1 : 0, expect: [] },
     { file: 'docs/wiki/Entwicklung.md', what: 'unit tests and files', re: re(String.raw`Node\.js: {n} Tests in {n} Dateien \|`), n: 1, expect: unit },
     { file: 'docs/wiki/Entwicklung.md', what: 'browser tests, spec files and runs', re: re(String.raw`^{n} Tests in {n} Spec-Dateien, {n} Läufe \(beide Projekte\)`, 'gm'), n: 1, expect: e2e },
     { file: 'docs/wiki/Entwicklung.md', what: 'tests that run in one project only', re: re(String.raw`^{n} Tests laufen nur in einem Projekt`, 'gm'), n: 1, expect: [oneProject] },
     { file: 'docs/wiki/Entwicklung.md', what: 'files written by npm run step:cases', re: re(String.raw`{n} STEP-Dateien, {n} 3MF-Dateien und \`cases\.json\``), n: 1, expect: [cases, cases] },
+    { file: 'docs/wiki/Entwicklung.md', what: 'files written by npm run foam:cases', re: re(String.raw`DXF und PDF von {n} Testflügeln`), n: 1, expect: [foam] },
+    { file: 'docs/wiki/Entwicklung.md', what: 'foam-cutting cases', re: re(String.raw`\`part-tilt-roll\` \({n} Testfälle\)`), n: 1, expect: [foam] },
     { file: 'docs/wiki/Entwicklung.md', what: 'no test marked test.fail', re: /^Kein Test ist mit `test\.fail` markiert\.$/gm, n: c.e2e.marked === 0 && (c.run?.marked ?? 0) === 0 ? 1 : 0, expect: [] },
     { file: 'docs/wiki/Geometry.md', what: 'STEP validation cases', re: re(String.raw`the {n} cases of \`test/step-cases\.js\``), n: 1, expect: [cases] },
     { file: 'docs/wiki/Geometrie.md', what: 'STEP validation cases', re: re(String.raw`die {n} Fälle aus \`test/step-cases\.js\``), n: 1, expect: [cases] },
@@ -156,6 +167,7 @@ export function statements(c) {
     { file: 'RECORD.md', what: 'limits.spec.js tests per project', re: re(String.raw`\`e2e/limits\.spec\.js\` \({n} tests per project\)`), n: 1, expect: [limitsPerProject] },
     { file: 'RECORD.md', what: 'STEP validation cases', re: re(String.raw`validate_step\.py\` with OpenCascade \([^)]*\): {n} cases`), n: 1, expect: [cases] },
     { file: 'RECORD.md', what: '3MF validation cases', re: re(String.raw`validate_3mf\.py\` with lib3mf [\d.]+ in strict mode: {n} cases`), n: 1, expect: [cases] },
+    { file: 'RECORD.md', what: 'foam-cutting validation wings', re: re(String.raw`read the files of {n} test wings`), n: 1, expect: [foam] },
   ];
 }
 
@@ -287,7 +299,7 @@ async function main() {
     unit: unitCounts(),
     e2e: e2eCounts(playwrightRuns(playwrightListing())),
     run: reportFile ? runResults(playwrightRuns(JSON.parse(readFileSync(reportFile, 'utf8')))) : null,
-    cases: stepCases().map((s) => ({ name: s.name, mirror: s.mirror })),
+    cases: stepCases().map((s) => ({ name: s.name, mirror: s.mirror, up: s.up })),
   };
   const docs = Object.fromEntries(DOC_FILES.map((f) => [f, readFileSync(join(root, f), 'utf8')]));
   const problems = checkCounts(docs, counts);

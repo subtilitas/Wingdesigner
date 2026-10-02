@@ -25,6 +25,7 @@ import { toSeligDat } from '../src/airfoil/parse.js';
 import { LIMITS, SOURCE_KEYS, validateProject } from '../src/model/project.js';
 import { projectFromJsonText, projectToJsonText } from '../src/model/io.js';
 import { buildWing, placeSection } from '../src/geom/wing.js';
+import { partTransform } from '../src/geom/part.js';
 import { fitProfile } from '../src/geom/profile.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { dist, surfacePoint } from '../src/geom/nurbs.js';
@@ -403,16 +404,17 @@ describe('XFLR5 mapping: geometry', () => {
 });
 
 describe('XFLR5 mapping: surfaces', () => {
-  it('offers the main wing and the stabilizer of a plane and names the other wings', () => {
+  it('offers the main wing, the stabilizer and the other wings of a plane', () => {
     const { surfaces, others } = planeSurfaces(FIXTURES, 0);
     expect(surfaces.map((s) => [s.key, s.slot, s.label, s.available, s.reason, s.name, s.sections])).toEqual([
       ['main', 0, 'Main wing', true, null, 'Main Wing', 3],
       ['stab', 2, 'Horizontal stabilizer (XFLR5: Elevator)', true, null, 'Elevator', 2],
+      ['wing:3', 3, 'Fin', true, null, 'Fin', 2],
     ]);
     expect(surfaces[1].span).toBe(460);
     expect(surfaces[1].rootChord).toBeCloseTo(110, 9);
     expect(surfaces[1].detail).toBe('"Elevator": 2 sections, span 460 mm, root chord 110 mm');
-    expect(others).toEqual([{ slot: 3, name: 'Fin', label: 'Fin' }]);
+    expect(others).toEqual([]);
     const b = planeSurfaces(FIXTURES, 1);
     expect(b.surfaces[1]).toMatchObject({ available: false, reason: 'This plane has no elevator.', wing: null });
     expect(b.others).toEqual([]);
@@ -420,7 +422,7 @@ describe('XFLR5 mapping: surfaces', () => {
     expect(() => planeSurfaces(FIXTURES, 2)).toThrow(RangeError);
     const second = xmlFile([null, wingOf([sec(0, 100), sec(100, 80)], { name: 'Tandem' }), wingOf([sec(0, 100), sec(100, 80)]), null]);
     expect(planeSurfaces(second).surfaces[0].reason).toBe('This plane has no main wing.');
-    expect(planeSurfaces(second).others).toEqual([{ slot: 1, name: 'Tandem', label: 'Second wing' }]);
+    expect(planeSurfaces(second).surfaces.map((s) => s.key)).toEqual(['main', 'stab', 'wing:1']);
     expect(defaultSurface(second)).toBe('stab');
     const bad = planeSurfaces(xmlFile([wingOf([sec(NaN, 100), sec(100, 80)]), null, null, null])).surfaces[0];
     expect(bad.detail).toBe('"Wing": 2 sections, span ? mm, root chord 100 mm');
@@ -429,7 +431,8 @@ describe('XFLR5 mapping: surfaces', () => {
     const one = xmlFile([wingOf([sec(0, 240)], { name: 'Main Wing' }), null, null, null]);
     expect(planeSurfaces(one).surfaces[0].detail).toBe('"Main Wing": 1 section, root chord 240 mm');
     expect(texts(mapXflr5(empty).report, 'error')).toEqual(['The wing needs at least 2 sections (found 0).']);
-    expect(defaultSurface(xmlFile([null, null, null, wingOf([sec(0, 100), sec(100, 80)])]))).toBe('main');
+    // A plane with a fin only: the fin is the first available surface.
+    expect(defaultSurface(xmlFile([null, null, null, wingOf([sec(0, 100), sec(100, 80)])]))).toBe('wing:3');
     expect(texts(mapXflr5(second, { surface: 'stab' }).report, 'info')).toContain('Not imported: the second wing "Tandem". One surface per import; open the file again for another one.');
   });
 
@@ -453,6 +456,207 @@ describe('XFLR5 mapping: surfaces', () => {
     expect(describeFile(xmlFile([], { lengthUnit: 2, unitName: null }))).toBe('XFLR5 plane file (XML), lengths in units of 2 mm');
     expect(['cm', 'dm', 'm', 'ft'].map((unitName) => describeFile(xmlFile([], { unitName })))).toEqual(['centimetres', 'decimetres', 'metres', 'feet'].map((u) => `XFLR5 plane file (XML), lengths in ${u}`));
     expect(describeFile(xmlFile([], { lengthUnit: 2, unitName: null, wingOnly: true }))).toBe('XFLR5 wing file (XML), lengths in units of 2 mm');
+  });
+});
+
+/**
+ * Leading edge and trailing edge (chord line) of every section of an XFLR5 wing in the plane, as
+ * XFLR5 6.62 places its surface corners (Wing::createSurfaces, Plane::createSurfaces): left
+ * surfaces at −y, right surfaces at +y, each panel turned by its dihedral about its inner leading
+ * edge and joined to the panel inside it; then, for a wing or a symmetric fin, all turned by the
+ * x tilt about x and the tilt angle about y; a single fin keeps its left half, turned about x and then
+ * about z; a double fin turns its left half by the x tilt and the tilt angle about z and moves it by
+ * −y, its right half by the opposite angles and +y. Twist 0. Lengths in mm.
+ * @returns {{left: number[][][], right: number[][][]}} per section [leading edge, trailing edge]
+ */
+function xflr5Corners(wing, { xTilt = 0, fin = null } = {}) {
+  const S = wing.sections;
+  const rot = (p, o, axis, deg) => {
+    const a = deg * DEG;
+    const [c, sn] = [Math.cos(a), Math.sin(a)];
+    const d = [p[0] - o[0], p[1] - o[1], p[2] - o[2]];
+    if (axis === 'x') return [p[0], o[1] + d[1] * c - d[2] * sn, o[2] + d[1] * sn + d[2] * c];
+    if (axis === 'y') return [o[0] + d[0] * c + d[2] * sn, p[1], o[2] - d[0] * sn + d[2] * c];
+    return [o[0] + d[0] * c - d[1] * sn, o[1] + d[0] * sn + d[1] * c, p[2]];
+  };
+  const side = (sign) => {
+    const out = [];
+    let prevOuter = null;
+    for (let j = 0; j + 1 < S.length; j++) {
+      const inner = [[S[j].offset, sign * S[j].y, 0], [S[j].offset + S[j].chord, sign * S[j].y, 0]];
+      const outer = [[S[j + 1].offset, sign * S[j + 1].y, 0], [S[j + 1].offset + S[j + 1].chord, sign * S[j + 1].y, 0]];
+      const o = inner[0];
+      const turn = (q) => rot(q, o, 'x', sign * S[j].dihedral);
+      let [I, O] = [inner.map(turn), outer.map(turn)];
+      if (prevOuter) {
+        const t = [0, prevOuter[0][1] - I[0][1], prevOuter[0][2] - I[0][2]];
+        const move = (q) => [q[0], q[1] + t[1], q[2] + t[2]];
+        [I, O] = [I.map(move), O.map(move)];
+      }
+      if (j === 0) out.push(I);
+      out.push(O);
+      prevOuter = O;
+    }
+    return out;
+  };
+  const T = wing.position;
+  const place = (sections, f) => sections.map((pair) => pair.map((p) => f(p)));
+  const O = [0, 0, 0];
+  if (!fin || fin.symmetric) {
+    const f = (p) => {
+      const q = rot(rot(p, O, 'x', xTilt), O, 'y', wing.tilt);
+      return [q[0] + T.x, q[1], q[2] + T.z];
+    };
+    return { left: place(side(-1), f), right: place(side(1), f) };
+  }
+  if (fin.double) {
+    const f = (sign) => (p) => {
+      const q = rot(rot(p, O, 'x', -sign * xTilt), O, 'z', -sign * wing.tilt);
+      return [q[0] + T.x, q[1] + sign * T.y, q[2] + T.z];
+    };
+    return { left: place(side(-1), f(-1)), right: place(side(1), f(1)) };
+  }
+  const f = (p) => {
+    const q = rot(rot(p, O, 'x', xTilt), O, 'z', wing.tilt);
+    return [q[0] + T.x, q[1], q[2] + T.z];
+  };
+  return { left: place(side(-1), f), right: null };
+}
+
+/** Largest distance (mm) between the imported sections' chord lines, placed with the part transform, and XFLR5's corners. */
+function cornerDistance(project, corners) {
+  const t = partTransform(project.settings, project.sections);
+  let max = 0;
+  for (const [key, map] of [['right', t.point], ['left', t.leftPoint]]) {
+    if (!corners[key]) continue;
+    project.sections.forEach((q, i) => {
+      const ours = [map([q.x, q.y, q.z]), map([q.x + q.chord, q.y, q.z])];
+      ours.forEach((p, k) => (max = Math.max(max, Math.hypot(p[0] - corners[key][i][k][0], p[1] - corners[key][i][k][1], p[2] - corners[key][i][k][2]))));
+    });
+  }
+  return max;
+}
+
+describe('XFLR5 mapping: second wing and fin', () => {
+  // A fin with a 4° and a 12° panel and a swept, tapered outline, at x 680 mm, z 15 mm.
+  const finWing = (flags, { tilt = 0, y = 0 } = {}) => ({
+    ...wingOf([sec(0, 160, 0, 4), sec(120, 120, 30, 12), sec(220, 70, 75, 0)], { name: 'Fin', tilt, position: { x: 680, y, z: 15 } }),
+    fin: { isFin: true, double: false, symmetric: false, ...flags },
+  });
+  const main = wingOf([sec(0, 200), sec(500, 120, 30)], { name: 'Main' });
+  const plane = (fin, second = null) => xmlFile([main, second, null, fin]);
+
+  it('offers the second wing and the fin after the main wing and the stabilizer', () => {
+    const second = wingOf([sec(0, 150), sec(400, 100, 20, 5)], { name: 'Upper', tilt: 1.5, position: { x: 40, y: 0, z: 250 } });
+    const f = plane(finWing({}), second);
+    const { surfaces, others } = planeSurfaces(f);
+    expect(surfaces.map((s) => [s.key, s.slot, s.label, s.available, s.name])).toEqual([
+      ['main', 0, 'Main wing', true, 'Main'],
+      ['stab', 2, 'Horizontal stabilizer (XFLR5: Elevator)', false, undefined],
+      ['wing:1', 1, 'Second wing', true, 'Upper'],
+      ['wing:3', 3, 'Fin', true, 'Fin'],
+    ]);
+    expect(others).toEqual([]);
+    // A fin states its height: 120 · cos 4° + 100 · cos 12° = 217.5 mm for one fin, both halves for a symmetric fin.
+    expect(surfaces[3].detail).toBe('"Fin": 3 sections, height 218 mm, root chord 160 mm');
+    expect(planeSurfaces(plane(finWing({ symmetric: true }))).surfaces[2].detail).toBe('"Fin": 3 sections, height 435 mm, root chord 160 mm');
+    expect(planeSurfaces(plane(finWing({ double: true }, { y: 150 }))).surfaces[2].detail).toBe('"Fin": 3 sections, height 218 mm, root chord 160 mm');
+    expect(texts(mapXflr5(f).report, 'info')).toContain('Not imported: the second wing "Upper", the fin "Fin". One surface per import; open the file again for another one.');
+    // The second wing: placed as the main wing, its position moving the sections and its tilt turning the part.
+    const r = mapXflr5(f, { surface: 'wing:1' });
+    expect([r.errors, r.project.settings.partTilt, r.project.settings.partPivot, r.project.settings.leftHalf]).toEqual([0, 1.5, { x: 40, y: 0, z: 250 }, 'mirror']);
+    expect(cornerDistance(r.project, xflr5Corners(second))).toBeLessThan(1e-3);
+    expect(texts(r.report, 'info')).toContain('Not imported: the main wing "Main", the fin "Fin". One surface per import; open the file again for another one.');
+    expect(r.summary).toBe('Imported the wing "Upper" of "Plane" from : 2 sections, 1 airfoil.');
+  });
+
+  it('builds a single fin as XFLR5 does: its left half upright at y = 0, the left half of the part', () => {
+    const fin = finWing({});
+    const r = mapXflr5(plane(fin), { surface: 'wing:3' });
+    expect(r.errors).toBe(0);
+    expect(r.project.settings).toMatchObject({ partRoll: 90, partTilt: 0, partPivot: { x: 680, y: 0, z: 15 }, leftHalf: 'mirror' });
+    expect(cornerDistance(r.project, xflr5Corners(fin, { xTilt: -90, fin: fin.fin }))).toBeLessThan(1e-3);
+    expect(texts(r.report, 'info')).toEqual(
+      expect.arrayContaining([
+        'XFLR5 builds a fin upright: the part turns 90° as a rigid body about the wing origin (Settings > Part roll).',
+        "A single fin: XFLR5 builds its left half only, with the left-side airfoils, at y = 0. The part's left half is that half, its right half the mirror image on top of it; Export > Wing halves > Left half only exports XFLR5's fin alone.",
+      ]),
+    );
+    // XFLR5 builds a single fin from the left-side airfoils.
+    const sided = finWing({});
+    sided.sections = sided.sections.map((q) => ({ ...q, rightFoil: 'NACA 0012', leftFoil: 'NACA 0009' }));
+    expect(new Set(mapXflr5(plane(sided), { surface: 'wing:3' }).project.airfoils.map((a) => a.name))).toEqual(new Set(['NACA 0009']));
+    // A tilt angle turns a single fin about z, which a part cannot.
+    const tilted = finWing({}, { tilt: 2 });
+    expect(planeSurfaces(plane(tilted)).surfaces.find((s) => s.key === 'wing:3')).toMatchObject({ available: false, reason: 'A fin with a tilt angle of 2°: XFLR5 turns this fin about z, and a part turns about x and y only.' });
+    expect(texts(mapXflr5(plane(tilted), { surface: 'wing:3' }).report, 'error')).toEqual(['A fin with a tilt angle of 2°: XFLR5 turns this fin about z, and a part turns about x and y only.']);
+  });
+
+  it('builds a symmetric fin as one body turned upright, and a fin wing without isFin the same way', () => {
+    for (const flags of [{ symmetric: true }, { isFin: false }, { symmetric: true, double: true }]) {
+      const fin = finWing(flags, { tilt: 3 });
+      const r = mapXflr5(plane(fin), { surface: 'wing:3' });
+      expect(r.errors, JSON.stringify(flags)).toBe(0);
+      expect(r.project.settings).toMatchObject({ partRoll: -90, partTilt: 3, leftHalf: 'turned' });
+      expect(cornerDistance(r.project, xflr5Corners(fin, { xTilt: -90, fin: { ...fin.fin, symmetric: true } })), JSON.stringify(flags)).toBeLessThan(1e-3);
+      expect(texts(r.report, 'info')).toContain('A symmetric fin: XFLR5 turns both halves upright as one body, one above and one below the wing origin: Settings > Left half is set to Turned with the right half.');
+    }
+  });
+
+  it('builds a double fin as two upright fins at ±(position y), the right one moved out and the left one its mirror image', () => {
+    for (const y of [150, -150, 0]) {
+      const fin = finWing({ double: true }, { y });
+      const r = mapXflr5(plane(fin), { surface: 'wing:3' });
+      expect(r.errors, `y ${y}`).toBe(0);
+      expect(r.project.settings).toMatchObject({ partRoll: 90, partTilt: 0, partPivot: { x: 680, y: Math.abs(y), z: 15 }, leftHalf: 'mirror' });
+      expect(r.project.sections[0].y).toBe(Math.abs(y));
+      // XFLR5's right surfaces turned +90° at +y; with a negative position y they land at −y, the mirror image.
+      const corners = xflr5Corners({ ...fin, position: { ...fin.position, y: Math.abs(y) } }, { xTilt: -90, fin: fin.fin });
+      expect(cornerDistance(r.project, corners), `y ${y}`).toBeLessThan(1e-3);
+      if (y !== 0) expect(texts(r.report, 'info')).toContain(`A double fin: XFLR5 builds two upright fins 150 mm to the right and to the left of the wing origin (position y). The part's right half is the right fin, its left half the mirror image.`);
+      expect(texts(r.report, 'info').some((t) => t.startsWith('Position y'))).toBe(false);
+    }
+    const tilted = finWing({ double: true }, { y: 150, tilt: -2 });
+    expect(planeSurfaces(plane(tilted)).surfaces.find((s) => s.key === 'wing:3').available).toBe(false);
+  });
+
+  it('moves a fin that reaches below its origin up to y = 0 and its roll pivot so that it stays in place', () => {
+    // The Rascal 110 fin: root y_position −3.25 in (−82.55 mm), at x 1308.1 mm, z 82.55 mm.
+    const r = mapXflr5(xfl('uaslab/Rascal110.xfl'), { surface: 'wing:3', fileName: 'Rascal110.xfl' });
+    expect(r.project.sections[0].y).toBe(0);
+    expect(r.project.settings).toMatchObject({ partRoll: 90, partPivot: { x: 1308.1, y: 41.275, z: 41.275 }, leftHalf: 'mirror' });
+    expect(texts(r.report, 'info')).toContain(
+      'The fin reaches 82.55 mm below its origin (root y_position -82.55 mm): its sections start at y = 0, and the pivot of Settings > Part roll lies 41.275 mm out and 41.275 mm down from the wing origin, so that the fin stays where XFLR5 builds it.',
+    );
+    // A double fin reaching below: both fins keep their place.
+    const fin = { ...wingOf([sec(-40, 160), sec(180, 90, 40)], { name: 'Fin', position: { x: 680, y: 120, z: 15 } }), fin: { isFin: true, double: true, symmetric: false } };
+    const d = mapXflr5(xmlFile([wingOf([sec(0, 200), sec(500, 120)]), null, null, fin]), { surface: 'wing:3' });
+    expect([d.errors, d.project.sections[0].y, d.project.settings.partPivot]).toEqual([0, 120, { x: 680, y: 140, z: -5 }]);
+    expect(cornerDistance(d.project, xflr5Corners(fin, { xTilt: -90, fin: fin.fin }))).toBeLessThan(1e-6);
+    // A wing that is not a fin still has to start at y >= 0.
+    expect(texts(mapXflr5(xmlFile([wingOf([sec(-40, 160), sec(180, 90)]), null, null, null])).report, 'error')).toEqual(['The root section lies at y_position -40 mm; the half wing must start at y >= 0.']);
+  });
+
+  it('reads the fin flags of .xfl and XML files and imports the fins of the test files', () => {
+    for (const [file, planeIndex, flags] of [
+      [FIXTURES, 0, { isFin: true, double: false, symmetric: false }],
+      [xml('xml_mm/0.plane.xml'), 0, { isFin: true, double: false, symmetric: false }],
+      [xfl('uaslab/Rascal110.xfl'), 0, { isFin: true, double: false, symmetric: false }],
+      [xfl('uaslab/UltraStick25e_v662_stripped.xfl'), 0, { isFin: true, double: false, symmetric: false }],
+      [xml('uaslab/UltraStick25e.xml'), 0, { isFin: true, double: false, symmetric: false }],
+    ]) {
+      const fin = file.planes[planeIndex].wings[3];
+      expect(fin.fin).toEqual(flags);
+      expect(planeSurfaces(file, planeIndex).surfaces.find((s) => s.key === 'wing:3')).toMatchObject({ available: true, label: 'Fin' });
+      // An XML file names its airfoils only: a missing one becomes a NACA 0009 of the generator (no frame).
+      const first = mapXflr5(file, { plane: planeIndex, surface: 'wing:3', fileName: 'f' });
+      const choices = Object.fromEntries(first.rows.filter((row) => !row.ok).map((row) => [row.name, 'naca:0009']));
+      const r = mapXflr5(file, { plane: planeIndex, surface: 'wing:3', fileName: 'f', choices });
+      expect(r.errors, fin.name + texts(r.report, 'error').join(' ')).toBe(0);
+      const mm = { ...fin, position: { x: fin.position.x * file.lengthUnit, y: fin.position.y * file.lengthUnit, z: fin.position.z * file.lengthUnit }, sections: fin.sections.map((q) => ({ ...q, y: q.y * file.lengthUnit, chord: q.chord * file.lengthUnit, offset: q.offset * file.lengthUnit })) };
+      // The real fins have no twist, and their airfoils have no frame.
+      expect(cornerDistance(r.project, xflr5Corners(mm, { xTilt: -90, fin: fin.fin })), fin.name).toBeLessThan(1e-6);
+    }
   });
 });
 

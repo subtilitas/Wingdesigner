@@ -327,7 +327,9 @@ function* readPlane(r) {
   const biplane = yield* r.bool('plane');
   const stab = yield* r.bool('plane');
   const fin = yield* r.bool('plane');
-  r.skip(3, 'plane'); // double fin, symmetric fin, spare
+  const doubleFin = yield* r.bool('plane');
+  const symFin = yield* r.bool('plane');
+  r.skip(1, 'plane'); // spare
   // Leading edge x, y, z and tilt of each slot.
   const wings = [];
   for (const w of slots) {
@@ -338,6 +340,8 @@ function* readPlane(r) {
     const tilt = sanitize(r.f64Now());
     wings.push({ name: w.name, description: w.description, symmetric: w.symmetric, position: { x, y, z }, tilt, sections: w.sections });
   }
+  // The fin slot always holds a fin (Plane::Plane sets m_bIsFin); the flags set how XFLR5 builds it.
+  wings[3].fin = { isFin: true, double: doubleFin, symmetric: symFin };
   const hasBody = yield* r.bool('plane');
   r.skip(16, 'plane'); // body x, z
   if (hasBody) {

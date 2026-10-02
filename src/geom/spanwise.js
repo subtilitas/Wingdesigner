@@ -114,15 +114,19 @@ function smoothSlopes(ys, F, size) {
  * evaluates the cubic Hermite polynomial of every coordinate from its two neighbouring sections and
  * the slopes of smoothSlopes, computed once here: O(points) per position instead of
  * O(sections x points). y outside the sections is clamped to them.
- * @returns {(y: number) => number[][]}
+ * The returned function has a method `derivative(y)`: the derivative of the blend in y (per mm), the
+ * same shape as the blend. Linear: the secant of the panel of y (at a section the panel inboard of
+ * it, at the root the first panel); smooth: the derivative of the cubic Hermite polynomial, continuous
+ * at the sections. Outside the sections it is that of the end panel.
+ * @returns {((y: number) => number[][]) & { derivative: (y: number) => number[][] }}
  */
 export function spanwiseBlender(ys, mode, lists) {
   const n = ys.length;
   if (!(mode === 'smooth' && n >= 3)) {
     // Linear (hat functions): the two neighbouring sections, with the sums of blendPoints.
     const copy = (L) => L.map((p) => p.slice());
-    if (n === 1) return () => copy(lists[0]);
-    return (y) => {
+    if (n === 1) return Object.assign(() => copy(lists[0]), { derivative: () => lists[0].map((p) => p.map(() => 0)) });
+    const blend = (y) => {
       if (y <= ys[0]) return copy(lists[0]);
       if (y >= ys[n - 1]) return copy(lists[n - 1]);
       const i = intervalOf(ys, y);
@@ -131,6 +135,13 @@ export function spanwiseBlender(ys, mode, lists) {
       const [A, B] = [lists[i], lists[i + 1]];
       return A.map((p, k) => p.map((v, c) => (t === 0 ? w0 * v : w0 * v + t * B[k][c])));
     };
+    blend.derivative = (y) => {
+      const i = intervalOf(ys, Math.min(Math.max(y, ys[0]), ys[n - 1]));
+      const h = ys[i + 1] - ys[i];
+      const [A, B] = [lists[i], lists[i + 1]];
+      return A.map((p, k) => p.map((v, c) => (B[k][c] - v) / h));
+    };
+    return blend;
   }
   const count = lists[0].length;
   const dim = lists[0][0].length;
@@ -141,7 +152,7 @@ export function spanwiseBlender(ys, mode, lists) {
     return f;
   });
   const { T } = smoothSlopes(ys, F, size);
-  return (y) => {
+  const blend = (y) => {
     const yy = Math.min(Math.max(y, ys[0]), ys[n - 1]);
     const j = intervalOf(ys, yy);
     const hj = ys[j + 1] - ys[j];
@@ -166,6 +177,28 @@ export function spanwiseBlender(ys, mode, lists) {
     }
     return out;
   };
+  blend.derivative = (y) => {
+    const yy = Math.min(Math.max(y, ys[0]), ys[n - 1]);
+    const j = intervalOf(ys, yy);
+    const hj = ys[j + 1] - ys[j];
+    const b = (yy - ys[j]) / hj;
+    // Derivatives in y of h01 (h00 = 1 - h01), h10 and h11.
+    const d01 = (6 * b * (1 - b)) / hj;
+    const d10 = 3 * b * b - 4 * b + 1;
+    const d11 = 3 * b * b - 2 * b;
+    const [f0, f1, t0, t1] = [F[j], F[j + 1], T[j], T[j + 1]];
+    const out = new Array(count);
+    for (let k = 0; k < count; k++) {
+      const p = new Array(dim);
+      for (let c = 0; c < dim; c++) {
+        const q = k * dim + c;
+        p[c] = d01 * (f1[q] - f0[q]) + d10 * t0[q] + d11 * t1[q];
+      }
+      out[k] = p;
+    }
+    return out;
+  };
+  return blend;
 }
 
 /** Weighted sum of scalars. */

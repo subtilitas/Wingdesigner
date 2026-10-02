@@ -68,7 +68,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/import/xmlscan.js` | XML tokenizer of both XML readers: `Scanner`, `children`, `readText`, `toNumber` |
 | `src/import/xflxml.js` | Reader of XFLR5 plane and wing files in Extensible Markup Language (XML): `readXflr5Xml` |
 | `src/import/fl5xml.js` | Reader of flow5 plane and wing XML files: `readFlow5Xml`; `readPlaneXml` (an XFLR5 or flow5 XML file by its root element) |
-| `src/import/xflr5.js` | Mapping of one XFLR5 or flow5 wing to a project: surfaces of a plane (`planeSurfaces`; for flow5 every wing of the plane), sections (`mapSections`), airfoil table, report and project (`mapXflr5`), airfoil checks in steps (`checkSteps`), airfoil uploads (`readAirfoilUpload`) |
+| `src/import/xflr5.js` | Mapping of one XFLR5 or flow5 wing to a project: surfaces of a plane (`planeSurfaces`: every wing of the plane; the XFLR5 fin built upright by `finAsWing`), sections (`mapSections`), airfoil table, report and project (`mapXflr5`), airfoil checks in steps (`checkSteps`), airfoil uploads (`readAirfoilUpload`) |
 | `src/model/project.js` | Project model, defaults, limits, validation |
 | `src/model/budget.js` | Warning thresholds, loft grid, time and memory estimates |
 | `src/model/io.js` | Project JSON import and export; `upgradeFoldedTilt` (a folded tilt of a version 2 file becomes **Part tilt**) |
@@ -369,9 +369,9 @@ Unit tests (Vitest, Node.js):
 
 | File | Tests | Content |
 | --- | ---: | --- |
-| `test/xflr5-xfl.test.js` | 39 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the old formats of `Rascal110.xfl`; the reserved blocks of XFLR5 6.10.01 to 6.10.04; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
-| `test/xflr5-xml.test.js` | 46 | Reader of XML files: fixtures in millimetres, inches and metres; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
-| `test/xflr5-map.test.js` | 68 | Mapping: y and z from developed span and dihedral, twist, position, the tilt angle stored as **Part tilt** (the turned build against XFLR5's construction); section planes of an import (mitred, tilted, fold and stretch fallback, an airfoil switch in one plane, the airfoil frame along a rolled plane with XFLR5's panel angles); clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library, and for library airfoils with an inclined chord line; a file airfoil whose trailing edge crosses its own end; an airfoil switch and a chord step at one y built with **Smooth**; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
+| `test/xflr5-xfl.test.js` | 40 | Reader of `.xfl` projects: byte layout of `fixtures_v662.xfl`; the fin flags; the old formats of `Rascal110.xfl`; the reserved blocks of XFLR5 6.10.01 to 6.10.04; `UltraStick25e_v662_stripped.xfl` against `UltraStick25e.xml`; projects from `test/xflr5-writer.js` (analyses with control gains and result points, plane results, null strings, bodies, repeated airfoil names, flaps, sanitized positions); refused files (flow5, `.wpa`, JSON, size, counts, odd string lengths); damage (cut at every record boundary and at every byte, damage after the planes); windows of any size; German messages |
+| `test/xflr5-xml.test.js` | 47 | Reader of XML files: fixtures in millimetres, inches and metres; the fin flags; wing files; units; syntax (byte order mark, text in 16-bit Unicode Transformation Format (UTF-16), comments, character data (CDATA) sections, entities, case, padded numbers, exponents); missing and garbled numbers; wing slots by `<Type>` and by order; refused files; limits; linear time on long and hostile input; German messages |
+| `test/xflr5-map.test.js` | 74 | Mapping: y and z from developed span and dihedral, twist, position, the tilt angle stored as **Part tilt** (the turned build against XFLR5's construction); section planes of an import (mitred, tilted, fold and stretch fallback, an airfoil switch in one plane, the airfoil frame along a rolled plane with XFLR5's panel angles); clean-up (sections at one y, chords below 1 mm, limits); surfaces of a plane; the second wing and the single, symmetric and double fin against a transcription of XFLR5's corner construction, a fin below its origin, the fins of the test files; airfoil sources, picks, uploads and flaps; airfoil frame against the numbers of Fixture A and B, also for NACA sections of the current project (generated and checked points, hand-edited metadata); report lines for current-project airfoils of an XFLR5 import, an upload or the library, and for library airfoils with an inclined chord line; a file airfoil whose trailing edge crosses its own end; an airfoil switch and a chord step at one y built with **Smooth**; project, JSON round trip and report; 10,000 airfoil names in linear time; German |
 | `test/part.test.js` | 7 of 18 | Version 1 and 2 files: their part placement keys dropped; upgrade of a folded tilt of project format version 2: the same part with **Vertical** section planes (twist pivot 0.25 and 0.5, pointed tip, **Straight panels**) and the shift of the MAC position, the notes with **Mitred** section planes, the fold kept with guide curves or a twist beyond ±360° |
 | `test/airfoil.test.js` | 1 of 79 | `leadingNacaCode` |
 
@@ -430,15 +430,15 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 648 tests in 24 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 659 tests in 24 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit code 1 when a README table differs from `coverage/coverage-summary.json`; exit code 2 when that file or a marker is missing |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 14 STEP files, 14 3MF files and `cases.json` in `step-check/` |
-| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 11 test wings and `cases.json` in `foam-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 15 STEP files, 15 3MF files and `cases.json` in `step-check/` |
+| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 13 test wings and `cases.json` in `foam-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Portable Network Graphics (PNG) files: 14 in `docs/wiki/images/` (English) and 14 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
@@ -476,7 +476,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-200 tests in 15 spec files, 400 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+201 tests in 15 spec files, 402 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 
@@ -549,6 +549,7 @@ x and z: position of the leading edge.
 | `mitred-vtail-35` | Not the base wing: 2 sections of NACA 0009, chords 120 and 70 mm, the tip 320 mm along a 35° panel, x 40 mm; **Straight panels**, **Mitred** section planes (tip cap rolled 35°) | 2 |
 | `mitred-vtail-35-y-up` | As `mitred-vtail-35`, written with the **Fusion 360 fix** (Y up): every point as (x, z, −y) | 2 |
 | `mitred-gull-15-5` | z 80.3848 mm at section 2 and 54.1382 mm at the tip (panels of 15° and −5°); **Mitred** section planes (rolls 0°, 5°, −5°), linear blending with 8 stations per panel | 2 |
+| `mitred-gull-smooth` | As `mitred-gull-15-5`, with smooth blending: rolls blended by the cubic, stretch from the slope of the blended reference line | 2 |
 | `mitred-switch-short-panel` | Not the base wing: NACA 2412 at y 0 and 299.5 mm (chords 200 and 180 mm), NACA 0012 at y 300 and 600 mm (chords 180 and 120 mm, tip z 52.8981 mm, twist −2°); **Straight panels**, **Mitred** section planes: the 0.5 mm panel counts as none, both switch sections roll 5.25°; the outer panel stores a panel angle of 10.5° (tip roll 10.5°) | 2 |
 | `part-tilt-roll` | As `mitred-gull-15-5`, with **Part tilt** 8° and **Part roll** 12° about the pivot (50, 0, −20) mm: turned surfaces, edge curves, cap planes and the mirror of a placed part | 2 |
 
@@ -562,7 +563,7 @@ npm run foam:cases
 python scripts/validate_foam.py foam-check/cases.json
 ```
 
-`scripts/export-foam-cases.mjs` takes the wings of `test/step-cases.js` without `mitred-vtail-35-y-up` and `part-tilt-roll` (11 cases): the first differs from its case in the STEP axes only, the cores of the second lie in the frame of the part, as those of `mitred-gull-15-5`. Cuts: the proposal for a longest core of 300 mm. Kerf 1 mm for `guided-elliptic`, paper A3 for `pointed-tip` and Letter for `mitred-gull-15-5`, else no kerf and A4. `cases.json` holds per case the name, the 4 files, the segment count, the points per profile, the kerf, the vertex count of each profile polyline, the page count, the page size and the paper size.
+`scripts/export-foam-cases.mjs` takes the wings of `test/step-cases.js` without `mitred-vtail-35-y-up` and `part-tilt-roll` (13 cases): the first differs from its case in the STEP axes only, the cores of the second lie in the frame of the part, as those of `mitred-gull-15-5`. Cuts: the proposal for a longest core of 300 mm. Kerf 1 mm for `guided-elliptic`, paper A3 for `pointed-tip` and Letter for `mitred-gull-15-5`, else no kerf and A4. `cases.json` holds per case the name, the 4 files, the segment count, the points per profile, the kerf, the vertex count of each profile polyline, the page count, the page size and the paper size.
 
 | Check per case (`validate_foam.py`) | Pass condition |
 | --- | --- |
