@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-02
+
 ### Added
 
 - XFLR5 import of the second wing (biplane) and the fin. The second wing imports as the main wing does. The fin
