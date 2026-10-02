@@ -1,55 +1,8 @@
 // Spanwise interpolation of section parameters.
-// Every interpolated quantity f(y) is a weighted sum of the section values: f(y) = sum_i w_i(y) f_i.
-// 'linear' uses hat functions; 'smooth' uses the cardinal functions of a natural cubic spline.
-
-/**
- * Second derivatives of the natural cubic spline cardinal functions: column i of the result holds
- * the second derivatives at all knots of the spline that is 1 at knot i and 0 at the others. The
- * tridiagonal system is factored once (Thomas algorithm, no pivoting: it is diagonally dominant),
- * so n sections cost O(n^2) instead of n dense solves.
- * @returns {number[][]} M[j][i] = second derivative at knot j of cardinal function i
- */
-function cardinalSecondDerivatives(xs) {
-  const n = xs.length;
-  const M = Array.from({ length: n }, () => new Array(n).fill(0));
-  const m = n - 2;
-  if (m < 1) return M;
-  const h = [];
-  for (let i = 0; i < n - 1; i++) h.push(xs[i + 1] - xs[i]);
-  // Row r (knot r + 1): (h[r] / 6) M[r] + ((h[r] + h[r+1]) / 3) M[r+1] + (h[r+1] / 6) M[r+2] = rhs.
-  const diag = new Array(m);
-  const upper = new Array(m);
-  const lower = new Array(m);
-  for (let r = 0; r < m; r++) {
-    diag[r] = (h[r] + h[r + 1]) / 3;
-    upper[r] = h[r + 1] / 6;
-    lower[r] = h[r] / 6;
-  }
-  const cp = new Array(m);
-  const dp = new Array(m);
-  cp[0] = upper[0] / diag[0];
-  dp[0] = diag[0];
-  for (let r = 1; r < m; r++) {
-    dp[r] = diag[r] - lower[r] * cp[r - 1];
-    cp[r] = upper[r] / dp[r];
-  }
-  const rhs = new Array(m);
-  const sol = new Array(m);
-  for (let i = 0; i < n; i++) {
-    // Right-hand side for values e_i: (e[r+2] - e[r+1]) / h[r+1] - (e[r+1] - e[r]) / h[r].
-    for (let r = 0; r < m; r++) {
-      const e0 = r === i ? 1 : 0;
-      const e1 = r + 1 === i ? 1 : 0;
-      const e2 = r + 2 === i ? 1 : 0;
-      rhs[r] = (e2 - e1) / h[r + 1] - (e1 - e0) / h[r];
-    }
-    sol[0] = rhs[0] / dp[0];
-    for (let r = 1; r < m; r++) sol[r] = (rhs[r] - lower[r] * sol[r - 1]) / dp[r];
-    for (let r = m - 2; r >= 0; r--) sol[r] -= cp[r] * sol[r + 1];
-    for (let r = 0; r < m; r++) M[r + 1][i] = sol[r];
-  }
-  return M;
-}
+// 'linear' blends the two neighbouring sections with hat functions: f(y) = sum_i w_i(y) f_i.
+// 'smooth' is a shape-preserving cubic: per panel the cubic Hermite polynomial through the two
+// section values, with the slopes of the natural cubic spline through all sections, limited as by
+// Fritsch and Carlson (1980) so that no value leaves the range of the two sections of its panel.
 
 /** Index j of the span interval [ys[j], ys[j + 1]] that holds y (clamped to 0 .. n - 2): binary search. */
 function intervalOf(ys, y) {
@@ -64,27 +17,12 @@ function intervalOf(ys, y) {
 }
 
 /**
- * Build a weight function for section positions ys (strictly increasing).
+ * Hat-function weights (linear interpolation) for section positions ys (strictly increasing).
  * @returns {(y: number) => number[]} weights per section, summing to 1
  */
-export function spanwiseWeights(ys, mode = 'linear') {
+export function spanwiseWeights(ys) {
   const n = ys.length;
   if (n === 1) return () => [1];
-  if (mode === 'smooth' && n >= 3) {
-    const M = cardinalSecondDerivatives(ys);
-    return (y) => {
-      const yy = Math.min(Math.max(y, ys[0]), ys[n - 1]);
-      const j = intervalOf(ys, yy);
-      const h = ys[j + 1] - ys[j];
-      const a = (ys[j + 1] - yy) / h;
-      const b = (yy - ys[j]) / h;
-      const ca = ((a ** 3 - a) * h * h) / 6;
-      const cb = ((b ** 3 - b) * h * h) / 6;
-      const w = new Array(n);
-      for (let i = 0; i < n; i++) w[i] = (i === j ? a : 0) + (i === j + 1 ? b : 0) + ca * M[j][i] + cb * M[j + 1][i];
-      return w;
-    };
-  }
   return (y) => {
     const w = new Array(n).fill(0);
     if (y <= ys[0]) {
@@ -104,10 +42,78 @@ export function spanwiseWeights(ys, mode = 'linear') {
 }
 
 /**
- * Blend of equally sized point lists (one per section) at span position y, with the weights of
- * spanwiseWeights. 'smooth' evaluates the natural cubic spline of every coordinate from its two
- * neighbouring sections and their second derivatives, computed once here (tridiagonal system per
- * coordinate): O(points) per position instead of O(sections x points).
+ * Slopes at the sections for the smooth blend of the values F[i] (one Float64Array per section, all
+ * of length size) at positions ys, n >= 3 sections:
+ * 1. Natural cubic spline (second derivative 0 at root and tip): one tridiagonal system of size n - 2
+ *    (Thomas algorithm, no pivoting: it is diagonally dominant), one right-hand side per value, gives
+ *    the second derivatives D; the slope at section j follows from D and the panel next to it.
+ * 2. Limiter (Fritsch and Carlson 1980): a slope becomes 0 where the secants of the two panels next
+ *    to its section differ in sign or one of them is 0 (the section is a local extremum or starts a
+ *    constant panel), and is cut to 3 times the smaller secant otherwise. The cubic Hermite polynomial
+ *    of a panel with both slopes in [0, 3] times its secant is monotone: it stays within the values of
+ *    its two sections.
+ * Where the spline already meets the limits, the slopes are the spline's and the blend equals it.
+ * @returns {{ T: Float64Array[], S: Float64Array[] }} slopes per section and secants per panel
+ */
+function smoothSlopes(ys, F, size) {
+  const n = ys.length;
+  const h = [];
+  for (let i = 0; i < n - 1; i++) h.push(ys[i + 1] - ys[i]);
+  const S = h.map((hj, j) => {
+    const s = new Float64Array(size);
+    for (let q = 0; q < size; q++) s[q] = (F[j + 1][q] - F[j][q]) / hj;
+    return s;
+  });
+  // Rows r = 0..n-3: (h[r] / 6) D[r] + ((h[r] + h[r+1]) / 3) D[r+1] + (h[r+1] / 6) D[r+2] = S[r+1] - S[r].
+  const m = n - 2;
+  const D = Array.from({ length: n }, () => new Float64Array(size));
+  const cp = new Array(m);
+  const dp = new Array(m);
+  for (let r = 0; r < m; r++) {
+    const diag = (h[r] + h[r + 1]) / 3;
+    const lower = h[r] / 6;
+    dp[r] = r === 0 ? diag : diag - lower * cp[r - 1];
+    cp[r] = h[r + 1] / 6 / dp[r];
+    const rhs = D[r + 1];
+    const prev = r === 0 ? null : D[r];
+    const [s0, s1] = [S[r], S[r + 1]];
+    for (let q = 0; q < size; q++) {
+      const v = s1[q] - s0[q];
+      rhs[q] = (prev ? v - lower * prev[q] : v) / dp[r];
+    }
+  }
+  for (let r = m - 2; r >= 0; r--) {
+    const cur = D[r + 1];
+    const next = D[r + 2];
+    for (let q = 0; q < size; q++) cur[q] -= cp[r] * next[q];
+  }
+  const T = Array.from({ length: n }, () => new Float64Array(size));
+  for (let j = 0; j < n; j++) {
+    const t = T[j];
+    const left = j > 0 ? S[j - 1] : null;
+    const right = j < n - 1 ? S[j] : null;
+    for (let q = 0; q < size; q++) {
+      // Spline slope at section j: from the panel to its right, the last section from its left panel.
+      let v = right ? right[q] - (h[j] * (2 * D[j][q] + D[j + 1][q])) / 6 : left[q] + (h[j - 1] * (D[j - 1][q] + 2 * D[j][q])) / 6;
+      for (const sec of [left, right]) {
+        if (!sec) continue;
+        const s = sec[q];
+        // Also a slope that overflowed (NaN) becomes 0.
+        if (!(v * s > 0)) v = 0;
+        else if (Math.abs(v) > 3 * Math.abs(s)) v = 3 * s;
+      }
+      t[q] = v;
+    }
+  }
+  return { T, S };
+}
+
+/**
+ * Blend of equally sized point lists (one per section) at span position y. 'linear' blends the two
+ * neighbouring sections with the hat functions of spanwiseWeights; 'smooth' (3 or more sections)
+ * evaluates the cubic Hermite polynomial of every coordinate from its two neighbouring sections and
+ * the slopes of smoothSlopes, computed once here: O(points) per position instead of
+ * O(sections x points). y outside the sections is clamped to them.
  * @returns {(y: number) => number[][]}
  */
 export function spanwiseBlender(ys, mode, lists) {
@@ -134,47 +140,27 @@ export function spanwiseBlender(ys, mode, lists) {
     for (let k = 0; k < count; k++) for (let c = 0; c < dim; c++) f[k * dim + c] = L[k][c];
     return f;
   });
-  // Natural spline: D[0] = D[n - 1] = 0; rows r = 0..n-3 solve for D[r + 1] (Thomas algorithm, as in
-  // cardinalSecondDerivatives, with vector right-hand sides).
-  const h = [];
-  for (let i = 0; i < n - 1; i++) h.push(ys[i + 1] - ys[i]);
-  const m = n - 2;
-  const D = Array.from({ length: n }, () => new Float64Array(size));
-  const cp = new Array(m);
-  const dp = new Array(m);
-  for (let r = 0; r < m; r++) {
-    const diag = (h[r] + h[r + 1]) / 3;
-    const lower = h[r] / 6;
-    dp[r] = r === 0 ? diag : diag - lower * cp[r - 1];
-    cp[r] = h[r + 1] / 6 / dp[r];
-    const rhs = D[r + 1];
-    const [f0, f1, f2] = [F[r], F[r + 1], F[r + 2]];
-    const prev = r === 0 ? null : D[r];
-    for (let q = 0; q < size; q++) {
-      const v = (f2[q] - f1[q]) / h[r + 1] - (f1[q] - f0[q]) / h[r];
-      rhs[q] = (prev ? v - lower * prev[q] : v) / dp[r];
-    }
-  }
-  for (let r = m - 2; r >= 0; r--) {
-    const cur = D[r + 1];
-    const next = D[r + 2];
-    for (let q = 0; q < size; q++) cur[q] -= cp[r] * next[q];
-  }
+  const { T } = smoothSlopes(ys, F, size);
   return (y) => {
     const yy = Math.min(Math.max(y, ys[0]), ys[n - 1]);
     const j = intervalOf(ys, yy);
     const hj = ys[j + 1] - ys[j];
-    const a = (ys[j + 1] - yy) / hj;
     const b = (yy - ys[j]) / hj;
-    const ca = ((a ** 3 - a) * hj * hj) / 6;
-    const cb = ((b ** 3 - b) * hj * hj) / 6;
-    const [f0, f1, d0, d1] = [F[j], F[j + 1], D[j], D[j + 1]];
+    const a = 1 - b;
+    // Cubic Hermite basis on the panel, h00 + h01 = 1. Written from the nearer section, the blend is
+    // exactly the section value at either end and exactly the value of a constant panel.
+    const near = b < 0.5;
+    const wFar = near ? b * b * (1 + 2 * a) : a * a * (1 + 2 * b);
+    const h10 = a * a * b * hj;
+    const h11 = -b * b * a * hj;
+    const [f0, f1, t0, t1] = [F[j], F[j + 1], T[j], T[j + 1]];
+    const [from, to] = near ? [f0, f1] : [f1, f0];
     const out = new Array(count);
     for (let k = 0; k < count; k++) {
       const p = new Array(dim);
       for (let c = 0; c < dim; c++) {
         const q = k * dim + c;
-        p[c] = a * f0[q] + b * f1[q] + ca * d0[q] + cb * d1[q];
+        p[c] = from[q] + wFar * (to[q] - from[q]) + h10 * t0[q] + h11 * t1[q];
       }
       out[k] = p;
     }

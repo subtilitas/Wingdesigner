@@ -121,7 +121,7 @@ export default {
   'Section planes': 'Schnittebenen',
   'Mitred (square to the panels, as XFLR5)': 'Auf Gehrung (senkrecht zu den Feldern, wie XFLR5)',
   'Vertical (y = const)': 'Senkrecht (y = konstant)',
-  'Smooth (natural cubic spline through sections)': 'Glatt (natürlicher kubischer Spline durch die Schnitte)',
+  'Smooth (shape-preserving cubic through sections)': 'Glatt (formerhaltende kubische Kurve durch die Schnitte)',
   'Twist pivot (fraction of chord)': 'Drehpunkt der Schränkung (Anteil der Profiltiefe)',
   'Part tilt (°, positive = leading edge up)': 'Einstellwinkel des Teils (°, positiv = Nasenleiste hoch)',
   'Part roll (°, positive = right tip up)': 'Rollwinkel des Teils (°, positiv = rechter Randbogen hoch)',

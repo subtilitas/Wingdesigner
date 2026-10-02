@@ -44,8 +44,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   of the mapping name it too.
 - **Open** and the restore of the browser copy show a note for every project of format version 1, which may come
   from the XFLR5 import of that version: a tilt angle folded into its sections is exact with **Vertical** section
-  planes only. With **Mitred** section planes
-  **Checks** warns, also after the project is saved again.
+  planes only. With **Mitred** section planes **Checks** warns, also after the project is saved again.
+- **Smooth** spanwise interpolation is shape-preserving: per panel a cubic through the two section values with the
+  slopes of the natural cubic spline, limited as by Fritsch and Carlson so that no value leaves the range of the two
+  sections of its panel; the airfoil blends as mean line and thickness, and every panel is lofted on its own. Unevenly
+  spaced sections build, such as an airfoil switch or a chord step between two sections 0.5 mm apart from the XFLR5
+  import (the natural spline reached a chord of 6,018.68 mm between sections of 150 to 250 mm), without an overshoot
+  error. Wings that built before move where the natural spline left the section values: on the wizard presets
+  with **Smooth** by up to 0.56 mm, on **Sailplane** 2.55 mm and on **Batwing** 14.53 mm. The option reads
+  **Smooth (shape-preserving cubic through sections)**.
 
 ### Fixed
 

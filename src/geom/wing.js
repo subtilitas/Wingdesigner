@@ -39,13 +39,6 @@ export const FOLD_LIMIT = 0.9 * LIMITS.minChord;
 // 0.9999999999999999 mm, and guide curves through them to 1 mm less a few units in the last place.
 const MIN_CHORD = LIMITS.minChord * (1 - 1e-9);
 
-/**
- * Smooth spanwise interpolation: largest distance, as a multiple of the section value range, by
- * which an interpolated value (leading-edge x, chord, z, twist, profile coordinate) may leave that
- * range. Natural cubic splines through closely spaced sections overshoot by thousands of times it.
- */
-export const OVERSHOOT_LIMIT = 2;
-
 /** Surface rows tested halfway between fitted stations (the widest intervals), besides the sections. */
 const MAX_STATION_ROWS = 64;
 
@@ -132,43 +125,68 @@ export function joinCurves(curves) {
 }
 
 /**
- * Interpolate columns of control points along v.
- * scheme: { kind: 'global', params, degree } | { kind: 'panels', params, panels: [[a, b], ...], degree }
+ * Interpolate columns of control points along v, panel by panel: every panel (stations a to b) gets
+ * its own interpolating curve, and the curves join with C0 continuity at the sections.
+ * scheme: { kind: 'panels', params, panels: [[a, b], ...], degree }
  * values: array over stations of equally sized point arrays.
  * Returns { degree, knots, points: [station-independent index][i] }.
  */
 export function interpolateAlongV(values, scheme) {
   const nCols = values[0].length;
   const cols = [];
+  // One degree for every panel (joinCurves needs it): the fewest stations of a panel with more
+  // than two bound it. A panel of two stations is a straight segment at any degree.
+  const q = scheme.panels.reduce((m, [a, b]) => (b - a > 1 ? Math.min(m, b - a) : m), scheme.degree);
+  const d = scheme.panels.some(([a, b]) => b - a > 1) ? q : 1;
   for (let i = 0; i < nCols; i++) {
     const series = values.map((row) => row[i]);
-    if (scheme.kind === 'global') {
-      cols.push(interpolateCurve(series, scheme.degree, { params: scheme.params }));
-    } else {
-      // One degree for every panel (joinCurves needs it): the fewest stations of a panel with more
-      // than two bound it. A panel of two stations is a straight segment at any degree.
-      const q = scheme.panels.reduce((m, [a, b]) => (b - a > 1 ? Math.min(m, b - a) : m), scheme.degree);
-      const d = scheme.panels.some(([a, b]) => b - a > 1) ? q : 1;
-      const parts = scheme.panels.map(([a, b]) => {
-        const f0 = scheme.params[a];
-        const f1 = scheme.params[b];
-        // Two stations: the interpolating curve is the straight segment through them (degree 1,
-        // knots 0, 0, 1, 1), as interpolateCurve returns it, without the solve; raised to degree d
-        // with its control points evenly along the segment.
-        if (b - a === 1) {
-          if (d === 1) return { degree: 1, knots: [0, 0, 1, 1].map((t) => f0 + t * (f1 - f0)), points: [series[a].slice(), series[b].slice()] };
-          const P = Array.from({ length: d + 1 }, (_, k) => series[a].map((c, m) => c + (k / d) * (series[b][m] - c)));
-          P[d] = series[b].slice();
-          return { degree: d, knots: [...Array(d + 1).fill(f0), ...Array(d + 1).fill(f1)], points: P };
-        }
-        const local = scheme.params.slice(a, b + 1).map((f) => (f - f0) / (f1 - f0));
-        const c = interpolateCurve(series.slice(a, b + 1), d, { params: local });
-        return { degree: c.degree, knots: c.knots.map((t) => f0 + t * (f1 - f0)), points: c.points };
-      });
-      cols.push(joinCurves(parts));
-    }
+    const parts = scheme.panels.map(([a, b]) => {
+      const f0 = scheme.params[a];
+      const f1 = scheme.params[b];
+      // Two stations: the interpolating curve is the straight segment through them (degree 1,
+      // knots 0, 0, 1, 1), as interpolateCurve returns it, without the solve; raised to degree d
+      // with its control points evenly along the segment.
+      if (b - a === 1) {
+        if (d === 1) return { degree: 1, knots: [0, 0, 1, 1].map((t) => f0 + t * (f1 - f0)), points: [series[a].slice(), series[b].slice()] };
+        const P = Array.from({ length: d + 1 }, (_, k) => series[a].map((c, m) => c + (k / d) * (series[b][m] - c)));
+        P[d] = series[b].slice();
+        return { degree: d, knots: [...Array(d + 1).fill(f0), ...Array(d + 1).fill(f1)], points: P };
+      }
+      const local = scheme.params.slice(a, b + 1).map((f) => (f - f0) / (f1 - f0));
+      const c = interpolateCurve(series.slice(a, b + 1), d, { params: local });
+      return { degree: c.degree, knots: c.knots.map((t) => f0 + t * (f1 - f0)), points: c.points };
+    });
+    cols.push(joinCurves(parts));
   }
   return { degree: cols[0].degree, knots: cols[0].knots, columns: cols.map((c) => c.points) };
+}
+
+/**
+ * Spanwise blend of resampled profiles (point lists of 2L + 1 points, leading edge at L; point L - k
+ * of the upper surface and point L + k of the lower surface share a chord station). 'smooth' blends
+ * the mean (P_(L-k) + P_(L+k)) / 2 and the difference P_(L-k) - P_(L+k) of every chord station: the
+ * shape-preserving blend keeps both, and with them the thickness, between the values of the two
+ * sections of the panel. 'linear' blends the points (the same result in both forms).
+ */
+function profileBlender(ys, mode, lists) {
+  if (mode !== 'smooth') return spanwiseBlender(ys, mode, lists);
+  const L = (lists[0].length - 1) / 2;
+  const split = (P) =>
+    P.map((p, i) => {
+      if (i === L) return p.slice();
+      const o = P[2 * L - i];
+      return i < L ? [(p[0] + o[0]) / 2, (p[1] + o[1]) / 2] : [o[0] - p[0], o[1] - p[1]];
+    });
+  const blend = spanwiseBlender(ys, mode, lists.map(split));
+  return (y) => {
+    const B = blend(y);
+    return B.map((p, i) => {
+      if (i === L) return p;
+      const [mean, diff] = i < L ? [p, B[2 * L - i]] : [B[2 * L - i], p];
+      const sign = i < L ? 0.5 : -0.5;
+      return [mean[0] + sign * diff[0], mean[1] + sign * diff[1]];
+    });
+  };
 }
 
 // Profile stage per airfoil (checks, NURBS curve, crossing test), keyed by the parametrization and a
@@ -551,7 +569,7 @@ export function buildWing(project) {
   stationYs.push(y1);
 
   const compat = sections.map((s) => result.profiles.get(s.airfoil).compat);
-  const blendCompat = spanwiseBlender(ys, settings.spanwise, compat);
+  const blendCompat = profileBlender(ys, settings.spanwise, compat);
   const vals = (k) => sections.map((s) => s[k]);
   const X = vals('x');
   const Z = vals('z');
@@ -596,7 +614,7 @@ export function buildWing(project) {
     if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
     const roll = raw[4];
     const stretch = planesOn ? stretchOf(roll, planes.panels[panelOf(y)]) : 1;
-    return { raw, xLE, chord, z: raw[2], twist: raw[3], roll, stretch };
+    return { xLE, chord, z: raw[2], twist: raw[3], roll, stretch };
   };
   const placement = (y) => {
     let out = placed.get(y);
@@ -696,30 +714,6 @@ export function buildWing(project) {
     }
     return { t, tX, core, coreX };
   };
-  // Smooth mode: interpolated section values must stay within OVERSHOOT_LIMIT ranges of the section
-  // values (only the values the build uses: guide curves replace leading-edge x and chord).
-  const smooth = settings.spanwise === 'smooth';
-  const range = (values) => [Math.min(...values), Math.max(...values)];
-  const overshootChecks = [];
-  // k: index of the value in the blended placement scalars [leading-edge x, chord, z, twist].
-  // name: the name of the value as a function (text made only for the error message); unit: 'mm', '°'
-  // or 'chord' (a percentage of the chord).
-  if (!guideOn.nose && !guideOn.end) overshootChecks.push({ name: () => tr('leading-edge x'), unit: 'mm', k: 0, range: range(X) });
-  if (!(guideOn.nose && guideOn.end)) overshootChecks.push({ name: () => tr('chord'), unit: 'mm', k: 1, range: range(C) });
-  overshootChecks.push({ name: () => 'z', unit: 'mm', k: 2, range: range(Z) }, { name: () => tr('twist'), unit: '°', k: 3, range: range(T) });
-  const profileRanges = smooth ? compat[0].map((_, k) => range(compat.map((c) => c[k][1]))) : [];
-  const profileNames = smooth
-    ? compat[0].map((_, k) => () => {
-        const x = fixed(chordStations[Math.abs(k - N)] * 100, 1);
-        return k < N ? tr('upper surface height at x = {x} % chord', { x }) : tr('lower surface height at x = {x} % chord', { x });
-      })
-    : [];
-  let overshoot = null;
-  const record = (name, unit, value, [lo, hi], y) => {
-    const out = Math.max(lo - value, value - hi);
-    const ratio = out / Math.max(hi - lo, 1e-9 * Math.max(1, Math.abs(lo), Math.abs(hi)));
-    if (ratio > OVERSHOOT_LIMIT && !(overshoot && overshoot.ratio >= ratio)) overshoot = { name, unit, value, lo, hi, y, ratio };
-  };
   let nonFiniteY = null;
   let farPlacement = null;
   // Planes that turn along a Linear panel (roll blended linearly in y, dφ/dy per panel in rad/mm): a
@@ -731,14 +725,15 @@ export function buildWing(project) {
   let turnFold = null;
   for (const y of [...checkYs].sort((a, b) => a - b)) {
     if (!(y >= y0 && y <= y1)) continue;
-    const { chord, raw, xLE, z, twist, roll, stretch } = placement(y);
+    const { chord, xLE, z, twist, roll, stretch } = placement(y);
     // Placement values whose coordinates overflow (e.g. a twist of 1e308 degrees) stop the build.
     if (![xLE, chord, z, Math.cos((twist * Math.PI) / 180)].every(Number.isFinite)) {
       nonFiniteY = y;
       break;
     }
-    // Interpolated values (smooth overshoot, guide curves) stay within the geometry extent and the
-    // chord limit; every combination of valid sections and guides does.
+    // Interpolated values stay within the geometry extent and the chord limit: the blends stay within
+    // the section values, guide curves within the extent of their control points, but the distance
+    // of nose line and end line can exceed the chord limit.
     // Relative round-off of the blend (1e-9) does not count: sections at the limits blend to them.
     const ext = LIMITS.maxExtent * (1 + 1e-9);
     if (!farPlacement && (Math.abs(xLE) > ext || Math.abs(xLE + chord) > ext || Math.abs(z) > ext || chord > LIMITS.maxChord * (1 + 1e-9))) {
@@ -748,7 +743,7 @@ export function buildWing(project) {
       minChord = chord;
       minChordY = y;
     }
-    // Blended profile thickness at every chord station (smooth mode can overshoot below zero), then
+    // Blended profile thickness at every chord station, then
     // again after the trailing-edge setting, whose linear taper can pull the surfaces through each
     // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendCompat(y);
@@ -767,10 +762,6 @@ export function buildWing(project) {
           break;
         }
       }
-    }
-    if (smooth) {
-      for (const q of overshootChecks) record(q.name, q.unit, raw[q.k], q.range, y);
-      for (let k = 1; k < 2 * N; k++) record(profileNames[k], 'chord', shape[k][1], profileRanges[k], y);
     }
     // Round-off level differences do not move the reported position.
     const { t, tX } = thinnest(shape, teSliver(chord));
@@ -806,7 +797,7 @@ export function buildWing(project) {
         chord: fixed(chord, 0),
         extent: whole(LIMITS.maxExtent),
         maxChord: whole(LIMITS.maxChord),
-      })} ${tr('Check the guide curves, or use linear interpolation.')}`,
+      })} ${tr('Check the guide curves.')}`,
     );
     return result;
   }
@@ -820,35 +811,11 @@ export function buildWing(project) {
     );
     return result;
   }
-  if (overshoot) {
-    const inChord = overshoot.unit === 'chord';
-    const f = (v) => (inChord ? fixed(v * 100, 2) : fixed(v, 2));
-    const unit = inChord ? tr('% chord') : overshoot.unit;
-    let gap = Infinity;
-    for (let i = 0; i + 1 < ys.length; i++) gap = Math.min(gap, ys[i + 1] - ys[i]);
-    errors.push(
-      [
-        tr('Smooth spanwise interpolation overshoots at y = {y} mm: {name} is {value} {unit}, while the sections range from {lo} to {hi} {unit}.', {
-          y: fixed(overshoot.y, 1),
-          name: overshoot.name(),
-          value: f(overshoot.value),
-          unit,
-          lo: f(overshoot.lo),
-          hi: f(overshoot.hi),
-        }),
-        tr('The sections are unevenly spaced (smallest gap {gap} mm).', { gap: fixed(gap, 2) }),
-        tr('Use linear interpolation, space the sections more evenly or remove sections that lie close together.'),
-      ].join(' '),
-    );
-    return result;
-  }
   if (minThick < -1e-9) {
     const where = { y: fixed(minThickY, 1), x: fixed(minThickX * 100, 1), thickness: fixed(minThick * 100, 3) };
-    errors.push(
-      smooth
-        ? `${tr('The blended profile has negative thickness at y = {y} mm, x = {x} % chord ({thickness} % chord); smooth spanwise interpolation overshoots between unevenly spaced sections.', where)} ${tr('Use linear interpolation or add sections.')}`
-        : `${tr('The resampled profile has negative thickness at y = {y} mm, x = {x} % chord ({thickness} % chord): upper and lower surface of a section airfoil cross there.', where)} ${tr('Check the airfoils near that position or raise Settings > Chord samples.')}`,
-    );
+    // Both blends keep the thickness between the thicknesses of the two sections of the panel: a
+    // negative one comes from a section airfoil.
+    errors.push(`${tr('The resampled profile has negative thickness at y = {y} mm, x = {x} % chord ({thickness} % chord): upper and lower surface of a section airfoil cross there.', where)} ${tr('Check the airfoils near that position or raise Settings > Chord samples.')}`);
     return result;
   }
   if (minTeThick < -1e-9) {
@@ -871,14 +838,9 @@ export function buildWing(project) {
   }
   if (minChord < MIN_CHORD) {
     const hint = !pointed && minChordY === y1 && minChord > -CROSS_TOLERANCE ? ` ${tr('For a tip that ends in a point, set Settings > Wing tip to Pointed.')}` : '';
-    // With both guide curves the chord is their distance; otherwise it is the blend of the section
-    // chords, which only the smooth blend takes below the section values.
-    const at = { chord: fixed(minChord, 2), y: fixed(minChordY, 1), min: plain(LIMITS.minChord) };
-    const cause =
-      guideOn.nose && guideOn.end
-        ? tr('Chord drops to {chord} mm at y = {y} mm; nose line and end line must not touch or cross.', at)
-        : tr('Chord drops to {chord} mm at y = {y} mm; the smooth blend of the section chords falls below the minimum of {min} mm; use linear interpolation or add sections.', at);
-    errors.push(cause + hint);
+    // The blends keep the chord between the chords of the two sections of the panel, at least
+    // LIMITS.minChord: only the distance of nose line and end line falls below it.
+    errors.push(tr('Chord drops to {chord} mm at y = {y} mm; nose line and end line must not touch or cross.', { chord: fixed(minChord, 2), y: fixed(minChordY, 1) }) + hint);
     return result;
   }
 
@@ -908,7 +870,7 @@ export function buildWing(project) {
   const sub = [0, ...probeK.slice().reverse().map((k) => N - k), N, ...probeK.map((k) => N + k), 2 * N];
   const leSub = probeK.length + 1;
   const subCompat = compat.map((c) => sub.map((i) => c[i]));
-  const blendSub = spanwiseBlender(ys, settings.spanwise, subCompat);
+  const blendSub = profileBlender(ys, settings.spanwise, subCompat);
   const pos = [leSub, 0, ...probeK.flatMap((_, q) => [leSub - 1 - q, leSub + 1 + q])];
   const idx = pos.map((j) => sub[j]);
   const probe = (yList, surface, paramsU, closedTE) => {
@@ -1033,11 +995,9 @@ export function buildWing(project) {
       if (!stationOf.has(y)) stationOf.set(y, i);
     });
     for (let i = 0; i < ys.length - 1; i++) panelIdx.push([stationOf.get(ys[i]), stationOf.get(ys[i + 1])]);
-    const scheme =
-      settings.spanwise === 'smooth'
-        ? { kind: 'global', params: paramsV, degree: degreeV }
-        : { kind: 'panels', params: paramsV, panels: panelIdx, degree: degreeV };
-    const along = interpolateAlongV(rowCtrl, scheme);
+    // Every panel on its own: the smooth blend is C1 at the sections, a cubic through all stations
+    // swings beside a short panel with a fast change (a 0.5 mm airfoil switch next to a 300 mm panel).
+    const along = interpolateAlongV(rowCtrl, { kind: 'panels', params: paramsV, panels: panelIdx, degree: degreeV });
     // Root and tip boundaries lie exactly in their planes (removes solver round-off): y = const for a
     // vertical plane, the projection onto the rolled plane otherwise. The root is always vertical.
     const ctrl = along.columns;
@@ -1173,9 +1133,9 @@ export function buildWing(project) {
     const neg = fitThick < -1e-9;
     const at = { y: fixed(neg ? fitThickY : fitCoreY, 1), thickness: fixed((neg ? fitThick : fitCore) * 100, 3) };
     const problem = neg
-      ? tr('The fitted surface turns inside out between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in smooth mode).', at)
-      : tr('The fitted surface has zero thickness between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in smooth mode).', at);
-    errors.push(`${problem} ${tr('Smooth the guide curves, space the sections more evenly or add sections.')}`);
+      ? tr('The fitted surface turns inside out between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast).', at)
+      : tr('The fitted surface has zero thickness between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast).', at);
+    errors.push(`${problem} ${tr('Smooth the guide curves or add sections.')}`);
     return result;
   }
   if (minFit < FOLD_LIMIT) {

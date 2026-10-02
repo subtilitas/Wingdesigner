@@ -374,7 +374,7 @@ Unbekannte Schlüssel in `settings` entfallen bei **Öffnen**. **Speichern** sch
 | `profiles[]` | ein Eintrag je Profil, das ein Schnitt verwendet: `airfoil` (ID), `name`, `curve`, `leadingEdgeParameter` (Kurvenparameter an der Profilnase) |
 | `guides.nose`, `guides.end` | Leitkurve, Kontrollpunkte `[x, y]` in mm; `null` bei ausgeschalteter Leitkurve |
 | `stations[]` | jede Station in Spannweitenrichtung: `y` (mm), `v` (Spannweitenanteil 0–1), `xLE`, `z`, `chord` (mm), `twist` (°), `roll` (°, Neigung der Stationsebene um x) und `stretch` (Dickenfaktor), [[Geometrie]], Abschnitt 3.8 |
-| `surface` | Fläche des rechten Halbflügels: `degreeU` (3), `degreeV` (1, wenn kein Feld Zwischenstationen hat: `spanwise` `"straight"`, und `"linear"` ohne Leitkurven und ohne Felder zwischen Gehrungsebenen verschiedener Neigung; mit Zwischenstationen (eine Leitkurve eingeschaltet, oder `"linear"`-Felder zwischen Gehrungsebenen verschiedener Neigung): 3, oder 2 bzw. 1, wenn die Grenze des Flächengitters die Stationen je Feld auf 2 oder 1 senkt; `"smooth"`: 3), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
+| `surface` | Fläche des rechten Halbflügels: `degreeU` (3), `degreeV` (1, wenn kein Feld Zwischenstationen hat: `spanwise` `"straight"`, und `"linear"` ohne Leitkurven und ohne Felder zwischen Gehrungsebenen verschiedener Neigung; mit Zwischenstationen (eine Leitkurve eingeschaltet, `"smooth"`, oder `"linear"`-Felder zwischen Gehrungsebenen verschiedener Neigung): 3, oder 2 bzw. 1, wenn die Grenze des Flächengitters die Stationen je Feld auf 2 oder 1 senkt), `knotsU`, `knotsV`, `controlPoints`, `leadingEdgeU`, `closedTrailingEdge` |
 
 - Kurvenobjekt: `degree`, `knots` (Knotenvektor), `controlPoints`. Alle Kurven und die Fläche sind nicht-rational; ein Schlüssel `weights` wird nicht geschrieben.
 - `profiles[].curve.controlPoints`: `[x, y]` in normierten Profilkoordinaten (Profiltiefe 1).
@@ -428,8 +428,7 @@ Erst beim Flügelaufbau geprüft, in dieser Reihenfolge:
 - interpolierte Schnittwerte sind endliche Zahlen (x der Profilnase, Profiltiefe, z, Kosinus der Schränkung);
 - interpoliertes x der Profilnase, x der Endleiste und z innerhalb von ±1 200 000 mm, Profiltiefe höchstens 100 000 mm;
 - `sectionPlanes` `"mitred"` mit `spanwise` `"linear"`: Entlang eines Feldes drehen sich die Schnittebenen schneller, als seine Profile es zulassen, daher faltet sich die Fläche; an einem Schnitt zählen beide benachbarten Felder ([[Geometrie]], Abschnitt 3.6);
-- `spanwise` `"smooth"`: ein interpolierter Wert (x der Profilnase, Profiltiefe, z, Schränkung oder Höhe eines Konturpunkts) liegt um mehr als das 2-Fache des Bereichs seiner Schnittwerte außerhalb dieses Bereichs;
-- Dicke des interpolierten Profils unter 0 (`spanwise` `"smooth"`: Überschwingen; `"linear"`: Ober- und Unterseite eines Profils kreuzen sich);
+- Dicke des interpolierten Profils unter 0 (Ober- und Unterseite eines Schnittprofils kreuzen sich);
 - Dicke nach der Endleisteneinstellung unter 0;
 - Ober- und Unterseite berühren sich nach der Interpolation oder nach der Endleisteneinstellung: Dicke an einer Tiefenstation zwischen 1 % und 99 % der Profiltiefe höchstens 0,001 % der Profiltiefe;
 - Profiltiefe unter 1 mm;

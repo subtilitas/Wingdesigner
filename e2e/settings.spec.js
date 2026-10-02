@@ -338,7 +338,7 @@ test.describe('Settings tab', () => {
     await openTab(page, 'Settings');
     await expect(spanwise(page)).toHaveValue('linear');
     await expect(panelStations(page)).toHaveValue('8');
-    await choose(spanwise(page), { label: 'Smooth (natural cubic spline through sections)' });
+    await choose(spanwise(page), { label: 'Smooth (shape-preserving cubic through sections)' });
     await openTab(page, 'Checks');
     // Smooth: cubic spline in v through 8 stations per panel + the tip station.
     await expect(checksValue(page, 'Surface')).toHaveText(surfaceRe(3, 121, 9));

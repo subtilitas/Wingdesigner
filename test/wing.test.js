@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { OVERSHOOT_LIMIT, buildWing, interpolateAlongV, joinCurves, mitredPlaneProblem, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
+import { buildWing, interpolateAlongV, joinCurves, mitredPlaneProblem, placeSection, surfaceRowCrossing } from '../src/geom/wing.js';
 import { MAX_STRETCH, firstFold, overStretched, planeFold, rolledPanelCount, sectionPlanes, stretchOf, upExtent } from '../src/geom/planes.js';
 import { syncGuidesToSpan } from '../src/model/edit.js';
 import { curvePoint, dist, interpolateCurve, knotMultiplicities, solveMonotonic, surfacePoint } from '../src/geom/nurbs.js';
@@ -49,7 +49,7 @@ describe('profile curves', () => {
 
 describe('spanwise interpolation', () => {
   it('uses hat functions in linear mode', () => {
-    const w = spanwiseWeights([0, 100, 300], 'linear');
+    const w = spanwiseWeights([0, 100, 300]);
     expect(w(-5)).toEqual([1, 0, 0]);
     expect(w(50)).toEqual([0.5, 0.5, 0]);
     expect(w(200)).toEqual([0, 0.5, 0.5]);
@@ -57,33 +57,38 @@ describe('spanwise interpolation', () => {
     expect(spanwiseWeights([5])(3)).toEqual([1]);
   });
 
-  it('blends point lists from the neighbouring sections as the weighted sum does', () => {
-    // Uneven spacing (0.1 mm next to 100 mm gaps) and values outside the section range.
+  it('blends point lists from the neighbouring sections as the weighted sum does (linear)', () => {
+    // Uneven spacing (0.1 mm next to 100 mm gaps).
     const ys = [0, 0.1, 100, 101, 250, 400, 400.5, 800];
     const lists = ys.map((y, i) => [[Math.sin(i), Math.cos(3 * i)], [i * i, -i], [0.01 * y, 1]]);
-    for (const mode of ['smooth', 'linear']) {
-      const w = spanwiseWeights(ys, mode);
-      const blend = spanwiseBlender(ys, mode, lists);
-      for (const y of [-20, 0, 0.05, 50, 100.5, 333, 400.2, 799, 900]) {
-        const a = blendPoints(w(y), lists);
-        const b2 = blend(y);
-        for (let k = 0; k < a.length; k++) for (let c = 0; c < 2; c++) expect(b2[k][c]).toBeCloseTo(a[k][c], 9);
-      }
+    const w = spanwiseWeights(ys);
+    const blend = spanwiseBlender(ys, 'linear', lists);
+    for (const y of [-20, 0, 0.05, 50, 100.5, 333, 400.2, 799, 900]) {
+      const a = blendPoints(w(y), lists);
+      const b2 = blend(y);
+      for (let k = 0; k < a.length; k++) for (let c = 0; c < 2; c++) expect(b2[k][c]).toBeCloseTo(a[k][c], 9);
     }
   });
 
-  it('reproduces section values and sums to one in smooth mode', () => {
+  // Smooth blend of one scalar per section.
+  const smooth = (ys, values) => {
+    const blend = spanwiseBlender(ys, 'smooth', values.map((v) => [[v]]));
+    return (y) => blend(y)[0][0];
+  };
+
+  it('reproduces section values and linear data in smooth mode', () => {
     const ys = [0, 100, 250, 400];
-    const w = spanwiseWeights(ys, 'smooth');
-    ys.forEach((y, i) => w(y).forEach((v, k) => expect(v).toBeCloseTo(i === k ? 1 : 0, 12)));
-    for (const y of [10, 120, 399]) expect(w(y).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 12);
-    // Natural cubic spline reproduces linear data exactly.
-    expect(blendScalar(w(177), ys.map((y) => 3 * y + 1))).toBeCloseTo(3 * 177 + 1, 9);
-    expect(w(-10)).toEqual(w(0));
+    const f = smooth(ys, [3, -1, 7, 2]);
+    ys.forEach((y, i) => expect(f(y)).toBe([3, -1, 7, 2][i]));
+    expect(f(-10)).toBe(3);
+    expect(f(500)).toBe(2);
+    // Linear data: the natural spline is the line, within the limits.
+    const line = smooth(ys, ys.map((y) => 3 * y + 1));
+    for (const y of [10, 177, 399]) expect(line(y)).toBeCloseTo(3 * y + 1, 9);
   });
 
-  it('matches a dense natural-spline solve and handles 400 sections interactively', () => {
-    // Reference: natural cubic spline through the values e_i, second derivatives from a dense solve.
+  it('equals the natural cubic spline where that spline stays within the limits, and handles 400 sections interactively', () => {
+    // Reference: natural cubic spline through the values, second derivatives from a dense solve.
     const dense = (xs, vals, y) => {
       const n = xs.length;
       const h = xs.slice(1).map((x, i) => x - xs[i]);
@@ -102,27 +107,67 @@ describe('spanwise interpolation', () => {
       const c = (y - xs[j]) / h[j];
       return a * vals[j] + c * vals[j + 1] + (((a ** 3 - a) * M[j] + (c ** 3 - c) * M[j + 1]) * h[j] * h[j]) / 6;
     };
-    let seed = 3;
-    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let t = 0; t < 20; t++) {
-      const xs = [0];
-      for (let i = 1; i < 3 + Math.floor(rnd() * 12); i++) xs.push(xs[i - 1] + 0.5 + rnd() * 200);
-      const vals = xs.map(() => rnd() * 100);
-      const w = spanwiseWeights(xs, 'smooth');
-      for (let k = 0; k < 10; k++) {
-        const y = rnd() * xs[xs.length - 1];
-        expect(blendScalar(w(y), vals)).toBeCloseTo(dense(xs, vals, y), 8);
-      }
+    // Chords of a wing with a quadratic taper from 200 mm, evenly and unevenly spaced: monotone, and
+    // the spline slopes lie within 3 times the secants.
+    for (const xs of [
+      [0, 150, 300, 450, 600],
+      [0, 100, 250, 450, 600, 700],
+    ]) {
+      const vals = xs.map((y) => 200 - 0.1 * y - 1e-4 * y * y);
+      const f = smooth(xs, vals);
+      for (let y = 0; y <= xs[xs.length - 1]; y += 7) expect(f(y)).toBeCloseTo(dense(xs, vals, y), 9);
     }
     const ys = Array.from({ length: 400 }, (_, i) => i * 5 + (i % 3));
     const t0 = performance.now();
-    const w = spanwiseWeights(ys, 'smooth');
-    for (let k = 0; k < 500; k++) w(k * 3.9);
+    const f = smooth(ys, ys.map((y) => Math.sin(y / 100)));
+    for (let k = 0; k < 500; k++) f(k * 3.9);
     expect(performance.now() - t0).toBeLessThan(2000);
+  });
+
+  it('stays within the two section values of every panel and is monotone there, also between unevenly spaced sections', () => {
+    let seed = 3;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let t = 0; t < 40; t++) {
+      // Panels of 0.5 mm (an XFLR5 airfoil switch) next to panels up to 300 mm; repeated values (a
+      // constant panel) and steps.
+      const ys = [0];
+      for (let i = 1; i < 3 + Math.floor(rnd() * 10); i++) ys.push(ys[i - 1] + (rnd() < 0.3 ? 0.5 : 1 + rnd() * 300));
+      const vals = [];
+      for (let i = 0; i < ys.length; i++) vals.push(i > 0 && rnd() < 0.3 ? vals[i - 1] : Math.round(rnd() * 100));
+      const f = smooth(ys, vals);
+      for (let j = 0; j + 1 < ys.length; j++) {
+        const lo = Math.min(vals[j], vals[j + 1]);
+        const hi = Math.max(vals[j], vals[j + 1]);
+        const sign = Math.sign(vals[j + 1] - vals[j]);
+        const tol = 1e-9 * (1 + hi);
+        let prev = vals[j];
+        for (let k = 1; k <= 64; k++) {
+          const v = f(ys[j] + ((ys[j + 1] - ys[j]) * k) / 64);
+          expect(v).toBeGreaterThanOrEqual(lo - tol);
+          expect(v).toBeLessThanOrEqual(hi + tol);
+          expect(sign * (v - prev)).toBeGreaterThanOrEqual(-tol);
+          prev = v;
+        }
+      }
+    }
+  });
+
+  it('has a continuous slope at the sections in smooth mode', () => {
+    const ys = [0, 300, 300.5, 600, 900];
+    const f = smooth(ys, [250, 250, 200, 150, 120]);
+    const e = 1e-6;
+    for (const y of ys.slice(1, -1)) {
+      const left = (f(y) - f(y - e)) / e;
+      const right = (f(y + e) - f(y)) / e;
+      expect(Math.abs(right - left)).toBeLessThan(1e-3 * Math.max(1, Math.abs(left)));
+    }
+    // The constant root panel stays constant.
+    for (let y = 0; y <= 300; y += 10) expect(f(y)).toBe(250);
   });
 
   it('blends point lists', () => {
     expect(blendPoints([0.25, 0.75], [[[0, 0]], [[4, 8]]])).toEqual([[3, 6]]);
+    expect(blendScalar([0.25, 0.75], [4, 8])).toBe(7);
   });
 });
 
@@ -545,19 +590,6 @@ describe('builder robustness', () => {
     expect(b.errors).toEqual([]);
     expect(b.surface).not.toBeNull();
   });
-
-  it('reports negative thickness from smooth overshoot', () => {
-    const p = sampleProject({ settings: { spanwise: 'smooth' } });
-    p.airfoils = [naca('0024', 'thick'), naca('0006', 'thin')];
-    p.sections = [
-      { id: 'a', airfoil: 'thick', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
-      { id: 'b', airfoil: 'thin', x: 0, y: 60, z: 0, chord: 200, twist: 0 },
-      { id: 'c', airfoil: 'thick', x: 0, y: 600, z: 0, chord: 200, twist: 0 },
-    ];
-    expect(buildWing(p).errors[0]).toMatch(/negative thickness/);
-    p.settings.spanwise = 'linear';
-    expect(buildWing(p).errors).toEqual([]);
-  });
 });
 
 describe('trailing-edge setting and span range', () => {
@@ -710,7 +742,22 @@ describe('fitted curve and surface row crossings', () => {
   });
 });
 
-describe('smooth spanwise overshoot', () => {
+/** Smooth wing with sections at y = 0, 1e-304 and 600 mm, leading-edge x 0, 1,000,000 and 0 mm. */
+function overflow() {
+  const p = sampleProject({ settings: { spanwise: 'smooth' } });
+  p.sections = [0, 1e-304, 600].map((y, i) => ({ id: `s${i}`, airfoil: 'root', x: i === 1 ? 1_000_000 : 0, y, z: 0, chord: 200, twist: 0 }));
+  return p;
+}
+
+/** Sample wing with a nose line at x = 0 mm and an end line at x = 300,000 mm. */
+function farGuides() {
+  const p = sampleProject();
+  p.guides.nose = { enabled: true, mode: 'fit', degree: 3, points: [[0, 0], [0, 600]] };
+  p.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[300_000, 0], [300_000, 600]] };
+  return p;
+}
+
+describe('smooth spanwise interpolation between unevenly spaced sections', () => {
   const symmetric = (codes, ys, chord = () => 100) =>
     createProject({
       airfoils: codes.map((c, i) => naca(c, `a${i}`, { closedTE: true })),
@@ -718,40 +765,105 @@ describe('smooth spanwise overshoot', () => {
       settings: { spanwise: 'smooth' },
     });
 
-  it('rejects profiles that overshoot between closely spaced sections', () => {
-    // Weights of the natural cubic spline reach +-1475 between y = 0.11 and 100 mm.
+  /**
+   * Largest distance (mm; twist in degrees) by which a station of the build leaves the values of the
+   * two sections of its panel: leading-edge x, chord, z, twist and the thickness at every chord station.
+   */
+  const beyondSections = (b) => {
+    const { sections, stations, profiles } = b;
+    const out = (v, a, c) => Math.max(0, Math.min(a, c) - v, v - Math.max(a, c));
+    let worst = 0;
+    for (const st of stations) {
+      let j = 0;
+      while (j < sections.length - 2 && st.y > sections[j + 1].y) j++;
+      const [A, B] = [sections[j], sections[j + 1]];
+      worst = Math.max(worst, out(st.xLE, A.x, B.x), out(st.chord, A.chord, B.chord), out(st.z, A.z, B.z), out(st.twist, A.twist, B.twist));
+      const [pa, pb] = [profiles.get(A.airfoil).compat, profiles.get(B.airfoil).compat];
+      const N = (st.shape.length - 1) / 2;
+      const t = (P, k) => P[N - k][1] - P[N + k][1];
+      for (let k = 1; k < N; k++) worst = Math.max(worst, out(t(st.shape, k), t(pa, k), t(pb, k)) * st.chord);
+    }
+    return worst;
+  };
+
+  it('keeps the profiles between closely spaced sections within the section values', () => {
+    // The natural cubic spline through these sections had weights of ±1475 between y = 0.11 and 100 mm.
     const p = symmetric(['0007', '0004', '0005', '0002', '0002', '0016'], [0, 0.1, 0.11, 100, 100.1, 101]);
     const b = buildWing(p);
-    expect(b.errors[0]).toMatch(/^Smooth spanwise interpolation overshoots at y = [\d.]+ mm: (upper|lower) surface height at x = [\d.]+ % chord is /);
-    expect(b.errors[0]).toMatch(/smallest gap 0\.01 mm/);
-    expect(b.surface).toBeNull();
-    p.settings.spanwise = 'linear';
-    expect(buildWing(p).errors).toEqual([]);
+    expect(b.errors).toEqual([]);
+    expect(beyondSections(b)).toBeLessThan(1e-9);
   });
 
-  it('rejects a chord overshoot from a cluster of sections at the tip', () => {
+  it('keeps the chord of a cluster of sections at the tip within the section chords', () => {
+    // The natural cubic spline reached a chord of 1388 mm at y = 286 mm from sections of 20 to 200 mm.
     const chords = [200, 150, 20];
     const b = buildWing(symmetric(['0012', '0012', '0012'], [0, 500, 510], (i) => chords[i]));
-    // The chord reaches 1388 mm at y = 286 mm from sections of 20 to 200 mm.
-    expect(b.errors[0]).toMatch(/overshoots at y = [\d.]+ mm: chord is 1[34]\d\d\.\d\d mm, while the sections range from 20\.00 to 200\.00 mm/);
+    expect(b.errors).toEqual([]);
+    expect(Math.max(...b.stations.map((s) => s.chord))).toBe(200);
+    expect(beyondSections(b)).toBeLessThan(1e-9);
   });
 
-  it('stops on non-finite placement values (User Guide example: sections 1e-300 mm apart)', () => {
-    // The spline of the twist through 0, 90 and 0 degrees overflows between sections 1e-300 mm apart.
-    const p = symmetric(['0012', '0012', '0012'], [0, 1e-300, 2e-300]);
-    p.sections[1].twist = 90;
-    expect(validateProject(p).ok).toBe(true);
-    const b = buildWing(p);
-    expect(b.errors[0]).toMatch(/^Section values give non-finite coordinates at y = 0\.0 mm; /);
-    expect(b.surface).toBeNull();
-  });
-
-  it('keeps curved smooth planforms within OVERSHOOT_LIMIT section ranges', () => {
-    // Chord 100/500/100 mm at y = 0/100/1000 mm reaches 1036 mm: 1.34 ranges beyond the sections.
+  it('ends a curved planform at its largest section chord', () => {
+    // Chord 100/500/100 mm at y = 0/100/1000 mm: the natural cubic spline reached 1036 mm, the blend
+    // peaks at the middle section with a horizontal slope.
     const chords = [100, 500, 100];
-    expect(OVERSHOOT_LIMIT).toBe(2);
-    expect(buildWing(symmetric(['0012', '0012', '0012'], [0, 100, 1000], (i) => chords[i])).errors).toEqual([]);
+    const b = buildWing(symmetric(['0012', '0012', '0012'], [0, 100, 1000], (i) => chords[i]));
+    expect(b.errors).toEqual([]);
+    expect(Math.max(...b.stations.map((s) => s.chord))).toBe(500);
+    expect(beyondSections(b)).toBeLessThan(1e-9);
   });
+
+  it('keeps the blended thickness between the section thicknesses (NACA 0024, 0006, 0024 at 0, 60, 600 mm)', () => {
+    // The natural cubic spline took the thickness below 0 between y = 60 and 600 mm.
+    const p = sampleProject({ settings: { spanwise: 'smooth' } });
+    p.airfoils = [naca('0024', 'thick'), naca('0006', 'thin')];
+    p.sections = [
+      { id: 'a', airfoil: 'thick', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+      { id: 'b', airfoil: 'thin', x: 0, y: 60, z: 0, chord: 200, twist: 0 },
+      { id: 'c', airfoil: 'thick', x: 0, y: 600, z: 0, chord: 200, twist: 0 },
+    ];
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(beyondSections(b)).toBeLessThan(1e-9);
+  });
+
+  // Section layouts of XFLR5 wings, in mm: [y, chord, airfoil, x, z, twist]. An airfoil switch or a
+  // chord step is two sections at one y, which the XFLR5 import moves 0.5 mm apart. Before the
+  // shape-preserving blend, Smooth stopped on each with an overshoot, e.g. a chord of 6018.68 mm at
+  // y = 173.4 mm from sections of 150 to 250 mm (chord step), a twist of 230.75° from sections of
+  // −3° to 0° (twist step), and profile heights of up to 506.67 % chord (switch near the tip).
+  const xflr5Like = {
+    'airfoil switch': [[0, 250, '2412'], [300, 250, '2412'], [300.5, 250, '0009'], [600, 250, '0009']],
+    'airfoil switch with taper': [[0, 300, '2412'], [300, 250, '2412'], [300.5, 250, '0009'], [600, 150, '0009', 40]],
+    'chord step': [[0, 250, '2412'], [300, 250, '2412'], [300.5, 200, '2412'], [600, 150, '2412']],
+    'thickness step': [[0, 260, '2415'], [300, 240, '2415'], [300.5, 240, '2408'], [700, 160, '2408', 30]],
+    'twist step': [[0, 250, '2412'], [300, 250, '2412'], [300.5, 250, '2412', 0, 0, -2], [600, 200, '2412', 10, 0, -3]],
+    'switch near the tip': [[0, 250, '2412'], [400, 240, '2412'], [400.5, 240, '0009'], [450, 150, '0009', 30]],
+    'aileron cut-out': [[0, 250, '2412'], [200, 250, '2412'], [200.5, 220, '2412'], [500, 220, '2412'], [500.5, 250, '2412'], [700, 200, '2412']],
+    'two switches and a short root panel': [
+      [0, 300, '2415'],
+      [12.7, 300, '2415'],
+      [300, 280, '2415'],
+      [300.5, 280, '2412'],
+      [700, 220, '2412', 20, 15],
+      [700.5, 220, '0009', 20, 15],
+      [900, 150, '0009', 50, 25, -2],
+    ],
+  };
+  for (const [name, rows] of Object.entries(xflr5Like)) {
+    it(`builds an XFLR5 section layout in smooth mode within the section values: ${name}`, () => {
+      const p = createProject({
+        airfoils: [...new Set(rows.map((r) => r[2]))].map((c) => naca(c, c)),
+        sections: rows.map(([y, chord, airfoil, x = 0, z = 0, twist = 0], i) => ({ id: `s${i}`, airfoil, x, y, z, chord, twist })),
+        settings: { spanwise: 'smooth', sectionPlanes: 'vertical' },
+      });
+      const b = buildWing(p);
+      expect(b.errors).toEqual([]);
+      expect(b.warnings).toEqual([]);
+      expect(b.extraStations).toBe(0);
+      expect(beyondSections(b)).toBeLessThan(1e-9);
+    });
+  }
 
   it('reports a fitted surface that turns inside out between stations', () => {
     // Zigzag guides: the fitted surface inverts between the stations, where no check position lies.
@@ -772,17 +884,22 @@ describe('smooth spanwise overshoot', () => {
     expect(hit.surface).toBeNull();
   });
 
-  it('stops when interpolated placement or a guide curve leaves the project limits', () => {
-    // Smooth x through 0 / 1,000,000 / 0 mm at y = 0 / 100 / 1000 mm overshoots to about 2.3e6 mm,
-    // 1.34 section ranges: within the overshoot limit, beyond the geometry extent of 1,200,000 mm.
-    const p = sampleProject({ settings: { spanwise: 'smooth' } });
-    p.sections = [
+  it('stops when the guide curves leave the project limits', () => {
+    // Nose line at x = 0 mm and end line at x = 300,000 mm: a chord of 300,000 mm, above 100,000 mm.
+    const p = farGuides();
+    expect(validateProject(p).ok).toBe(true);
+    expect(buildWing(p).errors[0]).toMatch(/^At y = 0\.0 mm the wing leaves the project limits \(leading-edge x 0 mm, z 0 mm, chord 300000 mm; limits ±1200000 mm and 100000 mm chord\)\. Check the guide curves\.$/);
+    // The smooth blend stays within the section values: x through 0 / 1,000,000 / 0 mm at
+    // y = 0 / 100 / 1000 mm stays within the 1,200,000 mm extent.
+    const smooth = sampleProject({ settings: { spanwise: 'smooth' } });
+    smooth.sections = [
       { id: 'a', airfoil: 'root', x: 0, y: 0, z: 0, chord: 100, twist: 0 },
       { id: 'b', airfoil: 'root', x: 1_000_000, y: 100, z: 0, chord: 100, twist: 0 },
       { id: 'c', airfoil: 'root', x: 0, y: 1000, z: 0, chord: 100, twist: 0 },
     ];
-    expect(validateProject(p).ok).toBe(true);
-    expect(buildWing(p).errors[0]).toMatch(/^At y = [\d.]+ mm the wing leaves the project limits \(leading-edge x \d{7} mm.*limits ±1200000 mm/);
+    const built = buildWing(smooth);
+    expect(built.errors.filter((e) => /project limits/.test(e))).toEqual([]);
+    expect(Math.max(...built.stations.map((st) => st.xLE))).toBe(1_000_000);
     // Through-point end line over unevenly spaced points: its control points reach 7.6e13 mm.
     const q = sampleProject();
     q.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[0, 0], [1_000_000, 0.1], [-1_000_000, 0.11], [1_000_000, 599.9], [0, 600]] };
@@ -1087,9 +1204,24 @@ describe('builds at the edges of double precision', () => {
     }
   });
 
-  it('names the smooth blend, not the guide curves, when the blended chord drops below 1 mm', () => {
+  it('stops on non-finite placement values (User Guide example: sections 1e-304 mm apart)', () => {
+    // Leading-edge x rises 1,000,000 mm over 1e-304 mm: the secant overflows to infinity, and the
+    // smooth blend gives non-finite values. Linear builds.
+    const p = overflow();
+    expect(validateProject(p).ok).toBe(true);
+    const b = buildWing(p);
+    expect(b.errors).toEqual(['Section values give non-finite coordinates at y = 0.0 mm; check the positions, chords and twists of the sections.']);
+    expect(b.surface).toBeNull();
+    p.settings.spanwise = 'linear';
+    expect(buildWing(p).errors).toEqual([]);
+  });
+
+  it('keeps the smooth blend of 1 mm and 5 mm chords at 1 mm or more', () => {
+    // The natural cubic spline took the chord to -2.56 mm at y = 289.1 mm.
     const p = project([{ y: 0, chord: 1 }, { y: 500, chord: 1 }, { y: 600, chord: 5 }, { y: 1000, chord: 5 }], { spanwise: 'smooth' });
-    expect(buildWing(p).errors).toEqual(['Chord drops to -2.56 mm at y = 289.1 mm; the smooth blend of the section chords falls below the minimum of 1 mm; use linear interpolation or add sections.']);
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(Math.min(...b.stations.map((s) => s.chord))).toBeGreaterThanOrEqual(1 - 1e-12);
   });
 
   it('reports a singular fit of sections or guide points 1e-300 of the span apart as an error', () => {
@@ -1099,8 +1231,8 @@ describe('builds at the edges of double precision', () => {
     withNose.guides.nose.enabled = true;
     expect(() => buildWing(withNose)).not.toThrow();
     expect(buildWing(withNose).errors[0]).toMatch(/^(Nose line: the curve fit is singular|The surface fit is singular)/);
-    const smooth = buildWing(project([{ y: 0 }, { y: 1e-200 }, { y: 600, chord: 150 }], { spanwise: 'smooth' }));
-    expect(smooth.errors[0]).toMatch(/^The surface fit is singular: sections 1 and 2 at y = 0 mm and y = 1e-200 mm lie too close together; move them apart\.$/);
+    // Smooth fits every panel on its own: a panel 1e-200 mm wide builds.
+    expect(buildWing(project([{ y: 0 }, { y: 1e-200 }, { y: 600, chord: 150 }], { spanwise: 'smooth' })).errors).toEqual([]);
     const fitGuide = project([{ y: 0 }, { y: 600, chord: 150 }]);
     fitGuide.guides = defaultGuides(fitGuide.sections);
     fitGuide.guides.nose = { ...fitGuide.guides.nose, enabled: true, mode: 'fit', points: [[0, 0], [1, 1e-300], [0, 600]] };
@@ -1480,12 +1612,6 @@ describe('German build messages', () => {
     return buildWing(project);
   };
   const coarse = [[1, 0.002], [0.9422, 0.0062], [0.4103, 0.1048], [0.3764, 0.0957], [0, 0], [0.2163, -0.0488], [0.4749, -0.0296], [0.9349, -0.0728], [1, -0.002]];
-  const symmetric = (codes, ys, chord = () => 100, settings = { spanwise: 'smooth' }) =>
-    createProject({
-      airfoils: codes.map((c, i) => naca(c, `a${i}`, { closedTE: true })),
-      sections: ys.map((y, i) => ({ airfoil: `a${i}`, x: 0, y, z: 0, chord: chord(i), twist: 0 })),
-      settings,
-    });
 
   it('names section and guide errors in German with decimal commas', () => {
     const one = sampleProject();
@@ -1529,9 +1655,11 @@ describe('German build messages', () => {
     ]);
   });
 
-  it('reports a section 1e-200 mm apart as a singular fit', () => {
-    const p = symmetric(['0012', '0012', '0012'], [0, 1e-200, 600], () => 150);
-    expect(german(p).errors).toEqual(['Die Flächenanpassung ist singulär: Die Schnitte 1 und 2 bei y = 0 mm und y = 1e-200 mm liegen zu dicht beieinander; die Schnitte auseinanderschieben.']);
+  it('translates the singular surface fit', () => {
+    setLanguage('de');
+    expect(tr('The surface fit is singular: sections {a} and {b} at y = {y1} mm and y = {y2} mm lie too close together; move them apart.', { a: '1', b: '2', y1: '0', y2: '1e-200' })).toBe(
+      'Die Flächenanpassung ist singulär: Die Schnitte 1 und 2 bei y = 0 mm und y = 1e-200 mm liegen zu dicht beieinander; die Schnitte auseinanderschieben.',
+    );
   });
 
   it('translates the chord error with its hint and the pointed-tip warnings', () => {
@@ -1550,30 +1678,7 @@ describe('German build messages', () => {
     );
   });
 
-  it('translates the smooth blend error and the smooth overshoot errors', () => {
-    const blend = sampleProject({ settings: { spanwise: 'smooth' } });
-    blend.sections = [{ y: 0, chord: 1 }, { y: 500, chord: 1 }, { y: 600, chord: 5 }, { y: 1000, chord: 5 }].map((s, i) => ({ id: `s${i}`, airfoil: 'root', x: 0, z: 0, twist: 0, ...s }));
-    expect(german(blend).errors[0]).toMatch(/^Die Profiltiefe sinkt bei y = \d+,\d mm auf -?\d+,\d\d mm; die glatte Interpolation der Profiltiefen der Schnitte fällt unter das Minimum von 1 mm; lineare Interpolation verwenden oder Schnitte hinzufügen\.$/);
-    const chords = [200, 150, 20];
-    const chord = german(symmetric(['0012', '0012', '0012'], [0, 500, 510], (i) => chords[i]));
-    expect(chord.errors[0]).toMatch(/^Die glatte Interpolation in Spannweitenrichtung schwingt bei y = \d+,\d mm über: Profiltiefe 1\.[34]\d\d,\d\d mm, während die Schnitte nur von 20,00 bis 200,00 mm reichen\. /);
-    expect(chord.errors[0]).toMatch(/ Die Schnitte sind ungleichmäßig verteilt \(kleinster Abstand 10,00 mm\)\. Lineare Interpolation verwenden, die Schnitte gleichmäßiger verteilen oder dicht beieinanderliegende Schnitte entfernen\.$/);
-    const profile = german(symmetric(['0007', '0004', '0005', '0002', '0002', '0016'], [0, 0.1, 0.11, 100, 100.1, 101]));
-    expect(profile.errors[0]).toMatch(/^Die glatte Interpolation in Spannweitenrichtung schwingt bei y = \d+,\d mm über: Höhe der (Ober|Unter)seite bei x = \d+,\d % der Profiltiefe -?\d+,\d\d % der Profiltiefe, während die Schnitte nur von -?\d+,\d\d bis -?\d+,\d\d % der Profiltiefe reichen\. /);
-    expect(profile.errors[0]).toMatch(/kleinster Abstand 0,01 mm/);
-  });
-
-  it('translates thickness errors of the blend and of the trailing-edge setting', () => {
-    const p = sampleProject({ settings: { spanwise: 'smooth' } });
-    p.airfoils = [naca('0024', 'thick'), naca('0006', 'thin')];
-    p.sections = [
-      { id: 'a', airfoil: 'thick', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
-      { id: 'b', airfoil: 'thin', x: 0, y: 60, z: 0, chord: 200, twist: 0 },
-      { id: 'c', airfoil: 'thick', x: 0, y: 600, z: 0, chord: 200, twist: 0 },
-    ];
-    expect(german(p).errors[0]).toMatch(
-      /^Das interpolierte Profil hat bei y = \d+,\d mm, x = \d+,\d % der Profiltiefe eine negative Dicke \(-\d+,\d\d\d % der Profiltiefe\); die glatte Interpolation in Spannweitenrichtung schwingt zwischen ungleichmäßig verteilten Schnitten über\. Lineare Interpolation verwenden oder Schnitte hinzufügen\.$/,
-    );
+  it('translates thickness errors of the trailing-edge setting', () => {
     const xs = Array.from({ length: 61 }, (_, i) => (1 - Math.cos((Math.PI * i) / 60)) / 2);
     const outline = (t) => [...xs.slice().reverse().map((x) => [x, t(x) / 2]), ...xs.slice(1).map((x) => [x, -t(x) / 2])];
     const project = (mode, t) => {
@@ -1637,21 +1742,13 @@ describe('German build messages', () => {
   });
 
   it('translates limit and non-finite errors', () => {
-    const far = sampleProject({ settings: { spanwise: 'smooth' } });
-    far.sections = [
-      { id: 'a', airfoil: 'root', x: 0, y: 0, z: 0, chord: 100, twist: 0 },
-      { id: 'b', airfoil: 'root', x: 1_000_000, y: 100, z: 0, chord: 100, twist: 0 },
-      { id: 'c', airfoil: 'root', x: 0, y: 1000, z: 0, chord: 100, twist: 0 },
-    ];
-    expect(german(far).errors[0]).toMatch(
-      /^Bei y = \d+,\d mm verlässt der Flügel die Projektgrenzen \(x der Profilnase \d\.\d{3}\.\d{3} mm, z -?\d+ mm, Profiltiefe 100 mm; Grenzen ±1.200.000 mm und 100.000 mm Profiltiefe\)\. Die Leitkurven prüfen oder lineare Interpolation verwenden\.$/,
+    expect(german(farGuides()).errors[0]).toBe(
+      'Bei y = 0,0 mm verlässt der Flügel die Projektgrenzen (x der Profilnase 0 mm, z 0 mm, Profiltiefe 300.000 mm; Grenzen ±1.200.000 mm und 100.000 mm Profiltiefe). Die Leitkurven prüfen.',
     );
     const guide = sampleProject();
     guide.guides.end = { enabled: true, mode: 'fit', degree: 3, points: [[0, 0], [1_000_000, 0.1], [-1_000_000, 0.11], [1_000_000, 599.9], [0, 600]] };
     expect(german(guide).errors[0]).toMatch(/^Endlinie: Die Kurve durch die Punkte erreicht x = 7,\d\de\+13 mm, jenseits von ±1.200.000 mm; die Punkte in y gleichmäßiger verteilen oder den Modus „Kontrollpunkte“ verwenden\.$/);
-    const twist = symmetric(['0012', '0012', '0012'], [0, 1e-300, 2e-300]);
-    twist.sections[1].twist = 90;
-    expect(german(twist).errors[0]).toMatch(/^Die Schnittwerte ergeben bei y = 0,0 mm nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen\.$/);
+    expect(german(overflow()).errors[0]).toMatch(/^Die Schnittwerte ergeben bei y = 0,0 mm nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen\.$/);
   });
 
   it('translates the trailing-edge warnings', () => {
@@ -1703,7 +1800,7 @@ describe('German build messages', () => {
       /^Die angepasste Fläche faltet sich oder schnürt sich zwischen den Stationen bei y = \d+,\d mm ein \(Profiltiefe -?\d+,\d\d mm in der vorgesehenen Profiltiefenrichtung, Minimum 1 mm\): Schränkung oder Leitkurven ändern sich schneller, als 32 hinzugefügte Stationen auflösen\. Schnitte hinzufügen, den Schränkungsunterschied verringern oder die Leitkurven glätten\.$/,
     );
     expect(german(zigzag(2)).errors[0]).toMatch(
-      /^Die angepasste Fläche stülpt sich zwischen den Stationen bei y = \d+,\d mm um \(örtliche Dicke -\d+,\d\d\d % der Profiltiefe\): Die Fläche durch die Stationen schwingt zwischen ihnen aus \(schnell veränderliche Leitkurven oder ungleichmäßig verteilte Schnitte bei glatter Interpolation\)\. Die Leitkurven glätten, /,
+      /^Die angepasste Fläche stülpt sich zwischen den Stationen bei y = \d+,\d mm um \(örtliche Dicke -\d+,\d\d\d % der Profiltiefe\): Die Fläche durch die Stationen schwingt zwischen ihnen aus \(schnell veränderliche Leitkurven\)\. Die Leitkurven glätten oder Schnitte hinzufügen\.$/,
     );
     // A nose line with a bump 4 mm high and 0.06 mm wide at y = 713 mm.
     const p = createProject({ airfoils: [{ id: 'a', name: 'NACA 2412', points: nacaAirfoil('2412').points }], sections: [0, 1000].map((y) => ({ airfoil: 'a', x: 0, y, z: 0, chord: 200, twist: 0 })) });

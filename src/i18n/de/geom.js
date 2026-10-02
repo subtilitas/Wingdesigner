@@ -44,17 +44,13 @@ export default {
     'Stationen je Feld von {from} auf {to} verringert: {sections} Schnitte mit {samples} Stationen je Profilseite halten die Fläche bei höchstens {limit} Gitterpunkten.',
   'Pointed tip: nose line and end line end {gap} mm apart, so the tip chord is {chord} mm instead of {scaled} mm; move their last points together to close the tip.':
     'Spitzes Flügelende: Nasenlinie und Endlinie enden {gap} mm voneinander entfernt, daher beträgt die Randtiefe {chord} mm statt {scaled} mm; ihre letzten Punkte zusammenschieben, um das Flügelende zu schließen.',
-  'leading-edge x': 'x der Profilnase',
   chord: 'Profiltiefe',
   twist: 'Schränkung',
-  'upper surface height at x = {x} % chord': 'Höhe der Oberseite bei x = {x} % der Profiltiefe',
-  'lower surface height at x = {x} % chord': 'Höhe der Unterseite bei x = {x} % der Profiltiefe',
-  '% chord': '% der Profiltiefe',
   'Section values give non-finite coordinates at y = {y} mm; check the positions, chords and twists of the sections.':
     'Die Schnittwerte ergeben bei y = {y} mm nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen.',
   'At y = {y} mm the wing leaves the project limits (leading-edge x {x} mm, z {z} mm, chord {chord} mm; limits ±{extent} mm and {maxChord} mm chord).':
     'Bei y = {y} mm verlässt der Flügel die Projektgrenzen (x der Profilnase {x} mm, z {z} mm, Profiltiefe {chord} mm; Grenzen ±{extent} mm und {maxChord} mm Profiltiefe).',
-  'Check the guide curves, or use linear interpolation.': 'Die Leitkurven prüfen oder lineare Interpolation verwenden.',
+  'Check the guide curves.': 'Die Leitkurven prüfen.',
   'Smooth spanwise interpolation builds vertical section planes; mitred section planes need Linear or Straight panels.':
     'Glatte Interpolation in Spannweitenrichtung baut senkrechte Schnittebenen; Schnittebenen auf Gehrung brauchen „Linear“ oder „Gerade Felder“.',
   'Section {n}: its mitred plane lies {angle}° from the panel next to it, which stretches the airfoil {stretch} times (limit {limit}, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical.':
@@ -71,13 +67,6 @@ export default {
     'Ein Einstellwinkel des XFLR5-Imports im Format Version 1 kann in die Schnittwerte eingerechnet sein; der Winkel ist nicht gespeichert. Die Einrechnung ist nur für senkrechte Schnittebenen genau: Mit Schnittebenen auf Gehrung liegt das Teil bis zu 0,75 · Profiltiefe · sin(Einstellwinkel) · sin(Neigung) neben dem von XFLR5. Einstellungen > Schnittebenen „Senkrecht“ hält den Import genau; ein erneuter Import der XFLR5-Datei ergibt den starren Einstellwinkel.',
   'Straight panels do not follow guide curves: switch the guide curves off in the Planform tab, or set Settings > Spanwise interpolation to Linear or Smooth.':
     'Gerade Felder folgen keinen Leitkurven: die Leitkurven in der Registerkarte Grundriss ausschalten oder Einstellungen > Interpolation in Spannweitenrichtung auf „Linear“ oder „Glatt“ setzen.',
-  'Smooth spanwise interpolation overshoots at y = {y} mm: {name} is {value} {unit}, while the sections range from {lo} to {hi} {unit}.':
-    'Die glatte Interpolation in Spannweitenrichtung schwingt bei y = {y} mm über: {name} {value} {unit}, während die Schnitte nur von {lo} bis {hi} {unit} reichen.',
-  'The sections are unevenly spaced (smallest gap {gap} mm).': 'Die Schnitte sind ungleichmäßig verteilt (kleinster Abstand {gap} mm).',
-  'Use linear interpolation, space the sections more evenly or remove sections that lie close together.':
-    'Lineare Interpolation verwenden, die Schnitte gleichmäßiger verteilen oder dicht beieinanderliegende Schnitte entfernen.',
-  'The blended profile has negative thickness at y = {y} mm, x = {x} % chord ({thickness} % chord); smooth spanwise interpolation overshoots between unevenly spaced sections.':
-    'Das interpolierte Profil hat bei y = {y} mm, x = {x} % der Profiltiefe eine negative Dicke ({thickness} % der Profiltiefe); die glatte Interpolation in Spannweitenrichtung schwingt zwischen ungleichmäßig verteilten Schnitten über.',
   'Use linear interpolation or add sections.': 'Lineare Interpolation verwenden oder Schnitte hinzufügen.',
   'The resampled profile has negative thickness at y = {y} mm, x = {x} % chord ({thickness} % chord): upper and lower surface of a section airfoil cross there.':
     'Das neu abgetastete Profil hat bei y = {y} mm, x = {x} % der Profiltiefe eine negative Dicke ({thickness} % der Profiltiefe): Ober- und Unterseite eines Schnittprofils kreuzen sich dort.',
@@ -93,17 +82,15 @@ export default {
   'For a tip that ends in a point, set Settings > Wing tip to Pointed.': 'Für ein Flügelende, das in einer Spitze endet, Einstellungen > Flügelende auf „Spitz“ setzen.',
   'Chord drops to {chord} mm at y = {y} mm; nose line and end line must not touch or cross.':
     'Die Profiltiefe sinkt bei y = {y} mm auf {chord} mm; Nasenlinie und Endlinie dürfen sich nicht berühren oder kreuzen.',
-  'Chord drops to {chord} mm at y = {y} mm; the smooth blend of the section chords falls below the minimum of {min} mm; use linear interpolation or add sections.':
-    'Die Profiltiefe sinkt bei y = {y} mm auf {chord} mm; die glatte Interpolation der Profiltiefen der Schnitte fällt unter das Minimum von {min} mm; lineare Interpolation verwenden oder Schnitte hinzufügen.',
   'The surface fit is singular: sections {a} and {b} at y = {y1} mm and y = {y2} mm lie too close together; move them apart.':
     'Die Flächenanpassung ist singulär: Die Schnitte {a} und {b} bei y = {y1} mm und y = {y2} mm liegen zu dicht beieinander; die Schnitte auseinanderschieben.',
   'The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections.':
     'Die angepasste Fläche hat nicht endliche Koordinaten; Positionen, Profiltiefen und Schränkungen der Schnitte prüfen.',
-  'The fitted surface turns inside out between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in smooth mode).':
-    'Die angepasste Fläche stülpt sich zwischen den Stationen bei y = {y} mm um (örtliche Dicke {thickness} % der Profiltiefe): Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven oder ungleichmäßig verteilte Schnitte bei glatter Interpolation).',
-  'The fitted surface has zero thickness between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in smooth mode).':
-    'Die angepasste Fläche hat zwischen den Stationen bei y = {y} mm die Dicke null (örtliche Dicke {thickness} % der Profiltiefe): Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven oder ungleichmäßig verteilte Schnitte bei glatter Interpolation).',
-  'Smooth the guide curves, space the sections more evenly or add sections.': 'Die Leitkurven glätten, die Schnitte gleichmäßiger verteilen oder Schnitte hinzufügen.',
+  'The fitted surface turns inside out between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast).':
+    'Die angepasste Fläche stülpt sich zwischen den Stationen bei y = {y} mm um (örtliche Dicke {thickness} % der Profiltiefe): Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven).',
+  'The fitted surface has zero thickness between stations at y = {y} mm (local thickness {thickness} % chord): the surface through the stations swings between them (guide curves that change fast).':
+    'Die angepasste Fläche hat zwischen den Stationen bei y = {y} mm die Dicke null (örtliche Dicke {thickness} % der Profiltiefe): Die Fläche durch die Stationen schwingt zwischen ihnen aus (schnell veränderliche Leitkurven).',
+  'Smooth the guide curves or add sections.': 'Die Leitkurven glätten oder Schnitte hinzufügen.',
   'The fitted surface folds or narrows between stations at y = {y} mm (chord {chord} mm along the intended chord direction, minimum {min} mm): twist or guide curves change faster than {stations} added stations resolve.':
     'Die angepasste Fläche faltet sich oder schnürt sich zwischen den Stationen bei y = {y} mm ein (Profiltiefe {chord} mm in der vorgesehenen Profiltiefenrichtung, Minimum {min} mm): Schränkung oder Leitkurven ändern sich schneller, als {stations} hinzugefügte Stationen auflösen.',
   'Add sections, reduce the twist difference or smooth the guide curves.': 'Schnitte hinzufügen, den Schränkungsunterschied verringern oder die Leitkurven glätten.',

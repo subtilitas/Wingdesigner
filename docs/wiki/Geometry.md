@@ -200,17 +200,18 @@ points: "The upper surface runs back in x at … points; the limit is 50." (lowe
 
 ### 3.1 Blending
 
-Each section quantity f (x, z, chord, twist and the 2N + 1 shape points) is blended with weights w_i(y):
+Each section quantity f (x, z, chord, twist and the 2N + 1 shape points) is blended along the span.
+**Linear** and **Straight panels** use weights w_i(y):
 
 ```
 f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 ```
 
-| **Spanwise interpolation** | Weights w_i(y) | Condition |
+| **Spanwise interpolation** | Blend | Condition |
 | --- | --- | --- |
 | **Linear between sections** | hat functions: linear between the two neighbouring sections | any section count |
 | **Straight panels (straight lines between sections, as XFLR5)** | hat functions, as **Linear**, for the check positions of section 3.6; the surface itself joins the placed sections with straight lines (below) | any section count; no guide curve on |
-| **Smooth (natural cubic spline through sections)** | cardinal functions of a natural cubic spline through the section positions y_i (second derivative 0 at root and tip) | 3 or more sections; with 2 sections the hat functions apply |
+| **Smooth (shape-preserving cubic through sections)** | per panel a cubic Hermite polynomial through the two section values, with the slopes of a natural cubic spline through all sections, limited so that no value leaves the range of the two sections of its panel (below) | 3 or more sections; with 2 sections the hat functions apply |
 
 - y outside [y_root, y_tip] is clamped to the range.
 - **Linear** blends the normalized airfoil, the chord and the twist apart: halfway between two sections
@@ -236,17 +237,50 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 - **Straight panels** with a guide curve on stop the build: "Straight panels do not follow guide
   curves: switch the guide curves off in the Planform tab, or set Settings > Spanwise interpolation to
   Linear or Smooth."
-- **Smooth**: the build evaluates the spline of every blended value directly. One tridiagonal
-  system of size sections − 2 (Thomas algorithm, no pivoting; the system is diagonally dominant)
-  gives the second derivatives of all values at the sections, one right-hand side per value.
-  n sections of m values: O(n · m) operations once, then O(m) per span position from the two
-  neighbouring sections. The result equals the weighted sum with the cardinal functions up to
-  round-off.
-- **Smooth**: the cardinal functions leave [0, 1] between sections (3 evenly spaced sections: minimum
-  weight −0.096). Large thickness or chord changes and uneven spacing increase the overshoot.
-- **Smooth**, build errors (section 3.6): an interpolated value more than 2 × the range of its section
-  values outside that range; a negative blended thickness; an interpolated leading-edge x,
-  trailing-edge x or z beyond ±1,200,000 mm, or a chord above 100,000 mm.
+- **Smooth**, construction (`src/geom/spanwise.js`), for every blended value f with section values
+  f_i at y_i, panel lengths h_i = y_(i+1) − y_i and secants d_i = (f_(i+1) − f_i) / h_i:
+  1. Natural cubic spline through the section values (second derivative 0 at root and tip): one
+     tridiagonal system of size sections − 2 (Thomas algorithm, no pivoting; the system is diagonally
+     dominant) gives the second derivatives D_i, one right-hand side per value. Slope at section i:
+     m_i = d_i − h_i (2 D_i + D_(i+1)) / 6; at the tip section m = d + h (D_(n−2) + 2 D_(n−1)) / 6 of
+     the last panel.
+  2. Limiter (Fritsch and Carlson, 1980): m_i = 0 where the secants of the two panels next to
+     section i differ in sign or one of them is 0; otherwise |m_i| is cut to 3 · min(|d_(i−1)|, |d_i|).
+     Root and tip sections have one panel. A slope that overflows (NaN, not a number) becomes 0.
+  3. On panel i, with t = (y − y_i) / h_i:
+
+     ```
+     f(y) = f_i H00(t) + f_(i+1) H01(t) + h_i m_i H10(t) + h_i m_(i+1) H11(t)
+     H00 = (1 − t)² (1 + 2t)   H01 = t² (3 − 2t)   H10 = t (1 − t)²   H11 = −t² (1 − t)
+     ```
+
+  With both slopes of a panel between 0 and 3 times its secant, the cubic is monotone on the panel
+  and stays between its two section values. The slope is continuous at the sections (C1). Where the
+  spline slopes already meet the limits, the blend equals the natural cubic spline. n sections of m
+  values: O(n · m) operations once, then O(m) per span position from the two neighbouring sections.
+- **Smooth**, airfoil shape: for every chord station k the blend takes the mean (P_(N−k) + P_(N+k)) / 2
+  and the difference P_(N−k) − P_(N+k) of the upper and the lower point (section 3.6: thickness t_k),
+  not the two points apart. The thickness of the blended profile stays between the thicknesses of the
+  two sections of the panel.
+- **Smooth**, consequences: leading-edge x, chord, z, twist, mean line and thickness stay within the
+  values of the two sections of every panel. A section where a value has a local maximum or minimum
+  (the chord of a curved planform, x of a scalloped edge) gets a horizontal slope there. A panel
+  between two equal values stays constant, e.g. an airfoil kept from the root to the next section. An
+  airfoil switch, a chord step or a twist step between two sections 0.5 mm apart, as the XFLR5 import
+  places them (section moved by min(0.5 mm, 1/4 of the panel)), takes place within those 0.5 mm.
+  For comparison, the natural cubic spline through 250, 250, 200 and 150 mm chord at y = 0, 300,
+  300.5 and 600 mm reaches 6,018.68 mm at y = 173.4 mm.
+- **Smooth** against the natural cubic spline through the same sections, largest distance between
+  the station points of the two surfaces (**Spanwise stations per panel** 8): wizard presets with
+  2 sections (**Trainer**, **Sport**, **Delta jet**, **Plank**, **Tail surface**) 0 mm (hat
+  functions); **Glider** 0.19 mm, **Double delta** 0.19 mm and **Swept flying wing** 0.56 mm (the
+  airfoil of the root panel, constant from the root to section 2); **Sailplane** 2.55 mm (chord of the
+  root panel: the spline reaches 210.85 mm above the 210 mm root chord, the blend stays at or below
+  it); **Batwing** 14.53 mm (chord at y = 267 mm: the spline reaches 614.49 mm between sections of
+  581.9 and 606.9 mm). XFLR5 and flow5 test files (`test/fixtures/`), surfaces of 3 or more sections:
+  0.95 to 1.58 mm (Fixture A and B, `basic.fl5` 1.47 mm), `Rascal110.xfl` 1.36 mm (wing) and 5.74 mm
+  (elevator), `UltraStick25e` 115.37 mm (wing; the spline reaches a chord of 369.92 mm at y = 484.8 mm
+  between sections of 260.35 and 250.82 mm, the blend 257.20 mm) and 85.15 mm (elevator).
 
 ### 3.2 Station positions
 
@@ -256,7 +290,7 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
 | **Straight panels** (no guide curve) | 1 (the section) | – | 1 |
 | **Linear**, a guide curve enabled | K (the section and K − 1 intermediate stations) | cosine | min(3, K): 3 for K ≥ 3; 2 or 1 when the loft grid limit lowers K to 2 or 1 |
 | **Linear**, no guide curve, **Section planes** = **Mitred**, the two sections of the panel in planes of different roll φ | K (the section and K − 1 intermediate stations) | cosine | as above; panels without intermediate stations are straight segments raised to that degree (section 4) |
-| **Smooth** | K (the section and K − 1 intermediate stations) | cosine | 3 (stations − 1 below 4 stations) |
+| **Smooth** | K (the section and K − 1 intermediate stations) | cosine | as **Linear** with a guide curve |
 
 The tip section is the last station. Station count: D · K + (sections − 1 − D) + 1, plus the added
 stations below (**Linear** and **Smooth**; **Straight panels** add none). D is the number of panels
@@ -462,17 +496,16 @@ Checks in code order. Every row is an error; no surface is built.
 | Loft grid | more than 5,000,000 grid points with the stations per panel used (section 3.2) |
 | Section planes, fold | **Mitred** section planes, **Straight panels**: the planes of two neighbouring sections of different roll meet in a line parallel to x. The surface between them folds when that line passes through either placed airfoil (its extent along the up direction of its plane, with chord, twist and stretch), when the two airfoils lie on opposite sides of the line, or when the inner airfoil lies outboard of the plane of the outer one (`planeFold` in `src/geom/planes.js`). Message: "Sections a and b: their mitred planes meet … mm from the position (y, z) of section a, within the airfoils, so the surface between them folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." Example: panels of 0°, 40° (10 mm long) and 80°, NACA 0012 at 300 mm chord: the planes rolled 20° and 60° meet 14.6 mm from section 2, inside its ±19.2 mm; at 150 mm chord (±9.6 mm) the surface builds. **Linear** panels: the check "Section planes, turning". |
 | Section values | x_LE, c, z or cos(twist) of a check position is not a finite number. Message: "Section values give non-finite coordinates at y = … mm; check the positions, chords and twists of the sections." |
-| Geometry extent | at a check position: x_LE, x_LE + c (trailing edge) or z beyond ±1,200,000 mm (`LIMITS.maxExtent`), or c above 100,000 mm. Causes: **Smooth** overshoot; a guide curve close to ±1,200,000 mm, where the chord added to it or taken from it leaves the extent; nose line and end line more than 100,000 mm apart. Message: "At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves, or use linear interpolation." |
+| Geometry extent | at a check position: x_LE, x_LE + c (trailing edge) or z beyond ±1,200,000 mm (`LIMITS.maxExtent`), or c above 100,000 mm. The blends stay within the section values (section 3.1), so the causes are guide curves: a guide curve close to ±1,200,000 mm, where the chord added to it or taken from it leaves the extent; nose line and end line more than 100,000 mm apart. Message: "At y = … mm the wing leaves the project limits (leading-edge x … mm, z … mm, chord … mm; limits ±1200000 mm and 100000 mm chord). Check the guide curves." |
 | Section planes, turning | **Mitred** section planes, **Linear**: at a check position in a panel whose two planes differ, the roll φ changes along y by dφ/dy = (φ_(i+1) − φ_i) / (y_(i+1) − y_i). A point at height t in the plane of its station (along the up direction, with chord, twist and stretch) moves across that plane at the rate cos φ + tan δ · sin φ − t · dφ/dy per mm of span; t is the highest point of the airfoil where dφ/dy > 0, the lowest where dφ/dy < 0; δ is the dihedral from the section positions, the direction in which the station moves, also where the panel stores a panel angle. At the position of a section both panels next to it are tested. At 0 or below the surface folds, also where the planes of the stations around the position do not cross. Message: "Sections a and b: at y = … mm the mitred section planes between them turn faster than the airfoils allow, so the surface folds. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." Example: NACA 0018 at 217 mm chord, rolls 0° and 46.9° over a 21.7 mm panel: at the root 1 − 30.4 mm · 0.0377/mm < 0; the end planes meet 46 mm up the root plane, beyond the airfoil. **Straight panels** are ruled between the sections; the check "Section planes, fold" covers them. |
-| **Smooth** overshoot | **Smooth** only. At a check position an interpolated value lies more than 2 × (max − min) of its section values outside [min, max] (`OVERSHOOT_LIMIT` = 2). Values: x_LE (no guide curve on), chord (not both guide curves on), z, twist, and the height z_unit of every profile point k = 1 … 2N − 1. The message names the value with the largest overshoot (`leading-edge x`, `chord`, `z`, `twist`, `upper surface height at x = … % chord` or `lower surface height at x = … % chord`), its y, the section range and the smallest gap between 2 sections. Remedy in the message: **Linear**, more evenly spaced sections, or fewer closely spaced sections. |
-| Blended thickness | min t_k < −1e-9 at a check position. **Smooth**: overshoot (section 3.1); remedy in the message: **Linear** or more sections. **Linear**: upper and lower surface of a section airfoil cross at that chord station; remedy in the message: check the airfoils or raise **Chordwise stations per surface**. The message gives y and x. |
+| Blended thickness | min t_k < −1e-9 at a check position. Both blends keep t_k between the values of the two sections of the panel (section 3.1), so the cause is a section airfoil whose upper and lower surface cross at that chord station; remedy in the message: check the airfoils or raise **Chordwise stations per surface**. The message gives y and x. |
 | Thickness after the **Trailing edge** setting | min t_k < −1e-9 after the gap change of section 3.7. Checked at positions with c ≥ 1 mm. **Fixed thickness in mm**: gap limited to 5 % of the chord. Cause: the airfoil is thinner inside than the set TE gap. |
 | Surface contact | min t_k ≤ 1e-5 (0.001 % of the chord) at chord stations s_k from 0.01 to 0.99, after the gap change of section 3.7. Checked at positions with c ≥ 1 mm. The message gives y and x. **As in the airfoil files**: remedy **Linear** or more sections; other modes: remedy **As in the airfoil files** or a thicker TE. |
-| Chord | minimum chord < 1 mm; the message gives the chord and its y |
+| Chord | minimum chord < 1 mm; the message gives the chord and its y. The blends keep the chord between the section chords of at least 1 mm, so only nose line and end line together set a smaller chord (their distance). |
 | Chord, hint | as above, minimum at the tip, chord > −0.01 mm, **Wing tip** = **Flat**: the message adds "set **Settings** > **Wing tip** to **Pointed**" |
 | Station planes | **Mitred** section planes, after the fit: for two neighbouring stations of different roll, a point of the outer station does not lie beyond the planes of both stations, seen from the same point of the inner station. Message: "The surface folds between the stations at y = … mm and y = … mm (panel from section a to b): their section planes cross within the airfoils. Lengthen the panel, reduce the dihedral change or set Settings > Section planes to Vertical." |
 | Fitted surface, finite | after the surface fit and the added stations (section 4): a control point coordinate is not a finite number. Message: "The fitted surface has non-finite coordinates; check the positions, chords and twists of the sections." |
-| Fitted thickness | at every fitted position: local thickness of the fitted surface < −1e-9 (beyond 99 % chord: < −min(1e-4, 0.1 mm / c)) at a compared chord station ("The fitted surface turns inside out between stations"), or ≤ 1e-5 (0.001 % of the chord) at a compared chord station from 1 % to 99 % chord ("The fitted surface has zero thickness between stations"). The message gives y and the thickness. Cause in the message: the surface through the stations swings between them (guide curves that change fast, or unevenly spaced sections in **Smooth** mode). Remedy in the message: smooth the guide curves, space the sections more evenly or add sections. |
+| Fitted thickness | at every fitted position: local thickness of the fitted surface < −1e-9 (beyond 99 % chord: < −min(1e-4, 0.1 mm / c)) at a compared chord station ("The fitted surface turns inside out between stations"), or ≤ 1e-5 (0.001 % of the chord) at a compared chord station from 1 % to 99 % chord ("The fitted surface has zero thickness between stations"). The message gives y and the thickness. Cause in the message: the surface through the stations swings between them (guide curves that change fast). Remedy in the message: smooth the guide curves or add sections. |
 | Fitted chord | at every fitted position: c_fit < 0.9 mm (1 mm minimum chord less 10 %). c_fit = ((S(0, v) + S(1, v)) / 2 − S(u_LE, v)) projected onto the intended chord direction of the station at y, in 3D. Message: "The fitted surface folds or narrows between stations" |
 | Surface self-crossing | the surface row at a section, halfway between 2 neighbouring sections or halfway between the 2 stations of one of the 64 widest station intervals (added stations included) crosses itself in the plane of its station (section 1.4) with a loop size (mean width) above 5e-4 · c; 4 samples per knot span (section 1.4) |
 
@@ -635,8 +668,13 @@ Tensor-product B-spline surface S(u, v) through the station grid Q (2N + 1 point
 | Direction | Parameters | Degree | Knot vector |
 | --- | --- | --- | --- |
 | u (around the profile) | mean of the per-station parametrizations; u_0 = 0, u_2N = 1 | 3 | clamped, by averaging; with a closed trailing edge by averaging for given end derivatives (The NURBS Book, eq. 9.22) |
-| v (span), **Linear**, **Straight panels** | v = (y − y_root) / (y_tip − y_root) | 1 when no panel has intermediate stations; otherwise the fewest station intervals of a panel with intermediate stations, at most 3 (min(3, K); 2 or 1 when the loft grid limit lowers K, section 3.2) | one interpolation per panel; a panel of 2 stations is the straight segment between them, raised to that degree; panels joined at the sections with interior knot multiplicity p (C0: position-continuous, kinks at sections) |
-| v (span), **Smooth** | same | 3 (stations − 1 below 4 stations) | one interpolation over all stations, averaging (C2: continuous up to the second derivative) |
+| v (span) | v = (y − y_root) / (y_tip − y_root) | 1 when no panel has intermediate stations; otherwise the fewest station intervals of a panel with intermediate stations, at most 3 (min(3, K); 2 or 1 when the loft grid limit lowers K, section 3.2) | one interpolation per panel; a panel of 2 stations is the straight segment between them, raised to that degree; panels joined at the sections with interior knot multiplicity p (C0: position-continuous, kinks at sections) |
+
+With **Smooth** the station values have a continuous slope at the sections (section 3.1); every panel
+is still interpolated on its own, so the surface is C0 there. One interpolation over all stations
+swings beside a short panel with a fast change: NACA 2415 to NACA 2408 between sections 0.5 mm apart
+next to a 300 mm panel turns that surface inside out (local thickness −34.5 % of the chord at
+y = 304.9 mm, **Spanwise stations per panel** 8).
 
 Procedure:
 
