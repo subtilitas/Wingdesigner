@@ -831,7 +831,7 @@ export function buildWing(project) {
     const where = { y: fixed(minTeCoreY, 1), x: fixed(minTeCoreX * 100, 1), thickness: fixed(minTeCore * 100, 4) };
     errors.push(
       te.mode === 'asis'
-        ? `${tr('Upper and lower surface of the blended profile touch at y = {y} mm, x = {x} % chord (thickness {thickness} % chord); the wing would have zero thickness there.', where)} ${tr('Use linear interpolation or add sections.')}`
+        ? `${tr('Upper and lower surface of the blended profile touch at y = {y} mm, x = {x} % chord (thickness {thickness} % chord); the wing would have zero thickness there.', where)} ${tr('Check the airfoils near that position or raise Settings > Chord samples.')}`
         : `${tr('The trailing-edge setting makes upper and lower surface touch at y = {y} mm, x = {x} % chord (thickness {thickness} % chord); the wing would have zero thickness there.', where)} ${tr('Use "as in file" or a larger trailing-edge thickness.')}`,
     );
     return result;

@@ -67,7 +67,6 @@ export default {
     'Ein Einstellwinkel des XFLR5-Imports im Format Version 1 kann in die Schnittwerte eingerechnet sein; der Winkel ist nicht gespeichert. Die Einrechnung ist nur für senkrechte Schnittebenen genau: Mit Schnittebenen auf Gehrung liegt das Teil bis zu 0,75 · Profiltiefe · sin(Einstellwinkel) · sin(Neigung) neben dem von XFLR5. Einstellungen > Schnittebenen „Senkrecht“ hält den Import genau; ein erneuter Import der XFLR5-Datei ergibt den starren Einstellwinkel.',
   'Straight panels do not follow guide curves: switch the guide curves off in the Planform tab, or set Settings > Spanwise interpolation to Linear or Smooth.':
     'Gerade Felder folgen keinen Leitkurven: die Leitkurven in der Registerkarte Grundriss ausschalten oder Einstellungen > Interpolation in Spannweitenrichtung auf „Linear“ oder „Glatt“ setzen.',
-  'Use linear interpolation or add sections.': 'Lineare Interpolation verwenden oder Schnitte hinzufügen.',
   'The resampled profile has negative thickness at y = {y} mm, x = {x} % chord ({thickness} % chord): upper and lower surface of a section airfoil cross there.':
     'Das neu abgetastete Profil hat bei y = {y} mm, x = {x} % der Profiltiefe eine negative Dicke ({thickness} % der Profiltiefe): Ober- und Unterseite eines Schnittprofils kreuzen sich dort.',
   'Check the airfoils near that position or raise Settings > Chord samples.':
