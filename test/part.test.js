@@ -334,5 +334,15 @@ describe('upgrade of a folded tilt (project format version 2)', () => {
     expect(r1.ok).toBe(true);
     expect([r1.project.foldedTilt, r1.project.settings.partTilt, r1.notes]).toEqual([undefined, 0, []]);
     r1.project.sections.forEach((q, i) => expect([q.x, q.z, q.twist]).toEqual([base.sections[i].x, base.sections[i].z, base.sections[i].twist]));
+    // A version 1 file of the XFLR5 import may hold a folded tilt it does not store: Open says so.
+    const imported = structuredClone(base);
+    imported.airfoils[0].source = { kind: 'xflr5', file: 'a.xfl' };
+    const r2 = projectFromJsonText(JSON.stringify({ ...projectToJson(imported, null), version: 1 }));
+    expect([r2.ok, r2.project.settings.sectionPlanes, r2.notes]).toEqual([
+      true,
+      'vertical',
+      ["This project of format version 1 comes from the XFLR5 import: a tilt angle of the wing is folded into the section values, which is exact for vertical section planes only. With Settings > Section planes Mitred the part can lie up to 0.75 · chord · sin(tilt angle) · sin(roll) off XFLR5's. Importing the XFLR5 file again gives the rigid tilt (Settings > Part tilt)."],
+    ]);
+    expect(projectFromJsonText(JSON.stringify({ ...projectToJson(imported, null), version: 2 })).notes).toEqual([]);
   });
 });

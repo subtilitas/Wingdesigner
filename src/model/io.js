@@ -292,6 +292,11 @@ export function projectFromJsonText(text) {
   // the planform draws and edits them where the wing uses them.
   syncGuidesToSpan(project);
   const notes = data.version < 3 ? upgradeFoldedTilt(project) : [];
+  // The XFLR5 import of format version 1 folded a tilt angle into the sections without storing it:
+  // exact with the vertical planes the file opens with, not with mitred planes.
+  if (data.version === 1 && project.airfoils.some((a) => a.source?.kind === 'xflr5')) {
+    notes.push(tr('This project of format version 1 comes from the XFLR5 import: a tilt angle of the wing is folded into the section values, which is exact for vertical section planes only. With Settings > Section planes Mitred the part can lie up to 0.75 · chord · sin(tilt angle) · sin(roll) off XFLR5\'s. Importing the XFLR5 file again gives the rigid tilt (Settings > Part tilt).'));
+  }
   // An upgraded project must still pass the limits (the turned sections stay within ±LIMITS.maxCoordinate).
   if (notes.length && !validateProject(project).ok) return { ok: false, errors: validateProject(project).errors };
   return { ok: true, project, errors: [], notes };
