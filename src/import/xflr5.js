@@ -250,7 +250,7 @@ export function planeSurfaces(file, planeIndex = 0) {
 function finAsWing(fin) {
   const flags = fin.fin ?? { isFin: true, double: false, symmetric: false };
   if (!flags.isFin || flags.symmetric) return { ...fin, finKind: 'symmetric', twoSided: true, roll: -90 };
-  if (flags.double) return { ...fin, finKind: 'double', twoSided: true, roll: 90, finOffset: Number.isFinite(fin.position.y) ? fin.position.y : 0 };
+  if (flags.double) return { ...fin, finKind: 'double', twoSided: true, roll: 90, finOffset: fin.position.y };
   return { ...fin, finKind: 'single', twoSided: false, roll: -90 };
 }
 
@@ -411,6 +411,8 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
   if (!Number.isFinite(roll)) add('error', tr('The roll angle (Rx_angle) of the wing is not a finite number in the file.'));
   if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) add('error', tr('The position of the wing in the plane is not a finite number in the file.'));
   if (!Number.isFinite(tilt)) add('error', tr('The tilt angle of the wing is not a finite number in the file.'));
+  // A double fin uses the position y (finAsWing).
+  if (wing.finKind === 'double' && Number.isFinite(position.x) && Number.isFinite(position.z) && !Number.isFinite(wing.finOffset)) add('error', tr('The position of the wing in the plane is not a finite number in the file.'));
   if (failed()) return out([]);
 
   // Developed span positions (mm) and the panels between them. A root within MIN_PANEL of the centre
@@ -514,8 +516,6 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
   // Stored within ±180°: an angle of whole turns turns nothing.
   const angle = reduced(tilt);
   const rollAngle = reduced(roll);
-  // A double fin: the right half moves out by the position y, and the part turns about the wing
-  // origin at that y; the left half stays the mirror image.
   // A double fin: XFLR5 rolls the right half about the wing origin and then moves it by the position
   // y (`offset`, either sign). The part frame holds y >= 0, so the sections move by `shift` (the part
   // that lay below the origin, and a positive offset), and the pivot P of the roll R solves
@@ -536,7 +536,7 @@ export function mapSections(wing, lengthUnit, program = 'XFLR5') {
     add('info', tr('The fin reaches {d} mm below its origin (root y_position {y} mm): its sections start at y = 0, and the pivot of Settings > Part roll lies {dy} mm out and {dz} mm down from the wing origin, so that the fin stays where XFLR5 builds it.', { d: num(below), y: num(-below), dy: num(pivot[0] - offset), dz: num(ZL - pivot[1]) }));
   }
   if (rollAngle !== 0 && wing.finKind) {
-    add('info', tr('XFLR5 builds a fin upright: the part turns {angle}° as a rigid body about the wing origin (Settings > Part roll).', { angle: num(rollAngle) }));
+    add('info', tr('XFLR5 builds a fin upright: the part turns {angle}° as a rigid body about x = {x} mm, y = {y} mm, z = {z} mm (Settings > Part roll).', { angle: num(rollAngle), x: num(X), y: num(pivot[0]), z: num(pivot[1]) }));
     if (wing.finKind === 'symmetric') add('info', tr('A symmetric fin: XFLR5 turns both halves upright as one body, one above and one below the wing origin: Settings > Left half is set to Turned with the right half.'));
     if (wing.finKind === 'double') add('info', tr('A double fin: XFLR5 builds two upright fins {y} mm to the right and to the left of the wing origin (position y). The part\'s right half is the fin XFLR5 builds from the right half of the wing, its left half the mirror image.', { y: num(Math.abs(offset)) }));
   } else if (rollAngle !== 0) {

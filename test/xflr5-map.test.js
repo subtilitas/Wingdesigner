@@ -578,7 +578,7 @@ describe('XFLR5 mapping: second wing and fin', () => {
     expect(cornerDistance(r.project, xflr5Corners(fin, { xTilt: -90, fin: fin.fin }))).toBeLessThan(1e-3);
     expect(texts(r.report, 'info')).toEqual(
       expect.arrayContaining([
-        'XFLR5 builds a fin upright: the part turns 90° as a rigid body about the wing origin (Settings > Part roll).',
+        'XFLR5 builds a fin upright: the part turns 90° as a rigid body about x = 680 mm, y = 0 mm, z = 15 mm (Settings > Part roll).',
         "A single fin: XFLR5 builds its left half only, with the left-side airfoils, at y = 0. The part's left half is that half, its right half the mirror image on top of it; Export > Wing halves > Left half only exports XFLR5's fin alone.",
       ]),
     );
@@ -619,6 +619,9 @@ describe('XFLR5 mapping: second wing and fin', () => {
     }
     const tilted = finWing({ double: true }, { y: 150, tilt: -2 });
     expect(planeSurfaces(plane(tilted)).surfaces.find((s) => s.key === 'wing:3').available).toBe(false);
+    // A double fin needs its position y: a value that is not a number (an XML reader warning) stops it.
+    const lost = finWing({ double: true }, { y: NaN });
+    expect(texts(mapXflr5(plane(lost), { surface: 'wing:3' }).report, 'error')).toEqual(['The position of the wing in the plane is not a finite number in the file.']);
   });
 
   it('moves a fin that reaches below its origin up to y = 0 and its roll pivot so that it stays in place', () => {

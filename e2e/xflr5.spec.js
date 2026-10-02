@@ -297,7 +297,7 @@ test.describe('XFLR5 import', () => {
     const fin = dlg.getByRole('radio', { name: /^Fin/ });
     await fin.check();
     await expect(dlg.getByRole('textbox', { name: 'Project name' })).toHaveValue('Fixture A Fin');
-    await expect(reportOf(dlg).filter({ hasText: 'XFLR5 builds a fin upright: the part turns 90° as a rigid body about the wing origin (Settings > Part roll).' })).toHaveCount(1);
+    await expect(reportOf(dlg).filter({ hasText: 'XFLR5 builds a fin upright: the part turns 90° as a rigid body about x = 680 mm, y = 0 mm, z = 0 mm (Settings > Part roll).' })).toHaveCount(1);
     await expect(reportOf(dlg).filter({ hasText: 'A single fin: XFLR5 builds its left half only' })).toHaveCount(1);
     await expect(reportOf(dlg).filter({ hasText: 'Not imported: the main wing "Main Wing", the horizontal stabilizer "Elevator".' })).toHaveCount(1);
     await dlg.getByRole('button', { name: /^Import/ }).click();

@@ -501,8 +501,9 @@ export function buildWing(project) {
   result.rolls = R.slice();
   result.stretches = planes.stretches.slice();
   // The stretch 1/cos(angle between a section plane and its panel) grows without bound; the build
-  // stops at MAX_STRETCH instead of clamping it.
-  const stretched = overStretched(planes.stretches);
+  // stops at MAX_STRETCH instead of clamping it. Smooth stretches against the blended reference line,
+  // not the panels: its check runs at every check position, the sections included (below).
+  const stretched = planesOn && smooth ? -1 : overStretched(planes.stretches);
   if (stretched >= 0) {
     errors.push(
       tr('Section {n}: its mitred plane lies {angle}° from the panel next to it, which stretches the airfoil {stretch} times (limit {limit}, 60°). Reduce the dihedral change there or set Settings > Section planes to Vertical.', {
@@ -767,7 +768,9 @@ export function buildWing(project) {
     // other where an airfoil is thinner than its trailing-edge gap.
     const shape = blendCompat(y);
     if (planesOn && smooth && !turnFold && !overStretch) {
-      if (!(stretch <= MAX_STRETCH)) overStretch = { y, stretch, angle: Math.abs(roll - slopes(y).square), i: panelOf(y) };
+      // Within the rounding of Linear's limit (a plane that rounds to 60.0° builds); a plane more than
+      // 90° off gives a negative stretch.
+      if (!(stretch > 0) || overStretched([stretch]) >= 0) overStretch = { y, stretch, angle: Math.abs(roll - slopes(y).square), i: panelOf(y) };
       else {
         const { dihedral, rollRate: rate } = slopes(y);
         if (rate !== 0) {

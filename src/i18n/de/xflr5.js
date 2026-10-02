@@ -11,8 +11,8 @@ export default {
     'Ein Seitenleitwerk mit einem Einstellwinkel von {angle}°: XFLR5 dreht dieses Seitenleitwerk um z, und ein Teil dreht sich nur um x und y.',
   'The fin reaches {d} mm below its origin (root y_position {y} mm): its sections start at y = 0, and the pivot of Settings > Part roll lies {dy} mm out and {dz} mm down from the wing origin, so that the fin stays where XFLR5 builds it.':
     'Das Seitenleitwerk reicht {d} mm unter seinen Ursprung (y_position der Wurzel {y} mm): Seine Schnitte beginnen bei y = 0, und der Drehpunkt von Einstellungen > Rollwinkel des Teils liegt {dy} mm außen und {dz} mm unter dem Ursprung des Flügels, damit das Seitenleitwerk dort bleibt, wo XFLR5 es baut.',
-  'XFLR5 builds a fin upright: the part turns {angle}° as a rigid body about the wing origin (Settings > Part roll).':
-    'XFLR5 baut ein Seitenleitwerk aufrecht: Das Teil dreht sich um {angle}° als starrer Körper um den Ursprung des Flügels (Einstellungen > Rollwinkel des Teils).',
+  'XFLR5 builds a fin upright: the part turns {angle}° as a rigid body about x = {x} mm, y = {y} mm, z = {z} mm (Settings > Part roll).':
+    'XFLR5 baut ein Seitenleitwerk aufrecht: Das Teil dreht sich um {angle}° als starrer Körper um x = {x} mm, y = {y} mm, z = {z} mm (Einstellungen > Rollwinkel des Teils).',
   'A symmetric fin: XFLR5 turns both halves upright as one body, one above and one below the wing origin: Settings > Left half is set to Turned with the right half.':
     'Ein symmetrisches Seitenleitwerk: XFLR5 dreht beide Hälften als einen Körper aufrecht, eine über und eine unter dem Ursprung des Flügels: Einstellungen > Linke Hälfte ist auf Mit der rechten Hälfte gedreht gestellt.',
   "A double fin: XFLR5 builds two upright fins {y} mm to the right and to the left of the wing origin (position y). The part's right half is the fin XFLR5 builds from the right half of the wing, its left half the mirror image.":

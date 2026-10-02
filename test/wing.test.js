@@ -1650,6 +1650,15 @@ describe('mitred section planes', () => {
     const [l2, s2] = ['linear', 'smooth'].map((s) => buildWing(stored(s)));
     expect(s2.rolls).toEqual([0, 10, 20]);
     s2.stretches.forEach((v, i) => expect(v, `section ${i + 1}`).toBeCloseTo(l2.stretches[i], 12));
+    // The limit of 60° holds within the rounding of Linear: a straight wing at 60.01° builds both ways
+    // (the vertical root plane stretched 2.0006 times).
+    const steep = (spanwise) =>
+      createProject({
+        airfoils: [naca('0012', 'a')],
+        sections: [0, 1, 2].map((k) => ({ airfoil: 'a', x: 0, y: 300 * k * Math.cos(60.01 * DEG), z: 300 * k * Math.sin(60.01 * DEG), chord: 200, twist: 0 })),
+        settings: { sectionPlanes: 'mitred', spanwise },
+      });
+    for (const spanwise of ['linear', 'smooth']) expect(buildWing(steep(spanwise)).errors, spanwise).toEqual([]);
   });
 
   it('stops Smooth where the reference line bends beyond 60° from the plane between the sections', () => {
