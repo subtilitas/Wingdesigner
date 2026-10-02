@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-02
+
 ### Added
 
 - Integral winglet: **Winglet…** in the **Sections** tab appends sections beyond the tip section as one undo step.
@@ -60,7 +62,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   takes secant end tangents to the first chord station, so that the upper surface stays above the lower one at the
   trailing edge. With free end tangents the surfaces crossed up to 0.046 mm from the trailing edge (1.2e-4 mm deep at
   240 mm chord), and OpenCascade's BRepCheck reported the end cap of one half as a self-intersecting wire. A closed
-  trailing edge gives 2 more control points per station row; the STEP validation has a 14th case, `cusped-closed`.
+  trailing edge gives 2 more control points per station row.
 
 ## [0.4.0] - 2026-10-01
 
