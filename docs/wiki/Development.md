@@ -711,7 +711,7 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 
 ## Release
 
-`<version>`: the version to release, e.g. `0.5.0`. `package.json` holds `0.4.0`.
+`<version>`: the version to release, e.g. `0.6.0`. `package.json` holds `0.5.0`.
 
 1. Set the version: `npm version <version> --no-git-tag-version` (updates `package.json` and `package-lock.json`).
 2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`. The section becomes the release notes: it describes the app, its files and its user documentation (README, User Guide, Geometry, File Formats, Airfoil Sources) and leaves out the handover, `RECORD.md`, the working agreements, continuous integration, tests, scripts, this page and the names of the source code. `npm run docs:check` reports the terms it knows (Documentation check).
