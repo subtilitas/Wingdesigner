@@ -634,23 +634,36 @@ Tensor-product B-spline surface S(u, v) through the station grid Q (2N + 1 point
 
 | Direction | Parameters | Degree | Knot vector |
 | --- | --- | --- | --- |
-| u (around the profile) | mean of the per-station parametrizations; u_0 = 0, u_2N = 1 | 3 | clamped, by averaging |
+| u (around the profile) | mean of the per-station parametrizations; u_0 = 0, u_2N = 1 | 3 | clamped, by averaging; with a closed trailing edge by averaging for given end derivatives (The NURBS Book, eq. 9.22) |
 | v (span), **Linear**, **Straight panels** | v = (y − y_root) / (y_tip − y_root) | 1 when no panel has intermediate stations; otherwise the fewest station intervals of a panel with intermediate stations, at most 3 (min(3, K); 2 or 1 when the loft grid limit lowers K, section 3.2) | one interpolation per panel; a panel of 2 stations is the straight segment between them, raised to that degree; panels joined at the sections with interior knot multiplicity p (C0: position-continuous, kinks at sections) |
 | v (span), **Smooth** | same | 3 (stations − 1 below 4 stations) | one interpolation over all stations, averaging (C2: continuous up to the second derivative) |
 
 Procedure:
 
-1. Interpolate each station row along u (one band LU factorization serves all rows).
+1. Interpolate each station row along u (one band LU factorization serves all rows). With a closed
+   trailing edge (`closedTE`) the row also has its end derivatives given: the secants
+   D_0 = (Q_1 − Q_0) / u_1 and D_2N = (Q_2N − Q_(2N−1)) / (1 − u_(2N−1)) to the first chord station
+   (`secantEndInterpolation` in `src/geom/nurbs.js`; The NURBS Book, section 9.2.2, eq. 9.21).
 2. Interpolate each column of the resulting control points along v (band LU, section 1.2).
 3. Set y of the control points at v = 0 to y_root, and project the control points at v = 1 onto the
    tip plane (y = y_tip for φ = 0). This removes solver round-off: the root and tip rows lie in their
-   planes (13 STEP cases: within 3e-13 mm, section 6).
+   planes (14 STEP cases: within 3e-13 mm, section 6).
+
+End tangents at a closed trailing edge: without given end derivatives each end takes its tangent from
+the curvature of the row further in. At a cusp (thickness and wedge angle 0 at the trailing edge) the
+first chord station, 6.85e-4 of the chord from the trailing edge at N = 60, is only 9e-6 to 5e-5 of
+the chord thick, and the end tangent of the upper side can then lie below that of the lower side. Example,
+`cusped-closed` (section 6), root chord 240 mm: the first chord station lies 0.164 mm from the trailing
+edge and is 0.0022 mm thick, the secant slopes to it are 0.7063 (upper) and 0.6928 (lower). Free ends
+give end slopes of 0.6962 and 0.7088: the upper surface lies below the lower one up to 0.046 mm from
+the trailing edge (1.2e-4 mm deep), and the outline of the root cap crosses itself. Secant end
+tangents give 0.7063 and 0.6928 and no crossing. A trailing edge with a gap keeps free ends.
 
 Properties:
 
 - S passes through every station point: S(u_j, v_k) = Q_(j,k).
 - The iso-curve u = u_LE passes through the leading edge of every station.
-- Control points per half: (2N + 1) × stations.
+- Control points per half: (2N + 1) × stations; (2N + 3) × stations with a closed trailing edge.
 - The surface rows at each section, halfway between neighbouring sections and halfway between the
   stations of the 64 widest station intervals are tested for self-crossing (section 1.4).
 
@@ -771,7 +784,8 @@ S ∘ T or T ∘ S (**Left half**, section 3.9). The flags stay as in the table:
 orientation, the turn keeps it.
 
 Validation: `scripts/validate_step.py` reads the files written by `scripts/export-step-cases.mjs`
-with OpenCascade. Cases: the 13 cases of `test/step-cases.js`, 5 of them with **Mitred** section
+with OpenCascade. Cases: the 14 cases of `test/step-cases.js`, 1 of them with a closed, cusped trailing
+edge (`cusped-closed`, section 4), 5 of them with **Mitred** section
 planes (a 35° V-tail with **Straight panels**, written once without and once with the **Fusion 360
 fix** (Y up), a 15°/−5° gull with **Linear**, an airfoil switch with **Straight panels**: two
 sections 0.5 mm apart in y in one plane between panels of 0° and 10°, the outer panel with a stored
@@ -871,7 +885,7 @@ within the error of the midpoint rule itself):
 | **MAC position** | y_MAC, x_LE,MAC | mm, 1 |
 | **25 % MAC (geometric reference)** | x_25 | mm, 1 |
 | **Root / tip chord** | c of the first and of the last station | mm, 1 |
-| **Surface** | degree u × degree v; control points (2N + 1) × stations | – |
+| **Surface** | degree u × degree v; control points (2N + 1) × stations, (2N + 3) × stations with a closed trailing edge | – |
 | **Trailing edge** | `closed` or `open` (section 3.7) | – |
 
 Example: **Glider** preset (**Tip** = **Flat**, N = 60, K = 8): **Span** 2000.0 mm, **Wing area**

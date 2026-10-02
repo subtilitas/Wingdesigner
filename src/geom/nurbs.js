@@ -360,6 +360,50 @@ export function collocationFactor(params, p, U) {
 
 export { bandSolve as collocationSolve };
 
+/**
+ * Global interpolation with both end derivatives specified (The NURBS Book, section 9.2.2, eq. 9.21
+ * and 9.22): n + 3 control points for the n + 1 points at params. The end derivatives are the
+ * secants to the neighbouring points, D0 = (Q1 - Q0) / (t1 - t0) and Dn likewise, so that each end
+ * leaves its point in the direction of its neighbour. Returns the knot vector and solve(values),
+ * which maps one coordinate of the points to that coordinate of the control points (one
+ * factorization, many right-hand sides).
+ */
+export function secantEndInterpolation(params, p) {
+  const n = params.length - 1;
+  if (n < 2 || p < 1) throw new Error('secantEndInterpolation needs at least 3 points and degree 1.');
+  for (let k = 1; k <= n; k++) if (!(params[k] >= params[k - 1])) throw new Error('Interpolation parameters must be nondecreasing.');
+  if (!(params[1] > params[0] && params[n] > params[n - 1])) throw new Error('The end parameters must differ from their neighbours.');
+  const m = n + p + 3;
+  const U = new Array(m + 1).fill(0);
+  for (let i = m - p; i <= m; i++) U[i] = 1;
+  for (let j = 0; j <= n - p + 1; j++) {
+    let s = 0;
+    for (let i = j; i <= j + p - 1; i++) s += params[i];
+    U[j + p + 1] = s / p;
+  }
+  const last = n + 2;
+  const rows = [{ start: 0, values: [1] }, { start: 0, values: [-1, 1] }];
+  for (let k = 1; k < n; k++) {
+    const span = findSpan(last, p, params[k], U);
+    rows.push({ start: span - p, values: basisFuns(span, params[k], p, U) });
+  }
+  rows.push({ start: last - 1, values: [-1, 1] });
+  rows.push({ start: last, values: [1] });
+  const lu = bandFactor(rows);
+  const a = U[p + 1] / p / (params[1] - params[0]);
+  const b = (1 - U[m - p - 1]) / p / (params[n] - params[n - 1]);
+  const solve = (q) => {
+    const rhs = new Array(n + 3);
+    rhs[0] = q[0];
+    rhs[1] = a * (q[1] - q[0]);
+    for (let k = 1; k < n; k++) rhs[k + 1] = q[k];
+    rhs[n + 1] = b * (q[n] - q[n - 1]);
+    rhs[n + 2] = q[n];
+    return bandSolve(lu, rhs);
+  };
+  return { knots: U, solve };
+}
+
 export function collocationMatrix(params, p, U) {
   const n = params.length - 1;
   const A = Array.from({ length: n + 1 }, () => new Float64Array(n + 1));

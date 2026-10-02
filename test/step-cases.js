@@ -2,7 +2,7 @@
 // linear/smooth spanwise interpolation, guide curves, root off the symmetry plane, mirroring,
 // mitred section planes, a rigid placement of the part).
 import { createProject } from '../src/model/project.js';
-import { naca, sampleProject } from './helpers.js';
+import { cuspedAirfoil, naca, sampleProject } from './helpers.js';
 
 const DEG = Math.PI / 180;
 
@@ -23,6 +23,20 @@ export function stepCases() {
   reflex.airfoils = [naca('23112', 'root'), naca('0008', 'tip', { closedTE: true })];
   reflex.settings.trailingEdge = { mode: 'closed', thickness: 0 };
   cases.push({ name: 'reflex-closed', project: reflex, mirror: true });
+  // A closed, cusped trailing edge (zero thickness and wedge angle) at 240 mm root chord. Free end
+  // tangents of the chordwise fit cross the upper and lower surfaces up to 0.046 mm from the
+  // trailing edge, and BRepCheck reports the root cap of the left half as a self-intersecting wire.
+  const cusped = createProject({
+    name: 'Cusped',
+    airfoils: [cuspedAirfoil()],
+    sections: [
+      { airfoil: 'cusp', x: 0, y: 0, z: 0, chord: 240, twist: 0 },
+      { airfoil: 'cusp', x: 48, y: 600, z: 24, chord: 168, twist: -2 },
+      { airfoil: 'cusp', x: 120, y: 960, z: 48, chord: 96, twist: -3 },
+    ],
+    settings: { spanwise: 'straight', sectionPlanes: 'vertical' },
+  });
+  cases.push({ name: 'cusped-closed', project: cusped, mirror: true });
   const pointed = sampleProject({ settings: { tip: { mode: 'pointed', ratio: 0.002 }, trailingEdge: { mode: 'thickness', thickness: 0.4 } } });
   cases.push({ name: 'pointed-tip', project: pointed, mirror: true });
   const pointedGuided = sampleProject({ settings: { tip: { mode: 'pointed', ratio: 0.005 }, trailingEdge: { mode: 'closed' } } });

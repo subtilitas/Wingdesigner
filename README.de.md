@@ -106,9 +106,9 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 
 | Format | Datei | Inhalt | Prüfung |
 | --- | --- | --- | --- |
-| STEP, Application Protocol 214 (AP214), Textformat nach ISO (International Organization for Standardization) 10303-21 | `.step` | Ein geschlossener B-rep-Volumenkörper (Boundary Representation) je Hälfte. Flächen: Ober- und Unterseite als B-Spline-Fläche (die exakte NURBS-Fläche des Flügels), Regelfläche an der Endleiste (nur bei offener Endleiste), ebene Abschlussflächen an Wurzel und Rand. | CI: `scripts/validate_step.py` liest 13 Testflügel mit OpenCascade (cadquery-ocp 8.0.1). Bestanden: Formen gültig, Hüllen geschlossen und orientiert, Volumen innerhalb 0,05 % des Volumens des Dreiecksnetzes, Kanten der Abschlussflächen innerhalb 1e-6 mm von ihren Ebenen. |
+| STEP, Application Protocol 214 (AP214), Textformat nach ISO (International Organization for Standardization) 10303-21 | `.step` | Ein geschlossener B-rep-Volumenkörper (Boundary Representation) je Hälfte. Flächen: Ober- und Unterseite als B-Spline-Fläche (die exakte NURBS-Fläche des Flügels), Regelfläche an der Endleiste (nur bei offener Endleiste), ebene Abschlussflächen an Wurzel und Rand. | CI: `scripts/validate_step.py` liest 14 Testflügel mit OpenCascade (cadquery-ocp 8.0.1). Bestanden: Formen gültig, Hüllen geschlossen und orientiert, Volumen innerhalb 0,05 % des Volumens des Dreiecksnetzes, Kanten der Abschlussflächen innerhalb 1e-6 mm von ihren Ebenen. |
 | STL, binär | `.stl` | Geschlossenes Dreiecksnetz; eine Hülle je Körper. | Unit-Tests: Jede gerichtete Kante kommt einmal vor, ihre Umkehrung einmal; Volumen aus der gelesenen float32-Datei innerhalb 0,0005 % des Volumens des Dreiecksnetzes. |
-| 3MF | `.3mf` | Dieselben Dreiecksnetze; ein Objekt je Hülle; Einheit Millimeter. | Unit-Tests: 3 Paketteile, Einheit Millimeter, 1 Objekt und 1 Build-Eintrag je Hülle, Anzahl der Eckpunkte. CI: `scripts/validate_3mf.py` liest die 13 Testflügel mit lib3mf 2.5.0 im strikten Modus. Bestanden: keine Warnungen beim Einlesen, Anzahl der Dreiecke je Objekt wie geschrieben, jedes Objekt mannigfaltig und orientiert. Slicer-Software: nicht getestet. |
+| 3MF | `.3mf` | Dieselben Dreiecksnetze; ein Objekt je Hülle; Einheit Millimeter. | Unit-Tests: 3 Paketteile, Einheit Millimeter, 1 Objekt und 1 Build-Eintrag je Hülle, Anzahl der Eckpunkte. CI: `scripts/validate_3mf.py` liest die 14 Testflügel mit lib3mf 2.5.0 im strikten Modus. Bestanden: keine Warnungen beim Einlesen, Anzahl der Dreiecke je Objekt wie geschrieben, jedes Objekt mannigfaltig und orientiert. Slicer-Software: nicht getestet. |
 | Schaumschnitt-Dateien (Assistent **Schaum**) | `.zip`, `.svg`, `.pdf`, `.dxf` | Paare von Endprofilen (`.dat`), `segments.csv`, Schablonen 1:1. Inhalt: [Dateiformate](https://github.com/subtilitas/Wingdesigner/wiki/Dateiformate), Abschnitt Schaumschnitt-Dateien. | CI: `scripts/validate_foam.py` liest die Dateien von 11 Testflügeln mit ezdxf 1.4.4 (DXF-Prüfung (audit) ohne Fehler, geschlossene Profil-Polylinien; ohne Schnittbreite stimmen ihre Breite und Höhe innerhalb 0,001 mm mit den `.dat`-Dateien überein) und pypdf 6.19.0 (Seitenzahl, Seitengröße, Seitenbeschriftungen), das SVG mit einem XML-Parser. Programme für den Heißdrahtschnitt, Programme für rechnergestütztes Konstruieren (CAD, computer-aided design), Laserschneider, Drucker: nicht getestet. |
 | Projekt-JSON | `.json` | Profilkoordinaten, Schnitte, Leitkurven, Einstellungen. Abgeleitete NURBS-Daten nur, wenn der Flügel ohne Fehler berechnet wird. Würde die Datei mit den abgeleiteten Daten 100 MB übersteigen, lassen **Speichern** (Save) und der JSON-Export sie weg und zeigen `Die Datei lässt die abgeleiteten NURBS-Daten weg: Mit ihnen wäre sie größer als die 100 MB, die „Öffnen“ höchstens liest. „Öffnen“ berechnet sie neu; der STEP-Export schreibt die exakten Flächen.` Abgeleitete Daten: die Kurve jedes Profils, das ein Schnitt verwendet, jede aktive Leitkurve (null, wenn aus), Stationen in Spannweitenrichtung, NURBS-Fläche (Grad, Knotenvektoren, Kontrollpunkte). Der Import ignoriert die abgeleiteten Daten und berechnet sie neu. | Unit-Tests: Schreiben, erneutes Einlesen und Neuberechnen ergibt dieselben Schnitte, Leitkurven, Profilpunkte und Kontrollpunkte der Fläche; Prüfung jedes Felds. |
 
@@ -235,7 +235,7 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md). Verifizierter Stand und offene
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 636 Unit-Tests (Vitest)
+npm test                 # 638 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern
@@ -244,7 +244,7 @@ npm run coverage         # Unit-Tests mit Abdeckungsbericht in coverage/
 npm run coverage:readme  # Abdeckungstabellen in README.md und README.de.md schreiben
 npm run coverage:check   # Exit-Code 1, wenn eine README-Abdeckungstabelle von coverage/ abweicht
 npm run airfoils:check   # mitgelieferte Profilbibliothek und NACA-Vorlagen prüfen
-npm run step:cases       # 13 STEP-Dateien, 13 3MF-Dateien und cases.json nach step-check/ schreiben
+npm run step:cases       # 14 STEP-Dateien, 14 3MF-Dateien und cases.json nach step-check/ schreiben
 npm run foam:cases       # Schaumschnitt-Dateien von 11 Testflügeln und cases.json nach foam-check/ schreiben
 npm run screenshots      # Build erzeugen und docs/wiki/images/ neu aufnehmen
 npm run docs:check       # Seitenpaare, Wiki-Links, Bilder, Abdeckungsmarker und die Release-Texte in CHANGELOG.md prüfen

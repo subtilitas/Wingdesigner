@@ -430,14 +430,14 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 636 tests in 24 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 638 tests in 24 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit code 1 when a README table differs from `coverage/coverage-summary.json`; exit code 2 when that file or a marker is missing |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 13 STEP files, 13 3MF files and `cases.json` in `step-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 14 STEP files, 14 3MF files and `cases.json` in `step-check/` |
 | `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 11 test wings and `cases.json` in `foam-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Portable Network Graphics (PNG) files: 14 in `docs/wiki/images/` (English) and 14 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
@@ -542,6 +542,7 @@ x and z: position of the leading edge.
 | `guided-elliptic` | Nose line and end line, 4 points each; trailing-edge thickness 0.5 mm | 2 |
 | `root-offset-half` | All sections moved by +35 mm in y (root at y = 35 mm); not mirrored | 1 |
 | `reflex-closed` | NACA 23112 (reflexed) at sections 1 and 2, NACA 0008 at the tip; closed trailing edge | 2 |
+| `cusped-closed` | Not the base wing: 3 sections of a synthetic airfoil with a closed, cusped trailing edge (`cuspedAirfoil` in `test/helpers.js`: zero thickness and zero wedge angle at the trailing edge, camber slope −0.7 there), chords 240, 168 and 96 mm at y 0, 600 and 960 mm, twist 0°, −2° and −3°; **Straight panels** | 2 |
 | `pointed-tip` | Pointed tip, ratio 0.002 (1/500); trailing-edge thickness 0.4 mm | 2 |
 | `pointed-elliptic-closed` | Pointed tip, ratio 0.005 (1/200); nose line and end line meet at x = 115 mm, y = 600 mm; closed trailing edge | 2 |
 | `symmetric-0009` | NACA 0009 at every section | 2 |

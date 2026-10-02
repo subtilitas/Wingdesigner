@@ -7,6 +7,25 @@ export function naca(code, id = code, opts = {}) {
 }
 
 /**
+ * Synthetic airfoil with a closed, cusped trailing edge (Selig order, `points` per side, cosine
+ * spacing): camber 0.2 x (1 − x) (1 + 2.5 x), aft-loaded with a camber slope of −0.7 at the trailing
+ * edge, and half thickness 0.3 √x (1 − x)^1.5, which ends with zero thickness and zero wedge angle
+ * (tangent surfaces), as the cusp of high-lift airfoils such as the S1223.
+ */
+export function cuspedAirfoil(id = 'cusp', points = 41) {
+  const upper = [];
+  const lower = [];
+  for (let i = 0; i < points; i++) {
+    const x = (1 - Math.cos((Math.PI * i) / (points - 1))) / 2;
+    const half = 0.3 * Math.sqrt(x) * (1 - x) ** 1.5;
+    const camber = 0.2 * x * (1 - x) * (1 + 2.5 * x);
+    upper.push([x, camber + half]);
+    lower.push([x, camber - half]);
+  }
+  return { id, name: 'Cusped', points: upper.reverse().concat(lower.slice(1)), source: { kind: 'file' } };
+}
+
+/**
  * Three-section tapered wing with twist and dihedral. Vertical section planes unless the overrides
  * set others: most tests exercise other parts of the build; the mitred planes have tests of their own.
  */

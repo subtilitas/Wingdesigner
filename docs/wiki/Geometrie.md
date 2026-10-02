@@ -669,23 +669,38 @@ Tensorprodukt-B-Spline-Fläche S(u, v) durch das Stationsgitter Q (2N + 1 Punkte
 
 | Richtung | Parameter | Grad | Knotenvektor |
 | --- | --- | --- | --- |
-| u (um das Profil) | Mittel der Parametrisierungen aller Stationen; u_0 = 0, u_2N = 1 | 3 | geklemmt, durch Mittelwertbildung |
+| u (um das Profil) | Mittel der Parametrisierungen aller Stationen; u_0 = 0, u_2N = 1 | 3 | geklemmt, durch Mittelwertbildung; bei geschlossener Endleiste durch Mittelwertbildung für vorgegebene Endableitungen (The NURBS Book, Gl. 9.22) |
 | v (Spannweite), **Linear**, **Gerade Felder** | v = (y − y_root) / (y_tip − y_root) | 1, wenn kein Feld Zwischenstationen hat; sonst die kleinste Zahl von Stationsintervallen eines Feldes mit Zwischenstationen, höchstens 3 (min(3, K); 2 oder 1, wenn die Grenze des Flächengitters K senkt, Abschnitt 3.2) | eine Interpolation je Feld; ein Feld aus 2 Stationen ist die gerade Strecke zwischen ihnen, auf diesen Grad erhöht; Felder an den Schnitten mit innerer Knotenvielfachheit p verbunden (C0: stetig in der Lage, Knicke an den Schnitten) |
 | v (Spannweite), **Glatt** (Smooth) | ebenso | 3 (Stationen − 1 bei weniger als 4 Stationen) | eine Interpolation über alle Stationen, Mittelwertbildung (C2: stetig bis zur zweiten Ableitung) |
 
 Ablauf:
 
-1. Jede Stationszeile entlang u interpolieren (eine Band-LU-Zerlegung gilt für alle Zeilen).
+1. Jede Stationszeile entlang u interpolieren (eine Band-LU-Zerlegung gilt für alle Zeilen). Bei
+   geschlossener Endleiste (`closedTE`) hat die Zeile zusätzlich vorgegebene Endableitungen: die
+   Sekanten D_0 = (Q_1 − Q_0) / u_1 und D_2N = (Q_2N − Q_(2N−1)) / (1 − u_(2N−1)) zur ersten
+   Profilstation (`secantEndInterpolation` in `src/geom/nurbs.js`; The NURBS Book, Abschnitt 9.2.2,
+   Gl. 9.21).
 2. Jede Spalte der erhaltenen Kontrollpunkte entlang v interpolieren (Band-LU, Abschnitt 1.2).
 3. y der Kontrollpunkte bei v = 0 auf y_root setzen und die Kontrollpunkte bei v = 1 auf die Randebene
    projizieren (y = y_tip bei φ = 0). Das entfernt Rundungsfehler des Lösers: Die Zeilen an Wurzel und
-   Rand liegen in ihren Ebenen (13 STEP-Fälle: innerhalb von 3e-13 mm, Abschnitt 6).
+   Rand liegen in ihren Ebenen (14 STEP-Fälle: innerhalb von 3e-13 mm, Abschnitt 6).
+
+Endtangenten an einer geschlossenen Endleiste: Ohne vorgegebene Endableitungen nimmt jedes Ende seine
+Tangente aus der Krümmung der Zeile weiter innen. An einer spitz auslaufenden Endleiste (Dicke und
+Keilwinkel an der Endleiste 0) ist die erste Profilstation, bei N = 60 um 6,85e-4 der Profiltiefe von
+der Endleiste entfernt, nur 9e-6 bis 5e-5 der Profiltiefe dick, und die Endtangente der Oberseite kann
+dann unter der der Unterseite liegen. Beispiel `cusped-closed` (Abschnitt 6), Wurzeltiefe 240 mm:
+Die erste Profilstation liegt 0,164 mm vor der Endleiste und ist 0,0022 mm dick, die Steigungen der
+Sekanten zu ihr sind 0,7063 (oben) und 0,6928 (unten). Freie Enden ergeben Endsteigungen von 0,6962
+und 0,7088: Die Oberseite liegt bis 0,046 mm vor der Endleiste unter der Unterseite (1,2e-4 mm tief),
+und der Umriss der Wurzelfläche schneidet sich selbst. Sekanten als Endtangenten ergeben 0,7063 und
+0,6928 und keine Überschneidung. Eine Endleiste mit Spalt behält freie Enden.
 
 Eigenschaften:
 
 - S verläuft durch jeden Stationspunkt: S(u_j, v_k) = Q_(j,k).
 - Die Isokurve u = u_LE verläuft durch die Profilnase jeder Station.
-- Kontrollpunkte je Halbflügel: (2N + 1) × Stationen.
+- Kontrollpunkte je Halbflügel: (2N + 1) × Stationen; (2N + 3) × Stationen bei geschlossener Endleiste.
 - Die Flächenzeilen an jedem Schnitt, in der Mitte zwischen benachbarten Schnitten und in
   der Mitte zwischen den Stationen der 64 breitesten Stationsintervalle werden auf
   Selbstüberschneidung geprüft (Abschnitt 1.4).
@@ -814,7 +829,8 @@ mit S ∘ T oder T ∘ S (**Linke Hälfte**, Abschnitt 3.9). Die Flags bleiben w
 Spiegelung kehrt die Orientierung um, die Drehung erhält sie.
 
 Prüfung: `scripts/validate_step.py` liest die von `scripts/export-step-cases.mjs` geschriebenen Dateien
-mit OpenCascade. Fälle: die 13 Fälle aus `test/step-cases.js`, 5 davon mit Schnittebenen **Auf Gehrung**
+mit OpenCascade. Fälle: die 14 Fälle aus `test/step-cases.js`, 1 davon mit geschlossener, spitz
+auslaufender Endleiste (`cusped-closed`, Abschnitt 4), 5 davon mit Schnittebenen **Auf Gehrung**
 (ein 35°-V-Leitwerk mit **Gerade Felder**, einmal ohne und einmal mit **Fusion-360-Korrektur** (Y nach
 oben) geschrieben, ein Möwenflügel mit 15°/−5° mit **Linear**, ein Profilwechsel mit **Gerade
 Felder**: zwei Schnitte 0,5 mm auseinander in y in einer Ebene zwischen Feldern mit 0° und 10°, das
@@ -920,7 +936,7 @@ innerhalb des Fehlers der Mittelpunktregel selbst):
 | **Lage der MAC** (MAC position) | y_MAC, x_LE,MAC | mm, 1 |
 | **25 % MAC (geometrischer Bezugspunkt)** (25 % MAC (geometric reference)) | x_25 | mm, 1 |
 | **Wurzel- / Randtiefe** (Root / tip chord) | c der ersten und der letzten Station | mm, 1 |
-| **NURBS-Fläche** (Surface) | Grad u × Grad v; Kontrollpunkte (2N + 1) × Stationen | – |
+| **NURBS-Fläche** (Surface) | Grad u × Grad v; Kontrollpunkte (2N + 1) × Stationen, (2N + 3) × Stationen bei geschlossener Endleiste | – |
 | **Endleiste** (Trailing edge) | „geschlossen“ oder „offen“ (Abschnitt 3.7) | – |
 
 Beispiel: Entwurfstyp **Segelflugmodell** (**Flügelende** = **Flach**, N = 60, K = 8): **Spannweite** 2.000,0 mm, **Flügelfläche**
