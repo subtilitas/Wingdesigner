@@ -43,7 +43,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - The import dialog names the program of the file: **Import from XFLR5** or **Import from flow5**, and the messages
   of the mapping name it too.
 - **Open** and the restore of the browser copy show a note for a project of format version 1 from the XFLR5 import: a
-  tilt angle folded into its sections is exact with **Vertical** section planes only.
+  tilt angle folded into its sections is exact with **Vertical** section planes only. With **Mitred** section planes
+  **Checks** warns, also after the project is saved again.
 
 ## [0.4.0] - 2026-10-01
 

@@ -344,5 +344,12 @@ describe('upgrade of a folded tilt (project format version 2)', () => {
       ["This project of format version 1 comes from the XFLR5 import: a tilt angle of the wing is folded into the section values, which is exact for vertical section planes only. With Settings > Section planes Mitred the part can lie up to 0.75 · chord · sin(tilt angle) · sin(roll) off XFLR5's. Importing the XFLR5 file again gives the rigid tilt (Settings > Part tilt)."],
     ]);
     expect(projectFromJsonText(JSON.stringify({ ...projectToJson(imported, null), version: 2 })).notes).toEqual([]);
+    // The mark stays when the project is saved again (version 3), and Checks warns with mitred planes only.
+    expect(r2.project.foldedTiltUnknown).toBe(true);
+    const again = projectFromJsonText(JSON.stringify(projectToJson(r2.project, null)));
+    expect([again.project.foldedTiltUnknown, again.notes]).toEqual([true, []]);
+    const warn = (planes) => buildWing({ ...again.project, settings: { ...again.project.settings, sectionPlanes: planes } }).warnings.filter((w) => w.startsWith('A tilt angle of the XFLR5 import of format version 1'));
+    expect([warn('vertical').length, warn('mitred').length]).toEqual([0, 1]);
+    expect(validateProject({ ...again.project, foldedTiltUnknown: 'yes' }).errors).toContain('foldedTiltUnknown must be true or false.');
   });
 });

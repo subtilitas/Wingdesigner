@@ -50,7 +50,7 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
      both solids are valid. The cause is not analysed. The file is not in the repository.
    - **Smooth** spanwise interpolation stops the build of 9 of 135 imported real surfaces.
    - Projects of the XFLR5 import in project format version 1, set to **Mitred**, carry the error of
-     the folded tilt; **Open** shows a note, **Checks** no warning (the angle is not stored).
+     the folded tilt; the angle is not stored, **Open** shows a note and **Checks** a warning without a distance.
 
 ## Working with the owner
 

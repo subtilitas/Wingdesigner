@@ -88,6 +88,7 @@ export default {
   'settings.spanwise must be "linear", "straight" or "smooth".': 'settings.spanwise muss "linear", "straight" oder "smooth" sein.',
   'settings.sectionPlanes must be "vertical" or "mitred".': 'settings.sectionPlanes muss "vertical" oder "mitred" sein.',
   'foldedTilt must be an object with the numbers angle, x and z.': 'foldedTilt muss ein Objekt mit den Zahlen angle, x und z sein.',
+  'foldedTiltUnknown must be true or false.': 'foldedTiltUnknown muss true oder false sein.',
   'settings.{key} must be a number within ±{max} degrees.': 'settings.{key} muss eine Zahl innerhalb von ±{max} Grad sein.',
   'settings.partPivot must be null or an object with the numbers x, y and z within ±{max} mm.': 'settings.partPivot muss null oder ein Objekt mit den Zahlen x, y und z innerhalb von ±{max} mm sein.',
   'settings.leftHalf must be mirror or turned.': 'settings.leftHalf muss mirror oder turned sein.',
