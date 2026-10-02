@@ -1628,7 +1628,7 @@ describe('mitred section planes', () => {
     expect(buildWing(flat).stations.every((st) => st.roll === 0 && st.stretch === 1)).toBe(true);
   });
 
-  it('stretches Smooth against the angle of a short panel and of a stored panel angle, as Linear', () => {
+  it('stretches Smooth against the angle of a short panel, as Linear, and against stored panel angles blended along the span', () => {
     // An airfoil switch 0.5 mm wide that the airfoil frames lift 2 mm: its two sections share one plane,
     // and the cubic, 76° steep across the switch, does not set their stretch.
     const sw = (spanwise) =>
@@ -1640,7 +1640,10 @@ describe('mitred section planes', () => {
     const [linear, smooth] = ['linear', 'smooth'].map((s) => buildWing(sw(s)));
     expect([linear.errors, smooth.errors]).toEqual([[], []]);
     expect(smooth.stretches[1]).toBeCloseTo(linear.stretches[1], 12);
-    // A stored panel angle of 20° on a flat wing: the planes roll 10° and 20°, stretched against 20°.
+    // A stored panel angle of 20° on the outer panel of a flat wing: the planes roll 0°, 10° and 20°.
+    // Smooth blends what the stored angle adds (0°, 10°, 20° at the sections, the mean of the panels
+    // next to a section) like the rolls, so every station plane is square to the blended angle: the
+    // stretch is 1 and continuous. Ignoring the stored angle would stretch the tip 1/cos 20° = 1.064 times.
     const stored = (spanwise) =>
       createProject({
         airfoils: [naca('0012', 'a')],
@@ -1648,8 +1651,9 @@ describe('mitred section planes', () => {
         settings: { sectionPlanes: 'mitred', spanwise },
       });
     const [l2, s2] = ['linear', 'smooth'].map((s) => buildWing(stored(s)));
-    expect(s2.rolls).toEqual([0, 10, 20]);
-    s2.stretches.forEach((v, i) => expect(v, `section ${i + 1}`).toBeCloseTo(l2.stretches[i], 12));
+    expect([l2.rolls, s2.rolls]).toEqual([[0, 10, 20], [0, 10, 20]]);
+    expect(l2.stretches[1]).toBeCloseTo(1 / Math.cos(10 * DEG), 12);
+    for (const st of s2.stations) expect(st.stretch, `y ${st.y}`).toBeCloseTo(1, 12);
     // The limit of 60° holds within the rounding of Linear: a straight wing at 60.01° builds both ways
     // (the vertical root plane stretched 2.0006 times).
     const steep = (spanwise) =>

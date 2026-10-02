@@ -587,7 +587,15 @@ export function buildWing(project) {
   // Leading-edge x, chord, z and twist of every section, blended from the two neighbouring sections
   // (O(1) per span position; a full weight vector per position made time and memory grow with the
   // square of the section count).
-  const scalarBlender = () => spanwiseBlender(ys, settings.spanwise, sections.map((_, i) => [[X[i], C[i], Z[i], T[i], R[i]]]));
+  // E: per section, what stored panel angles add to the dihedral of the panels next to it (the mean of
+  // the two panels, one panel at root and tip). Smooth blends it as the rolls, so that the angle a
+  // station is stretched against stays continuous at a section.
+  const panelOffset = planes.panels.map((p, i) => p - planes.dihedrals[i]);
+  const E = sections.map((_, i) => {
+    const near = [panelOffset[i - 1], panelOffset[i]].filter((v) => v !== undefined);
+    return near.length ? near.reduce((a, b) => a + b, 0) / near.length : 0;
+  });
+  const scalarBlender = () => spanwiseBlender(ys, settings.spanwise, sections.map((_, i) => [[X[i], C[i], Z[i], T[i], R[i], E[i]]]));
   // Panel of a span position (binary search): the stretch follows from the blended roll and the angle
   // the planes of that panel are square to, so every station keeps the airfoil thickness across it.
   const panelOf = (y) => {
@@ -604,14 +612,14 @@ export function buildWing(project) {
   const placed = new Map();
   // Smooth: the dihedral (degrees) of the blended reference line (y, z) at y, the direction the
   // stations move along; the angle the plane there is stretched against (`square`), as with Linear:
-  // that dihedral plus the difference a stored panel angle makes on its panel, and on a panel narrower
-  // than SHORT_PANEL the angle its two sections share (planes.panels); and the turning rate of the
-  // blended roll (rad/mm).
+  // that dihedral plus the blended difference of stored panel angles (E), and on a panel narrower than
+  // SHORT_PANEL the angle its two sections share (planes.panels); and the turning rate of the blended
+  // roll (rad/mm).
   const slopes = (y) => {
     const d = blendScalars.derivative(y)[0];
     const dihedral = Math.atan(d[2]) / DEG;
     const i = panelOf(y);
-    const square = ys[i + 1] - ys[i] < SHORT_PANEL ? planes.panels[i] : dihedral + planes.panels[i] - planes.dihedrals[i];
+    const square = ys[i + 1] - ys[i] < SHORT_PANEL ? planes.panels[i] : dihedral + blendScalars(y)[0][5];
     return { dihedral, square, rollRate: d[4] * DEG };
   };
   const place = (y) => {

@@ -581,9 +581,10 @@ With φ = 0 and m = 1 the section lies in the plane Y = y.
   rolls of the sections, and δ is the dihedral of the blended reference line at the station,
   atan(dz/dy) of the cubic through the section positions z; m = 1 / cos(φ − δ). At a section δ is the
   slope of the cubic there, not the dihedral of a panel, so the stretch at the sections differs from
-  **Linear**. A stored panel angle adds its difference from the dihedral of its panel to δ, and a
-  panel narrower than 1 mm in y takes the angle its two sections share (short panels, below), as with
-  **Linear**. The check "Section planes, turning" takes δ from the section positions alone.
+  **Linear**. Stored panel angles add their difference from the dihedral of their panel to δ, blended
+  along the span like the rolls (at a section the mean of the two panels next to it), so δ stays
+  continuous. A panel narrower than 1 mm in y takes the angle its two sections share (short panels,
+  below), as with **Linear**. The check "Section planes, turning" takes δ from the section positions alone.
 - Thickness across a panel, or across the blended reference line with **Smooth**: m cos(φ − δ) = 1 of
   the airfoil thickness with **Mitred**, cos δ with **Vertical**. 35° V-tail: the vertical sections are 81.9 % as thick across the panel; the mitred root
   holds the airfoil stretched 1.221 times.
