@@ -1640,6 +1640,15 @@ describe('mitred section planes', () => {
     const [linear, smooth] = ['linear', 'smooth'].map((s) => buildWing(sw(s)));
     expect([linear.errors, smooth.errors]).toEqual([[], []]);
     expect(smooth.stretches[1]).toBeCloseTo(linear.stretches[1], 12);
+    // The same switch on a flat wing: the short panel is no stored angle, so no Smooth station stretches.
+    const step = createProject({
+      airfoils: [naca('0012', 'a')],
+      sections: [[0, 0], [300, 0], [300.5, 2], [600, 2]].map(([y, z]) => ({ airfoil: 'a', x: 0, y, z, chord: 200, twist: 0 })),
+      settings: { sectionPlanes: 'mitred', spanwise: 'smooth' },
+    });
+    const flatStep = buildWing(step);
+    expect(flatStep.errors).toEqual([]);
+    for (const st of flatStep.stations) expect(st.stretch, `y ${st.y}`).toBeCloseTo(1, 12);
     // A stored panel angle of 20° on the outer panel of a flat wing: the planes roll 0°, 10° and 20°.
     // Smooth blends what the stored angle adds (0°, 10°, 20° at the sections, the mean of the panels
     // next to a section) like the rolls, so every station plane is square to the blended angle: the

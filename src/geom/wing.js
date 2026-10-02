@@ -589,8 +589,9 @@ export function buildWing(project) {
   // square of the section count).
   // E: per section, what stored panel angles add to the dihedral of the panels next to it (the mean of
   // the two panels, one panel at root and tip). Smooth blends it as the rolls, so that the angle a
-  // station is stretched against stays continuous at a section.
-  const panelOffset = planes.panels.map((p, i) => p - planes.dihedrals[i]);
+  // station is stretched against stays continuous at a section. A short panel takes its neighbour's
+  // angle, not a stored one, so it adds nothing.
+  const panelOffset = planes.panels.map((p, i) => (ys[i + 1] - ys[i] < SHORT_PANEL ? undefined : p - planes.dihedrals[i]));
   const E = sections.map((_, i) => {
     const near = [panelOffset[i - 1], panelOffset[i]].filter((v) => v !== undefined);
     return near.length ? near.reduce((a, b) => a + b, 0) / near.length : 0;
