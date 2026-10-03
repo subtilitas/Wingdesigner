@@ -10,7 +10,7 @@ how the owner works with contributors, and what the repository does not hold.
 | Item | State on 2026-10-02 |
 | --- | --- |
 | Version | `package.json` holds 0.6.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | Not planned; the version number is unknown. `CHANGELOG.md`, section Unreleased, is empty. The owner pushes the tag on the merge commit of the release pull request (section Working with the owner). |
+| Next release | Not planned; the version number is unknown. `CHANGELOG.md`, section Unreleased: the 56 MH airfoils of Martin Hepperle in **Library**, with his written permission. The owner pushes the tag on the merge commit of the release pull request (section Working with the owner). |
 | Release texts | The notes of `v0.2.0`, `v0.3.0`, `v0.5.0` and `v0.6.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
 | `main` | Release 0.6.0 (cf2d2ae, pull request #30). |
 | Unit tests | `RECORD.md`, row Unit tests. |

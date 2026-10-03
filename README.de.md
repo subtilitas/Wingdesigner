@@ -125,8 +125,9 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 ## Profildaten und Lizenzen
 
 - 4- und 5-stellige NACA-Profile werden im Browser aus den veröffentlichten Gleichungen berechnet. Für sie wird keine Koordinatendatei verwendet.
-- Die mitgelieferte Profilbibliothek (`public/airfoils/`) enthält 6 Koordinatendateien.
-  **Bibliothek** (Library) listet sie nach den 17 NACA-Vorlagen, jeweils mit Kategorie, Verwendung, Autor und Lizenzkennung.
+- Die mitgelieferte Profilbibliothek (`public/airfoils/`) enthält 62 Koordinatendateien: 6 unter einer freien Lizenz und 56 MH-Profile von Martin Hepperle,
+  mitgeliefert mit seiner schriftlichen Erlaubnis. **Bibliothek** (Library) listet sie nach den 17 NACA-Vorlagen, jeweils mit Kategorie, Verwendung, Autor und
+  Lizenzkennung; der Autor verlinkt die Quellseite der Datei.
 - Beim Hinzufügen einer Bibliotheksdatei werden Autor (als Quellenangabe, in der Vorschau änderbar), Lizenzkennung, Quelladresse und Adresse der Bedingungen
   in `source` des Projektprofils übernommen.
 - Quelle, Rechtsgrundlage mit Zitaten, Bedingungen und Text der Quellenangabe je Datei (Englisch):
@@ -138,6 +139,7 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 | NACA 8-H-12 | NACA Technical Note 1998, Table I | `public-domain` | Werk der Regierung der Vereinigten Staaten |
 | NACA M-6 | NACA Report No. 221, Table XXIX | `public-domain` | Werk der Regierung der Vereinigten Staaten; Schutzfrist in den Vereinigten Staaten abgelaufen |
 | RAF 34 | Tabelle des Royal Aircraft Establishment (RAE) in NACA Report No. 286 | `public-domain` | Schutzfrist in den Vereinigten Staaten abgelaufen; Tabelle nachgedruckt in einem Werk der Regierung der Vereinigten Staaten |
+| MH 1 bis MH 126, 56 Profile | Martin Hepperle, Koordinatenseiten auf <https://www.mh-aerotools.de/airfoils/> | `written-permission` | Schriftliche Erlaubnis des Konstrukteurs, sie in Wingdesigner aufzunehmen (E-Mail, Oktober 2026); die MIT License des Programmcodes gilt für sie nicht |
 | S9104 | Michael Selig, University of Illinois Urbana-Champaign | `CC-BY-4.0` | Lizenz Creative Commons Attribution 4.0 International (CC BY 4.0) vom Konstrukteur |
 | USA 35B | NACA Report No. 233, Table XXXVI | `public-domain` | Werk der Regierung der Vereinigten Staaten; Schutzfrist in den Vereinigten Staaten abgelaufen |
 
@@ -146,9 +148,9 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 - Die Langformen von „RAF“ und „USA“ in den Profilnamen sind unbekannt; die geprüften Quellen nennen sie nicht.
 - Der Download als `.dat` und die Exporte STEP, STL und 3MF enthalten keine Quellenangabe.
   NOTICE.md nennt den Text der Quellenangabe für eine weitergegebene Datei, die mit S9104 erstellt ist.
-- Nicht mitgeliefert: aerodesign.de und mh-aerotools.de (private Nutzung erlaubt, Weitergabe eingeschränkt),
+- Nicht mitgeliefert: aerodesign.de (private Nutzung erlaubt, Weitergabe eingeschränkt),
   UIUC Airfoil Coordinates Database (University of Illinois Urbana-Champaign; keine Lizenz angegeben).
-  Die App verlinkt diese Quellen.
+  Die App verlinkt diese Quellen und mh-aerotools.de, die Website der MH-Profile.
 - Ebenfalls nicht mitgeliefert: Daten unter Creative Commons Attribution-ShareAlike 4.0 (Weitergabe unter gleichen Bedingungen),
   Profile von Mark Drela unter der GNU General Public License (GPL) ab Version 2, die PROFOIL-Testprofile.
   Entscheidungen: [RECORD.md](RECORD.md).
@@ -217,7 +219,7 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 
 ## Ohne Internet
 
-Jedes GitHub-Release (Tag `v*`) enthält `wingdesigner-<tag>-site.zip`, die gebaute Website (1,0 MB gepackt: 0,75 MB Code samt Stilen, eine Source Map von 3,7 MB, die mitgelieferten Profildateien und `LICENSES.txt`).
+Jedes GitHub-Release (Tag `v*`) enthält `wingdesigner-<tag>-site.zip`, die gebaute Website (1,5 MB gepackt, Build vom 03.10.2026: 1,2 MB Code samt Stilen und eingebundener Profilbibliothek, eine Source Map von 4,5 MB, die 62 mitgelieferten Profildateien mit `NOTICE.md` und `LICENSES.txt`).
 
 1. Entpacken.
 2. `index.html` im Browser öffnen. Die App läuft aus der Datei ohne Webserver und ohne Netzzugang; die Profilbibliothek ist Teil des Codes, und die automatische Sicherung behält das Projekt über ein Neuladen hinweg. Getestet in Chromium 141; Firefox und Safari: nicht getestet.
@@ -234,7 +236,7 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md). Verifizierter Stand und offene
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 660 Unit-Tests (Vitest)
+npm test                 # 662 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern

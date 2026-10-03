@@ -42,6 +42,18 @@ describe('Airfoils tab', () => {
     expect(libraryText('A new library entry')).toBe('A new library entry');
     expect(libraryText('')).toBe('');
   });
+
+  it('translates the use text of an MH airfoil around its numbers', () => {
+    const withRe = 'Tailless models, low pitching moment. Thickness 9.8 % of chord. For Reynolds numbers of 100,000 and above.';
+    const plain = 'High-speed models, very low drag. Thickness 8.0 % of chord.';
+    expect(libraryText(withRe)).toBe(withRe);
+    expect(libraryText(plain)).toBe(plain);
+    setLanguage('de');
+    expect(libraryText(withRe)).toBe('Schwanzlose Modelle, kleines Nickmoment. Dicke 9,8 % der Profiltiefe. Für Reynolds-Zahlen ab 100.000.');
+    expect(libraryText(plain)).toBe('Schnellflugmodelle, sehr geringer Widerstand. Dicke 8,0 % der Profiltiefe.');
+    // An application that is no key stays English inside the German template.
+    expect(libraryText('New use. Thickness 12.0 % of chord.')).toBe('New use. Dicke 12,0 % der Profiltiefe.');
+  });
 });
 
 describe('Export dialog size note', () => {

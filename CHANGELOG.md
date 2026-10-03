@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Added
+
+- **Library** holds the 56 MH airfoils of Martin Hepperle, MH 1 to MH 126, included with his written permission. Each
+  entry names `Martin Hepperle, www.mh-aerotools.de` as author and links to the airfoil's coordinate page on
+  mh-aerotools.de. Category and use text follow his description: flying wings, sailplanes, pylon racers, high-speed
+  models, propellers, wind turbines, hang gliders, paragliders and others, with the thickness and the lowest Reynolds
+  number his page states. Source, permission and changes per file: `airfoils/NOTICE.md` in the release zip file.
+- The XFLR5 and flow5 import finds an airfoil named like an MH airfoil, such as `MH 45`, in **Library**.
+
+### Changed
+
+- **Library** links the author of every bundled file to the source page of the file.
+- The box of external airfoil sources in the **Airfoils** tab is named **More airfoils (external sites)**; its
+  MH-AeroTools note says that the MH airfoils are in **Library**.
+
 ## [0.6.0] - 2026-10-02
 
 ### Added

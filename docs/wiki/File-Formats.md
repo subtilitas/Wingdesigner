@@ -809,7 +809,7 @@ Each distinct right-side airfoil name of the surface is one row of the airfoil t
 | 0 | the airfoil of the `.xfl` or `.fl5` project (not in XML files) | the exact name; an empty name finds nothing |
 | 1 | a `.dat` file uploaded in the dialog | its name line, exactly, then trimmed; then its file name without extension, exactly, then trimmed |
 | 2 | an airfoil of the current project | its name, exactly, then trimmed (the id when the name is blank) |
-| 3 | a bundled library airfoil (Clark Y, NACA 8-H-12, NACA M-6, RAF 34, S9104, USA 35B) | its name, exactly, then trimmed |
+| 3 | a bundled library airfoil (Clark Y, the 56 MH airfoils from MH 1 to MH 126, NACA 8-H-12, NACA M-6, RAF 34, S9104, USA 35B) | its name, exactly, then trimmed |
 | 4 | the NACA generator | the name is a designation of the 4-digit or 5-digit series: `NACA 2412`, `naca2412`, `NACA-2412`, `2412`. `NACA0014_Flap` and `NACA 0010 Airfoil` are none; the select offers the designation that starts such a name, and it is not chosen automatically. |
 | 5 | a similar name | case-insensitive, ignoring spaces, `-` and `_`, among the uploads (name line and file name), the current project and the library. Preselected, with a warning. |
 

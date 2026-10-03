@@ -812,7 +812,7 @@ Jeder verschiedene Name eines Profils der rechten Seite der Fläche ist eine Zei
 | 0 | das Profil des `.xfl`- oder `.fl5`-Projekts (nicht in XML-Dateien) | der genaue Name; ein leerer Name findet nichts |
 | 1 | eine im Dialog hochgeladene `.dat`-Datei | ihre Namenszeile, genau, dann gekürzt; dann ihr Dateiname ohne Endung, genau, dann gekürzt |
 | 2 | ein Profil des aktuellen Projekts | sein Name, genau, dann gekürzt (die ID, wenn der Name leer ist) |
-| 3 | ein Profil der mitgelieferten Bibliothek (Clark Y, NACA 8-H-12, NACA M-6, RAF 34, S9104, USA 35B) | sein Name, genau, dann gekürzt |
+| 3 | ein Profil der mitgelieferten Bibliothek (Clark Y, die 56 MH-Profile von MH 1 bis MH 126, NACA 8-H-12, NACA M-6, RAF 34, S9104, USA 35B) | sein Name, genau, dann gekürzt |
 | 4 | der NACA-Generator | der Name ist eine Bezeichnung der 4-stelligen oder 5-stelligen Reihe: `NACA 2412`, `naca2412`, `NACA-2412`, `2412`. `NACA0014_Flap` und `NACA 0010 Airfoil` sind keine; die Auswahlliste bietet die Bezeichnung an, mit der ein solcher Name beginnt, sie wird aber nicht automatisch gewählt. |
 | 5 | ein ähnlicher Name | ohne Beachtung von Groß- und Kleinschreibung, Leerzeichen, `-` und `_`, unter den Uploads (Namenszeile und Dateiname), dem aktuellen Projekt und der Bibliothek. Vorgewählt, mit einer Warnung. |
 

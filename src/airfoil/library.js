@@ -42,8 +42,9 @@ export function librarySource(entry) {
 }
 
 /**
- * External sources (not bundled). Their terms allow personal use; the user downloads a file and
- * loads it with the upload function.
+ * External sources. Their terms allow personal use; the user downloads a file and loads it with the
+ * upload function. The MH airfoils of MH-AeroTools are also bundled, with the designer's written
+ * permission (public/airfoils/NOTICE.md).
  */
 export const EXTERNAL_SOURCES = [
   {
@@ -56,7 +57,7 @@ export const EXTERNAL_SOURCES = [
   {
     name: 'MH-AeroTools - Martin Hepperle',
     url: 'https://www.mh-aerotools.de/airfoils/',
-    note: 'MH airfoils (e.g. MH 45, MH 60 for flying wings, MH 32 for gliders). Terms: personal use; publications must cite the source.',
+    note: 'The 56 MH airfoils are in the Library, with the written permission of the designer. The site has descriptions and polars.',
     attribution: 'Martin Hepperle, www.mh-aerotools.de',
     match: /^\s*MH[\s-]?\d/i,
   },

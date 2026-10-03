@@ -2,7 +2,7 @@
 
 The files in this directory are airfoil coordinate data. They are not part of the Wingdesigner program code, and the MIT License (named after the Massachusetts Institute of Technology) of the program code does not apply to them. Each file keeps the terms of its source. This notice gives the source, the legal basis, the conditions and the attribution of every file. `index.json` repeats the author, the license identifier, the source address and the terms address of each file.
 
-Five files are transcriptions of tables in reports of the National Advisory Committee for Aeronautics (NACA), a United States Government agency. They are public domain in the United States; their status outside the United States is not established. One file, S9104, is published by its designer under an open license.
+Five files are transcriptions of tables in reports of the National Advisory Committee for Aeronautics (NACA), a United States Government agency. They are public domain in the United States; their status outside the United States is not established. One file, S9104, is published by its designer under an open license. 56 files are MH airfoils of Martin Hepperle, included with his written permission ([MH airfoils](#mh-airfoils)).
 
 Whether a bare list of airfoil coordinates is protected by copyright or by a database right is not settled in every country. The statements below give the basis on which each file is distributed. They do not decide that question. This notice is not legal advice.
 
@@ -13,6 +13,62 @@ No file in this directory is a copy of a file from the University of Illinois Ur
 | Airfoil | File | License identifier in `index.json` | Basis | Section |
 | --- | --- | --- | --- | --- |
 | Clark Y | `clark-y.dat` | `public-domain` | Work of the United States Government; United States copyright term expired | [NACA report tables](#naca-report-tables) |
+| MH 1 | `mh-1.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 16 | `mh-16.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 17 | `mh-17.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 18 | `mh-18.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 18B | `mh-18b.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 20 | `mh-20.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 22 | `mh-22.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 23 | `mh-23.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 24 | `mh-24.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 25 | `mh-25.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 26 | `mh-26.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 27 | `mh-27.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 28 | `mh-28.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 29 | `mh-29.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 30 | `mh-30.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 31 | `mh-31.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 32 | `mh-32.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 33 | `mh-33.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 34 | `mh-34.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 38 | `mh-38.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 42 | `mh-42.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 43 | `mh-43.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 44 | `mh-44.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 45 | `mh-45.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 46 | `mh-46.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 49 | `mh-49.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 50 | `mh-50.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 51 | `mh-51.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 52 | `mh-52.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 53 | `mh-53.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 54 | `mh-54.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 55 | `mh-55.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 56 | `mh-56.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 57 | `mh-57.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 60 | `mh-60.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 61 | `mh-61.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 62 | `mh-62.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 64 | `mh-64.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 78 | `mh-78.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 91 | `mh-91.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 92 | `mh-92.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 93 | `mh-93.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 102 | `mh-102.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 104 | `mh-104.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 106 | `mh-106.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 108 | `mh-108.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 110 | `mh-110.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 112 | `mh-112.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 113 | `mh-113.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 114 | `mh-114.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 115 | `mh-115.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 116 | `mh-116.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 117 | `mh-117.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 120 | `mh-120.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 121 | `mh-121.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
+| MH 126 | `mh-126.dat` | `written-permission` | Written permission of the designer | [MH airfoils](#mh-airfoils) |
 | NACA 8-H-12 | `naca-8h12.dat` | `public-domain` | Work of the United States Government | [NACA report tables](#naca-report-tables) |
 | NACA M-6 | `naca-m6.dat` | `public-domain` | Work of the United States Government; United States copyright term expired | [NACA report tables](#naca-report-tables) |
 | RAF 34 | `raf-34.dat` | `public-domain` | United States copyright term expired; table reprinted in a work of the United States Government | [RAF 34](#raf-34) |
@@ -194,3 +250,98 @@ S9104 airfoil by Michael Selig, University of Illinois Urbana-Champaign, <https:
 ### Notices
 
 The source supplies no copyright notice and no separate notice on warranties. The CC BY 4.0 license contains a disclaimer of warranties and a limitation of liability in Section 5, which begins: "Unless otherwise separately undertaken by the Licensor, to the extent possible, the Licensor offers the Licensed Material as-is and as-available, and makes no representations or warranties of any kind concerning the Licensed Material, whether express, implied, statutory, or other."
+
+## MH airfoils
+
+### Source
+
+Designer: Martin Hepperle. Website: <https://www.mh-aerotools.de/>, airfoil index <https://www.mh-aerotools.de/airfoils/>. Each file is made from the coordinate table on the airfoil's page of that website, retrieved on 2026-10-03.
+
+| Airfoil | File | Coordinate page | Points | Table on the page |
+| --- | --- | --- | --- | --- |
+| MH 1 | `mh-1.dat` | <https://www.mh-aerotools.de/airfoils/mh1koo.htm> | 140 | fraction of chord |
+| MH 16 | `mh-16.dat` | <https://www.mh-aerotools.de/airfoils/mh16koo.htm> | 120 | fraction of chord |
+| MH 17 | `mh-17.dat` | <https://www.mh-aerotools.de/airfoils/mh17koo.htm> | 140 | fraction of chord |
+| MH 18 | `mh-18.dat` | <https://www.mh-aerotools.de/airfoils/mh18koo.htm> | 67 | fraction of chord |
+| MH 18B | `mh-18b.dat` | <https://www.mh-aerotools.de/airfoils/mh18bkoo.htm> | 61 | percent of chord |
+| MH 20 | `mh-20.dat` | <https://www.mh-aerotools.de/airfoils/mh20koo.htm> | 68 | fraction of chord |
+| MH 22 | `mh-22.dat` | <https://www.mh-aerotools.de/airfoils/mh22koo.htm> | 68 | fraction of chord |
+| MH 23 | `mh-23.dat` | <https://www.mh-aerotools.de/airfoils/mh23koo.htm> | 68 | fraction of chord |
+| MH 24 | `mh-24.dat` | <https://www.mh-aerotools.de/airfoils/mh24koo.htm> | 68 | fraction of chord |
+| MH 25 | `mh-25.dat` | <https://www.mh-aerotools.de/airfoils/mh25koo.htm> | 67 | fraction of chord |
+| MH 26 | `mh-26.dat` | <https://www.mh-aerotools.de/airfoils/mh26koo.htm> | 67 | fraction of chord |
+| MH 27 | `mh-27.dat` | <https://www.mh-aerotools.de/airfoils/mh27koo.htm> | 68 | fraction of chord |
+| MH 28 | `mh-28.dat` | <https://www.mh-aerotools.de/airfoils/mh28koo.htm> | 120 | fraction of chord |
+| MH 29 | `mh-29.dat` | <https://www.mh-aerotools.de/airfoils/mh29koo.htm> | 120 | fraction of chord |
+| MH 30 | `mh-30.dat` | <https://www.mh-aerotools.de/airfoils/mh30koo.htm> | 67 | fraction of chord |
+| MH 31 | `mh-31.dat` | <https://www.mh-aerotools.de/airfoils/mh31koo.htm> | 113 | fraction of chord |
+| MH 32 | `mh-32.dat` | <https://www.mh-aerotools.de/airfoils/mh32koo.htm> | 117 | fraction of chord |
+| MH 33 | `mh-33.dat` | <https://www.mh-aerotools.de/airfoils/mh33koo.htm> | 65 | percent of chord |
+| MH 34 | `mh-34.dat` | <https://www.mh-aerotools.de/airfoils/mh34koo.htm> | 65 | percent of chord |
+| MH 38 | `mh-38.dat` | <https://www.mh-aerotools.de/airfoils/mh38koo.htm> | 68 | fraction of chord |
+| MH 42 | `mh-42.dat` | <https://www.mh-aerotools.de/airfoils/mh42koo.htm> | 62 | percent of chord |
+| MH 43 | `mh-43.dat` | <https://www.mh-aerotools.de/airfoils/mh43koo.htm> | 113 | fraction of chord |
+| MH 44 | `mh-44.dat` | <https://www.mh-aerotools.de/airfoils/mh44koo.htm> | 61 | percent of chord |
+| MH 45 | `mh-45.dat` | <https://www.mh-aerotools.de/airfoils/mh45koo.htm> | 121 | fraction of chord |
+| MH 46 | `mh-46.dat` | <https://www.mh-aerotools.de/airfoils/mh46koo.htm> | 61 | percent of chord |
+| MH 49 | `mh-49.dat` | <https://www.mh-aerotools.de/airfoils/mh49koo.htm> | 61 | percent of chord |
+| MH 50 | `mh-50.dat` | <https://www.mh-aerotools.de/airfoils/mh50koo.htm> | 257 | fraction of chord |
+| MH 51 | `mh-51.dat` | <https://www.mh-aerotools.de/airfoils/mh51koo.htm> | 257 | fraction of chord |
+| MH 52 | `mh-52.dat` | <https://www.mh-aerotools.de/airfoils/mh52koo.htm> | 257 | fraction of chord |
+| MH 53 | `mh-53.dat` | <https://www.mh-aerotools.de/airfoils/mh53koo.htm> | 257 | fraction of chord |
+| MH 54 | `mh-54.dat` | <https://www.mh-aerotools.de/airfoils/mh54koo.htm> | 255 | fraction of chord |
+| MH 55 | `mh-55.dat` | <https://www.mh-aerotools.de/airfoils/mh55koo.htm> | 251 | fraction of chord |
+| MH 56 | `mh-56.dat` | <https://www.mh-aerotools.de/airfoils/mh56koo.htm> | 251 | fraction of chord |
+| MH 57 | `mh-57.dat` | <https://www.mh-aerotools.de/airfoils/mh57koo.htm> | 257 | fraction of chord |
+| MH 60 | `mh-60.dat` | <https://www.mh-aerotools.de/airfoils/mh60koo.htm> | 113 | fraction of chord |
+| MH 61 | `mh-61.dat` | <https://www.mh-aerotools.de/airfoils/mh61koo.htm> | 62 | fraction of chord |
+| MH 62 | `mh-62.dat` | <https://www.mh-aerotools.de/airfoils/mh62koo.htm> | 62 | fraction of chord |
+| MH 64 | `mh-64.dat` | <https://www.mh-aerotools.de/airfoils/mh64koo.htm> | 62 | fraction of chord |
+| MH 78 | `mh-78.dat` | <https://www.mh-aerotools.de/airfoils/mh78koo.htm> | 61 | percent of chord |
+| MH 91 | `mh-91.dat` | <https://www.mh-aerotools.de/airfoils/mh91koo.htm> | 113 | fraction of chord |
+| MH 92 | `mh-92.dat` | <https://www.mh-aerotools.de/airfoils/mh92koo.htm> | 113 | fraction of chord |
+| MH 93 | `mh-93.dat` | <https://www.mh-aerotools.de/airfoils/mh93koo.htm> | 61 | fraction of chord |
+| MH 102 | `mh-102.dat` | <https://www.mh-aerotools.de/airfoils/mh102koo.htm> | 68 | fraction of chord |
+| MH 104 | `mh-104.dat` | <https://www.mh-aerotools.de/airfoils/mh104koo.htm> | 67 | fraction of chord |
+| MH 106 | `mh-106.dat` | <https://www.mh-aerotools.de/airfoils/mh106koo.htm> | 68 | fraction of chord |
+| MH 108 | `mh-108.dat` | <https://www.mh-aerotools.de/airfoils/mh108koo.htm> | 68 | fraction of chord |
+| MH 110 | `mh-110.dat` | <https://www.mh-aerotools.de/airfoils/mh110koo.htm> | 68 | fraction of chord |
+| MH 112 | `mh-112.dat` | <https://www.mh-aerotools.de/airfoils/mh112koo.htm> | 68 | fraction of chord |
+| MH 113 | `mh-113.dat` | <https://www.mh-aerotools.de/airfoils/mh113koo.htm> | 61 | fraction of chord |
+| MH 114 | `mh-114.dat` | <https://www.mh-aerotools.de/airfoils/mh114koo.htm> | 68 | fraction of chord |
+| MH 115 | `mh-115.dat` | <https://www.mh-aerotools.de/airfoils/mh115koo.htm> | 68 | fraction of chord |
+| MH 116 | `mh-116.dat` | <https://www.mh-aerotools.de/airfoils/mh116koo.htm> | 67 | fraction of chord |
+| MH 117 | `mh-117.dat` | <https://www.mh-aerotools.de/airfoils/mh117koo.htm> | 68 | fraction of chord |
+| MH 120 | `mh-120.dat` | <https://www.mh-aerotools.de/airfoils/mh120koo.htm> | 61 | fraction of chord |
+| MH 121 | `mh-121.dat` | <https://www.mh-aerotools.de/airfoils/mh121koo.htm> | 68 | fraction of chord |
+| MH 126 | `mh-126.dat` | <https://www.mh-aerotools.de/airfoils/mh126koo.htm> | 61 | fraction of chord |
+- The 56 pages are the 52 pages linked from the airfoil index and its topic pages, and the pages of MH 38, MH 55, MH 56 and MH 57, which have the same address pattern.
+- The website also offers an Extensible Markup Language (XML) file per airfoil (none for MH 57). The XML points of 48 airfoils lie within 0.05 % of chord of the polygon through the table points. The XML points of MH 1, MH 28, MH 29, MH 45, MH 50, MH 51 and MH 52 lie up to 0.35, 0.13, 0.13, 0.24, 0.58, 0.61 and 0.54 % of chord from it. The files use the tables.
+
+### Permission
+
+The terms of the website grant personal use (footer of every page, below). Martin Hepperle granted the owner of this repository, Julian Wingert, permission by e-mail in October 2026, in answer to a request of 2026-10-01: the airfoils published on his website may be included in Wingdesigner, which is freely available. He expects the author to be named and the source cited. The owner keeps the e-mail; it is not part of this repository.
+
+The permission covers these files as part of Wingdesigner. The MIT License of the Wingdesigner program code does not apply to them. Any other use of the files, including a copy outside Wingdesigner, falls under the terms of the website. Footer of every airfoil page, e.g. <https://www.mh-aerotools.de/airfoils/mh45koo.htm>:
+
+> © 1996-2018 Martin Hepperle\
+> You may use the data given in this document for your personal use. If you use this document for a
+> publication, you have to cite the source. A publication of a recompilation of the given material is
+> not allowed, if the resulting product is sold for more than the production costs.
+
+### Attribution
+
+MH airfoils by Martin Hepperle, <https://www.mh-aerotools.de/airfoils/>, included in Wingdesigner with the written permission of the designer.
+
+`index.json` gives `Martin Hepperle, www.mh-aerotools.de` as `source.author`, the coordinate page as `source.url`, `written-permission` as `source.license` and this section as `source.terms`. The **Library** list links the author to the coordinate page. The Wingdesigner library copies the four values into the `source` of the project airfoil, and the project file keeps them. The `.dat` download and the three-dimensional model exports of Wingdesigner (STEP, STL and 3MF files) carry no attribution; anyone who publishes such a file made with an MH airfoil cites the source as above.
+
+### Changes
+
+- Name line: added, `MH <number> Airfoil by Martin Hepperle, www.mh-aerotools.de`. The pages give the name in their title. The Wingdesigner library shows the name `MH <number>` from `index.json`.
+- Fraction of chord: the tables of MH 18B, MH 33, MH 34, MH 42, MH 44, MH 46, MH 49 and MH 78 are in percent of chord. Each value is divided by 100 by moving the decimal point two places; no digit is rounded.
+- Point order: the table of MH 1 starts at the trailing edge of the lower surface. `mh-1.dat` lists the same points in reverse order, upper surface first (Selig order).
+- Layout: one space between x and y, line-feed line endings. The other values are unchanged, character for character.
+
+### Thickness and use
+
+The `use` text in `index.json` gives the thickness of each file: the largest distance in y between the upper and the lower surface at equal x, with straight lines between the points, rounded to 0.1 % of chord. The thickness the coordinate pages state differs by at most 0.1 % of chord from the unrounded thickness of the file, except MH 22 (page 7.00 %, file 7.20 %), MH 30 (page 7.74 %, file 7.84 %), MH 52 (page 9.00 %, file 7.98 %) and MH 92 (page 19.96 %, file 14.97 %). The category and the application in the `use` text follow the description on each coordinate page and the topic pages of the website (flying wings, sailplanes, pylon racing, other objects). The Reynolds numbers are those the pages state.

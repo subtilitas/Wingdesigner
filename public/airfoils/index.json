@@ -14,6 +14,734 @@
       }
     },
     {
+      "id": "mh-1",
+      "name": "MH 1",
+      "file": "mh-1.dat",
+      "category": "Towing models",
+      "use": "Sailplane towing model Power Geier; wide lift range, also for limited aerobatics and inverted flight. Thickness 19.6 % of chord. For Reynolds numbers of 500,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh1koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-16",
+      "name": "MH 16",
+      "file": "mh-16.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, Quickie 500 class. Thickness 12.1 % of chord. For Reynolds numbers of 300,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh16koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-17",
+      "name": "MH 17",
+      "file": "mh-17.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, Quickie 500 class; pitching moment near zero. Thickness 12.1 % of chord. For Reynolds numbers of 400,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh17koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-18",
+      "name": "MH 18",
+      "file": "mh-18.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, FAI class F3D and Quickie 500. Thickness 11.1 % of chord. For Reynolds numbers of 350,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh18koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-18b",
+      "name": "MH 18B",
+      "file": "mh-18b.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, Quickie 500 class; optimized MH 18. Thickness 11.7 % of chord. For Reynolds numbers of 350,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh18bkoo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-20",
+      "name": "MH 20",
+      "file": "mh-20.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, FAI class F3D. Thickness 9.0 % of chord. For Reynolds numbers of 350,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh20koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-22",
+      "name": "MH 22",
+      "file": "mh-22.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, FAI class F3D. Thickness 7.2 % of chord. For Reynolds numbers of 350,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh22koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-23",
+      "name": "MH 23",
+      "file": "mh-23.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, FAI class F3D. Thickness 8.0 % of chord. For Reynolds numbers of 400,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh23koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-24",
+      "name": "MH 24",
+      "file": "mh-24.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, FAI class F3D. Thickness 9.0 % of chord. For Reynolds numbers of 400,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh24koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-25",
+      "name": "MH 25",
+      "file": "mh-25.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, FAI class F3D. Thickness 10.0 % of chord. For Reynolds numbers of 400,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh25koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-26",
+      "name": "MH 26",
+      "file": "mh-26.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, FAI class F3D. Thickness 11.0 % of chord. For Reynolds numbers of 500,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh26koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-27",
+      "name": "MH 27",
+      "file": "mh-27.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, FAI class F3D. Thickness 12.0 % of chord. For Reynolds numbers of 500,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh27koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-28",
+      "name": "MH 28",
+      "file": "mh-28.dat",
+      "category": "Pylon racers",
+      "use": "Pylon racing models, FAI class F3D, Q-40 and similar; flap of 20 % chord; optimized for Reynolds numbers from 250,000 to 1,500,000. Thickness 10.1 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh28koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-29",
+      "name": "MH 29",
+      "file": "mh-29.dat",
+      "category": "Pylon racers",
+      "use": "Larger racing models and models that need a thicker section; pitching moment zero; optimized for Reynolds numbers from 750,000 to 1,000,000. Thickness 13.6 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh29koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-30",
+      "name": "MH 30",
+      "file": "mh-30.dat",
+      "category": "Pylon racers",
+      "use": "Electric pylon racing models, FAI class F5D; also sailplanes. Thickness 7.8 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh30koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-31",
+      "name": "MH 31",
+      "file": "mh-31.dat",
+      "category": "Pylon racers",
+      "use": "Electric pylon racing models, FAI class F5D, and F5B models. Thickness 8.1 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh31koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-32",
+      "name": "MH 32",
+      "file": "mh-32.dat",
+      "category": "Pylon racers",
+      "use": "Electric pylon racing models, FAI class F5D; also F3B and F3J sailplanes. Thickness 8.7 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh32koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-33",
+      "name": "MH 33",
+      "file": "mh-33.dat",
+      "category": "Pylon racers",
+      "use": "Electric pylon racing models, FAI class F5D; also F3B and similar models. Thickness 7.3 % of chord. For Reynolds numbers of 100,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh33koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-34",
+      "name": "MH 34",
+      "file": "mh-34.dat",
+      "category": "Pylon racers",
+      "use": "Electric pylon racing models, FAI class F5D, and F5B models. Thickness 8.5 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh34koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-38",
+      "name": "MH 38",
+      "file": "mh-38.dat",
+      "category": "Long-endurance models",
+      "use": "Long-endurance model aircraft. Thickness 9.7 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh38koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-42",
+      "name": "MH 42",
+      "file": "mh-42.dat",
+      "category": "Sailplanes",
+      "use": "All-round RC sailplanes such as FAI class F3B; used on the sailplane Wizard. Thickness 9.0 % of chord. For Reynolds numbers of 100,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh42koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-43",
+      "name": "MH 43",
+      "file": "mh-43.dat",
+      "category": "Pylon racers",
+      "use": "Electric pylon racing models, FAI class F5D; also F3B models. Thickness 8.5 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh43koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-44",
+      "name": "MH 44",
+      "file": "mh-44.dat",
+      "category": "Flying wings",
+      "use": "Tailless models, low pitching moment. Thickness 9.7 % of chord. For Reynolds numbers of 100,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh44koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-45",
+      "name": "MH 45",
+      "file": "mh-45.dat",
+      "category": "Flying wings",
+      "use": "Tailless models, low pitching moment. Thickness 9.8 % of chord. For Reynolds numbers of 100,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh45koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-46",
+      "name": "MH 46",
+      "file": "mh-46.dat",
+      "category": "Flying wings",
+      "use": "Tailless models, low pitching moment. Thickness 11.3 % of chord. For Reynolds numbers of 100,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh46koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-49",
+      "name": "MH 49",
+      "file": "mh-49.dat",
+      "category": "Flying wings",
+      "use": "Tailless models, low pitching moment. Thickness 10.5 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh49koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-50",
+      "name": "MH 50",
+      "file": "mh-50.dat",
+      "category": "High-speed models",
+      "use": "High-speed models, very low drag. Thickness 8.0 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh50koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-51",
+      "name": "MH 51",
+      "file": "mh-51.dat",
+      "category": "High-speed models",
+      "use": "High-speed models, very low drag. Thickness 8.0 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh51koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-52",
+      "name": "MH 52",
+      "file": "mh-52.dat",
+      "category": "High-speed models",
+      "use": "High-speed models, very low drag. Thickness 8.0 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh52koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-53",
+      "name": "MH 53",
+      "file": "mh-53.dat",
+      "category": "High-speed models",
+      "use": "High-speed models, very low drag. Thickness 9.4 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh53koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-54",
+      "name": "MH 54",
+      "file": "mh-54.dat",
+      "category": "High-speed models",
+      "use": "High-speed models, very low drag. Thickness 8.0 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh54koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-55",
+      "name": "MH 55",
+      "file": "mh-55.dat",
+      "category": "High-speed models",
+      "use": "High-speed models, low drag. Thickness 10.0 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh55koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-56",
+      "name": "MH 56",
+      "file": "mh-56.dat",
+      "category": "High-speed models",
+      "use": "High-speed models, low drag. Thickness 10.5 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh56koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-57",
+      "name": "MH 57",
+      "file": "mh-57.dat",
+      "category": "High-speed models",
+      "use": "High-speed models, low drag. Thickness 11.0 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh57koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-60",
+      "name": "MH 60",
+      "file": "mh-60.dat",
+      "category": "Flying wings",
+      "use": "Tailless models, low pitching moment. Thickness 10.1 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh60koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-61",
+      "name": "MH 61",
+      "file": "mh-61.dat",
+      "category": "Flying wings",
+      "use": "Tailless models, low pitching moment. Thickness 10.3 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh61koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-62",
+      "name": "MH 62",
+      "file": "mh-62.dat",
+      "category": "Flying wings",
+      "use": "Tailless models, low pitching moment. Thickness 9.3 % of chord. For Reynolds numbers of 150,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh62koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-64",
+      "name": "MH 64",
+      "file": "mh-64.dat",
+      "category": "Flying wings",
+      "use": "Tailless models, low pitching moment. Thickness 8.6 % of chord. For Reynolds numbers of 100,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh64koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-78",
+      "name": "MH 78",
+      "file": "mh-78.dat",
+      "category": "Hang gliders",
+      "use": "Man-carrying hang gliders; smooth stall. Thickness 14.4 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh78koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-91",
+      "name": "MH 91",
+      "file": "mh-91.dat",
+      "category": "Paragliders",
+      "use": "Man-carrying paragliders; also kites of the Flexifoil type. Thickness 14.5 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh91koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-92",
+      "name": "MH 92",
+      "file": "mh-92.dat",
+      "category": "Paragliders",
+      "use": "Man-carrying paragliders; also kites of the Flexifoil type. Thickness 15.0 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh92koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-93",
+      "name": "MH 93",
+      "file": "mh-93.dat",
+      "category": "Paragliders",
+      "use": "Man-carrying paragliders; also kites of the Flexifoil type. Thickness 16.0 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh93koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-102",
+      "name": "MH 102",
+      "file": "mh-102.dat",
+      "category": "Wind turbines",
+      "use": "Stall-controlled horizontal-axis wind turbines, inboard region. Thickness 17.0 % of chord. For Reynolds numbers of 500,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh102koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-104",
+      "name": "MH 104",
+      "file": "mh-104.dat",
+      "category": "Wind turbines",
+      "use": "Stall-controlled horizontal-axis wind turbines, 40 % radius. Thickness 15.3 % of chord. For Reynolds numbers of 500,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh104koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-106",
+      "name": "MH 106",
+      "file": "mh-106.dat",
+      "category": "Wind turbines",
+      "use": "Stall-controlled horizontal-axis wind turbines, 60 % radius. Thickness 13.1 % of chord. For Reynolds numbers of 500,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh106koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-108",
+      "name": "MH 108",
+      "file": "mh-108.dat",
+      "category": "Wind turbines",
+      "use": "Stall-controlled horizontal-axis wind turbines, 80 % radius. Thickness 12.0 % of chord. For Reynolds numbers of 500,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh108koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-110",
+      "name": "MH 110",
+      "file": "mh-110.dat",
+      "category": "Wind turbines",
+      "use": "Stall-controlled horizontal-axis wind turbines, tip. Thickness 10.0 % of chord. For Reynolds numbers of 500,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh110koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-112",
+      "name": "MH 112",
+      "file": "mh-112.dat",
+      "category": "Propellers",
+      "use": "Propellers, inboard region. Thickness 16.3 % of chord. For Reynolds numbers of 300,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh112koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-113",
+      "name": "MH 113",
+      "file": "mh-113.dat",
+      "category": "Propellers",
+      "use": "Propellers, inboard region. Thickness 14.7 % of chord. For Reynolds numbers of 300,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh113koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-114",
+      "name": "MH 114",
+      "file": "mh-114.dat",
+      "category": "Propellers",
+      "use": "Propellers, centre region. Thickness 13.1 % of chord. For Reynolds numbers of 250,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh114koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-115",
+      "name": "MH 115",
+      "file": "mh-115.dat",
+      "category": "Propellers",
+      "use": "Propellers, centre region. Thickness 11.1 % of chord. For Reynolds numbers of 200,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh115koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-116",
+      "name": "MH 116",
+      "file": "mh-116.dat",
+      "category": "Propellers",
+      "use": "Propellers, outboard region. Thickness 9.9 % of chord. For Reynolds numbers of 200,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh116koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-117",
+      "name": "MH 117",
+      "file": "mh-117.dat",
+      "category": "Propellers",
+      "use": "Propellers, tip region. Thickness 9.8 % of chord. For Reynolds numbers of 100,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh117koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-120",
+      "name": "MH 120",
+      "file": "mh-120.dat",
+      "category": "Propellers",
+      "use": "Propellers, high-speed tip region. Thickness 8.1 % of chord. For Reynolds numbers of 100,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh120koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-121",
+      "name": "MH 121",
+      "file": "mh-121.dat",
+      "category": "Propellers",
+      "use": "Propellers, high-speed tip region. Thickness 8.8 % of chord. For Reynolds numbers of 100,000 and above.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh121koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
+      "id": "mh-126",
+      "name": "MH 126",
+      "file": "mh-126.dat",
+      "category": "Propellers",
+      "use": "Propellers, root region; Reynolds number 500,000. Thickness 25.1 % of chord.",
+      "source": {
+        "author": "Martin Hepperle, www.mh-aerotools.de",
+        "url": "https://www.mh-aerotools.de/airfoils/mh126koo.htm",
+        "license": "written-permission",
+        "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils"
+      }
+    },
+    {
       "id": "naca-8h12",
       "name": "NACA 8-H-12",
       "file": "naca-8h12.dat",

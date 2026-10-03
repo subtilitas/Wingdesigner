@@ -14,17 +14,17 @@ Zusammenfassung veröffentlichter Nutzungsbedingungen, keine Rechtsberatung. Zit
 | S9104 (Michael Selig, University of Illinois Urbana-Champaign) | Creative Commons Attribution 4.0 International (CC BY 4.0): Nutzung, Bearbeitung und Weitergabe mit Quellenangabe. | Ja, 1 Datei | **Bibliothek** |
 | aerodesign.de, HS-Profile (Hartmut Siegmann) | Privat, im Verein, kleingewerblich und wissenschaftlich mit Namen und Quelle. Großserien und industrielle Anwendungen brauchen eine schriftliche Nutzungsvereinbarung. Die Weiterverbreitung durch Dritte ist zum Teil eingeschränkt. | Nein | Link in der App; dort herunterladen, dann hochladen |
 | aerodesign.de, Profile anderer Konstrukteure | Nutzung nur mit Genehmigung des jeweiligen Urhebers. | Nein | Über den Link zu aerodesign.de (HS-Katalogseite); dort herunterladen, dann hochladen |
-| mh-aerotools.de, MH-Profile (Martin Hepperle) | Persönlicher Gebrauch. Veröffentlichungen nennen die Quelle. Eine Neuzusammenstellung darf nicht über den Herstellungskosten verkauft werden. | Nein | Link in der App; dort herunterladen, dann hochladen |
+| mh-aerotools.de, MH-Profile (Martin Hepperle) | Bedingungen der Website: persönlicher Gebrauch; Veröffentlichungen nennen die Quelle; eine Neuzusammenstellung darf nicht über den Herstellungskosten verkauft werden. Schriftliche Erlaubnis des Konstrukteurs, seine Profile in Wingdesigner aufzunehmen (E-Mail, Oktober 2026). | Ja, 56 Dateien | **Bibliothek**; der Link in der App führt zu ihren Beschreibungen und Polaren |
 | UIUC (University of Illinois Urbana-Champaign) Airfoil Coordinates Database | Keine Lizenz für die Koordinatendateien angegeben. Es gelten die Bedingungen des jeweiligen Konstrukteurs. | Nein | Link in der App; dort herunterladen, dann hochladen |
 | Profile in einer XFLR5-Datei | Ein XFLR5-Projekt (`.xfl`; XFLR5 ist ein Programm zur Analyse von Profilen und Flügeln) enthält Profilkoordinaten ohne Urheber und Lizenz; eine XFLR5-Datei im Format XML (Extensible Markup Language) enthält nur Profilnamen. Es gelten die Bedingungen des Konstrukteurs jedes Profils. Die App prüft sie nicht. Wer die Datei importiert, ist für die Rechte an den Profilen in ihr verantwortlich. | Nein | **Öffnen** (Open) (XFLR5-Import); Profile eines `.xfl`-Projekts werden mit `source.kind` `xflr5` gespeichert, die übrigen behalten ihre eigene `source` |
 
-- Mitgelieferte Koordinatendateien: 6, in `public/airfoils/` ([Mitgelieferte Dateien](#mitgelieferte-dateien)).
+- Mitgelieferte Koordinatendateien: 62, in `public/airfoils/` ([Mitgelieferte Dateien](#mitgelieferte-dateien)): 6 unter einer freien Lizenz, 56 MH-Profile mit schriftlicher Erlaubnis ihres Konstrukteurs.
 - Liste der NACA-Vorlagen und Regeln des Generators: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitte Bibliothek und NACA-Generator.
 - Import von XFLR5-Dateien und die Profilquellen des Importdialogs: [[Dateiformate|Dateiformate]], Abschnitt XFLR5-Import; Dialog: [[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Import aus XFLR5.
 
 ## Links in der App
 
-Registerkarte **Profile** (Airfoils), Kasten **Weitere Profile (extern, nicht mitgeliefert)** (More airfoils (external, not bundled)):
+Registerkarte **Profile** (Airfoils), Kasten **Weitere Profile (externe Seiten)** (More airfoils (external sites)):
 
 | Linktext | Ziel |
 | --- | --- |
@@ -149,7 +149,7 @@ Im XFLR5-Import behalten eine hochgeladene `.dat`-Datei, ein Bibliotheksprofil, 
 | `.dat`-Download eines Projektprofils | Nein: nur Namenszeile und Punkte |
 | STEP (Standard for the Exchange of Product model data), STL (Stereolithografie), 3MF (3D Manufacturing Format) | Nein |
 
-Die App sendet keine Profildaten an einen Server. Ihre einzigen Netzwerkanfragen für Profile laden `airfoils/index.json` und mitgelieferte Bibliotheksdateien von der eigenen Adresse der App.
+Die App sendet keine Profildaten an einen Server und stellt keine Netzwerkanfrage für Profile: Die mitgelieferte Bibliothek ist in das Skript eingebunden.
 
 ### Einschränkungen
 
@@ -162,7 +162,7 @@ Die App sendet keine Profildaten an einen Server. Ihre einzigen Netzwerkanfragen
 - Ohne gespeicherte Quellenangabe zeigt **Anzeigen** die aus dem Namen abgeleitete Vorbelegung (HS/MH-Regel). Dieser Text ist nicht gespeichert.
 - Gleicher Name und identische Punkte wie ein Projektprofil, oder erzeugtes NACA-Profil mit demselben `code` und `closedTE` wie ein Projektprofil (Name beliebig): **Zum Projekt hinzufügen** behält den vorhandenen Eintrag und dessen `source`. Die neue Quellenangabe wird verworfen. Die Meldung lautet dann `Das Projekt enthält dieses Profil bereits als „<name>“.` statt `Profil „<name>“ hinzugefügt.` Quellenangabe ändern: Profil entfernen (**×** nur verfügbar, solange kein Schnitt es verwendet) und neu hinzufügen, oder die Projektdatei (JSON) bearbeiten.
 - Aus einer XFLR5-Datei importierte Profile: Die Datei nennt weder Urheber noch Lizenz, und die App prüft die Rechte an den Koordinaten nicht. Ein Profil erhält nur dann eine Quellenangabe, wenn sein Name wie in der Tabelle oben mit `HS` oder `MH` beginnt. Wer die Datei importiert, ist für die Rechte an den Profilen in ihr und für die Quellenangabe verantwortlich, die ihre Bedingungen verlangen. Nach dem Import ist die Quellenangabe in der App schreibgeschützt; Änderungen nur in der Projektdatei (JSON).
-- Exportierte STEP-, STL-, 3MF- und `.dat`-Dateien enthalten keine Quellenangabe. Die HS-Bedingungen verlangen Namen und Quelle bei jeder Nutzung. CC BY 4.0 (S9104) verlangt eine Quellenangabe bei der Weitergabe; wer eine solche mit S9104 erstellte Datei weitergibt, fügt den Text der Quellenangabe aus `public/airfoils/NOTICE.md` hinzu.
+- Exportierte STEP-, STL-, 3MF- und `.dat`-Dateien enthalten keine Quellenangabe. Die HS-Bedingungen verlangen Namen und Quelle bei jeder Nutzung. Martin Hepperle erwartet, dass der Urheber genannt und die Quelle angegeben wird (MH-Profile). CC BY 4.0 (S9104) verlangt eine Quellenangabe bei der Weitergabe; wer eine solche mit S9104 erstellte Datei weitergibt, fügt den Text der Quellenangabe aus `public/airfoils/NOTICE.md` hinzu.
 
 ## aerodesign.de (Hartmut Siegmann)
 
@@ -207,7 +207,7 @@ Gründe, warum die HS-Profile nicht mitgeliefert werden:
 | Punkt | Wert |
 | --- | --- |
 | Betreiber | Martin Hepperle |
-| Profilverzeichnis | <https://www.mh-aerotools.de/airfoils/>: 56 MH-Profile |
+| Profilverzeichnis | <https://www.mh-aerotools.de/airfoils/>: 51 MH-Profile; insgesamt 56 Koordinatenseiten (Liste: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils)) |
 | Nurflügel (kleines Nickmoment) | MH 44, MH 45, MH 46, MH 49, MH 60, MH 61, MH 62, MH 64 |
 | Segelflugmodelle | MH 30, MH 32, MH 42, MH 43 |
 | Pylonrenner | 13 Profile von MH 16 bis MH 29 (Glühzündermotor); MH 30 bis MH 34, MH 43 (Elektro) |
@@ -225,11 +225,12 @@ Gebrauch verwenden. Wenn Sie dieses Dokument für eine Veröffentlichung verwend
 angeben. Die Veröffentlichung einer Neuzusammenstellung des angegebenen Materials ist nicht erlaubt, wenn
 das entstehende Produkt für mehr als die Herstellungskosten verkauft wird.
 
-Gründe, warum die MH-Profile nicht mitgeliefert werden:
+Die Bedingungen erlauben den persönlichen Gebrauch. Eine Erlaubnis zur öffentlichen Weiterverbreitung enthalten sie nicht, und die MIT License (benannt nach dem Massachusetts Institute of Technology) des Repositorys erlaubt jedem den Verkauf von Kopien. Die 56 MH-Profile werden stattdessen mit einer schriftlichen Erlaubnis mitgeliefert:
 
-- Die Bedingungen erlauben den persönlichen Gebrauch. Eine Erlaubnis zur öffentlichen Weiterverbreitung enthalten sie nicht.
-- Das Repository ist öffentlich und steht unter der MIT License (benannt nach dem Massachusetts Institute of Technology). Diese Lizenz erlaubt jedem den Verkauf von Kopien. Der letzte Satz der Bedingungen schließt einen Verkauf über den Herstellungskosten aus.
-- `npm run airfoils:check` lehnt Indexeinträge ab, deren Host in `source.url` oder `source.terms` mh-aerotools.de ist.
+- Martin Hepperle hat dem Eigentümer im Oktober 2026 per E-Mail die Erlaubnis erteilt, als Antwort auf eine Anfrage vom 01.10.2026: Die auf seiner Website veröffentlichten Profile dürfen in Wingdesigner aufgenommen werden, das frei verfügbar ist. Er erwartet, dass der Urheber genannt und die Quelle angegeben wird. Der Eigentümer bewahrt die E-Mail auf; sie ist nicht im Repository.
+- Die Erlaubnis gilt für die Dateien als Teil von Wingdesigner. Die MIT License des Programmcodes gilt für sie nicht. Für eine Kopie außerhalb von Wingdesigner gelten die Bedingungen oben.
+- Jeder Bibliothekseintrag nennt `Martin Hepperle, www.mh-aerotools.de` als Urheber und verlinkt die Koordinatenseite des Profils. Quelle, Änderungen und Dicke je Datei: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils).
+- `npm run airfoils:check` lässt mh-aerotools.de nur in `source.url` eines Eintrags mit der Lizenzkennung `written-permission` und dem Urheber Martin Hepperle zu ([Profil in die Bibliothek aufnehmen](#profil-in-die-bibliothek-aufnehmen)).
 
 ## UIUC Airfoil Coordinates Database
 
@@ -253,6 +254,7 @@ Kategorie und Verwendung je Datei: [[Benutzerhandbuch|Benutzerhandbuch]], Abschn
 | NACA 8-H-12 | `naca-8h12.dat` | NACA Technical Note 1998, Table I (Dezember 1949) | `public-domain` | Werk der Regierung der Vereinigten Staaten |
 | NACA M-6 | `naca-m6.dat` | NACA Report No. 221, Table XXIX (1926) | `public-domain` | Werk der Regierung der Vereinigten Staaten; Schutzfrist in den Vereinigten Staaten abgelaufen |
 | RAF 34 | `raf-34.dat` | RAE-Tabelle in NACA Report No. 286, Reference No. 639 (April 1928) | `public-domain` | Schutzfrist in den Vereinigten Staaten abgelaufen; Tabelle nachgedruckt in einem Werk der Regierung der Vereinigten Staaten |
+| MH 1 bis MH 126, 56 Profile | `mh-<Nummer>.dat` | Koordinatenseite jedes Profils auf mh-aerotools.de, abgerufen am 03.10.2026 | `written-permission` | Schriftliche Erlaubnis des Konstrukteurs (E-Mail, Oktober 2026) |
 | S9104 | `s9104.dat` | Datei des Konstrukteurs, <https://m-selig.ae.illinois.edu/uiuc_lsat/s9104/s9104.html> | `CC-BY-4.0` | Lizenz CC BY 4.0 des Konstrukteurs |
 | USA 35B | `usa-35b.dat` | NACA Report No. 233, Table XXXVI (1927) | `public-domain` | Werk der Regierung der Vereinigten Staaten; Schutzfrist in den Vereinigten Staaten abgelaufen |
 
@@ -261,7 +263,8 @@ Kategorie und Verwendung je Datei: [[Benutzerhandbuch|Benutzerhandbuch]], Abschn
 - RAF 34: Der Scan der Tabelle ist ein 1-Bit-Bild. 7 Werte sind unsicher, um bis zu 0,20 % der Profiltiefe (Unterseite bei 60 % der Profiltiefe). NOTICE.md führt die 7 Werte und ihre andere mögliche Lesart auf.
 - Clark Y und USA 35B behalten die veröffentlichte Basislinie: Die Profilnase liegt 3,50 % bzw. 2,76 % der Profiltiefe über der x-Achse. Die Vorschau zeigt die Warnung `Die Linie von der Profilnase zur Endleiste ist um -1,97 Grad geneigt; …` (USA 35B: -1,51).
 - Keine mitgelieferte Datei ist eine Kopie einer Datei aus der UIUC Airfoil Coordinates Database.
-- Test am 29.09.2026: Alle 6 Dateien bestehen Stufe 1 und 2 des [Einlesetests](#einlesetest) mit jeder der 3 Optionen von **Parametrisierung der Profile** (Profile parametrization).
+- Test am 29.09.2026: Die 6 Dateien unter einer freien Lizenz bestehen Stufe 1 und 2 des [Einlesetests](#einlesetest) mit jeder der 3 Optionen von **Parametrisierung der Profile** (Profile parametrization).
+- Test am 03.10.2026: Die 56 MH-Dateien bestehen Stufe 1 und 2 mit **Zentripetal (empfohlen)** (Centripetal (recommended)) und **Sehnenlänge** (Chord length). Mit **Gleichabständig** (Uniform) lehnt Stufe 2 MH 27, MH 42 und MH 115 ab: Die Oberfläche läuft nahe der Profilnase um 0,021, 0,015 und 0,015 % der Profiltiefe in x zurück.
 
 Nicht mitgeliefert (Entscheidungen des Eigentümers mit Begründung in [RECORD.md](https://github.com/subtilitas/Wingdesigner/blob/main/RECORD.md)):
 
@@ -281,8 +284,9 @@ Anforderungen an eine Datei in `public/airfoils/`:
 | Jeder Eintrag hat eine `id`. Keine 2 Einträge haben dieselbe `id`. | Ja |
 | `name`, `file`, `category` vorhanden und nicht leer | Ja |
 | `source.author`, `source.license`, `source.url`, `source.terms` vorhanden und nicht leer | Ja |
-| `source.license` ist eine von 8 Kennungen: `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause` | Ja |
-| `source.url` und `source.terms` sind URLs (Uniform Resource Locator). Ihr Host, ohne führendes `www.`, ist weder aerodesign.de noch mh-aerotools.de noch eine Subdomain davon. Sonst Meldung: `<host> grants personal use only.` | Ja |
+| `source.license` ist eine von 8 Kennungen: `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`; oder `written-permission` (nächste Zeile) | Ja |
+| `written-permission`: `PERMISSIONS` in `scripts/check-airfoils.mjs` verzeichnet eine Erlaubnis, deren Konstrukteur am Anfang von `source.author` steht (Martin Hepperle), `source.url` liegt auf der Website dieser Erlaubnis (mh-aerotools.de), und `NOTICE.md` hat ihren Abschnitt (`## MH airfoils`). Sonst Meldung: `no written permission is recorded for "<author>".`, `source.url is not on <host>, the site of the written permission.` oder `NOTICE.md has no section "<heading>" for the written permission.` | Ja |
+| `source.url` und `source.terms` sind URLs (Uniform Resource Locator). Ihr Host, ohne führendes `www.`, ist weder aerodesign.de noch mh-aerotools.de noch eine Subdomain davon, außer in `source.url` eines Eintrags mit einer verzeichneten schriftlichen Erlaubnis für diesen Host. Sonst Meldung: `<host> grants personal use only.` | Ja |
 | `public/airfoils/NOTICE.md` existiert (Index mit mindestens 1 Eintrag) und enthält den `name` des Eintrags. | Ja |
 | Die Datei liegt unter `public/airfoils/<file>`. | Ja |
 | Die Datei lässt sich einlesen und besteht die Plausibilitätsprüfung ohne Fehler. Warnungen sind zulässig. | Ja |
@@ -291,7 +295,7 @@ Anforderungen an eine Datei in `public/airfoils/`:
 | Die Lizenzkennung entspricht den Bedingungen unter `source.terms`. | Nein (manuelle Prüfung) |
 | `use` (optional): Text in **Bibliothek** (Library), durchsucht von **Bibliothek filtern** (Filter library) | Nein |
 
-- Nicht zulässig: Bedingungen für persönlichen Gebrauch, nicht kommerzielle Nutzung, keine Bearbeitungen (no-derivatives), Weitergabe unter gleichen Bedingungen (share-alike) und „erst fragen“ sowie Einzelgenehmigungen.
+- Nicht zulässig: Bedingungen für persönlichen Gebrauch, nicht kommerzielle Nutzung, keine Bearbeitungen (no-derivatives), Weitergabe unter gleichen Bedingungen (share-alike) und „erst fragen“. Eine schriftliche Erlaubnis eines Konstrukteurs ist zulässig, wenn `PERMISSIONS` sie verzeichnet und `NOTICE.md` sie in einem eigenen Abschnitt beschreibt; beides ergänzt der Eigentümer.
 - CC: Creative Commons. BSD: Berkeley Software Distribution.
 
 ```json
@@ -311,7 +315,7 @@ Anforderungen an eine Datei in `public/airfoils/`:
 
 - „Example 12“ mit Quelle und Lizenz in `public/airfoils/NOTICE.md` aufführen.
 - Skript: `scripts/check-airfoils.mjs`. Es erzeugt außerdem die 17 NACA-Vorlagen und führt für jede die Plausibilitätsprüfung der Profile aus.
-- Ausgabe mit den 6 mitgelieferten Dateien: `6 bundled airfoils (free licenses only) and 17 NACA presets pass.`
+- Ausgabe mit den 62 mitgelieferten Dateien: `62 bundled airfoils (6 with a free license, 56 with a written permission) and 17 NACA presets pass.`
 - Bei Fehlern: eine Zeile je Problem, Exit-Code 1.
 - CI (Continuous Integration): Workflow `ci.yml`, Job „Lint, unit tests, coverage“, Schritt „Bundled airfoil library“.
-- In der App erscheint ein mitgelieferter Eintrag in **Bibliothek** mit Kategorie, Verwendung, Autor und Lizenz. **Vorschau** lädt die Datei von `airfoils/<file>`.
+- In der App erscheint ein mitgelieferter Eintrag in **Bibliothek** mit Kategorie, Verwendung, Autor und Lizenz; der Autor verlinkt `source.url`. **Vorschau** liest die Datei aus dem Skript, in das der Build die Bibliothek einbindet.

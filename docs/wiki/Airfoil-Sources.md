@@ -14,17 +14,17 @@ Summary of published terms of use, not legal advice. Quotes checked against the 
 | S9104 (Michael Selig, University of Illinois Urbana-Champaign) | Creative Commons Attribution 4.0 International (CC BY 4.0): use, change and redistribution with attribution. | Yes, 1 file | **Library** |
 | aerodesign.de, HS airfoils (Hartmut Siegmann) | Private, club, small-business and scientific use with name and source. Large series and industrial use need a written agreement. Redistribution by third parties is partly restricted. | No | Link in the app; download there, then upload |
 | aerodesign.de, airfoils of other designers | Use needs the permission of each original author. | No | Via the aerodesign.de link (HS catalog page); download there, then upload |
-| mh-aerotools.de, MH airfoils (Martin Hepperle) | Personal use. Publications cite the source. A recompilation must not be sold above production cost. | No | Link in the app; download there, then upload |
+| mh-aerotools.de, MH airfoils (Martin Hepperle) | Terms of the website: personal use; publications cite the source; a recompilation must not be sold above production cost. Written permission of the designer to include his airfoils in Wingdesigner (e-mail, October 2026). | Yes, 56 files | **Library**; the link in the app leads to their descriptions and polars |
 | UIUC (University of Illinois Urbana-Champaign) Airfoil Coordinates Database | No license stated for the coordinate files. The terms of each designer apply. | No | Link in the app; download there, then upload |
 | Airfoils in an XFLR5 file | An XFLR5 project (`.xfl`; XFLR5 is a program for the analysis of airfoils and wings) holds airfoil coordinates without author or license; an XFLR5 file in XML (Extensible Markup Language) format holds airfoil names only. The terms of the designer of each airfoil apply. The app does not check them. Whoever imports the file is responsible for the rights to the airfoils in it. | No | **Open** (XFLR5 import); airfoils of an `.xfl` project are stored with `source.kind` `xflr5`, the others keep their own `source` |
 
-- Bundled coordinate files: 6, in `public/airfoils/` ([Bundled files](#bundled-files)).
+- Bundled coordinate files: 62, in `public/airfoils/` ([Bundled files](#bundled-files)): 6 under a free license, 56 MH airfoils with the written permission of their designer.
 - NACA preset list and generator rules: [[User Guide|User-Guide]], sections Library and NACA generator.
 - Import of XFLR5 files and the airfoil sources of the import dialog: [[File Formats|File-Formats]], section XFLR5 import; dialog: [[User Guide|User-Guide]], section Import from XFLR5.
 
 ## Links in the app
 
-Tab **Airfoils**, box **More airfoils (external, not bundled)**:
+Tab **Airfoils**, box **More airfoils (external sites)**:
 
 | Link text | Target |
 | --- | --- |
@@ -149,7 +149,7 @@ In the XFLR5 import, an uploaded `.dat` file, a library airfoil, a NACA section 
 | `.dat` download of a project airfoil | No: name line and points only |
 | STEP (Standard for the Exchange of Product model data), STL (stereolithography), 3MF (3D Manufacturing Format) | No |
 
-The app sends no airfoil data to a server. Its only network requests for airfoils load `airfoils/index.json` and bundled library files from the app's own address.
+The app sends no airfoil data to a server and makes no network request for airfoils: the bundled library is compiled into the script.
 
 ### Limitations
 
@@ -162,7 +162,7 @@ The app sends no airfoil data to a server. Its only network requests for airfoil
 - For an airfoil without a stored attribution, **View** shows the pre-fill derived from the name (HS/MH rule). This text is not stored.
 - **Add to project** keeps the existing entry and its `source` when a project airfoil has the same name and identical points, or is a generated NACA section with the same `code` and `closedTE` (any name). The new **Source / attribution** text is discarded. The notice then reads `The project already holds this airfoil as "<name>".` instead of `Added airfoil "<name>".` To change the attribution: remove the airfoil (**×** is available only while no section uses it) and add it again, or edit the project JSON file.
 - Airfoils imported from an XFLR5 file: the file states no author or license, and the app does not check the rights to the coordinates. An airfoil gets an attribution only when its name starts with `HS` or `MH` as in the table above. Whoever imports the file is responsible for the rights to the airfoils in it and for the attribution that their terms require. After the import the attribution is read-only in the app; change it in the project JSON file.
-- Exported STEP, STL, 3MF and `.dat` files carry no attribution. The HS terms require name and source with each use. CC BY 4.0 (S9104) requires attribution when the material is shared; whoever shares such a file made with S9104 adds the attribution text from `public/airfoils/NOTICE.md`.
+- Exported STEP, STL, 3MF and `.dat` files carry no attribution. The HS terms require name and source with each use. Martin Hepperle expects the author to be named and the source cited (MH airfoils). CC BY 4.0 (S9104) requires attribution when the material is shared; whoever shares such a file made with S9104 adds the attribution text from `public/airfoils/NOTICE.md`.
 
 ## aerodesign.de (Hartmut Siegmann)
 
@@ -224,7 +224,7 @@ Reasons the HS airfoils are not bundled:
 | Item | Value |
 | --- | --- |
 | Operator | Martin Hepperle |
-| Airfoil index | <https://www.mh-aerotools.de/airfoils/>: 56 MH airfoils |
+| Airfoil index | <https://www.mh-aerotools.de/airfoils/>: 51 MH airfoils; 56 coordinate pages in all (list: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils)) |
 | Flying wings (low pitching moment) | MH 44, MH 45, MH 46, MH 49, MH 60, MH 61, MH 62, MH 64 |
 | Gliders | MH 30, MH 32, MH 42, MH 43 |
 | Pylon racers | 13 airfoils from MH 16 to MH 29 (glow engine); MH 30 to MH 34, MH 43 (electric) |
@@ -237,11 +237,12 @@ Footer of every airfoil page, e.g. <https://www.mh-aerotools.de/airfoils/mh45koo
 > publication, you have to cite the source. A publication of a recompilation of the given material is
 > not allowed, if the resulting product is sold for more than the production costs.
 
-Reasons the MH airfoils are not bundled:
+The terms grant personal use. They contain no grant for public redistribution, and the MIT License (named after the Massachusetts Institute of Technology) of the repository allows anyone to sell copies. The 56 MH airfoils are bundled on a written permission instead:
 
-- The terms grant personal use. They contain no grant for public redistribution.
-- The repository is public under the MIT License (named after the Massachusetts Institute of Technology). This license allows anyone to sell copies. The last sentence of the terms excludes a sale above production cost.
-- `npm run airfoils:check` rejects index entries whose `source.url` or `source.terms` host is mh-aerotools.de.
+- Martin Hepperle granted the owner permission by e-mail in October 2026, in answer to a request of 2026-10-01: the airfoils published on his website may be included in Wingdesigner, which is freely available. He expects the author to be named and the source cited. The owner keeps the e-mail; it is not in the repository.
+- The permission covers the files as part of Wingdesigner. The MIT License of the program code does not apply to them. A copy outside Wingdesigner falls under the terms above.
+- Each library entry names `Martin Hepperle, www.mh-aerotools.de` as author and links to the coordinate page of the airfoil. Source, changes and thickness per file: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils).
+- `npm run airfoils:check` accepts mh-aerotools.de only in the `source.url` of an entry with the license identifier `written-permission` and the author Martin Hepperle ([Adding a bundled airfoil](#adding-a-bundled-airfoil)).
 
 ## UIUC Airfoil Coordinates Database
 
@@ -265,6 +266,7 @@ Category and use per file: [[User Guide|User-Guide]], section Library.
 | NACA 8-H-12 | `naca-8h12.dat` | NACA Technical Note 1998, Table I (December 1949) | `public-domain` | Work of the United States Government |
 | NACA M-6 | `naca-m6.dat` | NACA Report No. 221, Table XXIX (1926) | `public-domain` | Work of the United States Government; United States copyright term expired |
 | RAF 34 | `raf-34.dat` | RAE table in NACA Report No. 286, Reference No. 639 (April 1928) | `public-domain` | United States copyright term expired; table reprinted in a work of the United States Government |
+| MH 1 to MH 126, 56 airfoils | `mh-<number>.dat` | Coordinate page of each airfoil on mh-aerotools.de, retrieved 2026-10-03 | `written-permission` | Written permission of the designer (e-mail, October 2026) |
 | S9104 | `s9104.dat` | File of the designer, <https://m-selig.ae.illinois.edu/uiuc_lsat/s9104/s9104.html> | `CC-BY-4.0` | CC BY 4.0 license from the designer |
 | USA 35B | `usa-35b.dat` | NACA Report No. 233, Table XXXVI (1927) | `public-domain` | Work of the United States Government; United States copyright term expired |
 
@@ -273,7 +275,8 @@ Category and use per file: [[User Guide|User-Guide]], section Library.
 - RAF 34: the scan of the table is a 1-bit image. 7 values are uncertain, by up to 0.20 % of chord (lower surface at 60 % of chord). NOTICE.md lists the 7 values and their other possible readings.
 - Clark Y and USA 35B keep the published base line: the leading edge lies 3.50 % and 2.76 % of chord above the x axis. The preview shows the warning `The line from the leading edge to the trailing edge is inclined by -1.97 degrees; …` (USA 35B: -1.51).
 - No bundled file is a copy of a file from the UIUC Airfoil Coordinates Database.
-- Test on 2026-09-29: all 6 files pass stages 1 and 2 of the [Parser test](#parser-test) with each of the 3 settings of **Profile parametrization**.
+- Test on 2026-09-29: the 6 files under a free license pass stages 1 and 2 of the [Parser test](#parser-test) with each of the 3 settings of **Profile parametrization**.
+- Test on 2026-10-03: the 56 MH files pass stages 1 and 2 with **Centripetal (recommended)** and **Chord length**. With **Uniform**, stage 2 rejects MH 27, MH 42 and MH 115: the surface runs back in x by 0.021, 0.015 and 0.015 % chord near the leading edge.
 
 Not bundled (owner decisions with reasons in [RECORD.md](https://github.com/subtilitas/Wingdesigner/blob/main/RECORD.md)):
 
@@ -293,8 +296,9 @@ Requirements for a file in `public/airfoils/`:
 | Each entry has an `id`. No 2 entries share an `id`. | Yes |
 | `name`, `file`, `category` present and not empty | Yes |
 | `source.author`, `source.license`, `source.url`, `source.terms` present and not empty | Yes |
-| `source.license` is one of 8 identifiers: `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause` | Yes |
-| `source.url` and `source.terms` are URLs (Uniform Resource Locators). Their host, without a leading `www.`, is not aerodesign.de, mh-aerotools.de or a subdomain of them. Message otherwise: `<host> grants personal use only.` | Yes |
+| `source.license` is one of 8 identifiers: `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`; or `written-permission` (next row) | Yes |
+| `written-permission`: `PERMISSIONS` in `scripts/check-airfoils.mjs` records a permission whose designer begins `source.author` (Martin Hepperle), `source.url` lies on the site of that permission (mh-aerotools.de), and `NOTICE.md` has its section (`## MH airfoils`). Message otherwise: `no written permission is recorded for "<author>".`, `source.url is not on <host>, the site of the written permission.` or `NOTICE.md has no section "<heading>" for the written permission.` | Yes |
+| `source.url` and `source.terms` are URLs (Uniform Resource Locators). Their host, without a leading `www.`, is not aerodesign.de, mh-aerotools.de or a subdomain of them, except the `source.url` of an entry with a recorded written permission for that host. Message otherwise: `<host> grants personal use only.` | Yes |
 | `public/airfoils/NOTICE.md` exists (index with at least 1 entry) and contains the entry's `name`. | Yes |
 | The file exists at `public/airfoils/<file>`. | Yes |
 | The file passes import and the sanity checks with no error. Warnings are allowed. | Yes |
@@ -303,7 +307,7 @@ Requirements for a file in `public/airfoils/`:
 | The license identifier matches the terms at `source.terms`. | No (manual review) |
 | `use` (optional): text shown in **Library** and matched by **Filter library** | No |
 
-- Not accepted: personal-use, non-commercial, no-derivatives, share-alike and ask-first terms, and individual permissions.
+- Not accepted: personal-use, non-commercial, no-derivatives, share-alike and ask-first terms. A written permission of a designer is accepted when `PERMISSIONS` records it and `NOTICE.md` documents it in its own section; the owner adds both.
 - CC: Creative Commons. BSD: Berkeley Software Distribution.
 
 ```json
@@ -323,7 +327,7 @@ Requirements for a file in `public/airfoils/`:
 
 - List "Example 12" with its source and license in `public/airfoils/NOTICE.md`.
 - Script: `scripts/check-airfoils.mjs`. It also generates the 17 NACA presets and runs the sanity checks on each.
-- Output with the 6 bundled files: `6 bundled airfoils (free licenses only) and 17 NACA presets pass.`
+- Output with the 62 bundled files: `62 bundled airfoils (6 with a free license, 56 with a written permission) and 17 NACA presets pass.`
 - On failure it prints one line per problem and exits with code 1.
 - CI (continuous integration): workflow `ci.yml`, job "Lint, unit tests, coverage", step "Bundled airfoil library".
-- In the app, a bundled entry appears in **Library** with category, use, author and license. **Preview** loads the file from `airfoils/<file>`.
+- In the app, a bundled entry appears in **Library** with category, use, author and license; the author links to `source.url`. **Preview** reads the file from the script, into which the build compiles the library.

@@ -731,9 +731,9 @@ Grenzen der Projektprofile (Abschnitt [Projektgröße](#projektgröße)):
 ### Bibliothek
 
 - **Bibliothek filtern** (Filter library) durchsucht Name, Kategorie und Verwendungstext.
-- Die Bibliothek enthält 17 erzeugte NACA-Profile und 6 mitgelieferte Koordinatendateien (`public/airfoils/index.json`, in die App eingebunden, sodass die Bibliothek keinen Netzzugang braucht). Die Liste zeigt zuerst die NACA-Profile, dann die Dateien in der Reihenfolge des Index.
-- Text unter jedem Namen: NACA-Profil: Kategorie, Verwendung, `erzeugt`. Mitgelieferte Datei: Kategorie, Verwendungstext, Autor, Lizenzkennung.
-- Jeder Eintrag: **Vorschau** öffnet die Vorschau. NACA-Einträge folgen dem Kontrollkästchen **Geschlossene Endleiste** des NACA-Generators. Eine mitgelieferte Datei wird von `airfoils/<file>` unter der eigenen Adresse der App geladen.
+- Die Bibliothek enthält 17 erzeugte NACA-Profile und 62 mitgelieferte Koordinatendateien (`public/airfoils/index.json`, in die App eingebunden, sodass die Bibliothek keinen Netzzugang braucht): 6 unter einer freien Lizenz und 56 MH-Profile von Martin Hepperle, mitgeliefert mit seiner schriftlichen Erlaubnis. Die Liste zeigt zuerst die NACA-Profile, dann die Dateien in der Reihenfolge des Index.
+- Text unter jedem Namen: NACA-Profil: Kategorie, Verwendung, `erzeugt`. Mitgelieferte Datei: Kategorie, Verwendungstext, Autor, Lizenzkennung. Der Autor verlinkt die Quellseite der Datei in einem neuen Browser-Tab, bei einem MH-Profil seine Koordinatenseite auf mh-aerotools.de.
+- Jeder Eintrag: **Vorschau** öffnet die Vorschau. NACA-Einträge folgen dem Kontrollkästchen **Geschlossene Endleiste** des NACA-Generators. Eine mitgelieferte Datei wird aus dem Skript gelesen; sie braucht keine Netzanfrage.
 - **Zum Projekt hinzufügen** speichert bei einer mitgelieferten Datei das Feld **Quelle / Urheber** (vorbelegt mit dem Autor), die Lizenzkennung, die Quelladresse und die Adresse der Bedingungen im Projektprofil (Objekt `source`, [[Dateiformate|Dateiformate]]).
 - Die deutsche Oberfläche zeigt Kategorie, Verwendungstext und `erzeugt` auf Deutsch, die englische auf Englisch. **Bibliothek filtern** durchsucht Kategorie und Verwendungstext in der angezeigten Sprache. Name, Autor und Lizenzkennung lauten in beiden Sprachen gleich. Die Tabellen unten nennen die deutschen Texte.
 
@@ -770,8 +770,26 @@ Mitgelieferte Dateien (Verwendungstext gekürzt; Dicke aus dem Verwendungstext):
 | S9104 | Gewölbt | Profil für hohe Zuladung und hohen Auftrieb | 12,1 % der Profiltiefe | 81 | Michael Selig, University of Illinois Urbana-Champaign | `CC-BY-4.0` |
 | USA 35B | Gewölbt | Flügelprofil der manntragenden Piper J-3 Cub und PA-18 Super Cub; für Scale-Modelle dieser Flugzeuge | 11,6 % der Profiltiefe | 33 | NACA Report No. 233, Table XXXVI | `public-domain` |
 
+MH-Profile von Martin Hepperle (Autor `Martin Hepperle, www.mh-aerotools.de`, Lizenzkennung `written-permission`; Dicke aus dem Verwendungstext):
+
+| Kategorie | Profile | Dicke |
+| --- | --- | --- |
+| Nurflügel | MH 44, MH 45, MH 46, MH 49, MH 60, MH 61, MH 62, MH 64 | 8,6 bis 11,3 % der Profiltiefe |
+| Segelflugmodelle | MH 42 | 9,0 % der Profiltiefe |
+| Pylonrenner | MH 16, MH 17, MH 18, MH 18B, MH 20, MH 22, MH 23, MH 24, MH 25, MH 26, MH 27, MH 28, MH 29, MH 30, MH 31, MH 32, MH 33, MH 34, MH 43 | 7,2 bis 13,6 % der Profiltiefe |
+| Schnellflugmodelle | MH 50, MH 51, MH 52, MH 53, MH 54, MH 55, MH 56, MH 57 | 8,0 bis 11,0 % der Profiltiefe |
+| Dauerflugmodelle | MH 38 | 9,7 % der Profiltiefe |
+| Schleppmodelle | MH 1 | 19,6 % der Profiltiefe |
+| Hängegleiter | MH 78 | 14,4 % der Profiltiefe |
+| Gleitschirme | MH 91, MH 92, MH 93 | 14,5 bis 16,0 % der Profiltiefe |
+| Propeller | MH 112, MH 113, MH 114, MH 115, MH 116, MH 117, MH 120, MH 121, MH 126 | 8,1 bis 25,1 % der Profiltiefe |
+| Windkraftanlagen | MH 102, MH 104, MH 106, MH 108, MH 110 | 10,0 bis 17,0 % der Profiltiefe |
+
+- Der Verwendungstext eines MH-Profils nennt die Anwendung, wie die Koordinatenseite des Konstrukteurs sie beschreibt, die Dicke und die kleinste Reynolds-Zahl, die die Seite angibt, z. B. `Schwanzlose Modelle, kleines Nickmoment. Dicke 9,8 % der Profiltiefe. Für Reynolds-Zahlen ab 100.000.` (MH 45). MH 30, MH 32, MH 33 und MH 43 nennen Segelflugmodelle als zweite Verwendung.
+
 - Quelle, Rechtsgrundlage, Bedingungen und Text der Quellenangabe je Datei: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md).
 - Clark Y, NACA 8-H-12, NACA M-6, RAF 34 und USA 35B: in den Vereinigten Staaten gemeinfrei (public domain). Ihr Status außerhalb der Vereinigten Staaten ist nicht geklärt.
+- MH-Profile: schriftliche Erlaubnis von Martin Hepperle, sie in Wingdesigner aufzunehmen. Die Projektdatei behält die Quellenangabe. Der `.dat`-Download und die 3D-Modelldateien aus [Export](#export) enthalten keine; wer eine solche Datei veröffentlicht, nennt den Urheber und gibt die Quelle an, <https://www.mh-aerotools.de/airfoils/>. Außerhalb von Wingdesigner gelten die Bedingungen seiner Website: persönlicher Gebrauch, Quellenangabe in Veröffentlichungen.
 - S9104: Lizenz Creative Commons Attribution 4.0 International (CC BY 4.0). Die Projektdatei behält die Quellenangabe. Der `.dat`-Download und die 3D-Modelldateien aus [Export](#export) enthalten keine; wer eine solche mit S9104 erstellte Datei weitergibt, fügt den Text der Quellenangabe aus NOTICE.md hinzu.
 - RAF 34: 7 Werte des Quellscans sind unsicher, um bis zu 0,20 % der Profiltiefe (0,40 mm bei 200 mm Profiltiefe). NOTICE.md führt sie auf.
 - Clark Y und USA 35B behalten die veröffentlichte Basislinie: Die Profilnase liegt 3,50 % bzw. 2,76 % der Profiltiefe über der x-Achse. Die Vorschau zeigt die Warnung `Die Linie von der Profilnase zur Endleiste ist um -1,97 Grad geneigt; …` (USA 35B: -1,51). Die Schränkung bezieht sich auf die x-Achse der Datei: Bei gleicher Schränkung steht die Profilsehne von Clark Y um 1,97° und die von USA 35B um 1,51° stärker Nase hoch als die eines Profils mit der Sehne auf der x-Achse.
@@ -779,12 +797,12 @@ Mitgelieferte Dateien (Verwendungstext gekürzt; Dicke aus dem Verwendungstext):
 
 ### Externe Quellen
 
-Der Kasten **Weitere Profile (extern, nicht mitgeliefert)** (More airfoils (external, not bundled)) verlinkt 3 Sammlungen. Die App liefert keine Dateien daraus mit; die mitgelieferte Datei S9104 stammt von der eigenen Seite des Konstrukteurs, nicht aus der Datenbank der University of Illinois Urbana-Champaign (UIUC). Datei dort herunterladen, dann im Bereich **Hochladen** einlesen. Bedingungen und Zitate: [[Profilquellen|Profilquellen]].
+Der Kasten **Weitere Profile (externe Seiten)** (More airfoils (external sites)) verlinkt 3 Sammlungen. Die App liefert die 56 MH-Profile von MH-AeroTools mit, mit schriftlicher Erlaubnis ihres Konstrukteurs, und keine Dateien der beiden anderen; die mitgelieferte Datei S9104 stammt von der eigenen Seite des Konstrukteurs, nicht aus der Datenbank der University of Illinois Urbana-Champaign (UIUC). Datei dort herunterladen, dann im Bereich **Hochladen** einlesen. Bedingungen und Zitate: [[Profilquellen|Profilquellen]].
 
 | Link | Inhalt | Bedingungen (Kurzfassung) |
 | --- | --- | --- |
 | aerodesign.de - Hartmut Siegmann | HS-Profile und Kataloge für Brettnurflügel, Pfeilnurflügel und Segelflugmodelle | Privat, im Verein, kleingewerblich und wissenschaftlich mit Namen und Quelle; Großserien und industrielle Anwendungen brauchen eine schriftliche Nutzungsvereinbarung; Weiterverbreitung durch Dritte zum Teil eingeschränkt |
-| MH-AeroTools - Martin Hepperle | MH-Profile, z. B. MH 45 und MH 60 für Nurflügel, MH 32 für Segelflugmodelle | Persönlicher Gebrauch; Veröffentlichungen nennen die Quelle; eine Neuzusammenstellung darf nicht über den Herstellungskosten verkauft werden |
+| MH-AeroTools - Martin Hepperle | Die 56 MH-Profile der **Bibliothek**, mit Beschreibungen und Polaren | Bedingungen der Website: persönlicher Gebrauch; Veröffentlichungen nennen die Quelle; eine Neuzusammenstellung darf nicht über den Herstellungskosten verkauft werden. Die mitgelieferten Dateien: schriftliche Erlaubnis des Konstrukteurs |
 | UIUC Airfoil Coordinates Database (University of Illinois Urbana-Champaign) | Etwa 1650 Profile im Selig-Format (Anzahl laut Koordinatenseite) | Keine Lizenz für die Koordinatendateien angegeben; es gelten die Rechte des jeweiligen Konstrukteurs |
 
 - Die Hinweise in der App lauten „Etwa 1.600 Profile“ (UIUC) und „gewerbliche Nutzung braucht eine schriftliche Erlaubnis“ (aerodesign.de). Es gelten die zitierten Bedingungen in [[Profilquellen|Profilquellen]].

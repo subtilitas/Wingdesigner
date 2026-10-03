@@ -80,12 +80,102 @@ export function libraryText(text) {
       return tr('Wing section of the full-size Piper J-3 Cub and PA-18 Super Cub; for scale models of these aircraft. Thickness 11.6 % of chord. Ordinates from the published base line: the leading edge is 2.76 % of chord above the x axis.');
     case 'HS airfoils and catalogs for planks, swept flying wings, gliders. Use with attribution "Hartmut Siegmann, www.aerodesign.de"; redistribution is restricted, commercial use needs written permission.':
       return tr('HS airfoils and catalogs for planks, swept flying wings, gliders. Use with attribution "Hartmut Siegmann, www.aerodesign.de"; redistribution is restricted, commercial use needs written permission.');
-    case 'MH airfoils (e.g. MH 45, MH 60 for flying wings, MH 32 for gliders). Terms: personal use; publications must cite the source.':
-      return tr('MH airfoils (e.g. MH 45, MH 60 for flying wings, MH 32 for gliders). Terms: personal use; publications must cite the source.');
+    case 'The 56 MH airfoils are in the Library, with the written permission of the designer. The site has descriptions and polars.':
+      return tr('The 56 MH airfoils are in the Library, with the written permission of the designer. The site has descriptions and polars.');
     case 'About 1,600 airfoils in Selig format from many designers. The database states no license for the coordinate files; the rights of each designer apply.':
       return tr('About 1,600 airfoils in Selig format from many designers. The database states no license for the coordinate files; the rights of each designer apply.');
-    default:
-      return text;
+    case 'Flying wings':
+      return tr('Flying wings');
+    case 'Hang gliders':
+      return tr('Hang gliders');
+    case 'High-speed models':
+      return tr('High-speed models');
+    case 'Long-endurance models':
+      return tr('Long-endurance models');
+    case 'Paragliders':
+      return tr('Paragliders');
+    case 'Propellers':
+      return tr('Propellers');
+    case 'Pylon racers':
+      return tr('Pylon racers');
+    case 'Sailplanes':
+      return tr('Sailplanes');
+    case 'Towing models':
+      return tr('Towing models');
+    case 'Wind turbines':
+      return tr('Wind turbines');
+    case 'All-round RC sailplanes such as FAI class F3B; used on the sailplane Wizard':
+      return tr('All-round RC sailplanes such as FAI class F3B; used on the sailplane Wizard');
+    case 'Electric pylon racing models, FAI class F5D, and F5B models':
+      return tr('Electric pylon racing models, FAI class F5D, and F5B models');
+    case 'Electric pylon racing models, FAI class F5D; also F3B and F3J sailplanes':
+      return tr('Electric pylon racing models, FAI class F5D; also F3B and F3J sailplanes');
+    case 'Electric pylon racing models, FAI class F5D; also F3B and similar models':
+      return tr('Electric pylon racing models, FAI class F5D; also F3B and similar models');
+    case 'Electric pylon racing models, FAI class F5D; also F3B models':
+      return tr('Electric pylon racing models, FAI class F5D; also F3B models');
+    case 'Electric pylon racing models, FAI class F5D; also sailplanes':
+      return tr('Electric pylon racing models, FAI class F5D; also sailplanes');
+    case 'High-speed models, low drag':
+      return tr('High-speed models, low drag');
+    case 'High-speed models, very low drag':
+      return tr('High-speed models, very low drag');
+    case 'Larger racing models and models that need a thicker section; pitching moment zero; optimized for Reynolds numbers from 750,000 to 1,000,000':
+      return tr('Larger racing models and models that need a thicker section; pitching moment zero; optimized for Reynolds numbers from 750,000 to 1,000,000');
+    case 'Long-endurance model aircraft':
+      return tr('Long-endurance model aircraft');
+    case 'Man-carrying hang gliders; smooth stall':
+      return tr('Man-carrying hang gliders; smooth stall');
+    case 'Man-carrying paragliders; also kites of the Flexifoil type':
+      return tr('Man-carrying paragliders; also kites of the Flexifoil type');
+    case 'Propellers, centre region':
+      return tr('Propellers, centre region');
+    case 'Propellers, high-speed tip region':
+      return tr('Propellers, high-speed tip region');
+    case 'Propellers, inboard region':
+      return tr('Propellers, inboard region');
+    case 'Propellers, outboard region':
+      return tr('Propellers, outboard region');
+    case 'Propellers, root region; Reynolds number 500,000':
+      return tr('Propellers, root region; Reynolds number 500,000');
+    case 'Propellers, tip region':
+      return tr('Propellers, tip region');
+    case 'Pylon racing models, FAI class F3D':
+      return tr('Pylon racing models, FAI class F3D');
+    case 'Pylon racing models, FAI class F3D and Quickie 500':
+      return tr('Pylon racing models, FAI class F3D and Quickie 500');
+    case 'Pylon racing models, FAI class F3D, Q-40 and similar; flap of 20 % chord; optimized for Reynolds numbers from 250,000 to 1,500,000':
+      return tr('Pylon racing models, FAI class F3D, Q-40 and similar; flap of 20 % chord; optimized for Reynolds numbers from 250,000 to 1,500,000');
+    case 'Pylon racing models, Quickie 500 class':
+      return tr('Pylon racing models, Quickie 500 class');
+    case 'Pylon racing models, Quickie 500 class; optimized MH 18':
+      return tr('Pylon racing models, Quickie 500 class; optimized MH 18');
+    case 'Pylon racing models, Quickie 500 class; pitching moment near zero':
+      return tr('Pylon racing models, Quickie 500 class; pitching moment near zero');
+    case 'Sailplane towing model Power Geier; wide lift range, also for limited aerobatics and inverted flight':
+      return tr('Sailplane towing model Power Geier; wide lift range, also for limited aerobatics and inverted flight');
+    case 'Stall-controlled horizontal-axis wind turbines, 40 % radius':
+      return tr('Stall-controlled horizontal-axis wind turbines, 40 % radius');
+    case 'Stall-controlled horizontal-axis wind turbines, 60 % radius':
+      return tr('Stall-controlled horizontal-axis wind turbines, 60 % radius');
+    case 'Stall-controlled horizontal-axis wind turbines, 80 % radius':
+      return tr('Stall-controlled horizontal-axis wind turbines, 80 % radius');
+    case 'Stall-controlled horizontal-axis wind turbines, inboard region':
+      return tr('Stall-controlled horizontal-axis wind turbines, inboard region');
+    case 'Stall-controlled horizontal-axis wind turbines, tip':
+      return tr('Stall-controlled horizontal-axis wind turbines, tip');
+    case 'Tailless models, low pitching moment':
+      return tr('Tailless models, low pitching moment');
+    default: {
+      // Use text of an MH entry: "<application>. Thickness <t> % of chord.", optionally followed by
+      // " For Reynolds numbers of <n> and above."; the application is a case above, the numbers follow
+      // the language.
+      const m = /^(.+)\. Thickness (\d+\.\d) % of chord\.(?: For Reynolds numbers of ([\d,]+) and above\.)?$/.exec(text);
+      if (!m) return text;
+      const params = { use: libraryText(m[1]), thickness: fixed(Number(m[2]), 1) };
+      if (!m[3]) return tr('{use}. Thickness {thickness} % of chord.', params);
+      return tr('{use}. Thickness {thickness} % of chord. For Reynolds numbers of {reynolds} and above.', { ...params, reynolds: count(Number(m[3].replaceAll(',', ''))) });
+    }
   }
 }
 
@@ -547,7 +637,7 @@ export class AirfoilsPanel {
       h(
         'section',
         {},
-        h('h3', {}, tr('More airfoils (external, not bundled)')),
+        h('h3', {}, tr('More airfoils (external sites)')),
         h('p', { class: 'small muted' }, tr('These collections allow personal use but not redistribution in this app. Download a file there and load it with Upload; the attribution is filled in for HS and MH airfoils.')),
         h(
           'ul',
@@ -583,7 +673,12 @@ export class AirfoilsPanel {
       })),
       ...libList.map((a) => ({
         name: a.name,
-        detail: `${libraryText(a.category ?? '')}${a.use ? ` · ${libraryText(a.use)}` : ''}${a.source?.author ? ` · ${a.source.author}` : ''}${a.source?.license ? ` · ${a.source.license}` : ''}`,
+        // The author links to the source page of the file.
+        detail: [
+          `${libraryText(a.category ?? '')}${a.use ? ` · ${libraryText(a.use)}` : ''}`,
+          a.source?.author ? [' · ', a.source.url ? h('a', { href: a.source.url, target: '_blank', rel: 'noopener' }, a.source.author) : a.source.author] : null,
+          a.source?.license ? ` · ${a.source.license}` : null,
+        ],
         points: null,
         open: async () => {
           try {

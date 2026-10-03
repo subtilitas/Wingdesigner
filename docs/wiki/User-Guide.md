@@ -729,10 +729,10 @@ Limits of the project airfoils (section [Project size](#project-size)):
 ### Library
 
 - **Filter library** matches the name, category and use text.
-- The library holds 17 generated NACA sections and 6 bundled coordinate files (`public/airfoils/index.json`, compiled into the app, so the library needs no network access). The list shows the NACA sections first, then the files in index order.
-- Text under each name: NACA section: category, use, `generated`. Bundled file: category, use text, author, license identifier.
+- The library holds 17 generated NACA sections and 62 bundled coordinate files (`public/airfoils/index.json`, compiled into the app, so the library needs no network access): 6 under a free license and 56 MH airfoils of Martin Hepperle, bundled with his written permission. The list shows the NACA sections first, then the files in index order.
+- Text under each name: NACA section: category, use, `generated`. Bundled file: category, use text, author, license identifier. The author links to the source page of the file in a new browser tab, for an MH airfoil to its coordinate page on mh-aerotools.de.
 - The German interface shows the category, the use text and `generated` (`erzeugt`) in German. **Filter library** matches the category and use text in the language shown. Name, author and license identifier are the same in both languages. The tables below give the English texts.
-- Each entry: **Preview** opens the preview dialog. NACA entries follow the **Closed trailing edge** checkbox of the NACA generator. A bundled file loads from `airfoils/<file>` on the app's own address.
+- Each entry: **Preview** opens the preview dialog. NACA entries follow the **Closed trailing edge** checkbox of the NACA generator. A bundled file is read from the script; it needs no network request.
 - **Add to project** on a bundled file stores the **Source / attribution** field (pre-filled with the author), the license identifier, the source address and the terms address in the project airfoil (`source` object, [[File Formats|File-Formats]]).
 
 NACA sections:
@@ -768,8 +768,26 @@ Bundled files (use text shortened; thickness from the use text):
 | S9104 | Cambered | Heavy-lift and high-lift section | 12.1 % chord | 81 | Michael Selig, University of Illinois Urbana-Champaign | `CC-BY-4.0` |
 | USA 35B | Cambered | Full-size Piper J-3 Cub and PA-18 Super Cub; scale models of these aircraft | 11.6 % chord | 33 | NACA Report No. 233, Table XXXVI | `public-domain` |
 
+MH airfoils by Martin Hepperle (author `Martin Hepperle, www.mh-aerotools.de`, license identifier `written-permission`; thickness from the use text):
+
+| Category | Airfoils | Thickness |
+| --- | --- | --- |
+| Flying wings | MH 44, MH 45, MH 46, MH 49, MH 60, MH 61, MH 62, MH 64 | 8.6 to 11.3 % chord |
+| Sailplanes | MH 42 | 9.0 % chord |
+| Pylon racers | MH 16, MH 17, MH 18, MH 18B, MH 20, MH 22, MH 23, MH 24, MH 25, MH 26, MH 27, MH 28, MH 29, MH 30, MH 31, MH 32, MH 33, MH 34, MH 43 | 7.2 to 13.6 % chord |
+| High-speed models | MH 50, MH 51, MH 52, MH 53, MH 54, MH 55, MH 56, MH 57 | 8.0 to 11.0 % chord |
+| Long-endurance models | MH 38 | 9.7 % chord |
+| Towing models | MH 1 | 19.6 % chord |
+| Hang gliders | MH 78 | 14.4 % chord |
+| Paragliders | MH 91, MH 92, MH 93 | 14.5 to 16.0 % chord |
+| Propellers | MH 112, MH 113, MH 114, MH 115, MH 116, MH 117, MH 120, MH 121, MH 126 | 8.1 to 25.1 % chord |
+| Wind turbines | MH 102, MH 104, MH 106, MH 108, MH 110 | 10.0 to 17.0 % chord |
+
+- The use text of an MH airfoil names its application as the coordinate page of the designer describes it, its thickness, and the lowest Reynolds number the page states, e.g. `Tailless models, low pitching moment. Thickness 9.8 % of chord. For Reynolds numbers of 100,000 and above.` (MH 45). MH 30, MH 32, MH 33 and MH 43 name sailplanes as a second use.
+
 - Source, legal basis, conditions and attribution text per file: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md).
 - Clark Y, NACA 8-H-12, NACA M-6, RAF 34 and USA 35B: public domain in the United States. Their status outside the United States is not established.
+- MH airfoils: written permission of Martin Hepperle to include them in Wingdesigner. The project file keeps the attribution. The `.dat` download and the 3D model files of [Export](#export) carry none; whoever publishes such a file names the author and cites the source, <https://www.mh-aerotools.de/airfoils/>. Outside Wingdesigner the terms of his website apply: personal use, cite the source in publications.
 - S9104: Creative Commons Attribution 4.0 International license (CC BY 4.0). The project file keeps the attribution. The `.dat` download and the 3D model files of [Export](#export) carry none; whoever shares such a file made with S9104 adds the attribution text from NOTICE.md.
 - RAF 34: 7 values of the source scan are uncertain, by up to 0.20 % chord (0.40 mm at 200 mm chord). NOTICE.md lists them.
 - Clark Y and USA 35B keep the published base line: the leading edge lies 3.50 % and 2.76 % chord above the x axis. The preview shows the warning `The line from the leading edge to the trailing edge is inclined by -1.97 degrees; …` (USA 35B: -1.51). Twist refers to the x axis of the file: at the same twist, the chord line of Clark Y is 1.97° and that of USA 35B 1.51° more nose-up than that of a section with its chord on the x axis.
@@ -777,12 +795,12 @@ Bundled files (use text shortened; thickness from the use text):
 
 ### External sources
 
-The box **More airfoils (external, not bundled)** links to 3 collections. The app bundles no files from them; the bundled S9104 file is made from the designer's own page, not from the University of Illinois Urbana-Champaign (UIUC) database. Download a file there, then load it in **Upload**. Terms and quotes: [[Airfoil Sources|Airfoil-Sources]].
+The box **More airfoils (external sites)** links to 3 collections. The app bundles the 56 MH airfoils of MH-AeroTools, with the written permission of their designer, and no files of the other two; the bundled S9104 file is made from the designer's own page, not from the University of Illinois Urbana-Champaign (UIUC) database. Download a file there, then load it in **Upload**. Terms and quotes: [[Airfoil Sources|Airfoil-Sources]].
 
 | Link | Content | Terms (summary) |
 | --- | --- | --- |
 | aerodesign.de - Hartmut Siegmann | HS airfoils and catalogues for planks, swept flying wings and gliders | Private, club, small-business and scientific use with name and source; large series and industrial use need a written agreement; redistribution by third parties partly restricted |
-| MH-AeroTools - Martin Hepperle | MH airfoils, e.g. MH 45 and MH 60 for flying wings, MH 32 for gliders | Personal use; publications cite the source; a recompilation must not be sold above production cost |
+| MH-AeroTools - Martin Hepperle | The 56 MH airfoils of **Library**, with descriptions and polars | Terms of the website: personal use; publications cite the source; a recompilation must not be sold above production cost. The bundled files: written permission of the designer |
 | UIUC Airfoil Coordinates Database (University of Illinois Urbana-Champaign) | About 1,650 airfoils in Selig format (count stated on the coordinates page) | No license stated for the coordinate files; the rights of each designer apply |
 
 - The notes in the app read "About 1,600 airfoils" (UIUC) and "commercial use needs written permission" (aerodesign.de). The quoted terms on [[Airfoil Sources|Airfoil-Sources]] apply.

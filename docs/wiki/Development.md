@@ -23,7 +23,7 @@ The bundled airfoil library needs no network request: plugin `airfoilLibrary` in
 | `index.html` | Page shell; loads `src/main.js` |
 | `src/main.js` | Entry: store, rebuild scheduling, top bar (**Open** chooses the reader for a project file or an XFLR5 file), status bar, **Checks** tab, **Help** dialog, autosave |
 | `src/geom/`, `src/airfoil/`, `src/export/`, `src/import/`, `src/model/`, `src/ui/` | See [Modules](#modules) |
-| `public/airfoils/` | 6 coordinate files (`.dat`, Selig format), `index.json` with 6 entries, `NOTICE.md` (source, legal basis, conditions and attribution per file). An entry needs a free license and a line in `NOTICE.md` (see [Airfoil library check](#airfoil-library-check)). The 17 National Advisory Committee for Aeronautics (NACA) presets are computed at run time, not stored. |
+| `public/airfoils/` | 62 coordinate files (`.dat`, Selig format), `index.json` with 62 entries, `NOTICE.md` (source, legal basis, conditions and attribution per file). An entry needs a free license or a recorded written permission, and a line in `NOTICE.md` (see [Airfoil library check](#airfoil-library-check)). The 17 National Advisory Committee for Aeronautics (NACA) presets are computed at run time, not stored. |
 | `scripts/` | See [Scripts](#scripts) |
 | `test/` | Vitest unit tests (`*.test.js`), `helpers.js` (NACA sample project), `step-cases.js` (validation cases for Standard for the Exchange of Product model data (STEP) files and 3MF files), `xflr5-writer.js` (writer of XFLR5 project files), `fixtures/xflr5/` (XFLR5 test files, see [XFLR5 test files and tests](#xflr5-test-files-and-tests)) |
 | `e2e/` | Playwright end-to-end (E2E) browser tests (`*.spec.js`), `helpers.js` |
@@ -335,7 +335,7 @@ Rules for texts:
 | Airfoils in unit tests and STEP and 3MF cases | Generated from the NACA equations: `nacaAirfoil()` from `src/airfoil/naca.js`, `naca()` from `test/helpers.js` |
 | Parser test inputs | Short synthetic strings in `test/airfoil.test.js` in the file formats of third-party sources, with invented coordinates |
 | Browser test uploads | Generated in the spec files, no third-party data: 13-point `.dat` in `e2e/smoke.spec.js` and `e2e/mobile-layout.spec.js`; Selig, Lednicer, X/Yo/Yu percent table with decimal commas and invalid files (crossing surfaces, text) from the NACA 4-digit equations in `e2e/airfoils.spec.js` |
-| Bundled library in browser tests | `e2e/airfoils.spec.js` lists the 6 files of `public/airfoils/` and adds S9104 to the project |
+| Bundled library in browser tests | `e2e/airfoils.spec.js` lists the 62 files of `public/airfoils/` (the 6 with a free license by name, the 56 MH airfoils by count), checks the text and link of MH 45 and adds S9104 to the project |
 | Screenshot upload | NACA 4412 computed in `scripts/screenshots.mjs`, 14 x positions from 0 to 100 %, written as X/Yo/Yu percent table with decimal commas; the same file in both languages |
 | XFLR5 files in unit tests and browser tests | `test/fixtures/xflr5/`: own work and files under the MIT license (license of the Massachusetts Institute of Technology), origin and license per file in `test/fixtures/xflr5/SOURCE.md` (section [XFLR5 test files and tests](#xflr5-test-files-and-tests)) |
 | XFLR5 project files for edge cases | Written by `test/xflr5-writer.js` from the description of the format in `src/import/xfl.js`; no XFLR5 code |
@@ -344,7 +344,7 @@ Rules for texts:
 | flow5 files in unit tests and browser tests | `test/fixtures/flow5/`: written by local builds of flow5 7.57 and 7.56 from own inputs, MIT, origin per file in `test/fixtures/flow5/SOURCE.md` (section [flow5 test files and tests](#flow5-test-files-and-tests)) |
 | flow5 project files for other record formats | Written by `test/fl5-writer.js` from the description of the format; no flow5 code |
 
-Third-party airfoil files are committed only under a license from the License row in [Airfoil library check](#airfoil-library-check). Third-party XFLR5 files are committed only under the MIT license (`test/fixtures/xflr5/uaslab/`).
+Third-party airfoil files are committed only under a license from the License row in [Airfoil library check](#airfoil-library-check), or with a written permission from the Written permission row. Third-party XFLR5 files are committed only under the MIT license (`test/fixtures/xflr5/uaslab/`).
 Sources: [[Airfoil Sources|Airfoil-Sources]].
 Parser test outside the repository on 2026-09-29: 1,964 third-party files from aerodesign.de, mh-aerotools.de and UIUC (University of Illinois Urbana-Champaign). Results per set: [[Airfoil Sources|Airfoil-Sources]], section Parser test.
 Reader test outside the repository on 2026-09-29 and 2026-09-30: 29 `.xfl` files and 66 XML files, most of them of XFLR5 users, read by `src/import/` and by an independent reader written from the format description. Apart from the files listed below they are not committed (20 of the `.xfl` files carry no license). Results: [RECORD.md](https://github.com/subtilitas/Wingdesigner/blob/main/RECORD.md), row XFLR5 import.
@@ -430,7 +430,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 660 tests in 24 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 662 tests in 24 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -451,15 +451,16 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 
 ### Airfoil library check
 
-`npm run airfoils:check` reads `public/airfoils/index.json` (array `airfoils`, 6 entries).
+`npm run airfoils:check` reads `public/airfoils/index.json` (array `airfoils`, 62 entries).
 It prints each problem and exits with code 1 when at least 1 check fails.
 
 | Check | Pass condition |
 | --- | --- |
 | Index | `airfoils` is an array |
 | Required fields | `id` (unique), `name`, `file`, `category`, `source.author`, `source.license`, `source.url`, `source.terms` |
-| License | `source.license` is one of `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause` |
-| Source host | `source.url` and `source.terms` are Uniform Resource Locators (URLs); host is not `aerodesign.de` or `mh-aerotools.de` or a subdomain of these (terms: personal use only) |
+| License | `source.license` is one of `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`, or `written-permission` |
+| Written permission | `written-permission` only for a designer in `PERMISSIONS` of `scripts/check-airfoils.mjs` (Martin Hepperle): `source.author` starts with the name, `source.url` lies on the recorded site (`mh-aerotools.de`), `NOTICE.md` has the recorded section (`## MH airfoils`) |
+| Source host | `source.url` and `source.terms` are Uniform Resource Locators (URLs); host is not `aerodesign.de` or `mh-aerotools.de` or a subdomain of these (terms: personal use only), except the `source.url` of an entry with a written permission for that host |
 | File | `public/airfoils/<file>` exists and imports without errors |
 | Notice | When at least 1 entry exists: `public/airfoils/NOTICE.md` exists and contains the `name` of every entry |
 | No unlisted file | Every file in `public/airfoils/` except `index.json` and `NOTICE.md` has an entry |

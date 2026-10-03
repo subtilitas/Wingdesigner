@@ -125,8 +125,9 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 ## Airfoil data and licenses
 
 - NACA 4-digit and 5-digit airfoils are computed in the browser from the published equations. No coordinate file is used for them.
-- The bundled airfoil library (`public/airfoils/`) holds 6 coordinate files.
-  **Library** lists them after the 17 NACA presets, each with category, use, author and license identifier.
+- The bundled airfoil library (`public/airfoils/`) holds 62 coordinate files: 6 under a free license and 56 MH airfoils of Martin Hepperle,
+  bundled with his written permission. **Library** lists them after the 17 NACA presets, each with category, use, author and license
+  identifier; the author links to the source page of the file.
 - Adding a library file copies author (as attribution, editable in the preview), license identifier, source address and terms address
   into the `source` of the project airfoil.
 - Source, legal basis with quotes, conditions and attribution text per file:
@@ -138,6 +139,7 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 | NACA 8-H-12 | NACA Technical Note 1998, Table I | `public-domain` | Work of the United States Government |
 | NACA M-6 | NACA Report No. 221, Table XXIX | `public-domain` | Work of the United States Government; United States copyright term expired |
 | RAF 34 | Royal Aircraft Establishment (RAE) table in NACA Report No. 286 | `public-domain` | United States copyright term expired; table reprinted in a work of the United States Government |
+| MH 1 to MH 126, 56 airfoils | Martin Hepperle, coordinate pages on <https://www.mh-aerotools.de/airfoils/> | `written-permission` | Written permission of the designer to include them in Wingdesigner (e-mail, October 2026); the MIT License of the program code does not apply to them |
 | S9104 | Michael Selig, University of Illinois Urbana-Champaign | `CC-BY-4.0` | Creative Commons Attribution 4.0 International license (CC BY 4.0) from the designer |
 | USA 35B | NACA Report No. 233, Table XXXVI | `public-domain` | Work of the United States Government; United States copyright term expired |
 
@@ -146,9 +148,9 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 - The expansions of "RAF" and "USA" in the section names are unknown; the sources checked do not give them.
 - The `.dat` download and the STEP, STL and 3MF exports carry no attribution.
   NOTICE.md gives the attribution text for a shared file made with S9104.
-- Not bundled: aerodesign.de and mh-aerotools.de (personal use allowed, redistribution restricted),
+- Not bundled: aerodesign.de (personal use allowed, redistribution restricted),
   UIUC (University of Illinois Urbana-Champaign) Airfoil Coordinates Database (no license stated).
-  The app links to these sources.
+  The app links to these sources and to mh-aerotools.de, the site of the MH airfoils.
 - Not bundled either: share-alike data (Creative Commons Attribution-ShareAlike 4.0),
   sections by Mark Drela under the GNU General Public License (GPL) version 2 or later, the PROFOIL test sections.
   Decisions: [RECORD.md](RECORD.md).
@@ -217,7 +219,7 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 
 ## Offline use
 
-Each GitHub release (tag `v*`) carries `wingdesigner-<tag>-site.zip`, the built site (1.0 MB zipped: 0.75 MB of code with the styles, a 3.7 MB source map, the bundled airfoil files and `LICENSES.txt`).
+Each GitHub release (tag `v*`) carries `wingdesigner-<tag>-site.zip`, the built site (1.5 MB zipped, build of 2026-10-03: 1.2 MB of code with the styles and the compiled airfoil library, a 4.5 MB source map, the 62 bundled airfoil files with `NOTICE.md` and `LICENSES.txt`).
 
 1. Unzip it.
 2. Open `index.html` in the browser. The app runs from the file without a web server and without network access; the airfoil library is part of the code, and autosave keeps the project across reloads. Tested in Chromium 141; Firefox and Safari: not tested.
@@ -234,7 +236,7 @@ Version history: [CHANGELOG.md](CHANGELOG.md). Verified state and open items: [R
 npm ci
 npx playwright install chromium   # browser for end-to-end (e2e) tests and screenshots (or set PW_CHROMIUM=/path/to/chrome)
 npm run dev              # development server on http://localhost:5173
-npm test                 # 660 unit tests (Vitest)
+npm test                 # 662 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
