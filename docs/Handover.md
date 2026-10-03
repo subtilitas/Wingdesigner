@@ -9,10 +9,10 @@ how the owner works with contributors, and what the repository does not hold.
 
 | Item | State on 2026-10-03 |
 | --- | --- |
-| Version | `package.json` holds 0.6.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | Not planned; the version number is unknown. `CHANGELOG.md`, section Unreleased: the 56 MH airfoils of Martin Hepperle in **Library**, with his written permission; MH airfoils in the wizard presets and the sample wing. The owner pushes the tag on the merge commit of the release pull request (section Working with the owner). |
+| Version | `package.json` holds 0.7.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
+| Next release | 0.7.0: `CHANGELOG.md` section 0.7.0 (the 56 MH airfoils of Martin Hepperle in **Library**, with his written permission; MH airfoils in the wizard presets and the sample wing; wizard airfoil fields that take a NACA designation or a **Library** name). The tag `v0.7.0` is pushed by the owner on the merge commit of the release pull request (section Working with the owner). |
 | Release texts | The notes of `v0.2.0`, `v0.3.0`, `v0.5.0` and `v0.6.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
-| `main` | Release 0.6.0 (cf2d2ae, pull request #30). |
+| `main` | Release 0.6.0 (cf2d2ae, pull request #30); the 56 MH airfoils in **Library** and MH airfoils in the wizard presets and the sample wing (8be5b1b, #32); version 0.7.0 (release pull request). |
 | Unit tests | `RECORD.md`, row Unit tests. |
 | Browser tests | Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); counts in `RECORD.md`, row UI. |
 | Export validation | 15 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 13 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
