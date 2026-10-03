@@ -7,6 +7,8 @@ import { wingStats } from '../geom/stats.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, h, numberField, showNumber } from './dom.js';
 import { fixed, readNumber, tr } from '../i18n/index.js';
+import { bundledLibrary } from '../airfoil/bundled.js';
+import { NACA_PRESETS } from '../airfoil/library.js';
 
 // label and unit: functions, because the language can change between two openings of the wizard.
 const FIELDS = [
@@ -217,7 +219,8 @@ export function openWizard({ firstRun = false } = {}) {
           h('input', {
             type: 'text',
             value: params[key],
-            placeholder: tr('NACA code, e.g. 2412'),
+            list: 'wizard-airfoil-names',
+            placeholder: tr('NACA code or Library name, e.g. 2412 or MH 45'),
             oninput: (e) => {
               params[key] = e.target.value.trim();
               refresh();
@@ -240,8 +243,10 @@ export function openWizard({ firstRun = false } = {}) {
         ...rows,
         h('label', { class: 'field' }, tr('Planform'), planform),
         h('label', { class: 'field' }, tr('Tip'), tip),
-        airfoil('rootAirfoil', tr('Root airfoil (NACA)')),
-        airfoil('tipAirfoil', tr('Tip airfoil (NACA)')),
+        airfoil('rootAirfoil', tr('Root airfoil')),
+        airfoil('tipAirfoil', tr('Tip airfoil')),
+        // Suggestions of the two airfoil fields: the Library names, then the NACA presets.
+        h('datalist', { id: 'wizard-airfoil-names' }, [...bundledLibrary().map((a) => a.name), ...NACA_PRESETS.map((n) => `NACA ${n.code}`)].map((v) => h('option', { value: v }))),
         ...(panels ? [panelTable()] : []),
       );
     };

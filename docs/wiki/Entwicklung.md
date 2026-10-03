@@ -23,7 +23,7 @@ Die mitgelieferte Profilbibliothek braucht keine Netzanfrage: Das Plugin `airfoi
 | `index.html` | Seitengerüst; lädt `src/main.js` |
 | `src/main.js` | Einstieg: Store, Planung der Neuberechnung, Kopfleiste (**Öffnen** (Open) wählt den Leser für eine Projektdatei oder eine XFLR5-Datei), Statusleiste, Registerkarte **Prüfungen** (Checks), Dialog **Hilfe**, automatisches Speichern |
 | `src/geom/`, `src/airfoil/`, `src/export/`, `src/import/`, `src/model/`, `src/ui/` | Siehe [Module](#module) |
-| `public/airfoils/` | 6 Koordinatendateien (`.dat`, Selig-Format), `index.json` mit 6 Einträgen, `NOTICE.md` (Quelle, Rechtsgrundlage, Bedingungen und Quellenangabe je Datei). Ein Eintrag braucht eine freie Lizenz und eine Zeile in `NOTICE.md` (siehe [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek)). Die 17 Vorlagen nach National Advisory Committee for Aeronautics (NACA) werden zur Laufzeit berechnet, nicht gespeichert. |
+| `public/airfoils/` | 62 Koordinatendateien (`.dat`, Selig-Format), `index.json` mit 62 Einträgen, `NOTICE.md` (Quelle, Rechtsgrundlage, Bedingungen und Quellenangabe je Datei). Ein Eintrag braucht eine freie Lizenz oder eine verzeichnete schriftliche Erlaubnis und eine Zeile in `NOTICE.md` (siehe [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek)). Die 17 Vorlagen nach National Advisory Committee for Aeronautics (NACA) werden zur Laufzeit berechnet, nicht gespeichert. |
 | `scripts/` | Siehe [Skripte](#skripte) |
 | `test/` | Vitest-Unit-Tests (`*.test.js`), `helpers.js` (NACA-Beispielprojekt), `step-cases.js` (Testfälle für die Validierung von Dateien im Standard for the Exchange of Product model data (STEP) und von 3MF-Dateien), `xflr5-writer.js` (Schreiber für XFLR5-Projektdateien), `fixtures/xflr5/` (XFLR5-Testdateien, siehe [XFLR5-Testdateien und Tests](#xflr5-testdateien-und-tests)) |
 | `e2e/` | Playwright-End-to-End-Tests (E2E) im Browser (`*.spec.js`), `helpers.js` |
@@ -323,7 +323,7 @@ Regeln für Texte:
 - Zahlen als Daten (Attribute, Dateiinhalte) bleiben unformatiert.
 - Nicht übersetzt: Dateiinhalte (STEP, STL, 3MF, JSON, `.dat`), die Projekt-JSON, Profilnamen, Quellenangaben und Lizenzen, Namen externer Quellen, Dateinamen, CSS-Klassen (Cascading Style Sheets), `data-*`-Werte, Optionswerte und Codes von Meldungen wie `many-points`. Der Text einer Ausnahme in `Interner Fehler: {message}` (ausgelöst in `src/geom/nurbs.js` und `src/geom/linalg.js`) bleibt Englisch; der Rahmen darum ist übersetzt. Die 3MF-Datei erklärt in beiden Sprachen `xml:lang="en-US"`.
 - Der Code vergleicht nie einen übersetzten Text. Er vergleicht einen Code oder ein aufgezeichnetes Feld (`issue.code`, `build.sizeWarning`), weil dieselbe Meldung auf Deutsch anders lautet. Der einzige Texttest, `/zero pivot/` in `src/geom/wing.js`, liest eine Ausnahme aus `src/geom/linalg.js`, die nie übersetzt wird.
-- Die beschreibenden Texte der Bibliothek sind Daten: `category` und `use` von `NACA_PRESETS` in `src/airfoil/library.js` und der Einträge in `public/airfoils/index.json` sowie die `note` von `EXTERNAL_SOURCES`. `libraryText()` in `src/ui/airfoils.js` zeigt sie an. Ein neuer Text braucht dort einen `case` mit eigenem `tr()`-Literal und einen deutschen Eintrag in `src/i18n/de/panels.js`. Ein unbekannter Text erscheint unverändert.
+- Die beschreibenden Texte der Bibliothek sind Daten: `category` und `use` von `NACA_PRESETS` in `src/airfoil/library.js` und der Einträge in `public/airfoils/index.json` sowie die `note` von `EXTERNAL_SOURCES`. `libraryText()` in `src/ui/airfoils.js` zeigt sie an. Ein neuer Text braucht dort einen `case` mit eigenem `tr()`-Literal und einen deutschen Eintrag in `src/i18n/de/panels.js`. Ein Verwendungstext der Form `<application>. Thickness <t> % of chord.`, optional gefolgt von ` For Reynolds numbers of <n> and above.` (die MH-Einträge), braucht nur einen `case` für die Anwendung; zwei Vorlagen übersetzen den Rest und schreiben die Zahlen in der Sprache der Oberfläche. Ein unbekannter Text erscheint unverändert; eine unbekannte Anwendung in dieser Form bleibt in der übersetzten Vorlage englisch.
 - Der Link **Dokumentation (Wiki)** im Dialog **Hilfe** öffnet auf Englisch die Startseite des Wikis und auf Deutsch die Seite `Benutzerhandbuch`.
 - `npm run i18n:check` (`scripts/check-i18n.mjs`, Job `test` in `ci.yml`, auch von `test/i18n.test.js` ausgeführt) liest jeden `tr()`-Aufruf in `src/` außerhalb von `src/i18n/`. Der Befehl endet mit Exit-Code 1, wenn ein Schlüssel keinen deutschen Eintrag hat, ein deutscher Eintrag unbenutzt ist, Schlüssel und Texteintrag verschiedene Platzhalter haben, zwei Bereiche einen Schlüssel verschieden übersetzen, ein Eintrag weder Text noch Funktion ist oder ein `tr()`-Aufruf nicht mit einem Zeichenkettenliteral beginnt. Die Platzhalter von Funktionseinträgen vergleicht er nicht.
 - `changeLanguage()` in `src/main.js` wechselt ohne Neuladen. Es speichert die Wahl, setzt das Attribut `lang` des Elements `html`, beschriftet die Bedienoberfläche neu und entfernt die Kurzmeldung, außer sie meldet einen Fehler. Enthält der Aufbau einen Fehler oder eine andere Warnung als die Größenwarnung, wird der Flügel neu aufgebaut, weil diese Meldungen aus dem Aufbau stammen. Sonst bleibt der Flügel, und die Größenwarnung wird neu geschrieben. In beiden Fällen werden die Registerkarten neu gezeichnet, auch **Prüfungen** (Checks). Projekt, Auswahl und Rückgängig-Verlauf bleiben.
@@ -332,10 +332,10 @@ Regeln für Texte:
 
 | Daten | Herkunft |
 | --- | --- |
-| Profile in Unit-Tests sowie STEP- und 3MF-Testfällen | Aus den NACA-Gleichungen berechnet: `nacaAirfoil()` aus `src/airfoil/naca.js`, `naca()` aus `test/helpers.js` |
+| Profile in Unit-Tests sowie STEP- und 3MF-Testfällen | Aus den NACA-Gleichungen berechnet: `nacaAirfoil()` aus `src/airfoil/naca.js`, `naca()` aus `test/helpers.js`; Tests, die einen Entwurfstyp des Assistenten oder den Beispielflügel aufbauen, verwenden die MH-Dateien aus `public/airfoils/` |
 | Eingaben der Parser-Tests | Kurze synthetische Zeichenketten in `test/airfoil.test.js` in den Dateiformaten fremder Quellen, mit erfundenen Koordinaten |
 | Hochladen in Browsertests | In den Spec-Dateien erzeugt, keine Daten Dritter: `.dat`-Datei mit 13 Punkten in `e2e/smoke.spec.js` und `e2e/mobile-layout.spec.js`; Selig, Lednicer, X/Yo/Yu-Prozenttabelle mit Dezimalkomma und ungültige Dateien (sich kreuzende Profilseiten, Text) aus den Gleichungen der 4-stelligen NACA-Profile in `e2e/airfoils.spec.js` |
-| Mitgelieferte Bibliothek in Browsertests | `e2e/airfoils.spec.js` listet die 6 Dateien aus `public/airfoils/` auf und fügt S9104 dem Projekt hinzu |
+| Mitgelieferte Bibliothek in Browsertests | `e2e/airfoils.spec.js` listet die 62 Dateien aus `public/airfoils/` auf (die 6 mit freier Lizenz mit Namen, die 56 MH-Profile mit ihrer Anzahl), prüft Text und Link von MH 45 und fügt S9104 dem Projekt hinzu |
 | Hochladen für Screenshots | NACA 4412, berechnet in `scripts/screenshots.mjs`, 14 x-Positionen von 0 bis 100 %, als X/Yo/Yu-Prozenttabelle mit Dezimalkomma; dieselbe Datei in beiden Sprachen |
 | XFLR5-Dateien in Unit- und Browsertests | `test/fixtures/xflr5/`: eigene Arbeit und Dateien unter der MIT-Lizenz (Lizenz des Massachusetts Institute of Technology), Herkunft und Lizenz je Datei in `test/fixtures/xflr5/SOURCE.md` (Abschnitt [XFLR5-Testdateien und Tests](#xflr5-testdateien-und-tests)) |
 | XFLR5-Projektdateien für Sonderfälle | Von `test/xflr5-writer.js` nach der Beschreibung des Formats in `src/import/xfl.js` geschrieben; kein Code von XFLR5 |
@@ -344,7 +344,7 @@ Regeln für Texte:
 | flow5-Dateien in Unit- und Browsertests | `test/fixtures/flow5/`: von lokalen Builds von flow5 7.57 und 7.56 aus eigenen Eingaben geschrieben, MIT, Herkunft je Datei in `test/fixtures/flow5/SOURCE.md` (Abschnitt [flow5-Testdateien und Tests](#flow5-testdateien-und-tests)) |
 | flow5-Projektdateien für andere Datensatzformate | Von `test/fl5-writer.js` nach der Beschreibung des Formats geschrieben; kein Code von flow5 |
 
-Profildateien Dritter werden nur unter einer Lizenz aus der Zeile Lizenz in [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek) eingecheckt. XFLR5-Dateien Dritter werden nur unter der MIT-Lizenz eingecheckt (`test/fixtures/xflr5/uaslab/`).
+Profildateien Dritter werden nur unter einer Lizenz aus der Zeile Lizenz in [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek) eingecheckt oder mit einer schriftlichen Erlaubnis aus der Zeile Schriftliche Erlaubnis. XFLR5-Dateien Dritter werden nur unter der MIT-Lizenz eingecheckt (`test/fixtures/xflr5/uaslab/`).
 Quellen: [[Profilquellen|Profilquellen]].
 Einlesetest außerhalb des Repositorys am 29.09.2026: 1964 Dateien Dritter von aerodesign.de, mh-aerotools.de und UIUC (University of Illinois Urbana-Champaign). Ergebnisse je Testmenge: [[Profilquellen|Profilquellen]], Abschnitt Einlesetest.
 Einlesetest der XFLR5-Leser außerhalb des Repositorys am 29.09. und 30.09.2026: 29 `.xfl`-Dateien und 66 XML-Dateien, die meisten von XFLR5-Nutzern, gelesen von `src/import/` und von einem unabhängigen Leser, der nach der Formatbeschreibung geschrieben wurde. Bis auf die unten aufgeführten Dateien sind sie nicht eingecheckt (20 der `.xfl`-Dateien tragen keine Lizenz). Ergebnisse: [RECORD.md](https://github.com/subtilitas/Wingdesigner/blob/main/RECORD.md), Zeile XFLR5-Import.
@@ -430,7 +430,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 660 Tests in 24 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 669 Tests in 25 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -451,17 +451,18 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 
 ### Prüfung der Profilbibliothek
 
-`npm run airfoils:check` liest `public/airfoils/index.json` (Array `airfoils`, 6 Einträge).
+`npm run airfoils:check` liest `public/airfoils/index.json` (Array `airfoils`, 62 Einträge).
 Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 Prüfung fehlschlägt.
 
 | Prüfung | Bestanden, wenn |
 | --- | --- |
 | Index | `airfoils` ist ein Array |
 | Pflichtfelder | `id` (eindeutig), `name`, `file`, `category`, `source.author`, `source.license`, `source.url`, `source.terms` |
-| Lizenz | `source.license` ist eine von `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause` |
-| Quell-Host | `source.url` und `source.terms` sind Adressen im Format Uniform Resource Locator (URL); Host ist nicht `aerodesign.de`, `mh-aerotools.de` oder eine Subdomain davon (Nutzungsbedingungen: nur private Nutzung) |
+| Lizenz | `source.license` ist eine von `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause` oder `written-permission` |
+| Schriftliche Erlaubnis | `written-permission` nur für einen Konstrukteur in `PERMISSIONS` von `scripts/check-airfoils.mjs` (Martin Hepperle): `source.author` ist gleich dem verzeichneten Text `Martin Hepperle, www.mh-aerotools.de`, `source.url` liegt auf der verzeichneten Website (`mh-aerotools.de`), `NOTICE.md` hat den verzeichneten Abschnitt (`## MH airfoils`) |
+| Quell-Host | `source.url` und `source.terms` sind https-Adressen im Format Uniform Resource Locator (URL); Host ist nicht `aerodesign.de`, `mh-aerotools.de` oder eine Subdomain davon (Nutzungsbedingungen: nur private Nutzung), außer in `source.url` eines Eintrags mit einer schriftlichen Erlaubnis für diesen Host |
 | Datei | `public/airfoils/<file>` existiert und lässt sich fehlerfrei importieren |
-| Hinweisdatei | Bei mindestens 1 Eintrag: `public/airfoils/NOTICE.md` existiert und enthält den `name` jedes Eintrags |
+| Hinweisdatei | Bei mindestens 1 Eintrag: `public/airfoils/NOTICE.md` existiert, und ihre Tabelle Files hat für jeden Eintrag eine Zeile, die mit seinem Namen, seiner Datei und seiner Lizenzkennung beginnt |
 | Keine Datei ohne Eintrag | Jede Datei in `public/airfoils/` außer `index.json` und `NOTICE.md` hat einen Eintrag |
 | NACA-Vorlagen | Alle 17 NACA-Vorlagen bestehen `checkAirfoil` |
 
@@ -476,7 +477,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-201 Tests in 15 Spec-Dateien, 402 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+202 Tests in 15 Spec-Dateien, 404 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 

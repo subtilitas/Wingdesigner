@@ -18,10 +18,11 @@
 //              at the tip) or, with panels, 'elliptic' (the last panel ends in a quarter ellipse:
 //              ELLIPTIC_TIP_SECTIONS sections, its quarter-chord line straight at the panel's
 //              leading-edge sweep, the last one pointed)
-//   rootAirfoil, tipAirfoil  NACA designations
+//   rootAirfoil, tipAirfoil  NACA designations (4 or 5 digits) or names of Library airfoils (MH 45)
 
 import { parseNacaCode } from '../airfoil/naca.js';
 import { nacaEntry } from '../airfoil/library.js';
+import { libraryAirfoil } from '../airfoil/bundled.js';
 import { plain, tr, whole } from '../i18n/index.js';
 import { LIMITS, createProject } from './project.js';
 
@@ -73,7 +74,7 @@ export const PRESETS = {
     get description() {
       return tr('Rectangular high-lift wing with dihedral for stable, slow flight.');
     },
-    params: { span: 1400, rootChord: 250, taper: 1, sweep: 0, dihedral: 3, washout: 0, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: '2412', tipAirfoil: '2412' },
+    params: { span: 1400, rootChord: 250, taper: 1, sweep: 0, dihedral: 3, washout: 0, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: 'MH 38', tipAirfoil: 'MH 38' },
   },
   sport: {
     get label() {
@@ -82,7 +83,7 @@ export const PRESETS = {
     get description() {
       return tr('Tapered wing with little dihedral and slight washout.');
     },
-    params: { span: 1200, rootChord: 240, taper: 0.6, sweep: 0, dihedral: 1.5, washout: -1, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: '2412', tipAirfoil: '2410' },
+    params: { span: 1200, rootChord: 240, taper: 0.6, sweep: 0, dihedral: 1.5, washout: -1, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: 'MH 32', tipAirfoil: 'MH 32' },
   },
   glider: {
     get label() {
@@ -91,7 +92,7 @@ export const PRESETS = {
     get description() {
       return tr('High aspect ratio with elliptic planform, dihedral and washout.');
     },
-    params: { span: 2000, rootChord: 200, taper: 0.45, sweep: 0, dihedral: 4, washout: -1.5, sections: 3, tip: 'flat', planform: 'elliptic', rootAirfoil: '2410', tipAirfoil: '2408' },
+    params: { span: 2000, rootChord: 200, taper: 0.45, sweep: 0, dihedral: 4, washout: -1.5, sections: 3, tip: 'flat', planform: 'elliptic', rootAirfoil: 'MH 42', tipAirfoil: 'MH 42' },
   },
   sailplane: {
     get label() {
@@ -115,8 +116,8 @@ export const PRESETS = {
         { span: 0.35, sweep: 1.5, chord: 0.75, dihedral: 6 },
         { span: 0.2, sweep: 4, chord: 0.5, dihedral: 10 },
       ],
-      rootAirfoil: '2410',
-      tipAirfoil: '2408',
+      rootAirfoil: 'MH 32',
+      tipAirfoil: 'MH 42',
     },
   },
   deltaJet: {
@@ -137,8 +138,8 @@ export const PRESETS = {
       tip: 'flat',
       planform: 'panels',
       panels: [{ span: 1, sweep: deltaSweep(800, 160, 450), chord: 0.2, dihedral: 0 }],
-      rootAirfoil: '0008',
-      tipAirfoil: '0006',
+      rootAirfoil: 'MH 52',
+      tipAirfoil: 'MH 52',
     },
   },
   doubleDelta: {
@@ -163,8 +164,8 @@ export const PRESETS = {
         { span: 0.3, sweep: 70, chord: 0.588, dihedral: 0 },
         { span: 0.7, sweep: 45, chord: 0.238, dihedral: 0 },
       ],
-      rootAirfoil: '0008',
-      tipAirfoil: '0006',
+      rootAirfoil: 'MH 52',
+      tipAirfoil: 'MH 52',
     },
   },
   batwing: {
@@ -185,8 +186,8 @@ export const PRESETS = {
       tip: 'pointed',
       planform: 'panels',
       panels: BAT.panels,
-      rootAirfoil: '0010',
-      tipAirfoil: '0008',
+      rootAirfoil: 'MH 60',
+      tipAirfoil: 'MH 64',
     },
   },
   flyingWing: {
@@ -196,7 +197,7 @@ export const PRESETS = {
     get description() {
       return tr('Swept tailless wing with reflexed root section and washout for pitch stability.');
     },
-    params: { span: 1200, rootChord: 280, taper: 0.45, sweep: 25, dihedral: 0, washout: -4, sections: 3, tip: 'flat', planform: 'straight', rootAirfoil: '23112', tipAirfoil: '0010' },
+    params: { span: 1200, rootChord: 280, taper: 0.45, sweep: 25, dihedral: 0, washout: -4, sections: 3, tip: 'flat', planform: 'straight', rootAirfoil: 'MH 60', tipAirfoil: 'MH 45' },
   },
   plank: {
     get label() {
@@ -205,7 +206,7 @@ export const PRESETS = {
     get description() {
       return tr('Unswept tailless wing with reflexed sections.');
     },
-    params: { span: 1000, rootChord: 220, taper: 0.8, sweep: 0, dihedral: 1, washout: 0, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: '23112', tipAirfoil: '23112' },
+    params: { span: 1000, rootChord: 220, taper: 0.8, sweep: 0, dihedral: 1, washout: 0, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: 'MH 45', tipAirfoil: 'MH 45' },
   },
   tail: {
     get label() {
@@ -214,7 +215,7 @@ export const PRESETS = {
     get description() {
       return tr('Symmetric horizontal stabilizer.');
     },
-    params: { span: 500, rootChord: 130, taper: 0.7, sweep: 5, dihedral: 0, washout: 0, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: '0009', tipAirfoil: '0009' },
+    params: { span: 500, rootChord: 130, taper: 0.7, sweep: 5, dihedral: 0, washout: 0, sections: 2, tip: 'flat', planform: 'straight', rootAirfoil: 'MH 52', tipAirfoil: 'MH 52' },
   },
 };
 
@@ -272,7 +273,9 @@ export function wizardProblems(params) {
   if (params.tip === 'elliptic' && !panels) out.push(tr('An elliptic tip needs the planform Panels.'));
   if (panels) out.push(...panelProblems(params));
   if (params.planform === 'elliptic' && params.tip !== 'pointed' && params.taper >= 1) out.push(tr('An elliptic planform needs taper < 1.'));
-  for (const k of ['rootAirfoil', 'tipAirfoil']) if (!parseNacaCode(params[k] ?? '')) out.push(tr('{param} must be a NACA 4- or 5-digit designation.', { param: PARAM_NAMES[k]() }));
+  for (const k of ['rootAirfoil', 'tipAirfoil']) {
+    if (!wizardAirfoil(params[k])) out.push(tr('{param} must be a NACA 4- or 5-digit designation or the name of a Library airfoil, e.g. MH 45.', { param: PARAM_NAMES[k]() }));
+  }
   return out;
 }
 
@@ -357,6 +360,17 @@ function panelProblems(params) {
   return out;
 }
 
+/**
+ * The project airfoil of a root or tip field: a NACA designation gives the generated section (id
+ * `naca<code>`), any other text the Library airfoil of that name (id of the Library entry). Null when
+ * the text is neither.
+ */
+export function wizardAirfoil(value) {
+  const nacaCode = parseNacaCode(value ?? '');
+  if (nacaCode) return { id: `naca${nacaCode.code}`, ...nacaEntry(value) };
+  return libraryAirfoil(value);
+}
+
 /** Chord at span fraction eta (0 root, 1 tip). */
 export function chordAt(params, eta) {
   const { rootChord: c0 } = params;
@@ -379,10 +393,10 @@ export function wizardProject(params, name) {
   const b = params.span / 2;
   const n = params.sections;
   const airfoils = [];
-  const idOf = (code) => {
-    const id = `naca${parseNacaCode(code).code}`;
-    if (!airfoils.some((a) => a.id === id)) airfoils.push({ id, ...nacaEntry(code) });
-    return id;
+  const idOf = (value) => {
+    const a = wizardAirfoil(value);
+    if (!airfoils.some((b) => b.id === a.id)) airfoils.push(a);
+    return a.id;
   };
   const rootId = idOf(params.rootAirfoil);
   const tipId = idOf(params.tipAirfoil);
@@ -478,10 +492,10 @@ function panelProject(params, name) {
   const b = params.span / 2;
   const c0 = params.rootChord;
   const airfoils = [];
-  const idOf = (code) => {
-    const id = `naca${parseNacaCode(code).code}`;
-    if (!airfoils.some((a) => a.id === id)) airfoils.push({ id, ...nacaEntry(code) });
-    return id;
+  const idOf = (value) => {
+    const a = wizardAirfoil(value);
+    if (!airfoils.some((b) => b.id === a.id)) airfoils.push(a);
+    return a.id;
   };
   const rootId = idOf(params.rootAirfoil);
   const tipId = idOf(params.tipAirfoil);

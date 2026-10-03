@@ -135,7 +135,7 @@ XFLR5 zeichnet die Koordinaten eines Profils, wie sie sind: Die x-Achse der Date
 
 | Profil | Schnitte |
 | --- | --- |
-| Profil der `.xfl`-Datei, hochgeladene `.dat`-Datei, NACA-Profil des Generators, Profil des aktuellen Projekts, das aus den NACA-Gleichungen erzeugt ist (Profile aus dem NACA-Generator oder den NACA-Vorlagen der Registerkarte **Profile**, aus dem Assistenten und im Beispielflügel; es erhält die Lage des erzeugten Schnitts seiner NACA-Bezeichnung) | Verschoben und skaliert, sodass jeder Profilpunkt dort liegt, wo XFLR5 ihn zeichnet. Ausnahme ist ein gewölbtes NACA-Profil: Der Generator addiert die Dicke quer zur Skelettlinie, XFLR5 senkrecht, daher weichen die Formen bei 250 mm Profiltiefe nahe der Profilnase um 0,28 mm (NACA 2412) bis 1,41 mm (NACA 23018) ab. |
+| Profil der `.xfl`-Datei, hochgeladene `.dat`-Datei, NACA-Profil des Generators, Profil des aktuellen Projekts, das aus den NACA-Gleichungen erzeugt ist (Profile aus dem NACA-Generator, den NACA-Vorlagen der Registerkarte **Profile** und NACA-Bezeichnungen im Assistenten; es erhält die Lage des erzeugten Schnitts seiner NACA-Bezeichnung) | Verschoben und skaliert, sodass jeder Profilpunkt dort liegt, wo XFLR5 ihn zeichnet. Ausnahme ist ein gewölbtes NACA-Profil: Der Generator addiert die Dicke quer zur Skelettlinie, XFLR5 senkrecht, daher weichen die Formen bei 250 mm Profiltiefe nahe der Profilnase um 0,28 mm (NACA 2412) bis 1,41 mm (NACA 23018) ab. |
 | Anderes Profil des aktuellen Projekts, Bibliotheksprofil | Behalten die Werte der Datei: ihre Koordinaten in XFLR5 sind unbekannt. Ein Bibliotheksprofil mit geneigter Profilsehne (Clark Y 2,00°, USA 35B 1,57°) erhält eine Warnung: Hat XFLR5 eine Kopie mit waagrechter Profilsehne verwendet, wie die UIUC-Datei `clarky.dat`, stehen seine Schnitte um diesen Winkel weiter mit der Nase nach oben als in XFLR5. Die `.dat`-Datei hochladen, die XFLR5 verwendet hat. |
 
 - Beispiel: `fixtures_v662.xfl`, Flugzeug Fixture A. Das Clark Y der Datei hat seine Profilnase 3,55 % der Profiltiefe über der x-Achse. Der Wurzelschnitt (Profiltiefe 240 mm) wird um 8,53 mm entlang seiner Normalen verschoben. Die Schnitttabelle weicht dann um diesen Betrag von der Flügeltabelle von XFLR5 ab.
@@ -377,7 +377,7 @@ Der Assistent erzeugt aus 12 Eingaben (Tabelle unten) ein vollständiges Projekt
 
 - Öffnet sich beim ersten Aufruf mit dem Titel „Neuen Flügelentwurf beginnen“ (Start a new wing design) und mit **Neu** (New) mit dem Titel „Neuer Flügelentwurf“ (New wing design).
 - Vorausgewählter Entwurfstyp: **Sportmodell** (Sport). Ein Klick auf die Karte eines Entwurfstyps lädt dessen Werte.
-- Profile sind NACA-Profile der 4- oder 5-stelligen Reihe. Gültige Bezeichnungen: Abschnitt [NACA-Generator](#naca-generator).
+- **Wurzelprofil** (Root airfoil) und **Randprofil** (Tip airfoil) nehmen eine NACA-Bezeichnung der 4- oder 5-stelligen Reihe (Abschnitt [NACA-Generator](#naca-generator)) oder den Namen eines Profils der **Bibliothek**, z. B. `MH 45`. Bei Namen der Bibliothek zählen Groß- und Kleinschreibung, Leerzeichen, Bindestriche und Unterstriche nicht: `mh45`, `MH-45` und `MH_45` finden MH 45. Eine Vorschlagsliste bietet die Namen der Bibliothek und die 17 NACA-Vorlagen an. Eine NACA-Bezeichnung ergibt das erzeugte Profil; ein Name der Bibliothek fügt das Profil der Bibliothek mit seiner Quelle hinzu, wie **Zum Projekt hinzufügen** in **Bibliothek**.
 - Die Zahlenfelder lesen eine getippte Zahl wie in Abschnitt [Zahlen](#zahlen) und prüfen sie schon beim Tippen. Beim Verlassen eines Felds zeigt es die gelesene Zahl, z. B. `1500` für ein auf Deutsch getipptes `1.500`. Die Pfeiltasten nach oben und unten ändern den Wert wie in den Registerkarten; in einem leeren Feld oder einem Feld ohne Zahl gehen sie vom Wert des gewählten Entwurfstyps aus.
 
 | Eingabefeld | Bereich | Wirkung |
@@ -392,8 +392,8 @@ Der Assistent erzeugt aus 12 Eingaben (Tabelle unten) ein vollständiges Projekt
 | **Anzahl der Schnitte** (Number of sections) | 2 bis 8, ganzzahlig | Schnitte gleichmäßig verteilt von Wurzel bis Rand. Ausgeblendet bei **Felder (Tabelle)**. |
 | **Grundriss** (Planform) | **Gerade zugespitzt** (Straight taper), **Elliptisch (mit Leitkurven)** (Elliptic (guide curves)), **Felder (Tabelle)** (Panels (table)) | Tiefenverlauf, siehe unten; Felder: siehe Felder unten |
 | **Flügelende** (Tip) | **Flach** (Flat), **Spitz (Maßstab 1/200)** (Pointed (1/200 scale)), **Elliptisch (nur mit Feldern)** (Elliptic (panels only)) | Flach: Der Flügel endet am Randschnitt. Spitz: Profiltiefe des Randschnitts = 1/200 der Profiltiefe am vorletzten Schnitt, mindestens 1 mm. Elliptisch: Das letzte Feld endet in einer Viertelellipse; nur mit dem Grundriss **Felder (Tabelle)**. |
-| **Wurzelprofil (NACA)** (Root airfoil (NACA)) | NACA-Bezeichnung | Profil aller Schnitte außer dem Randschnitt |
-| **Randprofil (NACA)** (Tip airfoil (NACA)) | NACA-Bezeichnung | Profil des Randschnitts |
+| **Wurzelprofil** (Root airfoil) | NACA-Bezeichnung oder Name aus der Bibliothek | Profil aller Schnitte außer dem Randschnitt |
+| **Randprofil** (Tip airfoil) | NACA-Bezeichnung oder Name aus der Bibliothek | Profil des Randschnitts |
 
 Tiefenverlauf (η = Spannweitenanteil, 0 an der Wurzel, 1 am Rand; λ = Zuspitzung; η_prev = Spannweitenanteil des vorletzten Schnitts):
 
@@ -447,7 +447,7 @@ Bei einer der folgenden Bedingungen wird die Zeile rot und nennt die Probleme; *
 
 - Ein Wert liegt außerhalb seines Bereichs (Spalte Bereich), oder sein Feld ist leer oder enthält keine Zahl (Abschnitt [Zahlen](#zahlen)).
 - **Anzahl der Schnitte** ist nicht ganzzahlig (nicht bei **Felder (Tabelle)**).
-- Wurzel- oder Randprofil ist keine gültige NACA-Bezeichnung.
+- Wurzel- oder Randprofil ist weder eine NACA-Bezeichnung mit 4 oder 5 Ziffern noch der Name eines Profils der **Bibliothek**.
 - **Elliptisch** mit Flügelende **Flach** hat eine Zuspitzung ≥ 1 (`Ein elliptischer Grundriss braucht eine Zuspitzung < 1.`).
 - Das Flügelende ist **Elliptisch (nur mit Feldern)** und der Grundriss nicht **Felder (Tabelle)** (`Ein elliptisches Flügelende braucht den Grundriss Felder.`).
 - Die Feldliste hat weniger als 1 oder mehr als 24 Felder (`Der Grundriss Felder braucht 1 bis 24 Felder.`).
@@ -461,18 +461,35 @@ Bei einer der folgenden Bedingungen wird die Zeile rot und nennt die Probleme; *
 
 | Entwurfstyp | Spannweite mm | Wurzeltiefe mm | Zuspitzung | Pfeilung ° | V-Form ° | Schränkung Rand ° | Schnitte | Grundriss | Flügelende | Wurzel- / Randprofil |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Trainer** | 1400 | 250 | 1 | 0 | 3 | 0 | 2 | gerade | flach | 2412 / 2412 |
-| **Sportmodell** | 1200 | 240 | 0,6 | 0 | 1,5 | −1 | 2 | gerade | flach | 2412 / 2410 |
-| **Segelflugmodell** | 2000 | 200 | 0,45 | 0 | 4 | −1,5 | 3 | elliptisch | flach | 2410 / 2408 |
-| **Hochleistungssegler** (Sailplane) | 3000 | 210 | (0,5) | (0) | (2) | −2 | (4) | Felder | elliptisch | 2410 / 2408 |
-| **Delta-Jet** (Delta jet) | 900 | 800 | (0,2) | (45) | (0) | 0 | (2) | Felder | flach | 0008 / 0006 |
-| **Doppeldelta** (Double delta) | 1000 | 1000 | (0,24) | (45) | (0) | 0 | (3) | Felder | flach | 0008 / 0006 |
-| **Batwing** | 1000 | 363 | (0,5) | (0) | (0) | 0 | (2) | Felder | spitz | 0010 / 0008 |
-| **Pfeilnurflügel** (Swept flying wing) | 1200 | 280 | 0,45 | 25 | 0 | −4 | 3 | gerade | flach | 23112 / 0010 |
-| **Brettnurflügel** (Plank) | 1000 | 220 | 0,8 | 0 | 1 | 0 | 2 | gerade | flach | 23112 / 23112 |
-| **Leitwerk** (Tail surface) | 500 | 130 | 0,7 | 5 | 0 | 0 | 2 | gerade | flach | 0009 / 0009 |
+| **Trainer** | 1400 | 250 | 1 | 0 | 3 | 0 | 2 | gerade | flach | MH 38 / MH 38 |
+| **Sportmodell** | 1200 | 240 | 0,6 | 0 | 1,5 | −1 | 2 | gerade | flach | MH 32 / MH 32 |
+| **Segelflugmodell** | 2000 | 200 | 0,45 | 0 | 4 | −1,5 | 3 | elliptisch | flach | MH 42 / MH 42 |
+| **Hochleistungssegler** (Sailplane) | 3000 | 210 | (0,5) | (0) | (2) | −2 | (4) | Felder | elliptisch | MH 32 / MH 42 |
+| **Delta-Jet** (Delta jet) | 900 | 800 | (0,2) | (45) | (0) | 0 | (2) | Felder | flach | MH 52 / MH 52 |
+| **Doppeldelta** (Double delta) | 1000 | 1000 | (0,24) | (45) | (0) | 0 | (3) | Felder | flach | MH 52 / MH 52 |
+| **Batwing** | 1000 | 363 | (0,5) | (0) | (0) | 0 | (2) | Felder | spitz | MH 60 / MH 64 |
+| **Pfeilnurflügel** (Swept flying wing) | 1200 | 280 | 0,45 | 25 | 0 | −4 | 3 | gerade | flach | MH 60 / MH 45 |
+| **Brettnurflügel** (Plank) | 1000 | 220 | 0,8 | 0 | 1 | 0 | 2 | gerade | flach | MH 45 / MH 45 |
+| **Leitwerk** (Tail surface) | 500 | 130 | 0,7 | 5 | 0 | 0 | 2 | gerade | flach | MH 52 / MH 52 |
 
 Werte in Klammern sind bei **Felder (Tabelle)** ausgeblendet; sie gelten nach einem Wechsel zu **Gerade zugespitzt** oder **Elliptisch (mit Leitkurven)**.
+
+Profile der Entwurfstypen: MH-Profile der **Bibliothek** (Martin Hepperle), gewählt nach der Anwendung, die ihre Koordinatenseiten nennen. Die Reynolds-Zahlen der letzten Spalte sind Schätzungen für Luft auf Meereshöhe (Re ≈ 68.500 s/m² · Geschwindigkeit in m/s · Profiltiefe in m). Wo sie unter der kleinsten Reynolds-Zahl der Seite liegen, arbeitet das Profil außerhalb des Bereichs, den sein Konstrukteur angibt; keine MH-Koordinatenseite nennt eine Reynolds-Zahl unter 100.000.
+
+| Entwurfstyp | Wurzel- / Randprofil | Anwendung laut Koordinatenseite | Kleinste Reynolds-Zahl laut Seite | Reynolds-Zahl bei 10 bis 15 m/s, Wurzel / Rand |
+| --- | --- | --- | --- | --- |
+| **Trainer** | MH 38 / MH 38 | Dauerflugmodelle | 150.000 | 171.000 bis 257.000 / 171.000 bis 257.000 |
+| **Sportmodell** | MH 32 / MH 32 | Elektro-Pylonrenner der Klasse F5D, auch Segelflugmodelle der Klassen F3B und F3J (Wettbewerbsklassen der Fédération Aéronautique Internationale (FAI) für ferngesteuerte Modelle, RC: radio-controlled) | 150.000 | 164.000 bis 247.000 / 99.000 bis 148.000 |
+| **Segelflugmodell** | MH 42 / MH 42 | Allround-RC-Segelflugmodelle | 100.000 | 137.000 bis 206.000 / 62.000 bis 92.000 |
+| **Hochleistungssegler** | MH 32 / MH 42 | MH 32 wie oben; MH 42 Allround-RC-Segelflugmodelle | 150.000 / 100.000 | 144.000 bis 216.000 / spitzer Rand |
+| **Pfeilnurflügel** | MH 60 / MH 45 | Schwanzlose Modelle, kleines Nickmoment; die Seite von MH 60 nennt MH 45 für Reynolds-Zahlen unter 150.000 | 150.000 / 100.000 | 192.000 bis 288.000 / 86.000 bis 129.000 |
+| **Batwing** | MH 60 / MH 64 | Schwanzlose Modelle, kleines Nickmoment; MH 64 dünner (8,6 %) | 150.000 / 100.000 | 249.000 bis 373.000 / spitzer Rand |
+| **Brettnurflügel** | MH 45 / MH 45 | Schwanzlose Modelle, Momentenbeiwert +0,0145 | 100.000 | 151.000 bis 226.000 / 121.000 bis 181.000 |
+| **Delta-Jet** | MH 52 / MH 52 | Schnellflugmodelle, sehr geringer Widerstand; nahezu symmetrisch (Seite: Wölbung −0,1 %; Datei: Skelettlinie innerhalb 0,05 % der Profiltiefe), Dicke 8,0 % in der Datei (Seite: 9,00 %) | nicht angegeben (ideal etwa 1.500.000) | 548.000 bis 822.000 / 110.000 bis 164.000 |
+| **Doppeldelta** | MH 52 / MH 52 | wie Delta-Jet | nicht angegeben | 685.000 bis 1.028.000 / 163.000 bis 245.000 |
+| **Leitwerk** | MH 52 / MH 52 | wie Delta-Jet; MH hat kein Profil für Leitwerke | nicht angegeben | 89.000 bis 134.000 / 62.000 bis 94.000 |
+
+Das Randprofil liegt nur am letzten Schnitt. Bei den spitzen Flügelenden von **Hochleistungssegler** und **Batwing** hat dieser Schnitt 1 mm Profiltiefe; alle anderen Schnitte haben das Wurzelprofil. Mit **Parametrisierung der Profile** **Gleichabständig** besteht MH 42 die Profilprüfung nicht, und die Entwurfstypen **Segelflugmodell** und **Hochleistungssegler** bauen nicht (Abschnitt [Prüfungen](#prüfungen)).
 
 Felder der Entwurfstypen **Hochleistungssegler** bis **Batwing** (V-Form 0°, wo nicht angegeben):
 
@@ -494,13 +511,13 @@ Felder der Entwurfstypen **Hochleistungssegler** bis **Batwing** (V-Form 0°, wo
 - **Delta-Jet**: Die Pfeilung der Nasenleiste atan((800 − 160) / 450) = 54,9° legt die Endleiste auf eine Gerade, auf 0,3 mm genau (Randschnitt: x der Profilnase 640,29 mm, Profiltiefe 160 mm).
 - **Doppeldelta**: Der Strake verschiebt die Nasenleiste auf 150 mm um 412,1 mm nach hinten; die Endleiste ist auf 0,12 mm genau gerade.
 - **Batwing**: 12 Felder, abgenommen von einer Draufsicht des Batwing aus dem Film von 1989. Die Nasenleiste hat eine Kerbe neben dem Rumpf und die vordere Spitze des Ohrs bei 66 % der halben Spannweite (y = 330 mm, x = −87,6 mm); die Endleiste hat eine konkave Ausbuchtung und die hintere Spitze bei 51 % (y = 255 mm, x der Endleiste = 625,7 mm); beide treffen sich im runden Randbogen. Keine Schränkung, keine V-Form; der Umriss ist ein Polygon aus geraden Feldern.
-- Keiner dieser 4 Entwurfstypen ist geflogen oder im Flug vermessen. Der **Batwing** hat symmetrische Profile ohne S-Schlag; seine Nickstabilität ist nicht ausgelegt.
+- Keiner dieser 4 Entwurfstypen ist geflogen oder im Flug vermessen. Der **Batwing** hat die Profile MH 60 und MH 64 für schwanzlose Modelle (kleines Nickmoment) und keine Schränkung; seine Nickstabilität ist nicht ausgelegt.
 
 | Schaltfläche | Wirkung |
 | --- | --- |
 | **Entwurf anlegen** | Ersetzt das aktuelle Projekt. **Rückgängig** (Undo) stellt das vorherige wieder her. |
 | **Abbrechen** (Cancel) | Behält das aktuelle Projekt. |
-| **Überspringen (Beispielflügel öffnen)** (Skip (open sample wing)) | Nur beim ersten Aufruf, anstelle von **Abbrechen**. Behält den Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 1500“): 3 Schnitte, 1500 mm Spannweite, NACA 2412 / 2410, Endleiste fest 0,5 mm. |
+| **Überspringen (Beispielflügel öffnen)** (Skip (open sample wing)) | Nur beim ersten Aufruf, anstelle von **Abbrechen**. Behält den Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 1500“): 3 Schnitte, 1500 mm Spannweite, MH 32 aus der **Bibliothek** an allen Schnitten, Endleiste fest 0,5 mm. |
 
 ## Schnitte
 
@@ -731,9 +748,9 @@ Grenzen der Projektprofile (Abschnitt [Projektgröße](#projektgröße)):
 ### Bibliothek
 
 - **Bibliothek filtern** (Filter library) durchsucht Name, Kategorie und Verwendungstext.
-- Die Bibliothek enthält 17 erzeugte NACA-Profile und 6 mitgelieferte Koordinatendateien (`public/airfoils/index.json`, in die App eingebunden, sodass die Bibliothek keinen Netzzugang braucht). Die Liste zeigt zuerst die NACA-Profile, dann die Dateien in der Reihenfolge des Index.
-- Text unter jedem Namen: NACA-Profil: Kategorie, Verwendung, `erzeugt`. Mitgelieferte Datei: Kategorie, Verwendungstext, Autor, Lizenzkennung.
-- Jeder Eintrag: **Vorschau** öffnet die Vorschau. NACA-Einträge folgen dem Kontrollkästchen **Geschlossene Endleiste** des NACA-Generators. Eine mitgelieferte Datei wird von `airfoils/<file>` unter der eigenen Adresse der App geladen.
+- Die Bibliothek enthält 17 erzeugte NACA-Profile und 62 mitgelieferte Koordinatendateien (`public/airfoils/index.json`, in die App eingebunden, sodass die Bibliothek keinen Netzzugang braucht): 6 unter einer freien Lizenz und 56 MH-Profile von Martin Hepperle, mitgeliefert mit seiner schriftlichen Erlaubnis. Die Liste zeigt zuerst die NACA-Profile, dann die Dateien in der Reihenfolge des Index.
+- Text unter jedem Namen: NACA-Profil: Kategorie, Verwendung, `erzeugt`. Mitgelieferte Datei: Kategorie, Verwendungstext, Autor, Lizenzkennung. Der Autor verlinkt die Quellseite der Datei in einem neuen Browser-Tab, bei einem MH-Profil seine Koordinatenseite auf mh-aerotools.de.
+- Jeder Eintrag: **Vorschau** öffnet die Vorschau. NACA-Einträge folgen dem Kontrollkästchen **Geschlossene Endleiste** des NACA-Generators. Eine mitgelieferte Datei wird aus dem Skript gelesen; sie braucht keine Netzanfrage.
 - **Zum Projekt hinzufügen** speichert bei einer mitgelieferten Datei das Feld **Quelle / Urheber** (vorbelegt mit dem Autor), die Lizenzkennung, die Quelladresse und die Adresse der Bedingungen im Projektprofil (Objekt `source`, [[Dateiformate|Dateiformate]]).
 - Die deutsche Oberfläche zeigt Kategorie, Verwendungstext und `erzeugt` auf Deutsch, die englische auf Englisch. **Bibliothek filtern** durchsucht Kategorie und Verwendungstext in der angezeigten Sprache. Name, Autor und Lizenzkennung lauten in beiden Sprachen gleich. Die Tabellen unten nennen die deutschen Texte.
 
@@ -770,8 +787,26 @@ Mitgelieferte Dateien (Verwendungstext gekürzt; Dicke aus dem Verwendungstext):
 | S9104 | Gewölbt | Profil für hohe Zuladung und hohen Auftrieb | 12,1 % der Profiltiefe | 81 | Michael Selig, University of Illinois Urbana-Champaign | `CC-BY-4.0` |
 | USA 35B | Gewölbt | Flügelprofil der manntragenden Piper J-3 Cub und PA-18 Super Cub; für Scale-Modelle dieser Flugzeuge | 11,6 % der Profiltiefe | 33 | NACA Report No. 233, Table XXXVI | `public-domain` |
 
+MH-Profile von Martin Hepperle (Autor `Martin Hepperle, www.mh-aerotools.de`, Lizenzkennung `written-permission`; Dicke aus dem Verwendungstext):
+
+| Kategorie | Profile | Dicke |
+| --- | --- | --- |
+| Nurflügel | MH 44, MH 45, MH 46, MH 49, MH 60, MH 61, MH 62, MH 64 | 8,6 bis 11,3 % der Profiltiefe |
+| Segelflugmodelle | MH 42 | 9,0 % der Profiltiefe |
+| Pylonrenner | MH 16, MH 17, MH 18, MH 18B, MH 20, MH 22, MH 23, MH 24, MH 25, MH 26, MH 27, MH 28, MH 29, MH 30, MH 31, MH 32, MH 33, MH 34, MH 43 | 7,2 bis 13,6 % der Profiltiefe |
+| Schnellflugmodelle | MH 50, MH 51, MH 52, MH 53, MH 54, MH 55, MH 56, MH 57 | 8,0 bis 11,0 % der Profiltiefe |
+| Dauerflugmodelle | MH 38 | 9,7 % der Profiltiefe |
+| Schleppmodelle | MH 1 | 19,6 % der Profiltiefe |
+| Hängegleiter | MH 78 | 14,4 % der Profiltiefe |
+| Gleitschirme | MH 91, MH 92, MH 93 | 14,5 bis 16,0 % der Profiltiefe |
+| Propeller | MH 112, MH 113, MH 114, MH 115, MH 116, MH 117, MH 120, MH 121, MH 126 | 8,1 bis 25,1 % der Profiltiefe |
+| Windkraftanlagen | MH 102, MH 104, MH 106, MH 108, MH 110 | 10,0 bis 17,0 % der Profiltiefe |
+
+- Der Verwendungstext eines MH-Profils nennt die Anwendung, wie die Koordinatenseite des Konstrukteurs sie beschreibt, die aus der Datei berechnete Dicke und, wo die Seite eine angibt, die kleinste Reynolds-Zahl, z. B. `Schwanzlose Modelle, kleines Nickmoment. Dicke 9,8 % der Profiltiefe. Für Reynolds-Zahlen ab 100.000.` (MH 45). MH 30 und MH 32 nennen Segelflugmodelle als zweite Verwendung, MH 33 und MH 43 F3B-Modelle (F3B: Wettbewerbsklasse der FAI für ferngesteuerte Segelflugmodelle).
+
 - Quelle, Rechtsgrundlage, Bedingungen und Text der Quellenangabe je Datei: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md).
 - Clark Y, NACA 8-H-12, NACA M-6, RAF 34 und USA 35B: in den Vereinigten Staaten gemeinfrei (public domain). Ihr Status außerhalb der Vereinigten Staaten ist nicht geklärt.
+- MH-Profile: schriftliche Erlaubnis von Martin Hepperle, sie in Wingdesigner aufzunehmen. Die MIT License (benannt nach dem Massachusetts Institute of Technology) des Programmcodes gilt für sie nicht. Die Projektdatei behält die Quellenangabe. Der `.dat`-Download und die 3D-Modelldateien aus [Export](#export) enthalten keine; wer eine solche Datei veröffentlicht, nennt den Urheber und gibt die Quelle an, <https://www.mh-aerotools.de/airfoils/>. Außerhalb von Wingdesigner gelten die Bedingungen seiner Website: persönlicher Gebrauch, Quellenangabe in Veröffentlichungen.
 - S9104: Lizenz Creative Commons Attribution 4.0 International (CC BY 4.0). Die Projektdatei behält die Quellenangabe. Der `.dat`-Download und die 3D-Modelldateien aus [Export](#export) enthalten keine; wer eine solche mit S9104 erstellte Datei weitergibt, fügt den Text der Quellenangabe aus NOTICE.md hinzu.
 - RAF 34: 7 Werte des Quellscans sind unsicher, um bis zu 0,20 % der Profiltiefe (0,40 mm bei 200 mm Profiltiefe). NOTICE.md führt sie auf.
 - Clark Y und USA 35B behalten die veröffentlichte Basislinie: Die Profilnase liegt 3,50 % bzw. 2,76 % der Profiltiefe über der x-Achse. Die Vorschau zeigt die Warnung `Die Linie von der Profilnase zur Endleiste ist um -1,97 Grad geneigt; …` (USA 35B: -1,51). Die Schränkung bezieht sich auf die x-Achse der Datei: Bei gleicher Schränkung steht die Profilsehne von Clark Y um 1,97° und die von USA 35B um 1,51° stärker Nase hoch als die eines Profils mit der Sehne auf der x-Achse.
@@ -779,12 +814,12 @@ Mitgelieferte Dateien (Verwendungstext gekürzt; Dicke aus dem Verwendungstext):
 
 ### Externe Quellen
 
-Der Kasten **Weitere Profile (extern, nicht mitgeliefert)** (More airfoils (external, not bundled)) verlinkt 3 Sammlungen. Die App liefert keine Dateien daraus mit; die mitgelieferte Datei S9104 stammt von der eigenen Seite des Konstrukteurs, nicht aus der Datenbank der University of Illinois Urbana-Champaign (UIUC). Datei dort herunterladen, dann im Bereich **Hochladen** einlesen. Bedingungen und Zitate: [[Profilquellen|Profilquellen]].
+Der Kasten **Weitere Profile (externe Seiten)** (More airfoils (external sites)) verlinkt 3 Sammlungen. Die App liefert die 56 MH-Profile von MH-AeroTools mit, mit schriftlicher Erlaubnis ihres Konstrukteurs, und keine Dateien der beiden anderen; die mitgelieferte Datei S9104 stammt von der eigenen Seite des Konstrukteurs, nicht aus der Datenbank der University of Illinois Urbana-Champaign (UIUC). Datei dort herunterladen, dann im Bereich **Hochladen** einlesen. Bedingungen und Zitate: [[Profilquellen|Profilquellen]].
 
 | Link | Inhalt | Bedingungen (Kurzfassung) |
 | --- | --- | --- |
 | aerodesign.de - Hartmut Siegmann | HS-Profile und Kataloge für Brettnurflügel, Pfeilnurflügel und Segelflugmodelle | Privat, im Verein, kleingewerblich und wissenschaftlich mit Namen und Quelle; Großserien und industrielle Anwendungen brauchen eine schriftliche Nutzungsvereinbarung; Weiterverbreitung durch Dritte zum Teil eingeschränkt |
-| MH-AeroTools - Martin Hepperle | MH-Profile, z. B. MH 45 und MH 60 für Nurflügel, MH 32 für Segelflugmodelle | Persönlicher Gebrauch; Veröffentlichungen nennen die Quelle; eine Neuzusammenstellung darf nicht über den Herstellungskosten verkauft werden |
+| MH-AeroTools - Martin Hepperle | Die 56 MH-Profile der **Bibliothek**, mit Beschreibungen und Polaren | Bedingungen der Website: persönlicher Gebrauch; Veröffentlichungen nennen die Quelle; eine Neuzusammenstellung darf nicht über den Herstellungskosten verkauft werden. Die mitgelieferten Dateien: schriftliche Erlaubnis des Konstrukteurs |
 | UIUC Airfoil Coordinates Database (University of Illinois Urbana-Champaign) | Etwa 1650 Profile im Selig-Format (Anzahl laut Koordinatenseite) | Keine Lizenz für die Koordinatendateien angegeben; es gelten die Rechte des jeweiligen Konstrukteurs |
 
 - Die Hinweise in der App lauten „Etwa 1.600 Profile“ (UIUC) und „gewerbliche Nutzung braucht eine schriftliche Erlaubnis“ (aerodesign.de). Es gelten die zitierten Bedingungen in [[Profilquellen|Profilquellen]].
@@ -829,9 +864,9 @@ Interpolation in Spannweitenrichtung:
 - **Glatt**: Die Schnittwerte folgen einer formerhaltenden kubischen Kurve: in jedem Feld ein kubisches Polynom durch die Werte seiner beiden Schnitte, mit den Steigungen eines natürlichen kubischen Splines durch alle Schnitte, so begrenzt, dass der Wert zwischen den Werten der beiden Schnitte bleibt ([[Geometrie]], Abschnitt 3.1). Die Steigung ist an den Schnitten stetig. Ein Schnitt mit dem größten oder kleinsten Wert einer Größe (zum Beispiel der größten Profiltiefe) erhält dort die Steigung 0; ein Feld zwischen zwei gleichen Werten bleibt konstant. Das Profil wird als Mittellinie und Dicke interpoliert, daher bleibt die Dicke zwischen den Dicken der beiden Schnitte. Ungleichmäßig verteilte Schnitte, etwa ein Profilwechsel zwischen zwei Schnitten im Abstand 0,5 mm aus dem XFLR5-Import, werden ohne Überschwingen gebaut. **Stationen je Feld** Intervalle je Feld (Vorgabe 8); Grad 3 in Spannweitenrichtung, jedes Feld für sich interpoliert.
 - Bei 2 Schnitten ergeben beide dieselben Werte für x, z, Profiltiefe und Schränkung.
 - Die Flächen unterscheiden sich, wo sich Profil oder Schränkung entlang der Spannweite ändern. Eine gleichzeitige Änderung der Profiltiefe vergrößert den Unterschied.
-- Ab 3 Schnitten unterscheiden sich die Flächen auch dort, wo x, z, Profiltiefe oder Schränkung an einem Schnitt ihre Steigung ändern. Beispiel: Entwurfstyp **Sportmodell** (Sport) mit 3 Schnitten, mittlere Profiltiefe 150 mm statt 192 mm, ein Profil, keine Schränkung: 8,08 mm.
+- Ab 3 Schnitten unterscheiden sich die Flächen auch dort, wo x, z, Profiltiefe oder Schränkung an einem Schnitt ihre Steigung ändern. Beispiel: Entwurfstyp **Sportmodell** (Sport) mit 3 Schnitten, mittlere Profiltiefe 150 mm statt 192 mm, ein Profil, keine Schränkung, Schnittebenen **Senkrecht**: 12,40 mm.
 - Ein Profil, keine Schränkung und eine von Wurzel bis Rand linear veränderte Profiltiefe ergeben keinen Unterschied.
-- Größter Abstand der 2 Flächen bei gleichen Flächenparametern, Entwurfstypen des Assistenten, Schnittebenen **Senkrecht**: **Pfeilnurflügel** (Swept flying wing) 0,56 mm, **Sportmodell** 0,34 mm, **Segelflugmodell** 0,20 mm, **Trainer** 0,00 mm, **Brettnurflügel** (Plank) 0,00 mm, **Leitwerk** (Tail surface) 0,00 mm.
+- Größter Abstand der 2 Flächen bei gleichen Flächenparametern, Entwurfstypen des Assistenten, Schnittebenen **Senkrecht**: **Sportmodell** 0,31 mm (Schränkung), **Pfeilnurflügel** (Swept flying wing) 0,13 mm, **Segelflugmodell** 0,00 mm, **Trainer** 0,00 mm, **Brettnurflügel** (Plank) 0,00 mm, **Leitwerk** (Tail surface) 0,00 mm.
 - Berechnung: [[Geometrie|Geometrie]].
 
 Schnittebenen:
@@ -840,9 +875,9 @@ Schnittebenen:
 - Zwei Schnitte, die in y weniger als 1 mm auseinanderliegen (ein Profilwechsel, wie ihn XFLR5-Dateien schreiben), teilen sich eine Ebene: die winkelhalbierende Ebene der Felder um sie herum.
 - **Senkrecht** (Vertical): Jeder Schnitt liegt in einer Ebene y = konst. Quer zu einem Feld mit der V-Form δ hat der Flügel cos δ der Dicke des Profils: 99,6 % bei 5°, 81,9 % bei 35°.
 - Ein Flügel ohne V-Form ist in beiden Modi gleich.
-- **Linear** mit **Auf Gehrung**: Ein Feld, dessen beide Schnitte in Ebenen verschiedener Neigung liegen, erhält **Stationen je Feld** Intervalle und den Grad 3 in Spannweitenrichtung, sodass jede Station das überblendete Profil in ihrer eigenen Ebene trägt. Jeder Unterschied der Neigung zählt: Eine V-Form von 1e-6° statt 0° kann die Fläche um bis zu 0,17 mm verschieben, wo sich Profiltiefe, Profil und Schränkung entlang des Feldes ändern. Die Entwurfstypen **Sportmodell**, **Trainer** und **Brettnurflügel** bauen 9 Stationen statt 2 mit **Senkrecht**, der Beispielflügel 17 statt 3; das **Segelflugmodell** hat in beiden Modi 17 (Leitkurven). Der Flügel des **Sportmodells** (NACA 2412 bei 240 mm bis NACA 2410 bei 144 mm) folgt dann genau der Überblendung bei **Linear** und hat 1,4 % weniger Volumen als der senkrechte Aufbau, der die 2 Schnitte mit geraden Linien 0,343 mm neben dieser Überblendung verbindet.
+- **Linear** mit **Auf Gehrung**: Ein Feld, dessen beide Schnitte in Ebenen verschiedener Neigung liegen, erhält **Stationen je Feld** Intervalle und den Grad 3 in Spannweitenrichtung, sodass jede Station das überblendete Profil in ihrer eigenen Ebene trägt. Jeder Unterschied der Neigung zählt: Eine V-Form von 1e-6° statt 0° kann die Fläche um bis zu 0,17 mm verschieben, wo sich Profiltiefe, Profil und Schränkung entlang des Feldes ändern. Die Entwurfstypen **Sportmodell**, **Trainer** und **Brettnurflügel** bauen 9 Stationen statt 2 mit **Senkrecht**, der Beispielflügel 17 statt 3; das **Segelflugmodell** hat in beiden Modi 17 (Leitkurven). Der Flügel des **Sportmodells** (MH 32 bei 240 mm und bei 144 mm, −1° Schränkung) folgt dann genau der Überblendung bei **Linear** und hat 0,1 % mehr Volumen als der senkrechte Aufbau, der die 2 Schnitte mit geraden Linien bis zu 0,314 mm neben dieser Überblendung verbindet: Profiltiefe und Schränkung ändern sich zusammen.
 - **Gerade Felder** mit **Auf Gehrung**: Die geraden Linien verbinden die Schnitte in ihren Ebenen, die Fläche von XFLR5.
-- **Glatt** mit **Auf Gehrung**: Die Schnitte liegen in denselben Ebenen wie bei **Linear**. Dazwischen folgt die Neigung der glatten Kurve durch die Neigungen der Schnitte, und die Dickenstreckung folgt der Steigung der glatten Kurve durch die Schnittpositionen, sodass der Flügel quer zu dieser Kurve so dick bleibt wie sein Profil. Die Entwurfstypen mit V-Form liegen bis zu 1,9 mm neben einem Aufbau mit **Glatt** und Ebenen **Senkrecht** (**Hochleistungssegler**). An der Wurzel bleibt die Ebene senkrecht, während die glatte Kurve die Wurzel bis zu 3-mal so steil wie das erste Feld verlassen kann: Eine Ebene mehr als 60° schräg zu dieser Kurve stoppt den Aufbau (Abschnitt [Prüfungen](#prüfungen)).
+- **Glatt** mit **Auf Gehrung**: Die Schnitte liegen in denselben Ebenen wie bei **Linear**. Dazwischen folgt die Neigung der glatten Kurve durch die Neigungen der Schnitte, und die Dickenstreckung folgt der Steigung der glatten Kurve durch die Schnittpositionen, sodass der Flügel quer zu dieser Kurve so dick bleibt wie sein Profil. Die Entwurfstypen mit V-Form liegen bis zu 1,8 mm neben einem Aufbau mit **Glatt** und Ebenen **Senkrecht** (**Hochleistungssegler**). An der Wurzel bleibt die Ebene senkrecht, während die glatte Kurve die Wurzel bis zu 3-mal so steil wie das erste Feld verlassen kann: Eine Ebene mehr als 60° schräg zu dieser Kurve stoppt den Aufbau (Abschnitt [Prüfungen](#prüfungen)).
 - Fehler mit **Auf Gehrung**: eine Ebene mehr als 60° schräg zu ihrem Feld (das Profil würde mehr als auf das 2-Fache gestreckt), und Ebenen benachbarter Schnitte oder Stationen, die sich innerhalb der Profile schneiden, was die Fläche faltet (Abschnitt [Prüfungen](#prüfungen)). **Senkrecht** baut beide.
 - Die Schränkung dreht jeden Schnitt in seiner Ebene. Entlang x gesehen trifft ein um 35° geneigter Schnitt mit 2° Schränkung die Anströmung unter 1,64°.
 - Berechnung: [[Geometrie|Geometrie]], Abschnitt 3.8.
@@ -864,7 +899,7 @@ Spitzes Flügelende (**Flügelende** = **Spitz**):
 - Im letzten Feld bleibt die Profiltiefe mindestens gleich der Randtiefe. Zusammenlaufende Leitkurven enden im verkleinerten Randprofil.
 - Mit eingeschalteter Nasenlinie und Endlinie legt ihr Abstand am Rand die Randtiefe fest, wenn er größer als die verkleinerte Randtiefe ist. Ist er mehr als 0,5 mm größer, erscheint eine Warnung.
 - Entwurfstyp **Segelflugmodell** mit dem Eingabefeld **Flügelende** = **Spitz**: Randtiefe 1,00 mm (Untergrenze 1 mm), 22 Stationen (17 + 5 hinzugefügt), größte Abweichung an den geprüften Spannweitenpositionen 0,263 mm, keine Warnung. Auch die übrigen Entwurfstypen des Assistenten mit **Flügelende** = **Spitz** ergeben keine Warnung.
-- Innerhalb von 2 mm vor einem spitzen elliptischen Flügelende (Entwurfstypen des Assistenten) weichen x von Nasen- und Endleiste der Fläche höchstens 0,031 mm vom vorgesehenen Grundriss ab (2001 Spannweitenpositionen); die übrigen Konturpunkte dort sind nicht gemessen. Die Abweichungswarnung erfasst diese Positionen nicht.
+- Innerhalb von 2 mm vor einem spitzen elliptischen Flügelende (Entwurfstypen des Assistenten) weichen x von Nasen- und Endleiste der Fläche höchstens 0,044 mm vom vorgesehenen Grundriss ab (**Pfeilnurflügel**; 2001 Spannweitenpositionen); die übrigen Konturpunkte dort sind nicht gemessen. Die Abweichungswarnung erfasst diese Positionen nicht.
 
 Regeln für die Endleiste:
 
@@ -917,7 +952,7 @@ Die Registerkarte **Prüfungen** (Checks) trägt die Überschrift **Geometriepr�
 | `Profil „…“: …` | Fehler | das Profil besteht die Plausibilitätsprüfungen nicht ([[Dateiformate]]), z. B. in einer geöffneten Projektdatei. Mit **Parametrisierung der Profile** (Profile parametrization) **Sehnenlänge** (Chord length) oder **Gleichabständig** (Uniform) endet jede Meldung `Profil „…“` mit `Die Einstellung „Zentripetal“ unter Einstellungen > Parametrisierung der Profile folgt den Punkten genauer.` |
 | `Profil „…“: Die NURBS-Interpolation ist fehlgeschlagen (…).` | Fehler | die NURBS-Interpolation des Profils schlägt fehl |
 | `Profil „…“: Die NURBS-Kurve durch die Punkte überschneidet sich selbst nahe x = … % der Profiltiefe; …` | Fehler | die Kurve durch die Profilpunkte kreuzt sich selbst. Die Kreuzung teilt die Kontur in 2 Teile; der Teil mit der kleineren Diagonale des Hüllrechtecks hat eine mittlere Breite (Fläche / Diagonale des Hüllrechtecks) über 0,05 % der Profiltiefe. Ein Profil, das bei einer Profiltiefe über 200 mm verwendet wird, scheitert auch, wenn diese Breite bei seiner größten Profiltiefe 0,1 mm übersteigt; die Meldung lautet dann `…; die Schleife ist bei … mm Profiltiefe … mm breit, über 0,1 mm. …` |
-| `Profil „…“: Die Profilseite läuft in x um … % der Profiltiefe zurück, nahe x = … % der Profiltiefe; …` | Fehler | die Kurve durch die Profilpunkte läuft um mehr als 0,01 % der Profiltiefe in x zurück. Im Einlesetest mit 1964 realen Profildateien weist diese Prüfung mit **Zentripetal** (Centripetal) 4 Dateien ab, mit **Sehnenlänge** 12 und mit **Gleichabständig** 82 ([[Profilquellen]], Abschnitt Einlesetest). |
+| `Profil „…“: Die Profilseite läuft in x um … % der Profiltiefe zurück, nahe x = … % der Profiltiefe; …` | Fehler | die Kurve durch die Profilpunkte läuft um mehr als 0,01 % der Profiltiefe in x zurück. Im Einlesetest mit 1964 realen Profildateien weist diese Prüfung mit **Zentripetal** (Centripetal) 4 Dateien ab, mit **Sehnenlänge** 12 und mit **Gleichabständig** 82 ([[Profilquellen]], Abschnitt Einlesetest). Von den MH-Profilen der **Bibliothek** scheitern MH 27, MH 42 und MH 115 mit **Gleichabständig**, daher bauen die Entwurfstypen **Segelflugmodell** und **Hochleistungssegler** mit **Gleichabständig** nicht. |
 | `Profil „…“: Die Oberseite läuft an … Punkten in x zurück; die Grenze liegt bei 50.` (ebenso `Die Unterseite …`) | Fehler | eine Seite des Profils läuft an mehr als 50 Punkten in x zurück (Prüfung `folds`, [[Dateiformate]]) |
 | `Nasenlinie: …` / `Endlinie: …` | Fehler | y der Leitkurvenpunkte steigt nicht streng an, oder die Kurve läuft in y zurück; Modus **Durch Punkte** (Through points): `Die Punkte … und … bei y = … mm und y = … mm liegen für die Kurvenparameter zu dicht beieinander; die Punkte auseinanderschieben.`, wenn zwei normierte y-Werte höchstens 4 Einheiten der letzten Stelle des größeren Werts oder höchstens 2^-1021 (etwa 4,5e-308) auseinanderliegen; `Die Kurvenanpassung ist singulär; die Punkte in y weiter auseinanderschieben oder den Modus „Kontrollpunkte“ verwenden.`, wenn die Interpolation Punkte, deren normierte y-Werte enger liegen, als sie auflöst, nicht lösen kann, z. B. 1e-300 der Spannweite |
 | `Nasenlinie: Die Kurve durch die Punkte erreicht x = … mm, jenseits von ±1.200.000 mm; die Punkte in y gleichmäßiger verteilen oder den Modus „Kontrollpunkte“ verwenden.` (ebenso `Endlinie`) | Fehler | ein Kontrollpunkt der Leitkurve liegt jenseits von x = ±1 200 000 mm |
@@ -1166,7 +1201,7 @@ Der Vorschlag setzt einen Schnitt an jeden Profilschnitt zwischen Wurzel und Ran
 | **Abweichung (mm)** (Deviation (mm)) | größter Abstand zwischen dem geradlinigen Kern und dem Flügel; Warnfarbe über **Grenze der Abweichung** |
 | **Keil innen** (Wedge inboard), **Keil außen** (Wedge outboard) | Winkel, Tiefe entlang des Kerns und die Seite, an der der Keil am tiefsten ist (`oben`, `unten`); `–` ohne Keil |
 
-Die Zusammenfassung unter dem Grundriss nennt die Anzahl der Segmente und die größte Abweichung, die Kerne, die länger als **Längster Kern** sind, die Segmente über **Grenze der Abweichung**, entfernte Schnitte und die Anzahl der PDF-Seiten. Beispiel, Entwurfstyp **Sportmodell** mit den Vorgaben: `1 Segment je Hälfte, Abweichung 0,341 mm. 1 Segment weicht mehr als 0,20 mm vom Flügel ab; Segmente über der Grenze teilen fügt Schnitte hinzu. Die PDF-Schablonen belegen 2 Seiten.` Nach **Segmente über der Grenze teilen**: 2 Segmente, größte Abweichung 0,085 mm.
+Die Zusammenfassung unter dem Grundriss nennt die Anzahl der Segmente und die größte Abweichung, die Kerne, die länger als **Längster Kern** sind, die Segmente über **Grenze der Abweichung**, entfernte Schnitte und die Anzahl der PDF-Seiten. Beispiel, Entwurfstyp **Sportmodell** mit den Vorgaben: `1 Segment je Hälfte, Abweichung 0,314 mm. 1 Segment weicht mehr als 0,20 mm vom Flügel ab; Segmente über der Grenze teilen fügt Schnitte hinzu. Die PDF-Schablonen belegen 2 Seiten.` Nach **Segmente über der Grenze teilen**: 2 Segmente, größte Abweichung 0,079 mm.
 
 Der Grundriss zeigt beide Hälften mit der Wurzel, den Schnitten und dem Rand als blaue Linien.
 
@@ -1197,7 +1232,7 @@ PDF-Seiten:
 - Eine Schablone, die breiter oder höher als der bedruckbare Bereich ist, wird in Streifen geteilt, die sich um 10 mm überlappen. Jeder Streifen trägt die Beschriftung `<Schablone>: Teil <i> von <n> (Zeile <r>, Spalte <c>)`. Kreuze in der Überlappung stehen auf beiden Streifen einer Stoßstelle, damit sich die Streifen passgenau zusammenkleben lassen.
 - Ausrichtung: die mit weniger in Streifen geteilten Schablonen, dann die mit weniger Seiten; bei Gleichstand Hochformat. Die 260 mm breiten Schablonen des Entwurfstyps **Sportmodell** passen ungeteilt auf A4 quer (277 mm bedruckbare Breite).
 
-Beispiel, **Längster Kern** 800 mm, auf 0,2 mm geteilt: **Sportmodell** 3 Seiten auf A4, 1 auf A3, 4 auf Letter; **Segelflugmodell** (Glider) 10 Seiten auf A4, 4 auf A3, 10 auf Letter.
+Beispiel, **Längster Kern** 800 mm, auf 0,2 mm geteilt: **Sportmodell** 3 Seiten auf A4, 1 auf A3, 4 auf Letter; **Segelflugmodell** (Glider) 10 Seiten auf A4, 4 auf A3, 9 auf Letter.
 
 ### Schneiden
 

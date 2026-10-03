@@ -23,9 +23,10 @@
 // its chord is not 1, the sections that use it are moved and scaled to match (the airfoil frame).
 // Library airfoils and current-project airfoils have no frame (the report warns when the chord line
 // of a library airfoil is inclined: a level copy in XFLR5 turns its sections), except a
-// current-project airfoil generated from the NACA equations (source kind 'naca': the NACA generator and Library presets of
-// the Airfoils tab, the wizard, the sample wing): it gets the frame of the generated section of its
-// NACA code. A cambered NACA section has one: its thickness is added across the mean line, so the
+// current-project airfoil generated from the NACA equations (source kind 'naca': the NACA generator
+// and Library presets of the Airfoils tab, NACA designations of the wizard, the NACA sample wing of
+// Wingdesigner 0.6.0 and earlier): it gets the frame of the generated section of its NACA code. A
+// cambered NACA section has one: its thickness is added across the mean line, so the
 // point of least x lies ahead of and above the nose. A current-project airfoil of an XFLR5 import or
 // an upload is stored at unit chord; its own coordinates are not known, and the report says so.
 //
@@ -776,12 +777,13 @@ const samePoints = (p, q) => p.length === q.length && p.every((pt, i) => Math.ab
 /**
  * A current-project airfoil, checked. Its coordinates in XFLR5 are not known: it has no frame, except
  * a section generated from the NACA equations (source kind 'naca') whose points are the generated
- * section of its code (source.code, or the designation that is its name, as the sample wing stores
- * it), as generated (the wizard, the sample wing) or checked (the Airfoils tab stores the checked
- * points, which no longer show the generator's frame). It gets the check and the frame of the
- * generated section of its code, so that the file gives the same wing as with no project open; where
- * that frame is not in chord units, it is used without a frame, with the warning of an upload. NACA
- * metadata with other points (a hand-edited project file) is not trusted, as addAirfoil does not.
+ * section of its code (source.code, or the designation that is its name, as the NACA sample wing of
+ * Wingdesigner 0.6.0 and earlier stores it), as generated (the wizard, that sample wing) or checked
+ * (the Airfoils tab stores the checked points, which no longer show the generator's frame). It gets
+ * the check and the frame of the generated section of its code, so that the file gives the same wing
+ * as with no project open; where that frame is not in chord units, it is used without a frame, with
+ * the warning of an upload. NACA metadata with other points (a hand-edited project file) is not
+ * trusted, as addAirfoil does not.
  */
 function checkProjectAirfoil(a) {
   const c = checked(a.points);

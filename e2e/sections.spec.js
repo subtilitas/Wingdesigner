@@ -81,8 +81,8 @@ test.describe('Sections tab', () => {
     await expect(rows(page)).toHaveCount(2);
     const secs = await tableSections(page);
     expect(secs).toEqual([
-      { airfoil: 'naca2412', y: 0, x: 0, z: 0, chord: 240, twist: 0 },
-      { airfoil: 'naca2410', y: 600, x: 24, z: 15.71, chord: 144, twist: -1 },
+      { airfoil: 'mh-32', y: 0, x: 0, z: 0, chord: 240, twist: 0 },
+      { airfoil: 'mh-32', y: 600, x: 24, z: 15.71, chord: 144, twist: -1 },
     ]);
     expect(statusText(planform(secs))).toBe(SPORT_STATUS);
     await expect(status(page)).toHaveText(SPORT_STATUS);
@@ -259,7 +259,7 @@ test.describe('Sections tab', () => {
   });
 
   test('changing a section airfoil updates the wing, the airfoil usage and survives reload', async ({ page }) => {
-    await createDesign(page, 'Sport');
+    await createDesign(page, 'Sport', { fields: { 'Root airfoil': '2412', 'Tip airfoil': '2410' } });
     const tip = airfoilSelect(page, 1);
     await expect(tip).toHaveValue('naca2410');
     await expect(tip.locator('option')).toHaveText(['NACA 2412', 'NACA 2410']);
@@ -475,7 +475,7 @@ test.describe('Sections tab', () => {
     await editField(page, 2, 'twist', -5.5);
     await editField(page, 2, 'z', 25);
     await clickAndRerender(page, 'Insert section after 2');
-    await whenRerendered(table(page), () => airfoilSelect(page, 1).selectOption({ label: 'NACA 0010' }));
+    await whenRerendered(table(page), () => airfoilSelect(page, 1).selectOption({ label: 'MH 45' }));
     await editField(page, 2, 'x', 222.5);
     const edited = await tableSections(page);
     expect(edited).toHaveLength(4);
@@ -573,7 +573,7 @@ test.describe('Sections tab', () => {
   });
 
   test('an airfoil list changed with the arrow keys keeps the focus after the table renders again', async ({ page }) => {
-    await createDesign(page, 'Sport');
+    await createDesign(page, 'Sport', { fields: { 'Root airfoil': '2412', 'Tip airfoil': '2410' } });
     const list = airfoilSelect(page, 0);
     await list.focus();
     await list.press('ArrowDown');

@@ -86,9 +86,9 @@ const nacaLibraryItems = (page) =>
     .filter({ has: page.locator('.grow > .small', { hasText: /· generated$/ }) });
 const itemNames = (items) => items.locator('.grow > div:first-child').allTextContents();
 
-/** First visit: create the Sport preset (root NACA 2412, tip NACA 2410) and open the Airfoils tab. */
+/** First visit: create the Sport preset with root NACA 2412 and tip NACA 2410 and open the Airfoils tab. */
 async function startSport(page) {
-  await createDesign(page, 'Sport');
+  await createDesign(page, 'Sport', { fields: { 'Root airfoil': '2412', 'Tip airfoil': '2410' } });
   await openTab(page, 'Airfoils');
   await expect(projectItems(page)).toHaveCount(2);
 }
@@ -570,8 +570,20 @@ test.describe('Airfoils tab', () => {
     const bundled = sectionOf(page, 'Library')
       .locator('.airfoil-list > li')
       .filter({ hasNot: page.locator('.grow > .small', { hasText: /· generated$/ }) });
-    // The six free-licensed files of public/airfoils/index.json, in index order.
-    expect(await itemNames(bundled)).toEqual(['Clark Y', 'NACA 8-H-12', 'NACA M-6', 'RAF 34', 'S9104', 'USA 35B']);
+    // The files of public/airfoils/index.json, in index order: six with a free license, 56 MH airfoils
+    // with the written permission of their designer.
+    const names = await itemNames(bundled);
+    expect(names.filter((n) => !n.startsWith('MH '))).toEqual(['Clark Y', 'NACA 8-H-12', 'NACA M-6', 'RAF 34', 'S9104', 'USA 35B']);
+    expect(names.filter((n) => n.startsWith('MH '))).toHaveLength(56);
+    expect(names.slice(0, 4)).toEqual(['Clark Y', 'MH 1', 'MH 16', 'MH 17']);
+    const mh45 = bundled.filter({ has: page.locator('.grow > div:first-child', { hasText: /^MH 45$/ }) });
+    await expect(mh45.locator('.grow > .small')).toHaveText(
+      'Flying wings · Tailless models, low pitching moment. Thickness 9.8 % of chord. For Reynolds numbers of 100,000 and above. · Martin Hepperle, www.mh-aerotools.de · written-permission',
+    );
+    const author = mh45.getByRole('link', { name: 'Martin Hepperle, www.mh-aerotools.de' });
+    await expect(author).toHaveAttribute('href', 'https://www.mh-aerotools.de/airfoils/mh45koo.htm');
+    await expect(author).toHaveAttribute('title', 'Source of MH 45 (opens in a new tab)');
+    await expect(author).toHaveAttribute('target', '_blank');
     await expect(bundled.filter({ hasText: 'S9104' }).locator('.grow > .small')).toContainText('Michael Selig, University of Illinois Urbana-Champaign · CC-BY-4.0');
     await expect(bundled.filter({ hasText: 'Clark Y' }).locator('.grow > .small')).toContainText('public-domain');
     await bundled.filter({ hasText: 'S9104' }).getByRole('button', { name: 'Preview' }).click();

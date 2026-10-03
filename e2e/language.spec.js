@@ -289,7 +289,7 @@ test.describe('English browser', () => {
     await openTab(page, 'Profile');
     const projectAirfoils = page.locator('#pane-airfoils .airfoil-list').first();
     await expect(projectAirfoils.getByRole('button', { name: 'Anzeigen', exact: true }).first()).toBeVisible();
-    await expect(projectAirfoils).toContainText('161 Punkte');
+    await expect(projectAirfoils).toContainText('117 Punkte');
     await openTab(page, 'Grundriss');
     await expect(page.locator('.planform-canvas')).toHaveAttribute('aria-label', 'Grundriss-Editor');
     await expect(page.locator('#pane-planform .readout')).toHaveText(/^Punkte zum Bearbeiten ziehen/);
@@ -308,7 +308,7 @@ test.describe('English browser', () => {
     await openTab(page, 'Airfoils');
     const englishAirfoils = page.locator('#pane-airfoils .airfoil-list').first();
     await expect(englishAirfoils.getByRole('button', { name: 'View', exact: true }).first()).toBeVisible();
-    await expect(englishAirfoils).toContainText('161 points');
+    await expect(englishAirfoils).toContainText('117 points');
     await openTab(page, 'Planform');
     await expect(page.locator('.planform-canvas')).toHaveAttribute('aria-label', 'Planform editor');
     await expect(page.locator('#pane-planform .readout')).toHaveText(/^Drag points to edit/);
@@ -483,7 +483,7 @@ test.describe('German browser', () => {
     await expect(wizard.getByLabel('Anzahl der Schnitte')).toBeVisible();
     await expect(wizard.getByRole('combobox', { name: 'Grundriss', exact: true })).toBeVisible();
     await expect(wizard.getByRole('combobox', { name: 'Flügelende', exact: true })).toBeVisible();
-    await expect(wizard.getByPlaceholder('NACA-Bezeichnung, z. B. 2412').first()).toBeVisible();
+    await expect(wizard.getByPlaceholder('NACA-Bezeichnung oder Name aus der Bibliothek, z. B. 2412 oder MH 45').first()).toBeVisible();
     await expect(wizard.locator('canvas')).toHaveAttribute('aria-label', 'Grundrissvorschau');
     await expect(wizard.getByRole('button', { name: 'Entwurf anlegen' })).toBeEnabled();
     // Figures of the previewed design: decimal comma.

@@ -135,7 +135,7 @@ XFLR5 draws the coordinates of an airfoil as they are: the x axis of the file li
 
 | Airfoil | Sections |
 | --- | --- |
-| Airfoil of the `.xfl` file, uploaded `.dat` file, NACA section of the generator, airfoil of the current project generated from the NACA equations (sections of the NACA generator or the NACA presets of the **Airfoils** tab, of the wizard and of the sample wing; it gets the frame of the generated section of its NACA code) | Moved and scaled so that every airfoil point lies where XFLR5 draws it. A cambered NACA section is the one exception: the generator adds the thickness across the mean line, XFLR5 adds it vertically, so the shapes differ by 0.28 mm (NACA 2412) to 1.41 mm (NACA 23018) at 250 mm chord near the leading edge. |
+| Airfoil of the `.xfl` file, uploaded `.dat` file, NACA section of the generator, airfoil of the current project generated from the NACA equations (sections of the NACA generator, the NACA presets of the **Airfoils** tab and NACA designations entered in the wizard; it gets the frame of the generated section of its NACA code) | Moved and scaled so that every airfoil point lies where XFLR5 draws it. A cambered NACA section is the one exception: the generator adds the thickness across the mean line, XFLR5 adds it vertically, so the shapes differ by 0.28 mm (NACA 2412) to 1.41 mm (NACA 23018) at 250 mm chord near the leading edge. |
 | Other airfoil of the current project, library airfoil | Keep the values of the file: their coordinates in XFLR5 are unknown. A library airfoil with an inclined chord line (Clark Y 2.00°, USA 35B 1.57°) gets a warning: if XFLR5 used a copy with a level chord line, as the UIUC file `clarky.dat`, its sections sit that angle more nose up than in XFLR5. Upload the `.dat` file that XFLR5 used. |
 
 - Example: `fixtures_v662.xfl`, plane Fixture A. The Clark Y of the file has its leading edge 3.55 % of the chord above the x axis. The root section (chord 240 mm) moves 8.53 mm along its normal. The Sections table then differs from the wing table of XFLR5 by this offset.
@@ -377,7 +377,7 @@ The wizard builds a complete project from 12 inputs (table below). It generates 
 
 - Opens on the first visit (title "Start a new wing design") and with **New** (title "New wing design").
 - Preselected preset: **Sport**. A click on a preset card loads its values.
-- Airfoils are NACA 4-digit or 5-digit sections. Valid codes: section [NACA generator](#naca-generator).
+- **Root airfoil** and **Tip airfoil** take a NACA designation of the 4-digit or 5-digit series (section [NACA generator](#naca-generator)) or the name of a **Library** airfoil, e.g. `MH 45`. Library names ignore letter case, spaces, hyphens and underscores: `mh45`, `MH-45` and `MH_45` find MH 45. A suggestion list offers the Library names and the 17 NACA presets. A NACA designation gives the generated section; a Library name adds the Library airfoil with its source, as **Add to project** in **Library** does.
 - The number fields read a typed number as in section [Numbers](#numbers) and check it while it is typed. Leaving a field shows the number as read, e.g. `1500` for `1.500` typed in German. The Up and Down arrow keys step as in the panels; in a field that is empty or holds no number they step from the value of the selected preset.
 
 | Field | Range | Effect |
@@ -392,8 +392,8 @@ The wizard builds a complete project from 12 inputs (table below). It generates 
 | Number of sections | 2 to 8, integer | Sections evenly spaced from root to tip. Hidden with **Panels (table)**. |
 | Planform | **Straight taper**, **Elliptic (guide curves)**, **Panels (table)** | Chord law, see below; Panels: see Panels below |
 | Tip | **Flat**, **Pointed (1/200 scale)**, **Elliptic (panels only)** | Flat: the wing ends at the tip section. Pointed: tip section chord = 1/200 of the chord at the previous section, at least 1 mm. Elliptic: the last panel ends in a quarter ellipse; planform **Panels (table)** only. |
-| Root airfoil (NACA) | NACA code | Airfoil of every section except the tip |
-| Tip airfoil (NACA) | NACA code | Airfoil of the tip section |
+| Root airfoil | NACA designation or Library name | Airfoil of every section except the tip |
+| Tip airfoil | NACA designation or Library name | Airfoil of the tip section |
 
 Chord laws (η = span fraction, 0 at the root, 1 at the tip; λ = taper; η_prev = span fraction of the section before the tip section):
 
@@ -447,7 +447,7 @@ The line turns red, lists the problems, and **Create design** is disabled when:
 
 - a value is outside its range (column Range), or its field is empty or holds no number (section [Numbers](#numbers));
 - **Number of sections** is not an integer (not with **Panels (table)**);
-- a root or tip airfoil is not a valid NACA code;
+- a root or tip airfoil is neither a NACA 4- or 5-digit designation nor the name of a **Library** airfoil;
 - **Elliptic** with **Flat** tip has taper ≥ 1 (`An elliptic planform needs taper < 1.`);
 - the tip is **Elliptic (panels only)** and the planform is not **Panels (table)** (`An elliptic tip needs the planform Panels.`);
 - the panel list has fewer than 1 or more than 24 panels (`The planform Panels needs 1 to 24 panels.`);
@@ -461,18 +461,35 @@ The line turns red, lists the problems, and **Create design** is disabled when:
 
 | Preset | Span mm | Root chord mm | Taper | Sweep ° | Dihedral ° | Tip twist ° | Sections | Planform | Tip | Root / tip airfoil |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Trainer | 1400 | 250 | 1 | 0 | 3 | 0 | 2 | straight | flat | 2412 / 2412 |
-| Sport | 1200 | 240 | 0.6 | 0 | 1.5 | −1 | 2 | straight | flat | 2412 / 2410 |
-| Glider | 2000 | 200 | 0.45 | 0 | 4 | −1.5 | 3 | elliptic | flat | 2410 / 2408 |
-| Sailplane | 3000 | 210 | (0.5) | (0) | (2) | −2 | (4) | panels | elliptic | 2410 / 2408 |
-| Delta jet | 900 | 800 | (0.2) | (45) | (0) | 0 | (2) | panels | flat | 0008 / 0006 |
-| Double delta | 1000 | 1000 | (0.24) | (45) | (0) | 0 | (3) | panels | flat | 0008 / 0006 |
-| Batwing | 1000 | 363 | (0.5) | (0) | (0) | 0 | (2) | panels | pointed | 0010 / 0008 |
-| Swept flying wing | 1200 | 280 | 0.45 | 25 | 0 | −4 | 3 | straight | flat | 23112 / 0010 |
-| Plank | 1000 | 220 | 0.8 | 0 | 1 | 0 | 2 | straight | flat | 23112 / 23112 |
-| Tail surface | 500 | 130 | 0.7 | 5 | 0 | 0 | 2 | straight | flat | 0009 / 0009 |
+| Trainer | 1400 | 250 | 1 | 0 | 3 | 0 | 2 | straight | flat | MH 38 / MH 38 |
+| Sport | 1200 | 240 | 0.6 | 0 | 1.5 | −1 | 2 | straight | flat | MH 32 / MH 32 |
+| Glider | 2000 | 200 | 0.45 | 0 | 4 | −1.5 | 3 | elliptic | flat | MH 42 / MH 42 |
+| Sailplane | 3000 | 210 | (0.5) | (0) | (2) | −2 | (4) | panels | elliptic | MH 32 / MH 42 |
+| Delta jet | 900 | 800 | (0.2) | (45) | (0) | 0 | (2) | panels | flat | MH 52 / MH 52 |
+| Double delta | 1000 | 1000 | (0.24) | (45) | (0) | 0 | (3) | panels | flat | MH 52 / MH 52 |
+| Batwing | 1000 | 363 | (0.5) | (0) | (0) | 0 | (2) | panels | pointed | MH 60 / MH 64 |
+| Swept flying wing | 1200 | 280 | 0.45 | 25 | 0 | −4 | 3 | straight | flat | MH 60 / MH 45 |
+| Plank | 1000 | 220 | 0.8 | 0 | 1 | 0 | 2 | straight | flat | MH 45 / MH 45 |
+| Tail surface | 500 | 130 | 0.7 | 5 | 0 | 0 | 2 | straight | flat | MH 52 / MH 52 |
 
 Values in parentheses are hidden with **Panels (table)**; they apply after a switch to **Straight taper** or **Elliptic (guide curves)**.
+
+Airfoils of the presets: MH airfoils of **Library** (Martin Hepperle), chosen by the application that their coordinate pages name. The Reynolds numbers of the last column are estimates for sea-level air (Re ≈ 68,500 s/m² · speed in m/s · chord in m). Where they lie below the lowest Reynolds number of the page, the airfoil runs outside the range its designer states; no MH coordinate page names a Reynolds number below 100,000.
+
+| Preset | Root / tip airfoil | Application on the coordinate page | Lowest Reynolds number on the page | Reynolds number at 10 to 15 m/s, root / tip |
+| --- | --- | --- | --- | --- |
+| Trainer | MH 38 / MH 38 | Long-endurance models | 150,000 | 171,000 to 257,000 / 171,000 to 257,000 |
+| Sport | MH 32 / MH 32 | Electric pylon racers of the class F5D, also sailplanes of the classes F3B and F3J (competition classes of the Fédération Aéronautique Internationale (FAI) for radio-controlled (RC) models) | 150,000 | 164,000 to 247,000 / 99,000 to 148,000 |
+| Glider | MH 42 / MH 42 | All-round RC sailplanes | 100,000 | 137,000 to 206,000 / 62,000 to 92,000 |
+| Sailplane | MH 32 / MH 42 | MH 32 as above; MH 42 all-round RC sailplanes | 150,000 / 100,000 | 144,000 to 216,000 / pointed tip |
+| Swept flying wing | MH 60 / MH 45 | Tailless models, low pitching moment; the MH 60 page names MH 45 for Reynolds numbers below 150,000 | 150,000 / 100,000 | 192,000 to 288,000 / 86,000 to 129,000 |
+| Batwing | MH 60 / MH 64 | Tailless models, low pitching moment; MH 64 thinner (8.6 %) | 150,000 / 100,000 | 249,000 to 373,000 / pointed tip |
+| Plank | MH 45 / MH 45 | Tailless models, pitching moment coefficient +0.0145 | 100,000 | 151,000 to 226,000 / 121,000 to 181,000 |
+| Delta jet | MH 52 / MH 52 | High-speed models, very low drag; nearly symmetric (page: camber −0.1 %; file: mean line within 0.05 % of chord), thickness 8.0 % in the file (page: 9.00 %) | not stated (ideal about 1,500,000) | 548,000 to 822,000 / 110,000 to 164,000 |
+| Double delta | MH 52 / MH 52 | as Delta jet | not stated | 685,000 to 1,028,000 / 163,000 to 245,000 |
+| Tail surface | MH 52 / MH 52 | as Delta jet; MH has no section designed for tail surfaces | not stated | 89,000 to 134,000 / 62,000 to 94,000 |
+
+The tip airfoil lies at the last section only. With the pointed tips of **Sailplane** and **Batwing** that section has a 1 mm chord; every other section has the root airfoil. With **Profile parametrization** **Uniform**, MH 42 fails the airfoil check, and the **Glider** and **Sailplane** presets do not build (section [Checks](#checks)).
 
 Panels of the presets **Sailplane** to **Batwing** (dihedral 0° where not listed):
 
@@ -494,13 +511,13 @@ Panels of the presets **Sailplane** to **Batwing** (dihedral 0° where not liste
 - **Delta jet**: the leading-edge sweep atan((800 − 160) / 450) = 54.9° puts the trailing edge on a straight line, within 0.3 mm (tip section: leading-edge x 640.29 mm, chord 160 mm).
 - **Double delta**: the strake moves the leading edge 412.1 mm aft over 150 mm; the trailing edge is straight within 0.12 mm.
 - **Batwing**: 12 panels traced from a top view of the Batwing of the 1989 film. The leading edge has a notch beside the fuselage and the forward point of the ear at 66 % of the half span (y = 330 mm, x = −87.6 mm); the trailing edge has a concave scallop and the rear spike at 51 % (y = 255 mm, trailing edge x = 625.7 mm); both meet in the round tip. No twist, no dihedral; the outline is a polygon of straight panels.
-- None of these 4 presets is flown or measured in flight. The **Batwing** has symmetric airfoils without reflex; its pitch stability is not designed.
+- None of these 4 presets is flown or measured in flight. The **Batwing** has the tailless airfoils MH 60 and MH 64 (low pitching moment) and no twist; its pitch stability is not designed.
 
 | Button | Effect |
 | --- | --- |
 | **Create design** | Replaces the current project. **Undo** restores the previous one. |
 | **Cancel** | Keeps the current project. |
-| **Skip (open sample wing)** | First visit only, in place of **Cancel**. Keeps the sample wing "Sport wing 1500" (German interface: "Sportflügel 1500"): 3 sections, 1500 mm span, NACA 2412 / 2410, trailing edge fixed at 0.5 mm. |
+| **Skip (open sample wing)** | First visit only, in place of **Cancel**. Keeps the sample wing "Sport wing 1500" (German interface: "Sportflügel 1500"): 3 sections, 1500 mm span, MH 32 from **Library** at all sections, trailing edge fixed at 0.5 mm. |
 
 ## Sections
 
@@ -729,10 +746,10 @@ Limits of the project airfoils (section [Project size](#project-size)):
 ### Library
 
 - **Filter library** matches the name, category and use text.
-- The library holds 17 generated NACA sections and 6 bundled coordinate files (`public/airfoils/index.json`, compiled into the app, so the library needs no network access). The list shows the NACA sections first, then the files in index order.
-- Text under each name: NACA section: category, use, `generated`. Bundled file: category, use text, author, license identifier.
+- The library holds 17 generated NACA sections and 62 bundled coordinate files (`public/airfoils/index.json`, compiled into the app, so the library needs no network access): 6 under a free license and 56 MH airfoils of Martin Hepperle, bundled with his written permission. The list shows the NACA sections first, then the files in index order.
+- Text under each name: NACA section: category, use, `generated`. Bundled file: category, use text, author, license identifier. The author links to the source page of the file in a new browser tab, for an MH airfoil to its coordinate page on mh-aerotools.de.
 - The German interface shows the category, the use text and `generated` (`erzeugt`) in German. **Filter library** matches the category and use text in the language shown. Name, author and license identifier are the same in both languages. The tables below give the English texts.
-- Each entry: **Preview** opens the preview dialog. NACA entries follow the **Closed trailing edge** checkbox of the NACA generator. A bundled file loads from `airfoils/<file>` on the app's own address.
+- Each entry: **Preview** opens the preview dialog. NACA entries follow the **Closed trailing edge** checkbox of the NACA generator. A bundled file is read from the script; it needs no network request.
 - **Add to project** on a bundled file stores the **Source / attribution** field (pre-filled with the author), the license identifier, the source address and the terms address in the project airfoil (`source` object, [[File Formats|File-Formats]]).
 
 NACA sections:
@@ -768,8 +785,26 @@ Bundled files (use text shortened; thickness from the use text):
 | S9104 | Cambered | Heavy-lift and high-lift section | 12.1 % chord | 81 | Michael Selig, University of Illinois Urbana-Champaign | `CC-BY-4.0` |
 | USA 35B | Cambered | Full-size Piper J-3 Cub and PA-18 Super Cub; scale models of these aircraft | 11.6 % chord | 33 | NACA Report No. 233, Table XXXVI | `public-domain` |
 
+MH airfoils by Martin Hepperle (author `Martin Hepperle, www.mh-aerotools.de`, license identifier `written-permission`; thickness from the use text):
+
+| Category | Airfoils | Thickness |
+| --- | --- | --- |
+| Flying wings | MH 44, MH 45, MH 46, MH 49, MH 60, MH 61, MH 62, MH 64 | 8.6 to 11.3 % chord |
+| Sailplanes | MH 42 | 9.0 % chord |
+| Pylon racers | MH 16, MH 17, MH 18, MH 18B, MH 20, MH 22, MH 23, MH 24, MH 25, MH 26, MH 27, MH 28, MH 29, MH 30, MH 31, MH 32, MH 33, MH 34, MH 43 | 7.2 to 13.6 % chord |
+| High-speed models | MH 50, MH 51, MH 52, MH 53, MH 54, MH 55, MH 56, MH 57 | 8.0 to 11.0 % chord |
+| Long-endurance models | MH 38 | 9.7 % chord |
+| Towing models | MH 1 | 19.6 % chord |
+| Hang gliders | MH 78 | 14.4 % chord |
+| Paragliders | MH 91, MH 92, MH 93 | 14.5 to 16.0 % chord |
+| Propellers | MH 112, MH 113, MH 114, MH 115, MH 116, MH 117, MH 120, MH 121, MH 126 | 8.1 to 25.1 % chord |
+| Wind turbines | MH 102, MH 104, MH 106, MH 108, MH 110 | 10.0 to 17.0 % chord |
+
+- The use text of an MH airfoil names its application as the coordinate page of the designer describes it, its thickness computed from the file and, where the page states one, the lowest Reynolds number, e.g. `Tailless models, low pitching moment. Thickness 9.8 % of chord. For Reynolds numbers of 100,000 and above.` (MH 45). MH 30 and MH 32 name sailplanes as a second use, MH 33 and MH 43 F3B models (F3B: a competition class of the FAI for radio-controlled sailplanes).
+
 - Source, legal basis, conditions and attribution text per file: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md).
 - Clark Y, NACA 8-H-12, NACA M-6, RAF 34 and USA 35B: public domain in the United States. Their status outside the United States is not established.
+- MH airfoils: written permission of Martin Hepperle to include them in Wingdesigner. The MIT License (named after the Massachusetts Institute of Technology) of the program code does not apply to them. The project file keeps the attribution. The `.dat` download and the 3D model files of [Export](#export) carry none; whoever publishes such a file names the author and cites the source, <https://www.mh-aerotools.de/airfoils/>. Outside Wingdesigner the terms of his website apply: personal use, cite the source in publications.
 - S9104: Creative Commons Attribution 4.0 International license (CC BY 4.0). The project file keeps the attribution. The `.dat` download and the 3D model files of [Export](#export) carry none; whoever shares such a file made with S9104 adds the attribution text from NOTICE.md.
 - RAF 34: 7 values of the source scan are uncertain, by up to 0.20 % chord (0.40 mm at 200 mm chord). NOTICE.md lists them.
 - Clark Y and USA 35B keep the published base line: the leading edge lies 3.50 % and 2.76 % chord above the x axis. The preview shows the warning `The line from the leading edge to the trailing edge is inclined by -1.97 degrees; …` (USA 35B: -1.51). Twist refers to the x axis of the file: at the same twist, the chord line of Clark Y is 1.97° and that of USA 35B 1.51° more nose-up than that of a section with its chord on the x axis.
@@ -777,12 +812,12 @@ Bundled files (use text shortened; thickness from the use text):
 
 ### External sources
 
-The box **More airfoils (external, not bundled)** links to 3 collections. The app bundles no files from them; the bundled S9104 file is made from the designer's own page, not from the University of Illinois Urbana-Champaign (UIUC) database. Download a file there, then load it in **Upload**. Terms and quotes: [[Airfoil Sources|Airfoil-Sources]].
+The box **More airfoils (external sites)** links to 3 collections. The app bundles the 56 MH airfoils of MH-AeroTools, with the written permission of their designer, and no files of the other two; the bundled S9104 file is made from the designer's own page, not from the University of Illinois Urbana-Champaign (UIUC) database. Download a file there, then load it in **Upload**. Terms and quotes: [[Airfoil Sources|Airfoil-Sources]].
 
 | Link | Content | Terms (summary) |
 | --- | --- | --- |
 | aerodesign.de - Hartmut Siegmann | HS airfoils and catalogues for planks, swept flying wings and gliders | Private, club, small-business and scientific use with name and source; large series and industrial use need a written agreement; redistribution by third parties partly restricted |
-| MH-AeroTools - Martin Hepperle | MH airfoils, e.g. MH 45 and MH 60 for flying wings, MH 32 for gliders | Personal use; publications cite the source; a recompilation must not be sold above production cost |
+| MH-AeroTools - Martin Hepperle | The 56 MH airfoils of **Library**, with descriptions and polars | Terms of the website: personal use; publications cite the source; a recompilation must not be sold above production cost. The bundled files: written permission of the designer |
 | UIUC Airfoil Coordinates Database (University of Illinois Urbana-Champaign) | About 1,650 airfoils in Selig format (count stated on the coordinates page) | No license stated for the coordinate files; the rights of each designer apply |
 
 - The notes in the app read "About 1,600 airfoils" (UIUC) and "commercial use needs written permission" (aerodesign.de). The quoted terms on [[Airfoil Sources|Airfoil-Sources]] apply.
@@ -825,9 +860,9 @@ Spanwise interpolation:
 - **Smooth**: section values follow a shape-preserving cubic: in every panel a cubic through the values of its two sections, with the slopes of a natural cubic spline through all sections, limited so that the value stays between the values of the two sections ([[Geometry]], section 3.1). The slope is continuous at the sections. A section with the largest or smallest value of a quantity (for example the largest chord) gets a horizontal slope there; a panel between two equal values stays constant. The airfoil blends as mean line and thickness, so the thickness stays between the thicknesses of the two sections. Unevenly spaced sections, such as an airfoil switch between two sections 0.5 mm apart from the XFLR5 import, build without overshoot. **Spanwise stations per panel** intervals per panel (default 8); spanwise degree 3, every panel interpolated on its own.
 - With 2 sections both give the same x, z, chord and twist.
 - The surfaces differ where the airfoil or the twist changes along the span. A chord change at the same place increases the difference.
-- With 3 or more sections the surfaces also differ where x, z, chord or twist change slope at a section. Example: Sport preset with 3 sections, middle chord 150 mm instead of 192 mm, one airfoil, no twist: 8.08 mm.
+- With 3 or more sections the surfaces also differ where x, z, chord or twist change slope at a section. Example: Sport preset with 3 sections, middle chord 150 mm instead of 192 mm, one airfoil, no twist, **Vertical** section planes: 12.40 mm.
 - One airfoil, no twist and a chord that changes linearly from root to tip give no difference.
-- Largest distance between the 2 surfaces at the same surface parameters, wizard presets, **Vertical** section planes: Swept flying wing 0.56 mm, Sport 0.34 mm, Glider 0.20 mm, Trainer 0.00 mm, Plank 0.00 mm, Tail surface 0.00 mm.
+- Largest distance between the 2 surfaces at the same surface parameters, wizard presets, **Vertical** section planes: Sport 0.31 mm (twist), Swept flying wing 0.13 mm, Glider 0.00 mm, Trainer 0.00 mm, Plank 0.00 mm, Tail surface 0.00 mm.
 - Computation: [[Geometry|Geometry]].
 
 Section planes:
@@ -836,9 +871,9 @@ Section planes:
 - Two sections less than 1 mm apart in y (an airfoil switch, as XFLR5 files write it) share one plane: the bisector plane of the panels around them.
 - **Vertical**: every section lies in a plane y = const. Across a panel with dihedral δ the wing is cos δ as thick as the airfoil: 99.6 % at 5°, 81.9 % at 35°.
 - A wing without dihedral is the same in both modes.
-- **Linear** with **Mitred**: a panel whose two sections lie in planes of different roll gets **Spanwise stations per panel** intervals and spanwise degree 3, so each station holds the blended airfoil in its own plane. Any roll difference counts: a dihedral of 1e-6° instead of 0° can move the surface up to 0.17 mm where chord, airfoil and twist change along the panel. The Sport, Trainer and Plank presets build 9 stations instead of 2 with **Vertical**, the sample wing 17 instead of 3; the Glider has 17 in both modes (guide curves). The Sport wing (NACA 2412 at 240 mm to NACA 2410 at 144 mm) then follows the **Linear** blend exactly and has 1.4 % less volume than the vertical build, which joins the 2 sections with straight lines 0.343 mm off that blend.
+- **Linear** with **Mitred**: a panel whose two sections lie in planes of different roll gets **Spanwise stations per panel** intervals and spanwise degree 3, so each station holds the blended airfoil in its own plane. Any roll difference counts: a dihedral of 1e-6° instead of 0° can move the surface up to 0.17 mm where chord, airfoil and twist change along the panel. The Sport, Trainer and Plank presets build 9 stations instead of 2 with **Vertical**, the sample wing 17 instead of 3; the Glider has 17 in both modes (guide curves). The Sport wing (MH 32 at 240 mm and at 144 mm, −1° twist) then follows the **Linear** blend exactly and has 0.1 % more volume than the vertical build, which joins the 2 sections with straight lines up to 0.314 mm off that blend: chord and twist change together.
 - **Straight panels** with **Mitred**: the straight lines join the sections in their planes, XFLR5's surface.
-- **Smooth** with **Mitred**: the sections lie in the same planes as with **Linear**. Between them the roll follows the smooth curve through the section rolls, and the stretch follows the slope of the smooth curve through the section positions, so the wing stays as thick as its airfoil across that curve. The presets with dihedral lie up to 1.9 mm off a **Smooth** build with **Vertical** planes (Sailplane). At the root the plane stays vertical, while the smooth curve can leave the root up to 3 times as steep as the first panel: a plane more than 60° from that curve stops the build (section [Checks](#checks)).
+- **Smooth** with **Mitred**: the sections lie in the same planes as with **Linear**. Between them the roll follows the smooth curve through the section rolls, and the stretch follows the slope of the smooth curve through the section positions, so the wing stays as thick as its airfoil across that curve. The presets with dihedral lie up to 1.8 mm off a **Smooth** build with **Vertical** planes (Sailplane). At the root the plane stays vertical, while the smooth curve can leave the root up to 3 times as steep as the first panel: a plane more than 60° from that curve stops the build (section [Checks](#checks)).
 - Errors with **Mitred**: a plane more than 60° from its panel (the airfoil would be stretched more than 2 times), and planes of neighbouring sections or stations that meet within the airfoils, which folds the surface (section [Checks](#checks)). **Vertical** builds both.
 - The twist turns each section in its plane. Seen along x, a section rolled 35° with 2° twist meets the flow at 1.64°.
 - Computation: [[Geometry|Geometry]], section 3.8.
@@ -860,7 +895,7 @@ Pointed tip (**Wing tip** = Pointed):
 - In the last panel the chord stays at or above the tip chord. Converging guide curves end in the scaled tip profile.
 - With both guide curves on, their gap at the tip sets the tip chord when it is wider than the scaled tip chord. A gap more than 0.5 mm wider gives a warning.
 - Glider preset with **Tip** = Pointed: tip chord 1.00 mm (1 mm floor), 22 stations (17 + 5 added), largest deviation at the checked span positions 0.263 mm, no warning. The other wizard presets with **Tip** = Pointed also build without a warning.
-- Within 2 mm of a pointed elliptic tip (wizard presets) the leading and trailing edge x of the loft deviate at most 0.031 mm from the intended planform (2,001 span samples); the other profile points there are not measured. The deviation warning does not cover these positions.
+- Within 2 mm of a pointed elliptic tip (wizard presets) the leading and trailing edge x of the loft deviate at most 0.044 mm from the intended planform (**Swept flying wing**; 2,001 span samples); the other profile points there are not measured. The deviation warning does not cover these positions.
 
 Trailing-edge rules:
 
@@ -911,7 +946,7 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 | Airfoil "…": … | error | the airfoil fails the sanity checks ([[File Formats]]), e.g. in an opened project file. With **Profile parametrization** **Chord length** or **Uniform**, every `Airfoil "…"` message ends with `Settings > Profile parametrization "centripetal" follows the points more closely.` |
 | Airfoil "…": the NURBS interpolation failed (…). | error | the airfoil NURBS interpolation fails |
 | Airfoil "…": the NURBS curve through the points crosses itself near x = … % chord; … | error | the curve through the airfoil points crosses itself. The crossing splits the outline into 2 parts; the part with the smaller bounding-box diagonal has a mean width (area / bounding-box diagonal) above 0.05 % of the chord. An airfoil used at a chord above 200 mm also fails when that width exceeds 0.1 mm at its largest chord; the message then reads `…; the loop is … mm wide at … mm chord, above 0.1 mm. …` |
-| Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | error | the curve through the airfoil points runs back in x by more than 0.01 % of the chord. In the parser test with 1,964 real airfoil files, this check rejects 4 files with **Centripetal**, 12 with **Chord length** and 82 with **Uniform** ([[Airfoil Sources]], section Parser test). |
+| Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | error | the curve through the airfoil points runs back in x by more than 0.01 % of the chord. In the parser test with 1,964 real airfoil files, this check rejects 4 files with **Centripetal**, 12 with **Chord length** and 82 with **Uniform** ([[Airfoil Sources]], section Parser test). Of the MH airfoils of **Library**, MH 27, MH 42 and MH 115 fail with **Uniform**, so the **Glider** and **Sailplane** presets do not build with **Uniform**. |
 | Airfoil "…": The upper surface runs back in x at … points; the limit is 50. (also `lower`) | error | a surface of the airfoil runs back in x at more than 50 points (check `folds`, [[File Formats]]) |
 | Nose line: … / End line: … | error | guide points not strictly increasing in y, or the curve turns back in y; through-points mode: `Points … and … at y = … mm and y = … mm lie too close together for the curve parameters; move them apart.` when two normalized y values lie within 4 units in the last place of the larger one or within 2^-1021 (about 4.5e-308); `the curve fit is singular; move the points further apart in y or use control-point mode.` when the interpolation cannot solve for points whose normalized y lie closer than it resolves, e.g. 1e-300 of the span |
 | Nose line: the curve through the points reaches x = … mm, beyond ±1200000 mm; space the points more evenly in y or use control-point mode. (also End line) | error | a control point of the guide curve lies beyond x = ±1,200,000 mm |
@@ -1159,7 +1194,7 @@ The proposal puts a cut at every section between root and tip. It splits each pi
 | **Deviation (mm)** | largest distance between the straight-line core and the wing; warning colour above **Deviation limit** |
 | **Wedge inboard**, **Wedge outboard** | angle, depth along the core and the surface where the wedge is deepest (`upper`, `lower`); `–` without a wedge |
 
-The summary under the planform names the number of segments and the largest deviation, the cores longer than **Longest core**, the segments above **Deviation limit**, removed cuts and the number of PDF pages. Example, **Sport** preset with the defaults: `1 segment per half, deviation 0.341 mm. 1 segment deviates more than 0.20 mm from the wing; Split segments over the limit adds cuts. The PDF templates take 2 pages.` After **Split segments over the limit**: 2 segments, largest deviation 0.085 mm.
+The summary under the planform names the number of segments and the largest deviation, the cores longer than **Longest core**, the segments above **Deviation limit**, removed cuts and the number of PDF pages. Example, **Sport** preset with the defaults: `1 segment per half, deviation 0.314 mm. 1 segment deviates more than 0.20 mm from the wing; Split segments over the limit adds cuts. The PDF templates take 2 pages.` After **Split segments over the limit**: 2 segments, largest deviation 0.079 mm.
 
 The planform shows both halves with the root, the cuts and the tip as blue lines.
 
@@ -1190,7 +1225,7 @@ PDF pages:
 - A template wider or taller than the printable area is cut into strips that overlap by 10 mm. Each strip is labelled `<template>: part <i> of <n> (row <r>, column <c>)`. Crosses in the overlap print on both strips of a joint, for gluing them in register.
 - Orientation: the one with the fewer templates cut into strips, then the one with the fewer pages; portrait on a tie. The 260 mm wide templates of the **Sport** preset fit A4 landscape (277 mm printable width) whole.
 
-Example, **Longest core** 800 mm, split to 0.2 mm: **Sport** 3 pages on A4, 1 on A3, 4 on Letter; **Glider** 10 pages on A4, 4 on A3, 10 on Letter.
+Example, **Longest core** 800 mm, split to 0.2 mm: **Sport** 3 pages on A4, 1 on A3, 4 on Letter; **Glider** 10 pages on A4, 4 on A3, 9 on Letter.
 
 ### Cutting
 

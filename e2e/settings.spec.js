@@ -3,7 +3,7 @@
 // name (export file names) and persistence across reloads.
 //
 // Wizard designs used here (src/model/wizard.js): "Sport" has 2 sections (root chord 240 mm, tip
-// 144 mm, NACA 2412/2410), "Swept flying wing" has 3 sections (280 / 203 / 126 mm). Both start
+// 144 mm, MH 32 at both), "Swept flying wing" has 3 sections (280 / 203 / 126 mm). Both start
 // with a fixed trailing-edge thickness of rootChord * 0.002 (at least 0.3 mm) and a flat tip.
 // The loft has 2 * chordSamples + 1 control points around the profile (default 60 -> 121), 2 more with a
 // closed trailing edge.
@@ -77,7 +77,8 @@ const FLOOR_TITLE = 'Pointed tip: chord scaled from the previous section, at lea
 
 test.describe('Settings tab', () => {
   test('trailing-edge modes switch the Checks trailing edge between open and closed', async ({ page }) => {
-    await createDesign(page, 'Sport');
+    // NACA sections: their equations leave a trailing-edge gap (MH 32 of the preset ends closed).
+    await createDesign(page, 'Sport', { fields: { 'Root airfoil': '2412', 'Tip airfoil': '2410' } });
     const before = await figures(page);
 
     await openTab(page, 'Checks');
@@ -380,10 +381,10 @@ test.describe('Settings tab', () => {
       const ys = vs.map((p) => p[1]);
       return [Math.min(...ys), Math.max(...ys)];
     };
-    // The mitred tip leans past y = 600 at its lower surface; the vertical tip ends there.
+    // The mitred tip leans past y = 600 at its lower surface (MH 32, 1.5° roll); the vertical tip ends there.
     const [rootMitred, tipMitred] = await tipOf();
     expect(rootMitred).toBe(0);
-    expect(tipMitred > 600.1 && tipMitred < 600.2, `mitred tip reaches y = ${tipMitred}`).toBe(true);
+    expect(tipMitred > 600.05 && tipMitred < 600.15, `mitred tip reaches y = ${tipMitred}`).toBe(true);
 
     await openTab(page, 'Settings');
     await choose(sectionPlanes(page), 'vertical');
@@ -403,7 +404,7 @@ test.describe('Settings tab', () => {
     await expect(page.locator('#pane-checks li.sev-info')).toHaveCount(0);
     await expect(checksValue(page, 'Surface')).toHaveText(surfaceRe(3, 121, 9));
     const [, tipSmooth] = await tipOf();
-    expect(tipSmooth > 600.1 && tipSmooth < 600.2, `smooth mitred tip reaches y = ${tipSmooth}`).toBe(true);
+    expect(tipSmooth > 600.05 && tipSmooth < 600.15, `smooth mitred tip reaches y = ${tipSmooth}`).toBe(true);
     await expect(status(page)).toHaveText(STATUS_RE);
   });
 

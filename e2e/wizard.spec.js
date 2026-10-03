@@ -178,8 +178,10 @@ test.describe('new-design wizard', () => {
     // Status expected for the corrected Sport design (span * (root + tip) / 2, MAC of a trapezoid).
     { field: 'Span (both halves) (mm)', value: '10', valid: '1500', problem: 'span must be between 100 and 20000.', status: 'Span 1500 mm · area 28.80 dm² · AR 7.81 · MAC 196.0 mm' },
     { field: 'Taper (tip / root chord)', value: '3', valid: '0.5', problem: 'taper must be between 0.1 and 1.5.', status: 'Span 1200 mm · area 21.60 dm² · AR 6.67 · MAC 186.7 mm' },
-    { field: 'Root airfoil (NACA)', value: 'MH45', valid: '2412', problem: 'rootAirfoil must be a NACA 4- or 5-digit designation.', status: SPORT_STATUS },
-    { field: 'Tip airfoil (NACA)', value: 'MH45', valid: 'NACA 0010', problem: 'tipAirfoil must be a NACA 4- or 5-digit designation.', status: SPORT_STATUS },
+    { field: 'Root airfoil', value: 'XY 45', valid: '2412', airfoil: 'NACA 2412', problem: 'rootAirfoil must be a NACA 4- or 5-digit designation or the name of a Library airfoil, e.g. MH 45.', status: SPORT_STATUS },
+    { field: 'Tip airfoil', value: 'XY 45', valid: 'NACA 0010', airfoil: 'NACA 0010', problem: 'tipAirfoil must be a NACA 4- or 5-digit designation or the name of a Library airfoil, e.g. MH 45.', status: SPORT_STATUS },
+    // A Library name: letter case, spaces and hyphens do not count.
+    { field: 'Tip airfoil', value: 'MH 99', valid: 'mh-45', airfoil: 'MH 45', problem: 'tipAirfoil must be a NACA 4- or 5-digit designation or the name of a Library airfoil, e.g. MH 45.', status: SPORT_STATUS },
   ];
   for (const bad of INVALID) {
     test(`invalid "${bad.field}" = ${bad.value} disables Create design and shows the problem`, async ({ page }) => {
@@ -189,7 +191,7 @@ test.describe('new-design wizard', () => {
       await expect(create).toBeEnabled();
       await expect(summary).toHaveText(SUMMARY_RE);
 
-      const input = wizard.getByLabel(bad.field);
+      const input = wizard.getByLabel(bad.field, { exact: true });
       await input.fill(bad.value);
       await expect(create).toBeDisabled();
       await expect(summary).toHaveClass(/sev-error/);
@@ -203,9 +205,9 @@ test.describe('new-design wizard', () => {
       await expect(summary).not.toHaveClass(/sev-error/);
       await createFromWizard(page);
       await expect(statusOf(page)).toHaveText(bad.status);
-      if (bad.field.includes('airfoil')) {
+      if (bad.airfoil) {
         const select = page.getByRole('combobox', { name: `Airfoil of section ${bad.field.startsWith('Root') ? 1 : 2}`, exact: true });
-        await expect(select.locator('option:checked')).toHaveText(`NACA ${bad.valid.replace(/\D/g, '')}`);
+        await expect(select.locator('option:checked')).toHaveText(bad.airfoil);
       }
     });
   }
@@ -216,15 +218,21 @@ test.describe('new-design wizard', () => {
     const summary = summaryOf(wizard);
     await wizard.getByLabel('Span (both halves) (mm)').fill('10');
     await wizard.getByLabel('Taper (tip / root chord)').fill('3');
-    await wizard.getByLabel('Root airfoil (NACA)').fill('MH45');
+    await wizard.getByLabel('Root airfoil', { exact: true }).fill('XY 45');
     await expect(create).toBeDisabled();
-    await expect(summary).toHaveText('span must be between 100 and 20000. taper must be between 0.1 and 1.5. rootAirfoil must be a NACA 4- or 5-digit designation.');
+    await expect(summary).toHaveText('span must be between 100 and 20000. taper must be between 0.1 and 1.5. rootAirfoil must be a NACA 4- or 5-digit designation or the name of a Library airfoil, e.g. MH 45.');
 
     // Selecting a preset replaces all values with valid ones.
     await pickPreset(wizard, 'Plank');
     await expect(wizard.getByLabel('Span (both halves) (mm)')).toHaveValue('1000');
     await expect(wizard.getByLabel('Taper (tip / root chord)')).toHaveValue('0.8');
-    await expect(wizard.getByLabel('Root airfoil (NACA)')).toHaveValue('23112');
+    await expect(wizard.getByLabel('Root airfoil', { exact: true })).toHaveValue('MH 45');
+    // Both airfoil fields suggest the 62 Library names, then the 17 NACA presets.
+    for (const label of ['Root airfoil', 'Tip airfoil']) await expect(wizard.getByLabel(label, { exact: true })).toHaveAttribute('list', 'wizard-airfoil-names');
+    const suggestions = wizard.locator('datalist#wizard-airfoil-names option');
+    await expect(suggestions).toHaveCount(79);
+    const values = await suggestions.evaluateAll((os) => os.map((o) => o.value));
+    expect([values[0], values[61], values[62], values[78]]).toEqual(['Clark Y', 'USA 35B', 'NACA 0006', 'NACA 24112']);
     await expect(summary).toHaveText(SUMMARY_RE);
     await createFromWizard(page);
     // 1000 mm span, chords 220 -> 176 mm.
@@ -536,7 +544,7 @@ test.describe('new-design wizard', () => {
     expect(json.sections.map((s) => s.y)).toEqual([0, 333.33, 666.67, 1000]);
     expect(json.guides.nose.enabled).toBe(true);
     expect(json.guides.end.enabled).toBe(true);
-    expect(json.airfoils.map((a) => a.id).sort()).toEqual(['naca2408', 'naca2410']);
+    expect(json.airfoils.map((a) => a.id)).toEqual(['mh-42']);
 
     await page.getByRole('button', { name: 'Undo' }).click();
     await expect(statusOf(page)).toHaveText(tail.text);

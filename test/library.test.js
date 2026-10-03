@@ -6,6 +6,7 @@ import { EXTERNAL_SOURCES, NACA_PRESETS, nacaEntry, suggestAttribution } from '.
 import { bundledLibrary } from '../src/airfoil/bundled.js';
 import { importAirfoilText } from '../src/airfoil/sanity.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
+import { libraryText } from '../src/ui/airfoils.js';
 
 describe('airfoil library', () => {
   it('generates every NACA preset as a valid airfoil', () => {
@@ -22,6 +23,25 @@ describe('airfoil library', () => {
     expect(suggestAttribution('MH 45  9.85%')).toBe('Martin Hepperle, www.mh-aerotools.de');
     expect(suggestAttribution('NACA 2412')).toBe('');
     expect(EXTERNAL_SOURCES.every((s) => s.url.startsWith('https://'))).toBe(true);
+  });
+
+  it('bundles the 56 MH airfoils with the attribution and coordinate page of their designer', () => {
+    const mh = bundledLibrary().filter((a) => a.source.license === 'written-permission');
+    expect(mh).toHaveLength(56);
+    for (const a of mh) {
+      expect(a.name, a.id).toMatch(/^MH \d+B?$/);
+      expect(a.source.author).toBe('Martin Hepperle, www.mh-aerotools.de');
+      expect(a.source.url).toBe(`https://www.mh-aerotools.de/airfoils/${a.id.replace('-', '')}koo.htm`);
+      expect(a.source.terms).toBe('https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils');
+      // The name line carries the attribution.
+      expect(a.text.split('\n')[0]).toBe(`${a.name} Airfoil by Martin Hepperle, www.mh-aerotools.de`);
+    }
+    // Every coordinate row of the page is in the file: the point count of the Source table of NOTICE.md.
+    const notice = readFileSync('public/airfoils/NOTICE.md', 'utf8');
+    for (const a of mh) {
+      const row = notice.match(new RegExp(`^\\| ${a.name} \\| \`${a.file}\` \\| <https://[^>]+> \\| (\\d+) \\|`, 'm'));
+      expect(Number(row?.[1]), a.name).toBe(a.text.trim().split('\n').length - 1);
+    }
   });
 
   it('bundles every file of public/airfoils/index.json with its text, in index order', () => {
@@ -54,8 +74,12 @@ describe('airfoil library in German', () => {
       ...EXTERNAL_SOURCES.map((s) => s.note),
       ...bundledLibrary().flatMap((a) => [a.category, a.use].filter(Boolean)),
     ];
-    expect(texts.length).toBeGreaterThan(40);
-    for (const text of texts) expect(typeof DE[text], text).toBe('string');
+    expect(texts.length).toBeGreaterThan(150);
+    // A text is a German key, or an MH use text built from a key and the numbers (libraryText).
+    const mhUse = /^(.+)\. Thickness \d+\.\d % of chord\.(?: For Reynolds numbers of [\d,]+ and above\.)?$/;
+    for (const text of texts) expect(typeof DE[text] === 'string' || typeof DE[mhUse.exec(text)?.[1]] === 'string', text).toBe(true);
+    setLanguage('de');
+    for (const text of texts) expect(libraryText(text), text).not.toBe(text);
   });
 
   it('keeps names, attributions, licenses and links as data in both languages', () => {

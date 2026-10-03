@@ -30,7 +30,7 @@ import { fitProfile } from '../src/geom/profile.js';
 import { checkAirfoil } from '../src/airfoil/sanity.js';
 import { dist, surfacePoint } from '../src/geom/nurbs.js';
 import { panelDihedrals, sectionPlanes } from '../src/geom/planes.js';
-import { defaultProject } from '../src/model/defaults.js';
+import { PRESETS, wizardProject } from '../src/model/wizard.js';
 import { sampleProject } from './helpers.js';
 
 const DEG = Math.PI / 180;
@@ -899,6 +899,13 @@ describe('XFLR5 mapping: airfoils', () => {
     expect(mapXflr5(simple('naca2412')).rows[0]).toMatchObject({ found: 'naca', key: 'naca:2412' });
     // The trimmed name matches the project and the library too.
     expect(mapXflr5(simple(' Clark Y  '), { library: LIBRARY }).rows[0]).toMatchObject({ found: 'library' });
+    // MH airfoils of the library: the exact name, then a similar one (case, spaces, -, _); other numbers stay missing.
+    const mh = mapXflr5(simple('MH 45'), { library: LIBRARY });
+    expect(mh.rows[0]).toMatchObject({ found: 'library', key: 'library:mh-45' });
+    expect(mh.project.airfoils[0].source).toMatchObject({ kind: 'library', id: 'mh-45', attribution: 'Martin Hepperle, www.mh-aerotools.de', license: 'written-permission' });
+    for (const name of ['mh45', 'MH-45', 'MH_45']) expect(mapXflr5(simple(name), { library: LIBRARY }).rows[0], name).toMatchObject({ found: 'loose', key: 'library:mh-45' });
+    expect(mapXflr5(simple('MH 18 B'), { library: LIBRARY }).rows[0]).toMatchObject({ found: 'loose', key: 'library:mh-18b' });
+    for (const name of ['MH 4', 'MH 450', 'MH 45  9.85%']) expect(mapXflr5(simple(name), { library: LIBRARY }).rows[0], name).toMatchObject({ found: 'missing' });
     const similar = mapXflr5(simple('CLARK_Y'), { library: LIBRARY });
     expect(similar.rows[0]).toMatchObject({ found: 'loose', key: 'library:clark-y', ok: true, foundLabel: 'Similar name' });
     expect(texts(similar.report, 'warning')).toContain('Airfoil "CLARK_Y" matched to "Clark Y" by a similar name.');
@@ -1298,12 +1305,12 @@ describe('XFLR5 mapping: airfoil frames and checks', () => {
   });
 
   it('gives a current-project section generated from the NACA equations the frame of the generated section of its code, as with no project open', () => {
-    // The sample wing (and the wizard) store NACA 2412 as generated: the same file gives the same wing
-    // with it open as with no project.
+    // The wizard stores a NACA root airfoil as generated: the same file gives the same wing with that
+    // project open as with no project.
     const f = readXflr5Xml(readFileSync(new URL('fixtures/xflr5/xml_mm/0.plane.xml', import.meta.url), 'utf8').replaceAll('NACA 0009', 'NACA 2412'));
     const choices = { 'Clark Y': 'naca:0012' };
     const alone = mapXflr5(f, { choices });
-    const sample = defaultProject();
+    const sample = wizardProject({ ...PRESETS.sport.params, rootAirfoil: '2412', tipAirfoil: '2410' });
     const withSample = mapXflr5(f, { choices, project: sample });
     expect(alone.rows[1]).toMatchObject({ found: 'naca', key: 'naca:2412' });
     expect(withSample.rows[1]).toMatchObject({ found: 'project', key: `project:${sample.airfoils[0].id}` });
