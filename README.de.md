@@ -266,7 +266,7 @@ Die Playwright-Tests führen den DOM-Code (Document Object Model) aus; seine Abd
 <!-- coverage:start -->
 | Anweisungen | Verzweigungen | Funktionen | Zeilen |
 | ---: | ---: | ---: | ---: |
-| 98,0 % | 94,2 % | 98,3 % | 98,8 % |
+| 98,0 % | 94,3 % | 98,3 % | 98,8 % |
 
 Unit-Tests (Vitest, V8-Coverage) über `src/`, ohne den DOM-Code in `src/ui/` und `src/main.js`.
 <!-- coverage:end -->

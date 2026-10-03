@@ -206,8 +206,8 @@ test.describe('phone layout', () => {
         name: 'Airfoils',
         key: 'airfoils',
         check: async (pane) => {
-          await expect(pane.locator('.airfoil-list').first().locator('li')).toHaveCount(2);
-          await expect(pane.locator('.airfoil-list').first()).toContainText('NACA 2410');
+          await expect(pane.locator('.airfoil-list').first().locator('li')).toHaveCount(1);
+          await expect(pane.locator('.airfoil-list').first()).toContainText('MH 42');
           await expect(pane.locator('.library li').first()).toBeVisible();
         },
       },
@@ -306,7 +306,7 @@ test.describe('phone layout', () => {
 
     // Preview of a project airfoil (View).
     await projectList.getByRole('button', { name: 'View' }).first().tap();
-    await expect(dialog.getByRole('heading', { name: /^NACA / })).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: /^MH / })).toBeVisible();
     await expectDialogFits(page, dialog, 'project airfoil preview');
     await dialog.getByRole('button', { name: 'Close' }).tap();
     await expect(dialog).toHaveCount(0);
@@ -671,7 +671,7 @@ test.describe('phone layout', () => {
         await reachAndTap(page, dialog, dialog.getByRole('button', { name: 'Add to project' }), `${orientation} upload preview`, { mustScroll: landscape });
         await expect(dialog).toHaveCount(0);
         const projectList = page.locator('#pane-airfoils .airfoil-list').first();
-        await expect(projectList.locator('li')).toHaveCount(3);
+        await expect(projectList.locator('li')).toHaveCount(2);
         await expect(projectList).toContainText('TEST 12');
         await expect(projectList.locator('li', { hasText: 'TEST 12' })).toContainText('13 points');
         // The new airfoil is offered in the section cards.
