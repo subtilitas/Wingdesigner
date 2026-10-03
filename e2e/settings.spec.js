@@ -3,7 +3,7 @@
 // name (export file names) and persistence across reloads.
 //
 // Wizard designs used here (src/model/wizard.js): "Sport" has 2 sections (root chord 240 mm, tip
-// 144 mm, NACA 2412/2410), "Swept flying wing" has 3 sections (280 / 203 / 126 mm). Both start
+// 144 mm, MH 32 at both), "Swept flying wing" has 3 sections (280 / 203 / 126 mm). Both start
 // with a fixed trailing-edge thickness of rootChord * 0.002 (at least 0.3 mm) and a flat tip.
 // The loft has 2 * chordSamples + 1 control points around the profile (default 60 -> 121), 2 more with a
 // closed trailing edge.

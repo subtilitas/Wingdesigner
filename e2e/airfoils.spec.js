@@ -580,7 +580,10 @@ test.describe('Airfoils tab', () => {
     await expect(mh45.locator('.grow > .small')).toHaveText(
       'Flying wings · Tailless models, low pitching moment. Thickness 9.8 % of chord. For Reynolds numbers of 100,000 and above. · Martin Hepperle, www.mh-aerotools.de · written-permission',
     );
-    await expect(mh45.getByRole('link', { name: 'Martin Hepperle, www.mh-aerotools.de' })).toHaveAttribute('href', 'https://www.mh-aerotools.de/airfoils/mh45koo.htm');
+    const author = mh45.getByRole('link', { name: 'Martin Hepperle, www.mh-aerotools.de' });
+    await expect(author).toHaveAttribute('href', 'https://www.mh-aerotools.de/airfoils/mh45koo.htm');
+    await expect(author).toHaveAttribute('title', 'Source of MH 45 (opens in a new tab)');
+    await expect(author).toHaveAttribute('target', '_blank');
     await expect(bundled.filter({ hasText: 'S9104' }).locator('.grow > .small')).toContainText('Michael Selig, University of Illinois Urbana-Champaign · CC-BY-4.0');
     await expect(bundled.filter({ hasText: 'Clark Y' }).locator('.grow > .small')).toContainText('public-domain');
     await bundled.filter({ hasText: 'S9104' }).getByRole('button', { name: 'Preview' }).click();

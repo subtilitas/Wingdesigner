@@ -364,7 +364,7 @@ Pointed elliptic tips (wizard: **Planform** = **Elliptic (guide curves)**, **Tip
 positions: 0.077 mm (**Tail surface**) to 0.371 mm (**Swept flying wing**), below the tolerance; no
 warning. The nose line and the end line end a quarter and three quarters of the tip chord around
 the sweep line, so the tip section keeps its quarter chord on that line. Within 2 mm of the tip the
-leading and trailing edge x of the loft deviate at most 0.031 mm (**Swept flying wing**; 2,001 span
+leading and trailing edge x of the loft deviate at most 0.044 mm (**Swept flying wing**; 2,001 span
 samples) from the intended planform; the other profile points there are not measured, and the
 warning does not cover those positions.
 
@@ -1053,7 +1053,7 @@ deviation = max over s and u of the distance from R_s(u) to W_s     (mm)
 | **Glider** preset (elliptic, guide curves): 2 cores, y = 0 to 500 and 500 to 1000 mm | 1.210 and 2.212 mm |
 | same, split to 0.2 mm | 10 cores, at most 0.145 mm |
 
-- A **Linear** panel between **Mitred** section planes of different roll (with dihedral, at least the root panel) gets stations between its sections (section 3.2). Its loft then follows c(y) · airfoil(y): both factors are linear in y, their product is not. The ruled core misses it where the airfoil changes along the panel: by up to 0.25 mm on the **Sport** planform without twist with NACA 2412 at the root and NACA 2410 at the tip; the **Sport** preset without twist (MH 32 at both ends) deviates 0 mm. With a loft of stations at the sections only, taper and twist give no deviation: the **Sport** wing with **Vertical** planes deviates 0 mm.
+- A **Linear** panel between **Mitred** section planes of different roll (with dihedral, at least the root panel) gets stations between its sections (section 3.2). Its loft then follows c(y) · airfoil(y), turned by the twist θ(y): each factor is linear in y, their product is not. The ruled core misses it where the chord changes together with the airfoil or the twist: 0.314 mm on the **Sport** preset (MH 32 at both ends, twist 0 to −1°); up to 0.25 mm on the **Sport** planform without twist with NACA 2412 at the root and NACA 2410 at the tip; the **Sport** preset without twist deviates 0 mm. With a loft of stations at the sections only, taper and twist give no deviation: the **Sport** wing with **Vertical** planes deviates 0 mm.
 - The deviation falls with the square of the segment length: halving a core gives about 1/4.
 - Splitting (**Split segments over the limit**): every segment of 10 mm or more above the limit is cut in the middle (in y), and the whole set is computed again; this repeats until no such segment is left or 200 segments are reached. A segment shorter than 10 mm is not split.
 - Time in Node.js 24 on a 2.1 GHz server processor: 5 to 19 ms for the proposal of the 6 wizard presets with a straight or elliptic planform, about 1 s for 200 segments of the **Glider**.

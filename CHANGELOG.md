@@ -24,9 +24,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   3 sections.
 - The wizard fields **Root airfoil** and **Tip airfoil** take a NACA designation or the name of a **Library** airfoil,
   e.g. `MH 45`; a suggestion list offers the Library names and the NACA presets.
-- **Library** links the author of every bundled file to the source page of the file.
-- The box of external airfoil sources in the **Airfoils** tab is named **More airfoils (external sites)**; its
-  MH-AeroTools note says that the MH airfoils are in **Library**.
+- **Library** links the author of every bundled file to the source page of the file; the link opens in a new tab,
+  and its tooltip says so.
+- The box of external airfoil sources in the **Airfoils** tab is named **More airfoils (external sites)**. Its text
+  says that the app bundles the MH airfoils with the written permission of their designer; its MH-AeroTools note
+  says that the MH airfoils are in **Library**.
 
 ## [0.6.0] - 2026-10-02
 

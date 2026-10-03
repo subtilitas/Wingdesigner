@@ -386,7 +386,7 @@ Spitze elliptische Flügelenden: Im Assistenten stehen **Grundriss** (Planform) 
 Prüfpositionen: 0,077 mm (**Leitwerk** (Tail surface)) bis 0,371 mm (**Pfeilnurflügel**), unter der
 Toleranz; keine Warnung. Nasenlinie und Endlinie enden ein Viertel und drei Viertel der Randtiefe um
 die Pfeillinie, sodass der Randschnitt seinen Viertelpunkt auf dieser Linie behält. Innerhalb von
-2 mm vor dem Flügelende weichen x von Nasen- und Endleiste der Fläche höchstens 0,031 mm
+2 mm vor dem Flügelende weichen x von Nasen- und Endleiste der Fläche höchstens 0,044 mm
 (**Pfeilnurflügel**; 2001 Spannweitenpositionen) vom vorgesehenen Grundriss ab; die übrigen
 Konturpunkte dort sind nicht gemessen, und die Warnung erfasst diese Positionen nicht.
 
@@ -1132,8 +1132,8 @@ Abweichung = max über s und u des Abstands von R_s(u) zu W_s     (mm)
 
 - Ein Feld mit **Linear** zwischen Schnittebenen **Auf Gehrung** verschiedener Neigung (mit V-Form
   mindestens das Wurzelfeld) erhält Stationen zwischen seinen Profilschnitten (Abschnitt 3.2). Seine
-  Fläche folgt dann c(y) · Profil(y): Beide Faktoren sind linear in y, ihr Produkt nicht. Der Kern als
-  Regelfläche verfehlt sie, wo sich das Profil entlang des Feldes ändert: um bis zu 0,25 mm beim Grundriss des **Sportmodells** ohne Schränkung mit NACA 2412 an der Wurzel und NACA 2410 am Rand; das **Sportmodell** ohne Schränkung (MH 32 an beiden Enden) weicht 0 mm ab. Hat die Fläche
+  Fläche folgt dann c(y) · Profil(y), gedreht um die Schränkung θ(y): Jeder Faktor ist linear in y, ihr Produkt nicht. Der Kern als
+  Regelfläche verfehlt sie, wo sich die Profiltiefe zusammen mit dem Profil oder der Schränkung ändert: 0,314 mm beim **Sportmodell** (MH 32 an beiden Enden, Schränkung 0 bis −1°); bis zu 0,25 mm beim Grundriss des **Sportmodells** ohne Schränkung mit NACA 2412 an der Wurzel und NACA 2410 am Rand; das **Sportmodell** ohne Schränkung weicht 0 mm ab. Hat die Fläche
   Stationen nur an den Profilschnitten, ergeben Zuspitzung und Schränkung keine Abweichung: Das
   **Sportmodell** mit Ebenen **Senkrecht** weicht 0 mm ab.
 - Die Abweichung fällt mit dem Quadrat der Segmentlänge: Ein halbierter Kern weicht etwa 1/4 so weit ab.

@@ -332,7 +332,7 @@ Rules for texts:
 
 | Data | Source |
 | --- | --- |
-| Airfoils in unit tests and STEP and 3MF cases | Generated from the NACA equations: `nacaAirfoil()` from `src/airfoil/naca.js`, `naca()` from `test/helpers.js` |
+| Airfoils in unit tests and STEP and 3MF cases | Generated from the NACA equations: `nacaAirfoil()` from `src/airfoil/naca.js`, `naca()` from `test/helpers.js`; tests that build a wizard preset or the sample wing use the MH files of `public/airfoils/` |
 | Parser test inputs | Short synthetic strings in `test/airfoil.test.js` in the file formats of third-party sources, with invented coordinates |
 | Browser test uploads | Generated in the spec files, no third-party data: 13-point `.dat` in `e2e/smoke.spec.js` and `e2e/mobile-layout.spec.js`; Selig, Lednicer, X/Yo/Yu percent table with decimal commas and invalid files (crossing surfaces, text) from the NACA 4-digit equations in `e2e/airfoils.spec.js` |
 | Bundled library in browser tests | `e2e/airfoils.spec.js` lists the 62 files of `public/airfoils/` (the 6 with a free license by name, the 56 MH airfoils by count), checks the text and link of MH 45 and adds S9104 to the project |
@@ -430,7 +430,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 668 tests in 25 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 669 tests in 25 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |

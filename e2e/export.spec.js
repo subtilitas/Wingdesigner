@@ -39,7 +39,7 @@ const PKG_VERSION = JSON.parse(readFileSync(new URL('../package.json', import.me
 const SPORT_STATUS = 'Span 1200 mm · area 23.04 dm² · AR 6.25 · MAC 196.0 mm';
 /**
  * Largest y (mm) of the Sport wing: its tip plane is mitred, square to the 1.5° panel, so the lower
- * surface of the tip (NACA 2410, 144 mm chord) reaches 0.13 mm past the tip position y = 600 mm.
+ * surface of the tip (MH 32, 144 mm chord) reaches 0.09 mm past the tip position y = 600 mm.
  */
 const SPORT_TIP = [600, 600.2];
 const within = (v, [lo, hi]) => v > lo && v < hi;

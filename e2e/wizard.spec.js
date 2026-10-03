@@ -227,6 +227,12 @@ test.describe('new-design wizard', () => {
     await expect(wizard.getByLabel('Span (both halves) (mm)')).toHaveValue('1000');
     await expect(wizard.getByLabel('Taper (tip / root chord)')).toHaveValue('0.8');
     await expect(wizard.getByLabel('Root airfoil', { exact: true })).toHaveValue('MH 45');
+    // Both airfoil fields suggest the 62 Library names, then the 17 NACA presets.
+    for (const label of ['Root airfoil', 'Tip airfoil']) await expect(wizard.getByLabel(label, { exact: true })).toHaveAttribute('list', 'wizard-airfoil-names');
+    const suggestions = wizard.locator('datalist#wizard-airfoil-names option');
+    await expect(suggestions).toHaveCount(79);
+    const values = await suggestions.evaluateAll((os) => os.map((o) => o.value));
+    expect([values[0], values[61], values[62], values[78]]).toEqual(['Clark Y', 'USA 35B', 'NACA 0006', 'NACA 24112']);
     await expect(summary).toHaveText(SUMMARY_RE);
     await createFromWizard(page);
     // 1000 mm span, chords 220 -> 176 mm.

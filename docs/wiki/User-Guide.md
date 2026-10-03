@@ -377,7 +377,7 @@ The wizard builds a complete project from 12 inputs (table below). It generates 
 
 - Opens on the first visit (title "Start a new wing design") and with **New** (title "New wing design").
 - Preselected preset: **Sport**. A click on a preset card loads its values.
-- **Root airfoil** and **Tip airfoil** take a NACA designation of the 4-digit or 5-digit series (section [NACA generator](#naca-generator)) or the name of a **Library** airfoil, e.g. `MH 45`. Library names ignore letter case, spaces and hyphens: `mh45` and `MH-45` find MH 45. A suggestion list offers the Library names and the 17 NACA presets. A NACA designation gives the generated section; a Library name adds the Library airfoil with its source, as **Add to project** in **Library** does.
+- **Root airfoil** and **Tip airfoil** take a NACA designation of the 4-digit or 5-digit series (section [NACA generator](#naca-generator)) or the name of a **Library** airfoil, e.g. `MH 45`. Library names ignore letter case, spaces, hyphens and underscores: `mh45`, `MH-45` and `MH_45` find MH 45. A suggestion list offers the Library names and the 17 NACA presets. A NACA designation gives the generated section; a Library name adds the Library airfoil with its source, as **Add to project** in **Library** does.
 - The number fields read a typed number as in section [Numbers](#numbers) and check it while it is typed. Leaving a field shows the number as read, e.g. `1500` for `1.500` typed in German. The Up and Down arrow keys step as in the panels; in a field that is empty or holds no number they step from the value of the selected preset.
 
 | Field | Range | Effect |
@@ -447,7 +447,7 @@ The line turns red, lists the problems, and **Create design** is disabled when:
 
 - a value is outside its range (column Range), or its field is empty or holds no number (section [Numbers](#numbers));
 - **Number of sections** is not an integer (not with **Panels (table)**);
-- a root or tip airfoil is not a valid NACA code;
+- a root or tip airfoil is neither a NACA 4- or 5-digit designation nor the name of a **Library** airfoil;
 - **Elliptic** with **Flat** tip has taper ≥ 1 (`An elliptic planform needs taper < 1.`);
 - the tip is **Elliptic (panels only)** and the planform is not **Panels (table)** (`An elliptic tip needs the planform Panels.`);
 - the panel list has fewer than 1 or more than 24 panels (`The planform Panels needs 1 to 24 panels.`);
@@ -474,20 +474,22 @@ The line turns red, lists the problems, and **Create design** is disabled when:
 
 Values in parentheses are hidden with **Panels (table)**; they apply after a switch to **Straight taper** or **Elliptic (guide curves)**.
 
-Airfoils of the presets: MH airfoils of **Library** (Martin Hepperle), chosen by the application that their coordinate pages name. The Reynolds numbers of the last column are estimates for sea-level air (Re ≈ 68,500 · speed in m/s · chord in m). Where they lie below the lowest Reynolds number of the page, the airfoil runs outside the range its designer states; no MH coordinate page names a Reynolds number below 100,000.
+Airfoils of the presets: MH airfoils of **Library** (Martin Hepperle), chosen by the application that their coordinate pages name. The Reynolds numbers of the last column are estimates for sea-level air (Re ≈ 68,500 s/m² · speed in m/s · chord in m). Where they lie below the lowest Reynolds number of the page, the airfoil runs outside the range its designer states; no MH coordinate page names a Reynolds number below 100,000.
 
 | Preset | Root / tip airfoil | Application on the coordinate page | Lowest Reynolds number on the page | Reynolds number at 10 to 15 m/s, root / tip |
 | --- | --- | --- | --- | --- |
 | Trainer | MH 38 / MH 38 | Long-endurance models | 150,000 | 171,000 to 257,000 / 171,000 to 257,000 |
-| Sport | MH 32 / MH 32 | Electric pylon racers F5D, also F3B and F3J sailplanes | 150,000 | 164,000 to 247,000 / 99,000 to 148,000 |
+| Sport | MH 32 / MH 32 | Electric pylon racers of the class F5D, also sailplanes of the classes F3B and F3J (competition classes of the Fédération Aéronautique Internationale (FAI) for radio-controlled (RC) models) | 150,000 | 164,000 to 247,000 / 99,000 to 148,000 |
 | Glider | MH 42 / MH 42 | All-round RC sailplanes | 100,000 | 137,000 to 206,000 / 62,000 to 92,000 |
-| Sailplane | MH 32 / MH 42 | MH 32 as above; MH 42 all-round RC sailplanes | 150,000 / 100,000 | 144,000 to 216,000 / 72,000 to 108,000 |
+| Sailplane | MH 32 / MH 42 | MH 32 as above; MH 42 all-round RC sailplanes | 150,000 / 100,000 | 144,000 to 216,000 / pointed tip |
 | Swept flying wing | MH 60 / MH 45 | Tailless models, low pitching moment; the MH 60 page names MH 45 for Reynolds numbers below 150,000 | 150,000 / 100,000 | 192,000 to 288,000 / 86,000 to 129,000 |
 | Batwing | MH 60 / MH 64 | Tailless models, low pitching moment; MH 64 thinner (8.6 %) | 150,000 / 100,000 | 249,000 to 373,000 / pointed tip |
 | Plank | MH 45 / MH 45 | Tailless models, pitching moment coefficient +0.0145 | 100,000 | 151,000 to 226,000 / 121,000 to 181,000 |
-| Delta jet | MH 52 / MH 52 | High-speed models, very low drag; camber 0.00 %, thickness 8.0 %: the MH airfoil nearest to a symmetric section | not stated | 548,000 to 822,000 / 110,000 to 164,000 |
+| Delta jet | MH 52 / MH 52 | High-speed models, very low drag; nearly symmetric (page: camber −0.1 %; file: mean line within 0.05 % of chord), thickness 8.0 % in the file (page: 9.00 %) | not stated (ideal about 1,500,000) | 548,000 to 822,000 / 110,000 to 164,000 |
 | Double delta | MH 52 / MH 52 | as Delta jet | not stated | 685,000 to 1,028,000 / 163,000 to 245,000 |
 | Tail surface | MH 52 / MH 52 | as Delta jet; MH has no section designed for tail surfaces | not stated | 89,000 to 134,000 / 62,000 to 94,000 |
+
+The tip airfoil lies at the last section only. With the pointed tips of **Sailplane** and **Batwing** that section has a 1 mm chord; every other section has the root airfoil. With **Profile parametrization** **Uniform**, MH 42 fails the airfoil check, and the **Glider** and **Sailplane** presets do not build (section [Checks](#checks)).
 
 Panels of the presets **Sailplane** to **Batwing** (dihedral 0° where not listed):
 
@@ -509,7 +511,7 @@ Panels of the presets **Sailplane** to **Batwing** (dihedral 0° where not liste
 - **Delta jet**: the leading-edge sweep atan((800 − 160) / 450) = 54.9° puts the trailing edge on a straight line, within 0.3 mm (tip section: leading-edge x 640.29 mm, chord 160 mm).
 - **Double delta**: the strake moves the leading edge 412.1 mm aft over 150 mm; the trailing edge is straight within 0.12 mm.
 - **Batwing**: 12 panels traced from a top view of the Batwing of the 1989 film. The leading edge has a notch beside the fuselage and the forward point of the ear at 66 % of the half span (y = 330 mm, x = −87.6 mm); the trailing edge has a concave scallop and the rear spike at 51 % (y = 255 mm, trailing edge x = 625.7 mm); both meet in the round tip. No twist, no dihedral; the outline is a polygon of straight panels.
-- None of these 4 presets is flown or measured in flight. The **Batwing** has symmetric airfoils without reflex; its pitch stability is not designed.
+- None of these 4 presets is flown or measured in flight. The **Batwing** has the tailless airfoils MH 60 and MH 64 (low pitching moment) and no twist; its pitch stability is not designed.
 
 | Button | Effect |
 | --- | --- |
@@ -798,7 +800,7 @@ MH airfoils by Martin Hepperle (author `Martin Hepperle, www.mh-aerotools.de`, l
 | Propellers | MH 112, MH 113, MH 114, MH 115, MH 116, MH 117, MH 120, MH 121, MH 126 | 8.1 to 25.1 % chord |
 | Wind turbines | MH 102, MH 104, MH 106, MH 108, MH 110 | 10.0 to 17.0 % chord |
 
-- The use text of an MH airfoil names its application as the coordinate page of the designer describes it, its thickness computed from the file and, where the page states one, the lowest Reynolds number, e.g. `Tailless models, low pitching moment. Thickness 9.8 % of chord. For Reynolds numbers of 100,000 and above.` (MH 45). MH 30 and MH 32 name sailplanes as a second use, MH 33 and MH 43 F3B models (F3B: a competition class of the Fédération Aéronautique Internationale (FAI) for radio-controlled sailplanes).
+- The use text of an MH airfoil names its application as the coordinate page of the designer describes it, its thickness computed from the file and, where the page states one, the lowest Reynolds number, e.g. `Tailless models, low pitching moment. Thickness 9.8 % of chord. For Reynolds numbers of 100,000 and above.` (MH 45). MH 30 and MH 32 name sailplanes as a second use, MH 33 and MH 43 F3B models (F3B: a competition class of the FAI for radio-controlled sailplanes).
 
 - Source, legal basis, conditions and attribution text per file: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md).
 - Clark Y, NACA 8-H-12, NACA M-6, RAF 34 and USA 35B: public domain in the United States. Their status outside the United States is not established.
@@ -871,7 +873,7 @@ Section planes:
 - A wing without dihedral is the same in both modes.
 - **Linear** with **Mitred**: a panel whose two sections lie in planes of different roll gets **Spanwise stations per panel** intervals and spanwise degree 3, so each station holds the blended airfoil in its own plane. Any roll difference counts: a dihedral of 1e-6° instead of 0° can move the surface up to 0.17 mm where chord, airfoil and twist change along the panel. The Sport, Trainer and Plank presets build 9 stations instead of 2 with **Vertical**, the sample wing 17 instead of 3; the Glider has 17 in both modes (guide curves). The Sport wing (MH 32 at 240 mm and at 144 mm, −1° twist) then follows the **Linear** blend exactly and has 0.1 % more volume than the vertical build, which joins the 2 sections with straight lines up to 0.314 mm off that blend: chord and twist change together.
 - **Straight panels** with **Mitred**: the straight lines join the sections in their planes, XFLR5's surface.
-- **Smooth** with **Mitred**: the sections lie in the same planes as with **Linear**. Between them the roll follows the smooth curve through the section rolls, and the stretch follows the slope of the smooth curve through the section positions, so the wing stays as thick as its airfoil across that curve. The presets with dihedral lie up to 1.9 mm off a **Smooth** build with **Vertical** planes (Sailplane). At the root the plane stays vertical, while the smooth curve can leave the root up to 3 times as steep as the first panel: a plane more than 60° from that curve stops the build (section [Checks](#checks)).
+- **Smooth** with **Mitred**: the sections lie in the same planes as with **Linear**. Between them the roll follows the smooth curve through the section rolls, and the stretch follows the slope of the smooth curve through the section positions, so the wing stays as thick as its airfoil across that curve. The presets with dihedral lie up to 1.8 mm off a **Smooth** build with **Vertical** planes (Sailplane). At the root the plane stays vertical, while the smooth curve can leave the root up to 3 times as steep as the first panel: a plane more than 60° from that curve stops the build (section [Checks](#checks)).
 - Errors with **Mitred**: a plane more than 60° from its panel (the airfoil would be stretched more than 2 times), and planes of neighbouring sections or stations that meet within the airfoils, which folds the surface (section [Checks](#checks)). **Vertical** builds both.
 - The twist turns each section in its plane. Seen along x, a section rolled 35° with 2° twist meets the flow at 1.64°.
 - Computation: [[Geometry|Geometry]], section 3.8.
@@ -893,7 +895,7 @@ Pointed tip (**Wing tip** = Pointed):
 - In the last panel the chord stays at or above the tip chord. Converging guide curves end in the scaled tip profile.
 - With both guide curves on, their gap at the tip sets the tip chord when it is wider than the scaled tip chord. A gap more than 0.5 mm wider gives a warning.
 - Glider preset with **Tip** = Pointed: tip chord 1.00 mm (1 mm floor), 22 stations (17 + 5 added), largest deviation at the checked span positions 0.263 mm, no warning. The other wizard presets with **Tip** = Pointed also build without a warning.
-- Within 2 mm of a pointed elliptic tip (wizard presets) the leading and trailing edge x of the loft deviate at most 0.031 mm from the intended planform (2,001 span samples); the other profile points there are not measured. The deviation warning does not cover these positions.
+- Within 2 mm of a pointed elliptic tip (wizard presets) the leading and trailing edge x of the loft deviate at most 0.044 mm from the intended planform (**Swept flying wing**; 2,001 span samples); the other profile points there are not measured. The deviation warning does not cover these positions.
 
 Trailing-edge rules:
 
@@ -944,7 +946,7 @@ Effect of the resolution on computing time and STEP (Standard for the Exchange o
 | Airfoil "…": … | error | the airfoil fails the sanity checks ([[File Formats]]), e.g. in an opened project file. With **Profile parametrization** **Chord length** or **Uniform**, every `Airfoil "…"` message ends with `Settings > Profile parametrization "centripetal" follows the points more closely.` |
 | Airfoil "…": the NURBS interpolation failed (…). | error | the airfoil NURBS interpolation fails |
 | Airfoil "…": the NURBS curve through the points crosses itself near x = … % chord; … | error | the curve through the airfoil points crosses itself. The crossing splits the outline into 2 parts; the part with the smaller bounding-box diagonal has a mean width (area / bounding-box diagonal) above 0.05 % of the chord. An airfoil used at a chord above 200 mm also fails when that width exceeds 0.1 mm at its largest chord; the message then reads `…; the loop is … mm wide at … mm chord, above 0.1 mm. …` |
-| Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | error | the curve through the airfoil points runs back in x by more than 0.01 % of the chord. In the parser test with 1,964 real airfoil files, this check rejects 4 files with **Centripetal**, 12 with **Chord length** and 82 with **Uniform** ([[Airfoil Sources]], section Parser test). |
+| Airfoil "…": the surface runs back in x by … % chord near x = … % chord; … | error | the curve through the airfoil points runs back in x by more than 0.01 % of the chord. In the parser test with 1,964 real airfoil files, this check rejects 4 files with **Centripetal**, 12 with **Chord length** and 82 with **Uniform** ([[Airfoil Sources]], section Parser test). Of the MH airfoils of **Library**, MH 27, MH 42 and MH 115 fail with **Uniform**, so the **Glider** and **Sailplane** presets do not build with **Uniform**. |
 | Airfoil "…": The upper surface runs back in x at … points; the limit is 50. (also `lower`) | error | a surface of the airfoil runs back in x at more than 50 points (check `folds`, [[File Formats]]) |
 | Nose line: … / End line: … | error | guide points not strictly increasing in y, or the curve turns back in y; through-points mode: `Points … and … at y = … mm and y = … mm lie too close together for the curve parameters; move them apart.` when two normalized y values lie within 4 units in the last place of the larger one or within 2^-1021 (about 4.5e-308); `the curve fit is singular; move the points further apart in y or use control-point mode.` when the interpolation cannot solve for points whose normalized y lie closer than it resolves, e.g. 1e-300 of the span |
 | Nose line: the curve through the points reaches x = … mm, beyond ±1200000 mm; space the points more evenly in y or use control-point mode. (also End line) | error | a control point of the guide curve lies beyond x = ±1,200,000 mm |

@@ -106,8 +106,10 @@ describe('wizard', () => {
       expect(project.airfoils.every((a) => a.source.kind === 'library' && a.source.attribution === 'Martin Hepperle, www.mh-aerotools.de'), k).toBe(true);
       expect(buildWing(project).errors, k).toEqual([]);
     }
-    // Library names ignore letter case, spaces and hyphens; a NACA designation gives the generated section.
-    for (const name of ['MH 45', 'mh45', 'MH-45', ' mh 45 ']) expect(wizardAirfoil(name)?.id, name).toBe('mh-45');
+    // Library names ignore letter case, spaces, hyphens and underscores; a NACA designation gives the generated section.
+    for (const name of ['MH 45', 'mh45', 'MH-45', 'MH_45', ' mh 45 ']) expect(wizardAirfoil(name)?.id, name).toBe('mh-45');
+    // A suffix letter is part of the name: MH 18 and MH 18B are two entries.
+    expect([wizardAirfoil('MH 18')?.id, wizardAirfoil('mh18b')?.id]).toEqual(['mh-18', 'mh-18b']);
     expect(wizardAirfoil('Clark Y')).toMatchObject({ id: 'clark-y', name: 'Clark Y', source: { kind: 'library', license: 'public-domain' } });
     expect(wizardAirfoil('2412')).toMatchObject({ id: 'naca2412', name: 'NACA 2412', source: { kind: 'naca', code: '2412' } });
     expect(wizardAirfoil('NACA 23112')?.id).toBe('naca23112');
@@ -115,6 +117,21 @@ describe('wizard', () => {
     // The library airfoil is the one Add to project stores: the same points and source.
     const e = bundledLibrary().find((a) => a.id === 'mh-45');
     expect(wizardAirfoil('MH 45')).toEqual({ id: 'mh-45', name: 'MH 45', points: importAirfoilText(e.text, e.file).points, source: librarySource(e) });
+  });
+
+  it('builds every preset with each profile parametrization, except Glider and Sailplane with Uniform (MH 42)', () => {
+    const failing = (parametrization) =>
+      Object.entries(PRESETS)
+        .filter(([, p]) => {
+          const project = wizardProject(p.params);
+          return buildWing({ ...project, settings: { ...project.settings, parametrization } }).errors.length;
+        })
+        .map(([k]) => k);
+    expect(failing('centripetal')).toEqual([]);
+    expect(failing('chord')).toEqual([]);
+    expect(failing('uniform')).toEqual(['glider', 'sailplane']);
+    const glider = wizardProject(PRESETS.glider.params);
+    expect(buildWing({ ...glider, settings: { ...glider.settings, parametrization: 'uniform' } }).errors[0]).toMatch(/^Airfoil "MH 42": the surface runs back in x by 0\.015 % chord/);
   });
 
   it('opens the sample wing with MH 32 from the Library at all three sections', () => {
