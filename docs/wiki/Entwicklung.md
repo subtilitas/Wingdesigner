@@ -713,7 +713,7 @@ Das Klonen in `docs.yml` setzt ein vorhandenes Repository-Wiki voraus; GitHub le
 
 ## Release
 
-`<version>`: die zu veröffentlichende Version, z. B. `0.7.0`. `package.json` enthält `0.6.0`.
+`<version>`: die zu veröffentlichende Version, z. B. `0.8.0`. `package.json` enthält `0.7.0`.
 
 1. Version setzen: `npm version <version> --no-git-tag-version` (ändert `package.json` und `package-lock.json`).
 2. In `CHANGELOG.md` die Einträge unter `## [Unreleased]` unter eine Überschrift `## [<version>] - YYYY-MM-DD` verschieben. Der Abschnitt wird zu den Release-Notes: Er beschreibt die App, ihre Dateien und ihre Benutzerdokumentation (README, Benutzerhandbuch, Geometrie, Dateiformate, Profilquellen) und lässt die Übergabe (`docs/Handover.md`), `RECORD.md`, die Absprachen, Continuous Integration, Tests, Skripte, diese Seite und die Namen des Quellcodes weg. `npm run docs:check` meldet die Begriffe, die es kennt (Dokumentationsprüfung).

@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-03
+
 ### Added
 
 - **Library** holds the 56 MH airfoils of Martin Hepperle, MH 1 to MH 126, included with his written permission. Each
@@ -21,7 +23,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - The wizard presets use MH airfoils of **Library**, root / tip: Trainer MH 38 / MH 38, Sport MH 32 / MH 32, Glider
   MH 42 / MH 42, Sailplane MH 32 / MH 42, Delta jet, Double delta and Tail surface MH 52 / MH 52, Batwing MH 60 /
   MH 64, Swept flying wing MH 60 / MH 45, Plank MH 45 / MH 45. The sample wing "Sport wing 1500" uses MH 32 at all
-  3 sections.
+  3 sections. With **Profile parametrization** **Uniform**, MH 42 fails the airfoil check, so the Glider and Sailplane
+  presets build only with **Centripetal** or **Chord length**.
 - The wizard fields **Root airfoil** and **Tip airfoil** take a NACA designation or the name of a **Library** airfoil,
   e.g. `MH 45`; a suggestion list offers the Library names and the NACA presets.
 - **Library** links the author of every bundled file to the source page of the file; the link opens in a new tab,
