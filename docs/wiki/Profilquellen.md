@@ -132,8 +132,8 @@ Jedes Profil im Projekt trägt ein Objekt `source`:
 | Herkunft | Felder von `source` |
 | --- | --- |
 | **NACA-Generator** oder Vorlage aus **Bibliothek** | `kind: "naca"`, `license`, `url` (NACA Report 824 auf ntrs.nasa.gov), `code`, `closedTE`; `attribution`, wenn das Feld nicht leer ist |
-| Assistent | `kind: "naca"`, `license`, `url`, `code`, `closedTE` |
-| Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 1500“; geladen, wenn der Browserspeicher kein gültiges gespeichertes Projekt enthält) | `kind: "naca"`, `note` |
+| Assistent | NACA-Bezeichnung: `kind: "naca"`, `license`, `url`, `code`, `closedTE`. Name aus der Bibliothek: wie eine mitgelieferte Bibliotheksdatei |
+| Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 1500“; geladen, wenn der Browserspeicher kein gültiges gespeichertes Projekt enthält) | wie eine mitgelieferte Bibliotheksdatei (MH 32) |
 | Mitgelieferte Bibliotheksdatei | `kind: "library"`, `id`, `attribution` (vorbelegt mit `source.author` aus `index.json`), `license`, `url`, `terms` |
 | Hochgeladene Datei | `kind: "upload"`, `file` (Dateiname), `attribution` (leere Zeichenkette, wenn kein Text) |
 | Eingefügter Text | `kind: "upload"`; `attribution`, wenn das Feld nicht leer ist |
@@ -225,12 +225,12 @@ Gebrauch verwenden. Wenn Sie dieses Dokument für eine Veröffentlichung verwend
 angeben. Die Veröffentlichung einer Neuzusammenstellung des angegebenen Materials ist nicht erlaubt, wenn
 das entstehende Produkt für mehr als die Herstellungskosten verkauft wird.
 
-Die Bedingungen erlauben den persönlichen Gebrauch. Eine Erlaubnis zur öffentlichen Weiterverbreitung enthalten sie nicht, und die MIT License (benannt nach dem Massachusetts Institute of Technology) des Repositorys erlaubt jedem den Verkauf von Kopien. Die 56 MH-Profile werden stattdessen mit einer schriftlichen Erlaubnis mitgeliefert:
+Die Bedingungen erlauben den persönlichen Gebrauch. Eine Erlaubnis zur öffentlichen Weiterverbreitung enthalten sie nicht, und die MIT License (benannt nach dem Massachusetts Institute of Technology) des Programmcodes erlaubt jedem den Verkauf von Kopien. Die 56 MH-Profile werden stattdessen mit einer schriftlichen Erlaubnis mitgeliefert:
 
 - Martin Hepperle hat dem Eigentümer im Oktober 2026 per E-Mail die Erlaubnis erteilt, als Antwort auf eine Anfrage vom 01.10.2026: Die auf seiner Website veröffentlichten Profile dürfen in Wingdesigner aufgenommen werden, das frei verfügbar ist. Er erwartet, dass der Urheber genannt und die Quelle angegeben wird. Der Eigentümer bewahrt die E-Mail auf; sie ist nicht im Repository.
-- Die Erlaubnis gilt für die Dateien als Teil von Wingdesigner. Die MIT License des Programmcodes gilt für sie nicht. Für eine Kopie außerhalb von Wingdesigner gelten die Bedingungen oben.
+- Die Erlaubnis gilt für die Dateien als Teil von Wingdesigner. Ob sie eine veränderte oder verkaufte Kopie von Wingdesigner abdeckt, ist nicht geklärt. Die MIT License des Programmcodes gilt für sie nicht. Für eine Kopie außerhalb von Wingdesigner gelten die Bedingungen oben.
 - Jeder Bibliothekseintrag nennt `Martin Hepperle, www.mh-aerotools.de` als Urheber und verlinkt die Koordinatenseite des Profils. Quelle, Änderungen und Dicke je Datei: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils).
-- `npm run airfoils:check` lässt mh-aerotools.de nur in `source.url` eines Eintrags mit der Lizenzkennung `written-permission` und dem Urheber Martin Hepperle zu ([Profil in die Bibliothek aufnehmen](#profil-in-die-bibliothek-aufnehmen)).
+- `npm run airfoils:check` lässt mh-aerotools.de nur in `source.url` eines Eintrags mit der Lizenzkennung `written-permission` und dem Urheber `Martin Hepperle, www.mh-aerotools.de` zu ([Profil in die Bibliothek aufnehmen](#profil-in-die-bibliothek-aufnehmen)).
 
 ## UIUC Airfoil Coordinates Database
 
@@ -285,9 +285,9 @@ Anforderungen an eine Datei in `public/airfoils/`:
 | `name`, `file`, `category` vorhanden und nicht leer | Ja |
 | `source.author`, `source.license`, `source.url`, `source.terms` vorhanden und nicht leer | Ja |
 | `source.license` ist eine von 8 Kennungen: `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`; oder `written-permission` (nächste Zeile) | Ja |
-| `written-permission`: `PERMISSIONS` in `scripts/check-airfoils.mjs` verzeichnet eine Erlaubnis, deren Konstrukteur am Anfang von `source.author` steht (Martin Hepperle), `source.url` liegt auf der Website dieser Erlaubnis (mh-aerotools.de), und `NOTICE.md` hat ihren Abschnitt (`## MH airfoils`). Sonst Meldung: `no written permission is recorded for "<author>".`, `source.url is not on <host>, the site of the written permission.` oder `NOTICE.md has no section "<heading>" for the written permission.` | Ja |
-| `source.url` und `source.terms` sind URLs (Uniform Resource Locator). Ihr Host, ohne führendes `www.`, ist weder aerodesign.de noch mh-aerotools.de noch eine Subdomain davon, außer in `source.url` eines Eintrags mit einer verzeichneten schriftlichen Erlaubnis für diesen Host. Sonst Meldung: `<host> grants personal use only.` | Ja |
-| `public/airfoils/NOTICE.md` existiert (Index mit mindestens 1 Eintrag) und enthält den `name` des Eintrags. | Ja |
+| `written-permission`: `PERMISSIONS` in `scripts/check-airfoils.mjs` verzeichnet eine Erlaubnis, deren Urhebertext gleich `source.author` ist (`Martin Hepperle, www.mh-aerotools.de`), `source.url` liegt auf der Website dieser Erlaubnis (mh-aerotools.de), und `NOTICE.md` hat ihren Abschnitt (`## MH airfoils`). Sonst Meldung: `no written permission is recorded for "<author>".`, `source.url is not on <host>, the site of the written permission.` oder `NOTICE.md has no section "<heading>" for the written permission.` | Ja |
+| `source.url` und `source.terms` sind https-URLs (Uniform Resource Locator); sonst Meldung: `source.url is not an https URL.` Ihr Host, ohne führendes `www.`, ist weder aerodesign.de noch mh-aerotools.de noch eine Subdomain davon, außer in `source.url` eines Eintrags mit einer verzeichneten schriftlichen Erlaubnis für diesen Host. Sonst Meldung: `<host> grants personal use only.` | Ja |
+| `public/airfoils/NOTICE.md` existiert (Index mit mindestens 1 Eintrag), und ihre Tabelle Files hat eine Zeile, die mit Name, Datei und Lizenzkennung des Eintrags beginnt. | Ja |
 | Die Datei liegt unter `public/airfoils/<file>`. | Ja |
 | Die Datei lässt sich einlesen und besteht die Plausibilitätsprüfung ohne Fehler. Warnungen sind zulässig. | Ja |
 | Die NURBS-Interpolation durch die Punkte gelingt. Die Kurve kreuzt sich nicht selbst (Kreuzungsschleifen mit einer mittleren Breite, Fläche / Diagonale des Hüllrechtecks, bis 0,0005 der Profiltiefe werden ignoriert) und läuft nicht um mehr als 0,0001 der Profiltiefe in x zurück. Geprüft in der **Vorschau** (Preview) der App mit der **Parametrisierung der Profile** (Profile parametrization) des Projekts. | Nein |

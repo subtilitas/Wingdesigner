@@ -132,8 +132,8 @@ Each airfoil in the project carries a `source` object:
 | Origin | Fields of `source` |
 | --- | --- |
 | **NACA generator** or **Library** preset | `kind: "naca"`, `license`, `url` (NACA Report 824 at ntrs.nasa.gov), `code`, `closedTE`; `attribution` if the field is not empty |
-| Wizard | `kind: "naca"`, `license`, `url`, `code`, `closedTE` |
-| Sample wing "Sport wing 1500" (German interface: "Sportflügel 1500"; loaded when local storage holds no valid saved project) | `kind: "naca"`, `note` |
+| Wizard | NACA designation: `kind: "naca"`, `license`, `url`, `code`, `closedTE`. Library name: as a bundled library file |
+| Sample wing "Sport wing 1500" (German interface: "Sportflügel 1500"; loaded when local storage holds no valid saved project) | as a bundled library file (MH 32) |
 | Bundled library file | `kind: "library"`, `id`, `attribution` (pre-filled with `source.author` from `index.json`), `license`, `url`, `terms` |
 | File upload | `kind: "upload"`, `file` (file name), `attribution` (empty string if no text) |
 | Pasted text | `kind: "upload"`; `attribution` if the field is not empty |
@@ -237,12 +237,12 @@ Footer of every airfoil page, e.g. <https://www.mh-aerotools.de/airfoils/mh45koo
 > publication, you have to cite the source. A publication of a recompilation of the given material is
 > not allowed, if the resulting product is sold for more than the production costs.
 
-The terms grant personal use. They contain no grant for public redistribution, and the MIT License (named after the Massachusetts Institute of Technology) of the repository allows anyone to sell copies. The 56 MH airfoils are bundled on a written permission instead:
+The terms grant personal use. They contain no grant for public redistribution, and the MIT License (named after the Massachusetts Institute of Technology) of the program code allows anyone to sell copies. The 56 MH airfoils are bundled on a written permission instead:
 
 - Martin Hepperle granted the owner permission by e-mail in October 2026, in answer to a request of 2026-10-01: the airfoils published on his website may be included in Wingdesigner, which is freely available. He expects the author to be named and the source cited. The owner keeps the e-mail; it is not in the repository.
-- The permission covers the files as part of Wingdesigner. The MIT License of the program code does not apply to them. A copy outside Wingdesigner falls under the terms above.
+- The permission covers the files as part of Wingdesigner. Whether it covers a modified or sold copy of Wingdesigner is not established. The MIT License of the program code does not apply to them. A copy outside Wingdesigner falls under the terms above.
 - Each library entry names `Martin Hepperle, www.mh-aerotools.de` as author and links to the coordinate page of the airfoil. Source, changes and thickness per file: [NOTICE.md](https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils).
-- `npm run airfoils:check` accepts mh-aerotools.de only in the `source.url` of an entry with the license identifier `written-permission` and the author Martin Hepperle ([Adding a bundled airfoil](#adding-a-bundled-airfoil)).
+- `npm run airfoils:check` accepts mh-aerotools.de only in the `source.url` of an entry with the license identifier `written-permission` and the author `Martin Hepperle, www.mh-aerotools.de` ([Adding a bundled airfoil](#adding-a-bundled-airfoil)).
 
 ## UIUC Airfoil Coordinates Database
 
@@ -297,9 +297,9 @@ Requirements for a file in `public/airfoils/`:
 | `name`, `file`, `category` present and not empty | Yes |
 | `source.author`, `source.license`, `source.url`, `source.terms` present and not empty | Yes |
 | `source.license` is one of 8 identifiers: `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`; or `written-permission` (next row) | Yes |
-| `written-permission`: `PERMISSIONS` in `scripts/check-airfoils.mjs` records a permission whose designer begins `source.author` (Martin Hepperle), `source.url` lies on the site of that permission (mh-aerotools.de), and `NOTICE.md` has its section (`## MH airfoils`). Message otherwise: `no written permission is recorded for "<author>".`, `source.url is not on <host>, the site of the written permission.` or `NOTICE.md has no section "<heading>" for the written permission.` | Yes |
-| `source.url` and `source.terms` are URLs (Uniform Resource Locators). Their host, without a leading `www.`, is not aerodesign.de, mh-aerotools.de or a subdomain of them, except the `source.url` of an entry with a recorded written permission for that host. Message otherwise: `<host> grants personal use only.` | Yes |
-| `public/airfoils/NOTICE.md` exists (index with at least 1 entry) and contains the entry's `name`. | Yes |
+| `written-permission`: `PERMISSIONS` in `scripts/check-airfoils.mjs` records a permission whose author text equals `source.author` (`Martin Hepperle, www.mh-aerotools.de`), `source.url` lies on the site of that permission (mh-aerotools.de), and `NOTICE.md` has its section (`## MH airfoils`). Message otherwise: `no written permission is recorded for "<author>".`, `source.url is not on <host>, the site of the written permission.` or `NOTICE.md has no section "<heading>" for the written permission.` | Yes |
+| `source.url` and `source.terms` are https URLs (Uniform Resource Locators); message otherwise: `source.url is not an https URL.` Their host, without a leading `www.`, is not aerodesign.de, mh-aerotools.de or a subdomain of them, except the `source.url` of an entry with a recorded written permission for that host. Message otherwise: `<host> grants personal use only.` | Yes |
+| `public/airfoils/NOTICE.md` exists (index with at least 1 entry) and its Files table has a row that starts with the entry's name, file and license identifier. | Yes |
 | The file exists at `public/airfoils/<file>`. | Yes |
 | The file passes import and the sanity checks with no error. Warnings are allowed. | Yes |
 | The NURBS interpolation through the points succeeds. The curve does not cross itself (loops with a mean width, area / bounding-box diagonal, up to 5e-4 of the chord are ignored) and does not run back in x by more than 1e-4 of the chord. Checked in the app's **Preview** with the project's **Profile parametrization**. | No |

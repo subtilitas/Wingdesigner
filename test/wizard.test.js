@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../src/i18n/index.js';
-import { ELLIPTIC_TIP_SECTIONS, MAX_PANELS, PRESETS, chordAt, panelsFromParams, wizardProblems, wizardProject } from '../src/model/wizard.js';
+import { ELLIPTIC_TIP_SECTIONS, MAX_PANELS, PRESETS, chordAt, panelsFromParams, wizardAirfoil, wizardProblems, wizardProject } from '../src/model/wizard.js';
+import { bundledLibrary } from '../src/airfoil/bundled.js';
+import { librarySource } from '../src/airfoil/library.js';
+import { importAirfoilText } from '../src/airfoil/sanity.js';
 import { buildWing } from '../src/geom/wing.js';
 import { wingStats } from '../src/geom/stats.js';
 import { LIMITS, airfoilPoints, createProject, limitErrors, validateProject } from '../src/model/project.js';
@@ -56,11 +59,11 @@ describe('wizard', () => {
     // Quarter-chord line swept by 25 degrees.
     const xq = (s) => s.x + 0.25 * s.chord;
     expect((xq(tip) - xq(p.sections[0])) / tip.y).toBeCloseTo(Math.tan((25 * Math.PI) / 180), 3);
-    expect(p.airfoils.map((a) => a.id)).toEqual(['naca23112', 'naca0010']);
+    expect(p.airfoils.map((a) => a.id)).toEqual(['mh-60', 'mh-45']);
   });
 
   it('builds V-tails and inverted V-tails up to 60 degrees per half', () => {
-    // Tail surface preset (500 mm span, 130 mm root chord, NACA 0009) as a 55 degree V-tail: the tip
+    // Tail surface preset (500 mm span, 130 mm root chord, MH 52) as a 55 degree V-tail: the tip
     // lies 250 * tan 55 = 357.04 mm up; the vertical root plane stretches the airfoil 1/cos 55 times.
     const p = wizardProject({ ...PRESETS.tail.params, dihedral: 55 });
     expect(p.sections[1]).toMatchObject({ y: 250, z: 357.04 });
@@ -84,9 +87,46 @@ describe('wizard', () => {
     expect(chordAt(PRESETS.glider.params, 0.5)).toBeGreaterThan(200 * (1 + (0.45 - 1) * 0.5));
   });
 
+  it('gives every preset MH airfoils from the Library and takes NACA designations and Library names', () => {
+    const pairs = Object.fromEntries(Object.entries(PRESETS).map(([k, p]) => [k, [p.params.rootAirfoil, p.params.tipAirfoil]]));
+    expect(pairs).toEqual({
+      trainer: ['MH 38', 'MH 38'],
+      sport: ['MH 32', 'MH 32'],
+      glider: ['MH 42', 'MH 42'],
+      sailplane: ['MH 32', 'MH 42'],
+      deltaJet: ['MH 52', 'MH 52'],
+      doubleDelta: ['MH 52', 'MH 52'],
+      batwing: ['MH 60', 'MH 64'],
+      flyingWing: ['MH 60', 'MH 45'],
+      plank: ['MH 45', 'MH 45'],
+      tail: ['MH 52', 'MH 52'],
+    });
+    for (const [k, p] of Object.entries(PRESETS)) {
+      const project = wizardProject(p.params);
+      expect(project.airfoils.every((a) => a.source.kind === 'library' && a.source.attribution === 'Martin Hepperle, www.mh-aerotools.de'), k).toBe(true);
+      expect(buildWing(project).errors, k).toEqual([]);
+    }
+    // Library names ignore letter case, spaces and hyphens; a NACA designation gives the generated section.
+    for (const name of ['MH 45', 'mh45', 'MH-45', ' mh 45 ']) expect(wizardAirfoil(name)?.id, name).toBe('mh-45');
+    expect(wizardAirfoil('Clark Y')).toMatchObject({ id: 'clark-y', name: 'Clark Y', source: { kind: 'library', license: 'public-domain' } });
+    expect(wizardAirfoil('2412')).toMatchObject({ id: 'naca2412', name: 'NACA 2412', source: { kind: 'naca', code: '2412' } });
+    expect(wizardAirfoil('NACA 23112')?.id).toBe('naca23112');
+    for (const name of ['', 'MH 99', 'XY 45', undefined]) expect(wizardAirfoil(name), String(name)).toBeNull();
+    // The library airfoil is the one Add to project stores: the same points and source.
+    const e = bundledLibrary().find((a) => a.id === 'mh-45');
+    expect(wizardAirfoil('MH 45')).toEqual({ id: 'mh-45', name: 'MH 45', points: importAirfoilText(e.text, e.file).points, source: librarySource(e) });
+  });
+
+  it('opens the sample wing with MH 32 from the Library at all three sections', () => {
+    const p = defaultProject();
+    expect(p.airfoils.map((a) => [a.id, a.name, a.source.kind, a.source.attribution])).toEqual([['mh-32', 'MH 32', 'library', 'Martin Hepperle, www.mh-aerotools.de']]);
+    expect(p.sections.map((q) => q.airfoil)).toEqual(['mh-32', 'mh-32', 'mh-32']);
+    expect(buildWing(p).errors).toEqual([]);
+  });
+
   it('validates parameters', () => {
     expect(wizardProblems(PRESETS.sport.params)).toEqual([]);
-    const bad = { ...PRESETS.sport.params, span: 10, sections: 2.5, planform: 'round', rootAirfoil: 'MH45' };
+    const bad = { ...PRESETS.sport.params, span: 10, sections: 2.5, planform: 'round', rootAirfoil: 'XY 45' };
     expect(wizardProblems(bad).length).toBe(4);
     expect(wizardProblems({ ...PRESETS.glider.params, taper: 1 })).toContain('An elliptic planform needs taper < 1.');
     expect(() => wizardProject(bad)).toThrow();
@@ -615,14 +655,14 @@ describe('wizard in German', () => {
   });
 
   it('words the problems with the parameters, with decimal commas', () => {
-    const bad = { ...PRESETS.sport.params, span: 10, taper: 3, sections: 2.5, planform: 'round', tip: 'round', rootAirfoil: 'MH45' };
+    const bad = { ...PRESETS.sport.params, span: 10, taper: 3, sections: 2.5, planform: 'round', tip: 'round', rootAirfoil: 'XY 45' };
     expect(wizardProblems(bad)).toEqual([
       'span must be between 100 and 20000.',
       'taper must be between 0.1 and 1.5.',
       'sections must be an integer.',
       'planform must be "straight", "elliptic" or "panels".',
       'tip must be "flat", "pointed" or "elliptic".',
-      'rootAirfoil must be a NACA 4- or 5-digit designation.',
+      'rootAirfoil must be a NACA 4- or 5-digit designation or the name of a Library airfoil, e.g. MH 45.',
     ]);
     setLanguage('de');
     expect(wizardProblems(bad)).toEqual([
@@ -631,12 +671,12 @@ describe('wizard in German', () => {
       'Anzahl der Schnitte muss eine ganze Zahl sein.',
       'Grundriss muss "straight", "elliptic" oder "panels" sein.',
       'Flügelende muss "flat", "pointed" oder "elliptic" sein.',
-      'Wurzelprofil muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern sein.',
+      'Wurzelprofil muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern oder der Name eines Profils der Bibliothek sein, z. B. MH 45.',
     ]);
     expect(wizardProblems({ ...PRESETS.glider.params, taper: 1, washout: -20, tipAirfoil: '' })).toEqual([
       'Schränkung am Rand muss zwischen -15 und 15 liegen.',
       'Ein elliptischer Grundriss braucht eine Zuspitzung < 1.',
-      'Randprofil muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern sein.',
+      'Randprofil muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern oder der Name eines Profils der Bibliothek sein, z. B. MH 45.',
     ]);
     // The error of wizardProject carries the same sentences.
     expect(() => wizardProject(bad)).toThrow(/^Spannweite muss zwischen 100 und 20\.000 liegen\. Zuspitzung muss /);

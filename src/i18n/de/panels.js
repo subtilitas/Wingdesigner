@@ -84,7 +84,7 @@ export default {
   'Pylon racing models, Quickie 500 class': 'Pylonrennmodelle, Klasse Quickie 500',
   'Pylon racing models, Quickie 500 class; optimized MH 18': 'Pylonrennmodelle, Klasse Quickie 500; optimiertes MH 18',
   'Pylon racing models, Quickie 500 class; pitching moment near zero': 'Pylonrennmodelle, Klasse Quickie 500; Nickmoment nahe null',
-  'Sailplane towing model Power Geier; wide lift range, also for limited aerobatics and inverted flight': 'Schleppmodell für Segelflugmodelle Power Geier; großer Auftriebsbereich, auch für eingeschränkten Kunstflug und Rückenflug',
+  'Sailplane towing model Power Geier; wide lift range, also for limited aerobatics and inverted flight': 'Schleppmodell Power Geier für Segelflugmodelle; großer Auftriebsbereich, auch für eingeschränkten Kunstflug und Rückenflug',
   'Stall-controlled horizontal-axis wind turbines, 40 % radius': 'Stallgeregelte Windkraftanlagen mit horizontaler Achse, 40 % des Radius',
   'Stall-controlled horizontal-axis wind turbines, 60 % radius': 'Stallgeregelte Windkraftanlagen mit horizontaler Achse, 60 % des Radius',
   'Stall-controlled horizontal-axis wind turbines, 80 % radius': 'Stallgeregelte Windkraftanlagen mit horizontaler Achse, 80 % des Radius',
@@ -92,6 +92,7 @@ export default {
   'Stall-controlled horizontal-axis wind turbines, tip': 'Stallgeregelte Windkraftanlagen mit horizontaler Achse, Blattspitze',
   'Tailless models, low pitching moment': 'Schwanzlose Modelle, kleines Nickmoment',
   '{use}. Thickness {thickness} % of chord.': '{use}. Dicke {thickness} % der Profiltiefe.',
+  'Source of {name} (opens in a new tab)': 'Quelle von {name} (öffnet in einem neuen Tab)',
   '{use}. Thickness {thickness} % of chord. For Reynolds numbers of {reynolds} and above.': '{use}. Dicke {thickness} % der Profiltiefe. Für Reynolds-Zahlen ab {reynolds}.',
 
   // Airfoil preview dialog
@@ -148,8 +149,8 @@ export default {
   'Closed trailing edge': 'Geschlossene Endleiste',
   Library: 'Bibliothek',
   'More airfoils (external sites)': 'Weitere Profile (externe Seiten)',
-  'These collections allow personal use but not redistribution in this app. Download a file there and load it with Upload; the attribution is filled in for HS and MH airfoils.':
-    'Diese Sammlungen erlauben die private Nutzung, aber keine Weitergabe in dieser App. Dort eine Datei herunterladen und mit „Hochladen“ laden; die Quellenangabe wird für HS- und MH-Profile eingetragen.',
+  'These collections allow personal use; the app bundles the MH airfoils with the written permission of their designer and no files of the other two. Download a file there and load it with Upload; the attribution is filled in for HS and MH airfoils.':
+    'Diese Sammlungen erlauben die private Nutzung; die App liefert die MH-Profile mit schriftlicher Erlaubnis ihres Konstrukteurs mit und keine Dateien der beiden anderen. Dort eine Datei herunterladen und mit „Hochladen“ laden; die Quellenangabe wird für HS- und MH-Profile eingetragen.',
   '{category} · {use} · generated': '{category} · {use} · erzeugt',
 
   // Export dialog

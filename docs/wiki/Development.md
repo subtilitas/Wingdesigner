@@ -323,7 +323,7 @@ Rules for texts:
 - Data numbers (attributes, file contents) stay unformatted.
 - Not translated: file contents (STEP, STL, 3MF, JSON, `.dat`), the project JSON, airfoil names, attributions and licenses, names of external sources, file names, cascading style sheets (CSS) classes, `data-*` values, option values and issue codes such as `many-points`. The text of an exception inside `Internal error: {message}` (thrown in `src/geom/nurbs.js` and `src/geom/linalg.js`) stays English; the frame around it is translated. The 3MF file declares `xml:lang="en-US"` in both languages.
 - Code never compares a translated text. It compares a code or a recorded field (`issue.code`, `build.sizeWarning`), because the same message reads differently in German. The one text test, `/zero pivot/` in `src/geom/wing.js`, reads an exception from `src/geom/linalg.js` that is never translated.
-- The descriptive texts of the library are data: `category` and `use` of `NACA_PRESETS` in `src/airfoil/library.js` and of the entries in `public/airfoils/index.json`, and the `note` of `EXTERNAL_SOURCES`. `libraryText()` in `src/ui/airfoils.js` shows them. A new text needs a `case` there with its own `tr()` literal and a German entry in `src/i18n/de/panels.js`. An unknown text is shown as it is.
+- The descriptive texts of the library are data: `category` and `use` of `NACA_PRESETS` in `src/airfoil/library.js` and of the entries in `public/airfoils/index.json`, and the `note` of `EXTERNAL_SOURCES`. `libraryText()` in `src/ui/airfoils.js` shows them. A new text needs a `case` there with its own `tr()` literal and a German entry in `src/i18n/de/panels.js`. A use text of the form `<application>. Thickness <t> % of chord.`, optionally followed by ` For Reynolds numbers of <n> and above.` (the MH entries), needs a `case` for the application only; two templates translate the rest and write the numbers in the language of the interface. An unknown text is shown as it is; an unknown application in that form stays English inside the translated template.
 - The **Documentation (wiki)** link in the **Help** dialog opens the wiki home in English and the page `Benutzerhandbuch` in German.
 - `npm run i18n:check` (`scripts/check-i18n.mjs`, job `test` of `ci.yml`, also run by `test/i18n.test.js`) reads every `tr()` call in `src/` outside `src/i18n/`. It exits with code 1 when a key has no German entry, a German entry is unused, key and text entry differ in their placeholders, two areas translate one key differently, an entry is neither text nor function, or a `tr()` call does not start with a string literal. It does not compare the placeholders of function entries.
 - `changeLanguage()` in `src/main.js` switches without a reload. It stores the choice, sets the `lang` attribute of the `html` element, relabels the shell and removes the notice, unless the notice reports an error. When the build holds an error or a warning other than the size warning, the wing is built again, because those messages come from the build. Otherwise the wing stays and the size warning is written again. In both cases the panels are drawn again, the **Checks** tab among them. The project, the selection and the undo history stay.
@@ -430,7 +430,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 662 tests in 24 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 668 tests in 25 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -459,10 +459,10 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Index | `airfoils` is an array |
 | Required fields | `id` (unique), `name`, `file`, `category`, `source.author`, `source.license`, `source.url`, `source.terms` |
 | License | `source.license` is one of `public-domain`, `CC0-1.0`, `Unlicense`, `CC-BY-4.0`, `CC-BY-3.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`, or `written-permission` |
-| Written permission | `written-permission` only for a designer in `PERMISSIONS` of `scripts/check-airfoils.mjs` (Martin Hepperle): `source.author` starts with the name, `source.url` lies on the recorded site (`mh-aerotools.de`), `NOTICE.md` has the recorded section (`## MH airfoils`) |
-| Source host | `source.url` and `source.terms` are Uniform Resource Locators (URLs); host is not `aerodesign.de` or `mh-aerotools.de` or a subdomain of these (terms: personal use only), except the `source.url` of an entry with a written permission for that host |
+| Written permission | `written-permission` only for a designer in `PERMISSIONS` of `scripts/check-airfoils.mjs` (Martin Hepperle): `source.author` equals the recorded text `Martin Hepperle, www.mh-aerotools.de`, `source.url` lies on the recorded site (`mh-aerotools.de`), `NOTICE.md` has the recorded section (`## MH airfoils`) |
+| Source host | `source.url` and `source.terms` are https Uniform Resource Locators (URLs); host is not `aerodesign.de` or `mh-aerotools.de` or a subdomain of these (terms: personal use only), except the `source.url` of an entry with a written permission for that host |
 | File | `public/airfoils/<file>` exists and imports without errors |
-| Notice | When at least 1 entry exists: `public/airfoils/NOTICE.md` exists and contains the `name` of every entry |
+| Notice | When at least 1 entry exists: `public/airfoils/NOTICE.md` exists, and its Files table has a row that starts with the name, file and license identifier of every entry |
 | No unlisted file | Every file in `public/airfoils/` except `index.json` and `NOTICE.md` has an entry |
 | NACA presets | All 17 NACA presets pass `checkAirfoil` |
 
@@ -477,7 +477,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-201 tests in 15 spec files, 402 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+202 tests in 15 spec files, 404 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 

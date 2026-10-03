@@ -270,7 +270,7 @@ test.describe('export dialog', () => {
     await expect(status(page)).toHaveText(VALID_RE);
 
     // STL, right half: one closed shell that ends at y = 600 in the 1.2 mm tip profile (240 / 200),
-    // square to the 1.5° panel: its 0.14 mm height reaches 0.004 mm to either side of y = 600.
+    // square to the 1.5° panel: its 0.13 mm height reaches 0.004 mm to either side of y = 600.
     const stl = parseStl((await exportFile(page, 'stl', { half: 'right' })).bytes);
     expectClosed(stlShell(stl.tris), 'pointed right half');
     expect(signedVolume(stl.tris)).toBeGreaterThan(0);
@@ -279,8 +279,8 @@ test.describe('export dialog', () => {
     const extent = (k) => Math.max(...tip.map((p) => p[k])) - Math.min(...tip.map((p) => p[k]));
     expect(tip.length).toBeGreaterThan(50);
     expect(Math.abs(extent(0) - 1.2), `tip profile length ${extent(0)} mm`).toBeLessThanOrEqual(0.01);
-    // NACA 2410 at 1.2 mm chord plus the twist of -1°: 0.143 mm high.
-    expect(Math.abs(extent(2) - 0.143), `tip profile height ${extent(2)} mm`).toBeLessThanOrEqual(0.005);
+    // MH 32 at 1.2 mm chord plus the twist of -1°: 0.127 mm high.
+    expect(Math.abs(extent(2) - 0.127), `tip profile height ${extent(2)} mm`).toBeLessThanOrEqual(0.005);
 
     // STEP, both halves: one closed solid per half with upper, lower, trailing-edge, root and tip face.
     const step = stepSummary((await exportFile(page, 'step', { half: 'halves' })).bytes.toString('latin1'));

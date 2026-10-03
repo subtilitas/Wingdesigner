@@ -303,16 +303,16 @@ Ids made by the app:
 7. Id already used: append `-2`, `-3` ….
 
 - Same name and identical points as an airfoil in the project: the existing id is used; no new entry.
-- Wizard and sample wing: `naca<code>`.
+- Wizard: `naca<code>` for a NACA designation, the id of the Library entry for a Library name (e.g. `mh-32`). Sample wing: `mh-32`.
 - Generated NACA section (`source.code` set) with the same code and the same `source.closedTE` as a project airfoil whose stored points are that section (generator points within 1e-9, or points identical to the added ones): the existing id is used, whatever the name; no new entry. Stored points that differ from both (e.g. edited in an opened file): new entry.
 - Project with 10,000 airfoils (`LIMITS.maxAirfoils`): no new entry. The **Airfoils** tab refuses the next airfoil before the preview with the message `The project holds 10,000 airfoils, the limit; "Remove unused" frees places.`
 - Airfoil that would take the points of all airfoils above 1,000,000 (`LIMITS.maxAirfoilPoints`): no new entry. Message: `With this airfoil the project airfoils hold <n> points; the limit is 1,000,000. "Remove unused" frees points.`
 
 | `source.kind` | Further keys |
 | --- | --- |
-| `naca` | NACA generator, library, wizard: `license`, `url`, `code` (designation, e.g. `"2412"`), `closedTE` (`true` or `false`). Sample wing: `note`. |
+| `naca` | NACA generator, library, wizard: `license`, `url`, `code` (designation, e.g. `"2412"`), `closedTE` (`true` or `false`). A sample wing saved by Wingdesigner 0.6.0 or older holds `note` in place of `code` and `closedTE`. |
 | `upload` | `file` (files only), `attribution` |
-| `library` | `id`, `attribution`, `license`, `url`, `terms`, copied from the entry in the bundled library index `public/airfoils/index.json` (`attribution`: `source.author` of the entry, as shown and editable in the preview field **Source / attribution**). Index: 6 files. `public-domain` (in the United States; status outside the United States not established): Clark Y, NACA 8-H-12, NACA M-6, RAF 34, USA 35B. `CC-BY-4.0`: S9104. Source, legal basis, conditions and attribution text per file: `public/airfoils/NOTICE.md`. |
+| `library` | `id`, `attribution`, `license`, `url`, `terms`, copied from the entry in the bundled library index `public/airfoils/index.json` (`attribution`: `source.author` of the entry, as shown and editable in the preview field **Source / attribution**). Index: 62 files. `public-domain` (in the United States; status outside the United States not established): Clark Y, NACA 8-H-12, NACA M-6, RAF 34, USA 35B. `CC-BY-4.0`: S9104. `written-permission` (written permission of the designer to include them in Wingdesigner): the 56 MH airfoils, MH 1 to MH 126. Source, legal basis, conditions and attribution text per file: `public/airfoils/NOTICE.md`. |
 | `xflr5` | Airfoil of an imported XFLR5 project (`.xfl`): `file` (name of the XFLR5 file), `note`, `attribution` (only for some names). Section "XFLR5 import", subsection "Result of the import". |
 
 ### `sections[]`
@@ -479,15 +479,15 @@ Sample wing `Sport wing 1500`, shortened; `"..."` marks omitted entries:
  "units": "mm",
  "coordinateSystem": "x chordwise towards the trailing edge, y spanwise towards the right tip, z up; mirror plane y = 0",
  "airfoils": [
-  { "id": "naca2412", "name": "NACA 2412",
-    "points": [[1.00008381395326, 0.001257209298899305], "..."],
-    "source": { "kind": "naca", "note": "Generated from the NACA 4/5-digit equations (NACA Report 824)." } },
-  "..."
+  { "id": "mh-32", "name": "MH 32",
+    "points": [[1, 0.0002], "..."],
+    "source": { "kind": "library", "id": "mh-32", "attribution": "Martin Hepperle, www.mh-aerotools.de", "license": "written-permission",
+                "url": "https://www.mh-aerotools.de/airfoils/mh32koo.htm", "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils" } }
  ],
  "sections": [
-  { "id": "root", "twist": 0, "z": 0, "airfoil": "naca2412", "x": 0, "y": 0, "chord": 240 },
-  { "id": "mid", "twist": -0.8, "z": 12, "airfoil": "naca2412", "x": 12, "y": 450, "chord": 205 },
-  { "id": "tip", "twist": -2.5, "z": 33, "airfoil": "naca2410", "x": 55, "y": 750, "chord": 130 }
+  { "id": "root", "twist": 0, "z": 0, "airfoil": "mh-32", "x": 0, "y": 0, "chord": 240 },
+  { "id": "mid", "twist": -0.8, "z": 12, "airfoil": "mh-32", "x": 12, "y": 450, "chord": 205 },
+  { "id": "tip", "twist": -2.5, "z": 33, "airfoil": "mh-32", "x": 55, "y": 750, "chord": 130 }
  ],
  "guides": {
   "nose": { "enabled": false, "mode": "fit", "degree": 3, "points": [[0, 0], [12, 450], [55, 750]] },
@@ -502,10 +502,9 @@ Sample wing `Sport wing 1500`, shortened; `"..."` marks omitted entries:
  },
  "derived": {
   "profiles": [
-   { "airfoil": "naca2412", "name": "NACA 2412",
-     "curve": { "degree": 3, "knots": [0, 0, 0, 0, 0.00328475901275, "..."], "controlPoints": [[1, 0.00125710393605], "..."] },
-     "leadingEdgeParameter": 0.500163244987 },
-   "..."
+   { "airfoil": "mh-32", "name": "MH 32",
+     "curve": { "degree": 3, "knots": [0, 0, 0, 0, 0.00613777646112, "..."], "controlPoints": [[1, 0.0002], "..."] },
+     "leadingEdgeParameter": 0.509495201395 }
   ],
   "guides": { "nose": null, "end": null },
   "stations": [
@@ -516,15 +515,15 @@ Sample wing `Sport wing 1500`, shortened; `"..."` marks omitted entries:
   ],
   "surface": {
    "degreeU": 3, "degreeV": 3,
-   "knotsU": [0, 0, 0, 0, 0.00508113999608, "..."], "knotsV": [0, 0, 0, 0, 0.0986330253937, "...", 0.6, 0.6, 0.6, "...", 1, 1, 1, 1],
-   "controlPoints": [[[240.020113789, 0, -0.124002411422], "..."], "..."],
-   "leadingEdgeU": 0.501717967263, "closedTrailingEdge": false
+   "knotsU": [0, 0, 0, 0, 0.00507549012311, "..."], "knotsV": [0, 0, 0, 0, 0.0986330253937, "...", 0.6, 0.6, 0.6, "...", 1, 1, 1, 1],
+   "controlPoints": [[[240.0, 0.0, 0.242706324938], "..."], "..."],
+   "leadingEdgeU": 0.502605618365, "closedTrailingEdge": false
   }
  }
 }
 ```
 
-Counts in this file: 161 points per airfoil, 165 profile knots, 17 stations (8 per panel: both panels lie between mitred planes of different roll), 121 × 17 surface control points, 125 `knotsU`, 21 `knotsV`.
+Counts in this file: 1 airfoil with 117 points, 121 profile knots, 17 stations (8 per panel: both panels lie between mitred planes of different roll), 121 × 17 surface control points, 125 `knotsU`, 21 `knotsV`.
 
 ### Browser copy (`localStorage`)
 
@@ -707,7 +706,7 @@ settings.partPivot = { x: k·LE_x, y: 0, z: k·LE_z }      the wing origin
 | an airfoil of the `.xfl` project | measured on its coordinates |
 | an uploaded `.dat` file (XFLR5 reads a `.dat` file as it is; the file is the one XFLR5 used) | measured on its coordinates |
 | an airfoil of the NACA generator | measured on the generated coordinates. XFLR5 draws the nose (0, 0) of its own NACA airfoils at the section point. The generator adds the thickness across the mean line, so the leading edge (the point of least x) of a cambered section lies above and slightly ahead of the nose: for the cambered presets 0.11 % of the chord (NACA 2410) to 0.68 % (NACA 23015), 0.16 % for NACA 2412. The frame puts the nose where XFLR5 draws it. Symmetric sections have no frame. NACA 2408 (l_y = 0.07 %, within `FRAME_TOLERANCE`) gets its frame without a report line. The shape of a cambered section still differs from XFLR5's own NACA airfoil, which adds the thickness vertically: at 250 mm chord by 0.28 mm (NACA 2412, 0.11 % of the chord) to 1.41 mm (NACA 23018, 0.56 %), near 1 to 3 % of the chord; the report does not name it. |
-| an airfoil of the current project generated from the NACA equations (`source.kind` `naca`: sections of the **NACA generator** and the NACA presets of **Library** in the **Airfoils** tab, of the wizard and of the sample wing), whose points are the generated section of its NACA code (`source.code`, or the name) as generated or as checked | the frame of the generated section of its NACA code, as for the generator: with such an airfoil in the project under the name, the file gives the same wing as with no project open. Outside `FRAME_LIMIT` it is used without a frame, with the warning of an upload. |
+| an airfoil of the current project generated from the NACA equations (`source.kind` `naca`: sections of the **NACA generator**, the NACA presets of **Library** in the **Airfoils** tab and NACA designations entered in the wizard), whose points are the generated section of its NACA code (`source.code`, or the name) as generated or as checked | the frame of the generated section of its NACA code, as for the generator: with such an airfoil in the project under the name, the file gives the same wing as with no project open. Outside `FRAME_LIMIT` it is used without a frame, with the warning of an upload. |
 | another airfoil of the current project (also NACA metadata with other points, e.g. in a project file edited by hand), a bundled library airfoil | none: the XFLR5 coordinates of the name are not known. The report says so for a library airfoil far off (0, 0) in its own coordinates and for a current-project airfoil of an XFLR5 import or an upload (section "Report"). |
 
 - The frame goes with the airfoil in use, not with the XFLR5 name. A library airfoil picked for a name of the `.xfl` keeps the values of steps 1 to 3. The file's Clark Y picked for another name moves the sections of that name.
@@ -1252,11 +1251,11 @@ Not tested: hot-wire cutting programs (Jedicut, GMFC, DevFoam and others) with t
 
 ## File sizes
 
-Measured on 2026-09-29 with **Both halves as separate bodies** and default resolution (60 chordwise
+Measured on 2026-10-03 with **Both halves as separate bodies** and default resolution (60 chordwise
 stations per surface). 1 KB = 1024 bytes. Triangle counts in parentheses.
 
 | Project | Sections | Spanwise stations | STEP | STL **Normal** | STL **Fine** | 3MF **Normal** | 3MF **Fine** | JSON |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Sample wing `Sport wing 1500` | 3 | 3 | 122 KB | 71 KB (1444) | 235 KB (4812) | 20 KB | 61 KB | 63 KB |
-| Wizard preset **Sport** | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 11 KB | 38 KB | 56 KB |
-| Wizard preset **Glider**, elliptic guides | 3 | 17 | 444 KB | 1158 KB (23708) | 4566 KB (93500) | 279 KB | 1099 KB | 175 KB |
+| Sample wing `Sport wing 1500` | 3 | 17 | 453 KB | 1158 KB (23708) | 4566 KB (93500) | 327 KB | 1289 KB | 150 KB |
+| Wizard preset **Sport** | 2 | 9 | 269 KB | 591 KB (12092) | 2306 KB (47228) | 168 KB | 648 KB | 87 KB |
+| Wizard preset **Glider**, elliptic guides | 3 | 17 | 453 KB | 1158 KB (23708) | 4566 KB (93500) | 326 KB | 1284 KB | 146 KB |

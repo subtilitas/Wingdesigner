@@ -53,6 +53,8 @@ describe('Airfoils tab', () => {
     expect(libraryText(plain)).toBe('Schnellflugmodelle, sehr geringer Widerstand. Dicke 8,0 % der Profiltiefe.');
     // An application that is no key stays English inside the German template.
     expect(libraryText('New use. Thickness 12.0 % of chord.')).toBe('New use. Dicke 12,0 % der Profiltiefe.');
+    // A Reynolds number that is not grouped in thousands is no use text of this form.
+    expect(libraryText('New use. Thickness 12.0 % of chord. For Reynolds numbers of , and above.')).toBe('New use. Thickness 12.0 % of chord. For Reynolds numbers of , and above.');
   });
 });
 

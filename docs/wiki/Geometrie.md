@@ -287,11 +287,12 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
   Vergleich: Der natürliche kubische Spline durch 250, 250, 200 und 150 mm Profiltiefe bei y = 0, 300,
   300,5 und 600 mm erreicht 6 018,68 mm bei y = 173,4 mm.
 - **Glatt** gegen den natürlichen kubischen Spline durch dieselben Schnitte, größter Abstand der
-  Stationspunkte beider Flächen (**Stationen je Feld** 8): Vorlagen des Assistenten mit 2 Schnitten
-  (**Trainer**, **Sportmodell** (Sport), **Delta-Jet** (Delta jet), **Brettnurflügel** (Plank),
-  **Leitwerk** (Tail surface)) 0 mm (Hutfunktionen); **Segelflugmodell** (Glider) 0,19 mm,
-  **Doppeldelta** (Double delta) 0,19 mm und **Pfeilnurflügel** (Swept flying wing) 0,56 mm (das
-  Profil des Wurzelfeldes, von der Wurzel bis Schnitt 2 gleich); **Hochleistungssegler** (Sailplane)
+  Stationspunkte beider Flächen (**Stationen je Feld** 8, Schnittebenen **Senkrecht**): Vorlagen des
+  Assistenten mit 2 Schnitten (**Trainer**, **Sportmodell** (Sport), **Delta-Jet** (Delta jet),
+  **Brettnurflügel** (Plank), **Leitwerk** (Tail surface)) 0 mm (Hutfunktionen); **Segelflugmodell**
+  (Glider) und **Doppeldelta** (Double delta) 0 mm (ein Profil; **Segelflugmodell** mit Ebenen
+  **Auf Gehrung** 0,07 mm); **Pfeilnurflügel** (Swept flying wing) 0,07 mm (das Profil des
+  Wurzelfeldes, von der Wurzel bis Schnitt 2 gleich); **Hochleistungssegler** (Sailplane)
   2,55 mm (Profiltiefe des Wurzelfeldes: Der Spline erreicht 210,85 mm über der Wurzeltiefe von
   210 mm, die Interpolation bleibt höchstens bei ihr); **Batwing** 14,53 mm (Profiltiefe bei
   y = 267 mm: Der Spline erreicht 614,49 mm zwischen Schnitten mit 581,9 und 606,9 mm).
@@ -322,8 +323,8 @@ In einem Feld mit **Linear** zwischen Gehrungsebenen trägt jede Zwischenstation
 in ihrer eigenen Ebene (Neigung und Dickenstreckung aus Abschnitt 3.8), wie mit einer Leitkurve. Mit
 einer Station je Feld wäre die Fläche die Regelfläche von **Gerade Felder**. Die beiden unterscheiden
 sich, wo sich die Profiltiefe zusammen mit dem Profil oder der Schränkung ändert: Beim Entwurfstyp
-**Sportmodell** (NACA 2412 bei 240 mm, NACA 2410 bei 144 mm, −1° Schränkung am Rand) liegt die
-Regelfläche bis zu 0,343 mm neben der Fläche bei **Linear**, und das Volumen unterscheidet sich um 1,4 %.
+**Sportmodell** (MH 32 bei 240 mm und bei 144 mm, −1° Schränkung am Rand) liegt die Regelfläche bis
+zu 0,314 mm neben der Fläche bei **Linear**, und das Volumen unterscheidet sich um 0,09 %.
 Derzeitige Einschränkung: Jeder Unterschied der Neigung schaltet ein Feld bei **Linear** von einer
 Station auf K Stationen um. NACA 2412 bei 300 mm Profiltiefe bis NACA 0009 bei 100 mm Profiltiefe, −4°
 Schränkung, 600 mm langes Feld: Eine V-Form von 1e-6° statt 0° verschiebt die Fläche um bis zu 0,17 mm
@@ -624,7 +625,7 @@ Drehpunkt und die Endleiste gemeinsam haben. Ihre Aufwärtsrichtung ist (0, −s
   atan(tan θ cos φ): 1,64° bei 2° Schränkung und 35°.
 - Die Wurzelebene ist in beiden Modi senkrecht, daher treffen sich die beiden Hälften in der Ebene y = 0.
 - **Glatt** verschiebt einen Flügel mit V-Form gegenüber **Linear**, wo die kubische Kurve die
-  Bezugslinie biegt; die Vorlagen des Assistenten mit **Glatt** verschieben sich um bis zu 1,9 mm
+  Bezugslinie biegt; die Vorlagen des Assistenten mit **Glatt** verschieben sich um bis zu 1,8 mm
   gegenüber senkrechten Ebenen (Hochleistungssegler, 10° V-Form außen). An der Wurzel bleibt die Ebene senkrecht,
   während die kubische Kurve sie bis zu 3-mal so steil wie das erste Feld verlassen kann (Abschnitt
   3.1); die Prüfung „Schnittebenen, glatte Dickenstreckung“ (Abschnitt 3.6) stoppt dort eine
@@ -1124,15 +1125,15 @@ Abweichung = max über s und u des Abstands von R_s(u) zu W_s     (mm)
 | Flügel | Abweichung |
 | --- | --- |
 | Gerade Felder (**Gerade Felder** (Straight panels) oder **Linear** mit Stationen nur an den Profilschnitten) | 0 bis auf Rundungsfehler (unter 1e-9 mm bei den getesteten Flügeln) |
-| Entwurfstyp **Sportmodell** (Sport): Profiltiefe 240 bis 144 mm, NACA 2412 bis 2410, Schränkung 0 bis −1°, **Linear**, **Auf Gehrung**: 1 Kern, y = 0 bis 600 mm | 0,341 mm |
-| ebenso, 2 Kerne, y = 0 bis 300 und 300 bis 600 mm | 0,085 mm |
-| Entwurfstyp **Segelflugmodell** (Glider) (elliptisch, Leitkurven): 2 Kerne, y = 0 bis 500 und 500 bis 1000 mm | 1,348 und 2,489 mm |
-| ebenso, auf 0,2 mm geteilt | 10 Kerne, höchstens 0,156 mm |
+| Entwurfstyp **Sportmodell** (Sport): Profiltiefe 240 bis 144 mm, MH 32, Schränkung 0 bis −1°, **Linear**, **Auf Gehrung**: 1 Kern, y = 0 bis 600 mm | 0,314 mm |
+| ebenso, 2 Kerne, y = 0 bis 300 und 300 bis 600 mm | 0,079 mm |
+| Entwurfstyp **Segelflugmodell** (Glider) (elliptisch, Leitkurven): 2 Kerne, y = 0 bis 500 und 500 bis 1000 mm | 1,210 und 2,212 mm |
+| ebenso, auf 0,2 mm geteilt | 10 Kerne, höchstens 0,145 mm |
 
 - Ein Feld mit **Linear** zwischen Schnittebenen **Auf Gehrung** verschiedener Neigung (mit V-Form
   mindestens das Wurzelfeld) erhält Stationen zwischen seinen Profilschnitten (Abschnitt 3.2). Seine
   Fläche folgt dann c(y) · Profil(y): Beide Faktoren sind linear in y, ihr Produkt nicht. Der Kern als
-  Regelfläche verfehlt sie beim **Sportmodell** ohne Schränkung um bis zu 0,25 mm. Hat die Fläche
+  Regelfläche verfehlt sie, wo sich das Profil entlang des Feldes ändert: um bis zu 0,25 mm beim Grundriss des **Sportmodells** ohne Schränkung mit NACA 2412 an der Wurzel und NACA 2410 am Rand; das **Sportmodell** ohne Schränkung (MH 32 an beiden Enden) weicht 0 mm ab. Hat die Fläche
   Stationen nur an den Profilschnitten, ergeben Zuspitzung und Schränkung keine Abweichung: Das
   **Sportmodell** mit Ebenen **Senkrecht** weicht 0 mm ab.
 - Die Abweichung fällt mit dem Quadrat der Segmentlänge: Ein halbierter Kern weicht etwa 1/4 so weit ab.

@@ -176,7 +176,7 @@ export default {
   'Panel {n} ends at x = {x} mm, z = {z} mm, beyond ±{max} mm.': 'Feld {n} endet bei x = {x} mm, z = {z} mm, außerhalb von ±{max} mm.',
   'Panel {n}: the outer chord is below {min} mm.': 'Feld {n}: die äußere Profiltiefe liegt unter {min} mm.',
   'An elliptic planform needs taper < 1.': 'Ein elliptischer Grundriss braucht eine Zuspitzung < 1.',
-  '{param} must be a NACA 4- or 5-digit designation.': '{param} muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern sein.',
+  '{param} must be a NACA 4- or 5-digit designation or the name of a Library airfoil, e.g. MH 45.': '{param} muss eine NACA-Bezeichnung mit 4 oder 5 Ziffern oder der Name eines Profils der Bibliothek sein, z. B. MH 45.',
   "This project of format version 1 may come from the XFLR5 import: a tilt angle of the wing may be folded into the section values, which is exact for vertical section planes only. With Settings > Section planes Mitred the part can lie up to 0.75 · chord · sin(tilt angle) · sin(roll) off XFLR5's. Importing the XFLR5 file again gives the rigid tilt (Settings > Part tilt).":
     'Dieses Projekt im Format Version 1 kann aus dem XFLR5-Import stammen: Ein Einstellwinkel des Flügels kann in die Schnittwerte eingerechnet sein, was nur für senkrechte Schnittebenen exakt ist. Mit Einstellungen > Schnittebenen Auf Gehrung kann das Teil bis zu 0,75 · Profiltiefe · sin(Einstellwinkel) · sin(Neigung) neben dem von XFLR5 liegen. Ein erneuter Import der XFLR5-Datei ergibt den starren Einstellwinkel (Einstellungen > Einstellwinkel des Teils).',
 };

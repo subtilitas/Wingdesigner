@@ -23,12 +23,12 @@ test.describe('foam-cutting wizard', () => {
     const dlg = await openFoam(page);
     await expect(dlg.getByRole('heading', { name: 'Foam cutting' })).toBeVisible();
     // 600 mm half span, longest core 800 mm: one core. Linear blending between mitred planes of different roll
-    // puts stations between the sections (chord and airfoil change together, and the twist): 0.341 mm.
+    // puts stations between the sections (the chord changes together with the twist): 0.314 mm.
     await expect(rowsOf(dlg)).toHaveCount(1);
     await expect(cutFields(dlg)).toHaveCount(0);
-    await expect(summaryOf(dlg)).toHaveText(/^1 segment per half, deviation 0\.341 mm\. 1 segment deviates more than 0\.20 mm from the wing; Split segments over the limit adds cuts\. The PDF templates take \d+ pages?\.$/);
+    await expect(summaryOf(dlg)).toHaveText(/^1 segment per half, deviation 0\.314 mm\. 1 segment deviates more than 0\.20 mm from the wing; Split segments over the limit adds cuts\. The PDF templates take \d+ pages?\.$/);
     await expect(summaryOf(dlg)).toHaveClass(/sev-warning/);
-    await expect(rowsOf(dlg).first().locator('td')).toHaveText(['1', '0.0 – 600.0', /^60\d\.\d$/, /^\d+ × \d+$/, '240.0 / 144.0', '0.341', /^1\.5°, \d\.\d mm, upper$/, '–']);
+    await expect(rowsOf(dlg).first().locator('td')).toHaveText(['1', '0.0 – 600.0', /^60\d\.\d$/, /^\d+ × \d+$/, '240.0 / 144.0', '0.314', /^1\.5°, \d\.\d mm, upper$/, '–']);
 
     // Splitting halves the core: each half deviates about a quarter as much.
     await dlg.getByRole('button', { name: 'Split segments over the limit' }).click();
@@ -162,7 +162,7 @@ test.describe('foam-cutting wizard', () => {
     await frames(page);
     const dlg = await openFoam(page, 'Schaum');
     await expect(dlg.getByRole('heading', { name: 'Schaumschnitt' })).toBeVisible();
-    await expect(summaryOf(dlg)).toHaveText(/^1 Segment je Hälfte, Abweichung 0,341 mm\. 1 Segment weicht mehr als 0,20 mm vom Flügel ab;/);
+    await expect(summaryOf(dlg)).toHaveText(/^1 Segment je Hälfte, Abweichung 0,314 mm\. 1 Segment weicht mehr als 0,20 mm vom Flügel ab;/);
     await expect(rowsOf(dlg).first().locator('td').nth(6)).toHaveText(/^1,5°, \d,\d mm, oben$/);
     const zip = await downloadOf(page, () => dlg.getByRole('button', { name: 'Profile (.dat, ZIP)' }).click());
     expect(strFromU8(unzipSync(new Uint8Array(zip.bytes))['README.txt'])).toMatch(/^Schaumkerne von Sport: 1 Segment je Flügelhälfte\./);

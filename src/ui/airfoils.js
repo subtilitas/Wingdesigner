@@ -170,7 +170,7 @@ export function libraryText(text) {
       // Use text of an MH entry: "<application>. Thickness <t> % of chord.", optionally followed by
       // " For Reynolds numbers of <n> and above."; the application is a case above, the numbers follow
       // the language.
-      const m = /^(.+)\. Thickness (\d+\.\d) % of chord\.(?: For Reynolds numbers of ([\d,]+) and above\.)?$/.exec(text);
+      const m = /^(.+)\. Thickness (\d+\.\d) % of chord\.(?: For Reynolds numbers of (\d{1,3}(?:,\d{3})*) and above\.)?$/.exec(text);
       if (!m) return text;
       const params = { use: libraryText(m[1]), thickness: fixed(Number(m[2]), 1) };
       if (!m[3]) return tr('{use}. Thickness {thickness} % of chord.', params);
@@ -638,7 +638,7 @@ export class AirfoilsPanel {
         'section',
         {},
         h('h3', {}, tr('More airfoils (external sites)')),
-        h('p', { class: 'small muted' }, tr('These collections allow personal use but not redistribution in this app. Download a file there and load it with Upload; the attribution is filled in for HS and MH airfoils.')),
+        h('p', { class: 'small muted' }, tr('These collections allow personal use; the app bundles the MH airfoils with the written permission of their designer and no files of the other two. Download a file there and load it with Upload; the attribution is filled in for HS and MH airfoils.')),
         h(
           'ul',
           { class: 'links' },
@@ -676,7 +676,7 @@ export class AirfoilsPanel {
         // The author links to the source page of the file.
         detail: [
           `${libraryText(a.category ?? '')}${a.use ? ` · ${libraryText(a.use)}` : ''}`,
-          a.source?.author ? [' · ', a.source.url ? h('a', { href: a.source.url, target: '_blank', rel: 'noopener' }, a.source.author) : a.source.author] : null,
+          a.source?.author ? [' · ', a.source.url ? h('a', { href: a.source.url, target: '_blank', rel: 'noopener', title: tr('Source of {name} (opens in a new tab)', { name: a.name }) }, a.source.author) : a.source.author] : null,
           a.source?.license ? ` · ${a.source.license}` : null,
         ],
         points: null,

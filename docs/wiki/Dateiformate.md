@@ -303,16 +303,16 @@ Von der App erzeugte IDs:
 7. ID schon vergeben: `-2`, `-3` … anhängen.
 
 - Gleicher Name und identische Punkte wie ein Profil im Projekt: Die vorhandene ID wird verwendet; kein neuer Eintrag.
-- Assistent und Beispielflügel: `naca<code>`.
+- Assistent: `naca<code>` für eine NACA-Bezeichnung, die id des Bibliothekseintrags für einen Namen aus der Bibliothek (z. B. `mh-32`). Beispielflügel: `mh-32`.
 - Erzeugtes NACA-Profil (`source.code` gesetzt) mit derselben Bezeichnung und demselben `source.closedTE` wie ein Profil im Projekt, dessen gespeicherte Punkte dieses Profil sind (Punkte des Generators auf 1e-9 genau, oder dieselben Punkte wie beim hinzugefügten Profil): Die vorhandene ID wird verwendet, unabhängig vom Namen; kein neuer Eintrag. Gespeicherte Punkte, die von beiden abweichen (z. B. in einer geöffneten Datei bearbeitet): neuer Eintrag.
 - Projekt mit 10 000 Profilen (`LIMITS.maxAirfoils`): kein neuer Eintrag. Die Registerkarte **Profile** (Airfoils) lehnt das nächste Profil vor der Vorschau ab, mit der Meldung `Das Projekt enthält 10.000 Profile und hat damit die Grenze erreicht; „Unbenutzte entfernen“ schafft Platz.`
 - Profil, mit dem die Punkte aller Profile 1 000 000 überschreiten würden (`LIMITS.maxAirfoilPoints`): kein neuer Eintrag. Meldung: `Mit diesem Profil enthalten die Projektprofile <n> Punkte; die Grenze liegt bei 1.000.000. „Unbenutzte entfernen“ gibt Punkte frei.`
 
 | `source.kind` | Weitere Schlüssel |
 | --- | --- |
-| `naca` | NACA-Generator, Bibliothek, Assistent: `license`, `url`, `code` (Bezeichnung, z. B. `"2412"`), `closedTE` (`true` oder `false`). Beispielflügel: `note`. |
+| `naca` | NACA-Generator, Bibliothek, Assistent: `license`, `url`, `code` (Bezeichnung, z. B. `"2412"`), `closedTE` (`true` oder `false`). Ein von Wingdesigner 0.6.0 oder älter gespeicherter Beispielflügel enthält `note` anstelle von `code` und `closedTE`. |
 | `upload` | `file` (nur bei Dateien), `attribution` |
-| `library` | `id`, `attribution`, `license`, `url`, `terms`, übernommen aus dem Eintrag im mitgelieferten Bibliotheksindex `public/airfoils/index.json` (`attribution`: `source.author` des Eintrags, angezeigt und änderbar im Feld **Quelle / Urheber** (Source / attribution) der Vorschau). Index: 6 Dateien. `public-domain` (in den Vereinigten Staaten; Status außerhalb der Vereinigten Staaten nicht geklärt): Clark Y, NACA 8-H-12, NACA M-6, RAF 34, USA 35B. `CC-BY-4.0`: S9104. Herkunft, Rechtsgrundlage, Bedingungen und Quellenangabe je Datei: `public/airfoils/NOTICE.md`. |
+| `library` | `id`, `attribution`, `license`, `url`, `terms`, übernommen aus dem Eintrag im mitgelieferten Bibliotheksindex `public/airfoils/index.json` (`attribution`: `source.author` des Eintrags, angezeigt und änderbar im Feld **Quelle / Urheber** (Source / attribution) der Vorschau). Index: 62 Dateien. `public-domain` (in den Vereinigten Staaten; Status außerhalb der Vereinigten Staaten nicht geklärt): Clark Y, NACA 8-H-12, NACA M-6, RAF 34, USA 35B. `CC-BY-4.0`: S9104. `written-permission` (schriftliche Erlaubnis des Konstrukteurs, sie in Wingdesigner aufzunehmen): die 56 MH-Profile, MH 1 bis MH 126. Herkunft, Rechtsgrundlage, Bedingungen und Quellenangabe je Datei: `public/airfoils/NOTICE.md`. |
 | `xflr5` | Profil eines importierten XFLR5-Projekts (`.xfl`): `file` (Name der XFLR5-Datei), `note`, `attribution` (nur bei manchen Namen). Abschnitt „XFLR5-Import“, Unterabschnitt „Ergebnis des Imports“. |
 
 ### `sections[]`
@@ -479,15 +479,15 @@ Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 15
  "units": "mm",
  "coordinateSystem": "x chordwise towards the trailing edge, y spanwise towards the right tip, z up; mirror plane y = 0",
  "airfoils": [
-  { "id": "naca2412", "name": "NACA 2412",
-    "points": [[1.00008381395326, 0.001257209298899305], "..."],
-    "source": { "kind": "naca", "note": "Generated from the NACA 4/5-digit equations (NACA Report 824)." } },
-  "..."
+  { "id": "mh-32", "name": "MH 32",
+    "points": [[1, 0.0002], "..."],
+    "source": { "kind": "library", "id": "mh-32", "attribution": "Martin Hepperle, www.mh-aerotools.de", "license": "written-permission",
+                "url": "https://www.mh-aerotools.de/airfoils/mh32koo.htm", "terms": "https://github.com/subtilitas/Wingdesigner/blob/main/public/airfoils/NOTICE.md#mh-airfoils" } }
  ],
  "sections": [
-  { "id": "root", "twist": 0, "z": 0, "airfoil": "naca2412", "x": 0, "y": 0, "chord": 240 },
-  { "id": "mid", "twist": -0.8, "z": 12, "airfoil": "naca2412", "x": 12, "y": 450, "chord": 205 },
-  { "id": "tip", "twist": -2.5, "z": 33, "airfoil": "naca2410", "x": 55, "y": 750, "chord": 130 }
+  { "id": "root", "twist": 0, "z": 0, "airfoil": "mh-32", "x": 0, "y": 0, "chord": 240 },
+  { "id": "mid", "twist": -0.8, "z": 12, "airfoil": "mh-32", "x": 12, "y": 450, "chord": 205 },
+  { "id": "tip", "twist": -2.5, "z": 33, "airfoil": "mh-32", "x": 55, "y": 750, "chord": 130 }
  ],
  "guides": {
   "nose": { "enabled": false, "mode": "fit", "degree": 3, "points": [[0, 0], [12, 450], [55, 750]] },
@@ -502,10 +502,9 @@ Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 15
  },
  "derived": {
   "profiles": [
-   { "airfoil": "naca2412", "name": "NACA 2412",
-     "curve": { "degree": 3, "knots": [0, 0, 0, 0, 0.00328475901275, "..."], "controlPoints": [[1, 0.00125710393605], "..."] },
-     "leadingEdgeParameter": 0.500163244987 },
-   "..."
+   { "airfoil": "mh-32", "name": "MH 32",
+     "curve": { "degree": 3, "knots": [0, 0, 0, 0, 0.00613777646112, "..."], "controlPoints": [[1, 0.0002], "..."] },
+     "leadingEdgeParameter": 0.509495201395 }
   ],
   "guides": { "nose": null, "end": null },
   "stations": [
@@ -516,15 +515,15 @@ Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 15
   ],
   "surface": {
    "degreeU": 3, "degreeV": 3,
-   "knotsU": [0, 0, 0, 0, 0.00508113999608, "..."], "knotsV": [0, 0, 0, 0, 0.0986330253937, "...", 0.6, 0.6, 0.6, "...", 1, 1, 1, 1],
-   "controlPoints": [[[240.020113789, 0, -0.124002411422], "..."], "..."],
-   "leadingEdgeU": 0.501717967263, "closedTrailingEdge": false
+   "knotsU": [0, 0, 0, 0, 0.00507549012311, "..."], "knotsV": [0, 0, 0, 0, 0.0986330253937, "...", 0.6, 0.6, 0.6, "...", 1, 1, 1, 1],
+   "controlPoints": [[[240.0, 0.0, 0.242706324938], "..."], "..."],
+   "leadingEdgeU": 0.502605618365, "closedTrailingEdge": false
   }
  }
 }
 ```
 
-Anzahlen in dieser Datei: 161 Punkte je Profil, 165 Knoten je Profilkurve, 17 Stationen (8 je Feld:
+Anzahlen in dieser Datei: 1 Profil mit 117 Punkten, 121 Knoten je Profilkurve, 17 Stationen (8 je Feld:
 Beide Felder liegen zwischen Gehrungsebenen verschiedener Neigung), 121 × 17 Kontrollpunkte der Fläche,
 125 Werte in `knotsU`, 21 Werte in `knotsV`. Die Texte in `coordinateSystem` und `source.note` sind feste
 englische Texte; die Sprache ändert sie nicht.
@@ -710,7 +709,7 @@ settings.partPivot = { x: k·LE_x, y: 0, z: k·LE_z }      der Ursprung des Flü
 | ein Profil des `.xfl`-Projekts | an seinen Koordinaten gemessen |
 | eine hochgeladene `.dat`-Datei (XFLR5 liest eine `.dat`-Datei, wie sie ist; die Datei ist die, die XFLR5 verwendet hat) | an ihren Koordinaten gemessen |
 | ein Profil des NACA-Generators | an den erzeugten Koordinaten gemessen. XFLR5 zeichnet den Nasenpunkt (0, 0) seiner eigenen NACA-Profile auf den Schnittpunkt. Der Generator addiert die Dicke quer zur Skelettlinie, sodass die Profilnase (der Punkt kleinsten x) eines gewölbten Schnitts oberhalb und etwas vor dem Nasenpunkt liegt: bei den gewölbten Vorlagen 0,11 % der Profiltiefe (NACA 2410) bis 0,68 % (NACA 23015), 0,16 % bei NACA 2412. Die Profillage setzt den Nasenpunkt dorthin, wo XFLR5 ihn zeichnet. Symmetrische Schnitte haben keine Profillage. NACA 2408 (l_y = 0,07 %, innerhalb von `FRAME_TOLERANCE`) erhält seine Profillage ohne Berichtszeile. Die Form eines gewölbten Schnitts weicht trotzdem vom eigenen NACA-Profil von XFLR5 ab, das die Dicke senkrecht addiert: bei 250 mm Profiltiefe um 0,28 mm (NACA 2412, 0,11 % der Profiltiefe) bis 1,41 mm (NACA 23018, 0,56 %), nahe 1 bis 3 % der Profiltiefe; der Bericht nennt das nicht. |
-| ein Profil des aktuellen Projekts, das aus den NACA-Gleichungen erzeugt ist (`source.kind` `naca`: Profile aus **Profile** > **NACA-Generator** (NACA generator), NACA-Vorlagen der **Bibliothek** (Library), Profile des Assistenten und des Beispielflügels), dessen Punkte der erzeugte Schnitt seiner NACA-Bezeichnung sind (`source.code` oder der Name), wie erzeugt oder wie geprüft | die Profillage des erzeugten Schnitts seiner NACA-Bezeichnung, wie beim Generator: Liegt ein solches Profil unter dem Namen im Projekt, ergibt die Datei denselben Flügel wie ohne geöffnetes Projekt. Außerhalb von `FRAME_LIMIT` wird es ohne Profillage verwendet, mit der Warnung eines Uploads. |
+| ein Profil des aktuellen Projekts, das aus den NACA-Gleichungen erzeugt ist (`source.kind` `naca`: Profile aus **Profile** > **NACA-Generator** (NACA generator), NACA-Vorlagen der **Bibliothek** (Library) und NACA-Bezeichnungen im Assistenten), dessen Punkte der erzeugte Schnitt seiner NACA-Bezeichnung sind (`source.code` oder der Name), wie erzeugt oder wie geprüft | die Profillage des erzeugten Schnitts seiner NACA-Bezeichnung, wie beim Generator: Liegt ein solches Profil unter dem Namen im Projekt, ergibt die Datei denselben Flügel wie ohne geöffnetes Projekt. Außerhalb von `FRAME_LIMIT` wird es ohne Profillage verwendet, mit der Warnung eines Uploads. |
 | ein anderes Profil des aktuellen Projekts (auch NACA-Angaben mit anderen Punkten, etwa in einer von Hand bearbeiteten Projektdatei), ein Profil der mitgelieferten Bibliothek | keine: Die XFLR5-Koordinaten des Namens sind nicht bekannt. Der Bericht nennt ein Bibliotheksprofil, das in seinen eigenen Koordinaten weit neben (0, 0) liegt, und ein Profil des aktuellen Projekts aus einem XFLR5-Import oder einem Upload (Abschnitt „Bericht“). |
 
 - Die Profillage gehört zum verwendeten Profil, nicht zum XFLR5-Namen. Ein Bibliotheksprofil, das für einen Namen der `.xfl` gewählt wird, behält die Werte der Schritte 1 bis 3. Das Clark Y der Datei, für einen anderen Namen gewählt, verschiebt die Schnitte dieses Namens.
@@ -1256,11 +1255,11 @@ Nicht getestet: Programme für den Heißdrahtschnitt (Jedicut, GMFC, DevFoam und
 
 ## Dateigrößen
 
-Gemessen am 29.09.2026 mit **Beide Hälften als getrennte Körper** (Both halves as separate bodies) und Vorgabeauflösung (60 Stationen je
+Gemessen am 03.10.2026 mit **Beide Hälften als getrennte Körper** (Both halves as separate bodies) und Vorgabeauflösung (60 Stationen je
 Profilseite in Profiltiefenrichtung). 1 KB = 1024 Byte. Dreieckszahlen in Klammern.
 
 | Projekt | Schnitte | Stationen in Spannweitenrichtung | STEP | STL **Normal** | STL **Fein** (Fine) | 3MF **Normal** | 3MF **Fein** | JSON |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Beispielflügel „Sportflügel 1500“ | 3 | 3 | 122 KB | 71 KB (1444) | 235 KB (4812) | 20 KB | 61 KB | 63 KB |
-| Entwurfstyp **Sportmodell** (Sport) im Assistenten | 2 | 2 | 99 KB | 47 KB (960) | 141 KB (2884) | 11 KB | 38 KB | 56 KB |
-| Entwurfstyp **Segelflugmodell** (Glider) im Assistenten, elliptische Leitkurven | 3 | 17 | 444 KB | 1158 KB (23708) | 4566 KB (93500) | 279 KB | 1099 KB | 175 KB |
+| Beispielflügel „Sportflügel 1500“ | 3 | 17 | 453 KB | 1158 KB (23708) | 4566 KB (93500) | 327 KB | 1289 KB | 150 KB |
+| Entwurfstyp **Sportmodell** (Sport) im Assistenten | 2 | 9 | 269 KB | 591 KB (12092) | 2306 KB (47228) | 168 KB | 648 KB | 87 KB |
+| Entwurfstyp **Segelflugmodell** (Glider) im Assistenten, elliptische Leitkurven | 3 | 17 | 453 KB | 1158 KB (23708) | 4566 KB (93500) | 326 KB | 1284 KB | 146 KB |

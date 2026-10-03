@@ -36,6 +36,12 @@ describe('airfoil library', () => {
       // The name line carries the attribution.
       expect(a.text.split('\n')[0]).toBe(`${a.name} Airfoil by Martin Hepperle, www.mh-aerotools.de`);
     }
+    // Every coordinate row of the page is in the file: the point count of the Source table of NOTICE.md.
+    const notice = readFileSync('public/airfoils/NOTICE.md', 'utf8');
+    for (const a of mh) {
+      const row = notice.match(new RegExp(`^\\| ${a.name} \\| \`${a.file}\` \\| <https://[^>]+> \\| (\\d+) \\|`, 'm'));
+      expect(Number(row?.[1]), a.name).toBe(a.text.trim().split('\n').length - 1);
+    }
   });
 
   it('bundles every file of public/airfoils/index.json with its text, in index order', () => {

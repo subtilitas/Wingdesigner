@@ -271,10 +271,11 @@ f(y) = Σ_i w_i(y) f_i          Σ_i w_i(y) = 1
   For comparison, the natural cubic spline through 250, 250, 200 and 150 mm chord at y = 0, 300,
   300.5 and 600 mm reaches 6,018.68 mm at y = 173.4 mm.
 - **Smooth** against the natural cubic spline through the same sections, largest distance between
-  the station points of the two surfaces (**Spanwise stations per panel** 8): wizard presets with
-  2 sections (**Trainer**, **Sport**, **Delta jet**, **Plank**, **Tail surface**) 0 mm (hat
-  functions); **Glider** 0.19 mm, **Double delta** 0.19 mm and **Swept flying wing** 0.56 mm (the
-  airfoil of the root panel, constant from the root to section 2); **Sailplane** 2.55 mm (chord of the
+  the station points of the two surfaces (**Spanwise stations per panel** 8, **Vertical** section
+  planes): wizard presets with 2 sections (**Trainer**, **Sport**, **Delta jet**, **Plank**,
+  **Tail surface**) 0 mm (hat functions); **Glider** and **Double delta** 0 mm (one airfoil;
+  **Glider** with **Mitred** planes 0.07 mm); **Swept flying wing** 0.07 mm (the airfoil of the
+  root panel, constant from the root to section 2); **Sailplane** 2.55 mm (chord of the
   root panel: the spline reaches 210.85 mm above the 210 mm root chord, the blend stays at or below
   it); **Batwing** 14.53 mm (chord at y = 267 mm: the spline reaches 614.49 mm between sections of
   581.9 and 606.9 mm). XFLR5 and flow5 test files (`test/fixtures/`), surfaces of 3 or more sections:
@@ -301,9 +302,9 @@ between mitred planes of different roll. Examples: **Glider** preset, 3 sections
 In a **Linear** panel between mitred planes, every intermediate station holds the blended airfoil in
 its own plane (roll and stretch of section 3.8), as with a guide curve. With one station per panel
 the loft would be the ruled surface of **Straight panels**. The two differ where the chord changes
-together with the airfoil or the twist: on the **Sport** preset (NACA 2412 at 240 mm, NACA 2410 at
-144 mm, −1° twist at the tip) the ruled surface lies up to 0.343 mm off the **Linear** surface, and the
-volume differs by 1.4 %. Current limitation: any roll difference switches a **Linear** panel from one
+together with the airfoil or the twist: on the **Sport** preset (MH 32 at 240 mm and at 144 mm, −1°
+twist at the tip) the ruled surface lies up to 0.314 mm off the **Linear** surface, and the volume
+differs by 0.09 %. Current limitation: any roll difference switches a **Linear** panel from one
 station to K stations. NACA 2412 at 300 mm chord to NACA 0009 at 100 mm chord, −4° twist, 600 mm
 panel: a dihedral of 1e-6° instead of 0° moves the surface up to 0.17 mm and changes the volume by
 0.25 %.
@@ -592,7 +593,7 @@ With φ = 0 and m = 1 the section lies in the plane Y = y.
   section rolled φ with twist θ meets the flow at atan(tan θ cos φ): 1.64° for 2° twist at 35°.
 - The root plane is vertical in both modes, so the two halves meet in the plane y = 0.
 - **Smooth** moves a wing with dihedral against **Linear** where the cubic bends the reference line;
-  the presets of the wizard with **Smooth** move by up to 1.9 mm against vertical planes (Sailplane,
+  the presets of the wizard with **Smooth** move by up to 1.8 mm against vertical planes (Sailplane,
   10° outer dihedral). At the root the plane stays vertical while the cubic can leave it up to 3 times
   as steep as the first panel (section 3.1); the check "Section planes, smooth stretch" (section 3.6)
   stops a stretch above 2 there.
@@ -1047,12 +1048,12 @@ deviation = max over s and u of the distance from R_s(u) to W_s     (mm)
 | Wing | Deviation |
 | --- | --- |
 | Straight panels (**Straight panels**, or **Linear** with stations at the sections only) | 0 up to round-off (below 1e-9 mm in the tested wings) |
-| **Sport** preset: chord 240 to 144 mm, NACA 2412 to 2410, twist 0 to −1°, **Linear**, **Mitred**: 1 core, y = 0 to 600 mm | 0.341 mm |
-| same, 2 cores, y = 0 to 300 and 300 to 600 mm | 0.085 mm |
-| **Glider** preset (elliptic, guide curves): 2 cores, y = 0 to 500 and 500 to 1000 mm | 1.348 and 2.489 mm |
-| same, split to 0.2 mm | 10 cores, at most 0.156 mm |
+| **Sport** preset: chord 240 to 144 mm, MH 32, twist 0 to −1°, **Linear**, **Mitred**: 1 core, y = 0 to 600 mm | 0.314 mm |
+| same, 2 cores, y = 0 to 300 and 300 to 600 mm | 0.079 mm |
+| **Glider** preset (elliptic, guide curves): 2 cores, y = 0 to 500 and 500 to 1000 mm | 1.210 and 2.212 mm |
+| same, split to 0.2 mm | 10 cores, at most 0.145 mm |
 
-- A **Linear** panel between **Mitred** section planes of different roll (with dihedral, at least the root panel) gets stations between its sections (section 3.2). Its loft then follows c(y) · airfoil(y): both factors are linear in y, their product is not. The ruled core misses it by up to 0.25 mm on the **Sport** wing without twist. With a loft of stations at the sections only, taper and twist give no deviation: the **Sport** wing with **Vertical** planes deviates 0 mm.
+- A **Linear** panel between **Mitred** section planes of different roll (with dihedral, at least the root panel) gets stations between its sections (section 3.2). Its loft then follows c(y) · airfoil(y): both factors are linear in y, their product is not. The ruled core misses it where the airfoil changes along the panel: by up to 0.25 mm on the **Sport** planform without twist with NACA 2412 at the root and NACA 2410 at the tip; the **Sport** preset without twist (MH 32 at both ends) deviates 0 mm. With a loft of stations at the sections only, taper and twist give no deviation: the **Sport** wing with **Vertical** planes deviates 0 mm.
 - The deviation falls with the square of the segment length: halving a core gives about 1/4.
 - Splitting (**Split segments over the limit**): every segment of 10 mm or more above the limit is cut in the middle (in y), and the whole set is computed again; this repeats until no such segment is left or 200 segments are reached. A segment shorter than 10 mm is not split.
 - Time in Node.js 24 on a 2.1 GHz server processor: 5 to 19 ms for the proposal of the 6 wizard presets with a straight or elliptic planform, about 1 s for 200 segments of the **Glider**.

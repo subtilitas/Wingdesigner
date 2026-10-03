@@ -2,7 +2,7 @@
 
 The files in this directory are airfoil coordinate data. They are not part of the Wingdesigner program code, and the MIT License (named after the Massachusetts Institute of Technology) of the program code does not apply to them. Each file keeps the terms of its source. This notice gives the source, the legal basis, the conditions and the attribution of every file. `index.json` repeats the author, the license identifier, the source address and the terms address of each file.
 
-Five files are transcriptions of tables in reports of the National Advisory Committee for Aeronautics (NACA), a United States Government agency. They are public domain in the United States; their status outside the United States is not established. One file, S9104, is published by its designer under an open license. 56 files are MH airfoils of Martin Hepperle, included with his written permission ([MH airfoils](#mh-airfoils)).
+Five files are transcriptions of tables in reports of the National Advisory Committee for Aeronautics (NACA), a United States Government agency. They are public domain in the United States; their status outside the United States is not established. One file, S9104, is published by its designer under an open license. Another 56 files are MH airfoils of Martin Hepperle, included with his written permission ([MH airfoils](#mh-airfoils)).
 
 Whether a bare list of airfoil coordinates is protected by copyright or by a database right is not settled in every country. The statements below give the basis on which each file is distributed. They do not decide that question. This notice is not legal advice.
 
@@ -315,14 +315,15 @@ Designer: Martin Hepperle. Website: <https://www.mh-aerotools.de/>, airfoil inde
 | MH 120 | `mh-120.dat` | <https://www.mh-aerotools.de/airfoils/mh120koo.htm> | 61 | fraction of chord |
 | MH 121 | `mh-121.dat` | <https://www.mh-aerotools.de/airfoils/mh121koo.htm> | 68 | fraction of chord |
 | MH 126 | `mh-126.dat` | <https://www.mh-aerotools.de/airfoils/mh126koo.htm> | 61 | fraction of chord |
-- The 56 pages are the 52 pages linked from the airfoil index and its topic pages, and the pages of MH 38, MH 55, MH 56 and MH 57, which have the same address pattern.
-- The website also offers an Extensible Markup Language (XML) file per airfoil (none for MH 57). The XML points of 48 airfoils lie within 0.05 % of chord of the polygon through the table points. The XML points of MH 1, MH 28, MH 29, MH 45, MH 50, MH 51 and MH 52 lie up to 0.35, 0.13, 0.13, 0.24, 0.58, 0.61 and 0.54 % of chord from it. The files use the tables.
+
+- The 56 pages are the 52 pages linked from the airfoil index and its topic pages, the pages of MH 55, MH 56 and MH 57, which the pages of MH 50 to MH 54 link, and the page of MH 38, found by its address.
+- The website also offers an Extensible Markup Language (XML) file per airfoil (none for MH 57; its page links the XML file of MH 56). The XML points of 48 airfoils lie within 0.05 % of chord of the polygon through the table points. The XML points of MH 1, MH 28, MH 29, MH 45, MH 50, MH 51 and MH 52 lie up to 0.35, 0.13, 0.13, 0.24, 0.58, 0.61 and 0.54 % of chord from it. The files use the tables.
 
 ### Permission
 
 The terms of the website grant personal use (footer of every page, below). Martin Hepperle granted the owner of this repository, Julian Wingert, permission by e-mail in October 2026, in answer to a request of 2026-10-01: the airfoils published on his website may be included in Wingdesigner, which is freely available. He expects the author to be named and the source cited. The owner keeps the e-mail; it is not part of this repository.
 
-The permission covers these files as part of Wingdesigner. The MIT License of the Wingdesigner program code does not apply to them. Any other use of the files, including a copy outside Wingdesigner, falls under the terms of the website. Footer of every airfoil page, e.g. <https://www.mh-aerotools.de/airfoils/mh45koo.htm>:
+The permission covers these files as part of Wingdesigner. Whether it covers a modified or sold copy of Wingdesigner is not established. The MIT License of the Wingdesigner program code does not apply to them. Any other use of the files, including a copy outside Wingdesigner, falls under the terms of the website. Footer of every airfoil page, e.g. <https://www.mh-aerotools.de/airfoils/mh45koo.htm>:
 
 > © 1996-2018 Martin Hepperle\
 > You may use the data given in this document for your personal use. If you use this document for a
@@ -337,11 +338,11 @@ MH airfoils by Martin Hepperle, <https://www.mh-aerotools.de/airfoils/>, include
 
 ### Changes
 
-- Name line: added, `MH <number> Airfoil by Martin Hepperle, www.mh-aerotools.de`. The pages give the name in their title. The Wingdesigner library shows the name `MH <number>` from `index.json`.
-- Fraction of chord: the tables of MH 18B, MH 33, MH 34, MH 42, MH 44, MH 46, MH 49 and MH 78 are in percent of chord. Each value is divided by 100 by moving the decimal point two places; no digit is rounded.
+- Name line: added, `MH <number> Airfoil by Martin Hepperle, www.mh-aerotools.de`. The pages give the name in their heading. The Wingdesigner library shows the name `MH <number>` from `index.json`.
+- Fraction of chord: the tables of MH 18B, MH 33, MH 34, MH 42, MH 44, MH 46, MH 49 and MH 78 are in percent of chord. Each value is divided by 100 exactly; no digit is rounded, and some trailing zeros are dropped, e.g. `-0.100` becomes `-0.001` and `100.000` becomes `1.000`.
 - Point order: the table of MH 1 starts at the trailing edge of the lower surface. `mh-1.dat` lists the same points in reverse order, upper surface first (Selig order).
 - Layout: one space between x and y, line-feed line endings. The other values are unchanged, character for character.
 
 ### Thickness and use
 
-The `use` text in `index.json` gives the thickness of each file: the largest distance in y between the upper and the lower surface at equal x, with straight lines between the points, rounded to 0.1 % of chord. The thickness the coordinate pages state differs by at most 0.1 % of chord from the unrounded thickness of the file, except MH 22 (page 7.00 %, file 7.20 %), MH 30 (page 7.74 %, file 7.84 %), MH 52 (page 9.00 %, file 7.98 %) and MH 92 (page 19.96 %, file 14.97 %). The category and the application in the `use` text follow the description on each coordinate page and the topic pages of the website (flying wings, sailplanes, pylon racing, other objects). The Reynolds numbers are those the pages state.
+The `use` text in `index.json` gives the thickness of each file: the largest distance in y between the upper and the lower surface at equal x, with straight lines between the points, after scaling the chord (x range) to 1 as the import of Wingdesigner does, rounded once to 0.1 % of chord. The thickness the coordinate pages state differs by at most 0.1 % of chord from the unrounded thickness of the file, except MH 22 (page 7.00 %, file 7.20 %), MH 30 (page 7.74 %, file 7.84 %), MH 52 (page 9.00 %, file 7.98 %) and MH 92 (page 19.96 %, file 14.97 %). The category and the application in the `use` text follow the description on each coordinate page and the topic pages of the website (flying wings, sailplanes, pylon racing, other objects). The Reynolds numbers are those the pages state.

@@ -86,9 +86,9 @@ const nacaLibraryItems = (page) =>
     .filter({ has: page.locator('.grow > .small', { hasText: /· generated$/ }) });
 const itemNames = (items) => items.locator('.grow > div:first-child').allTextContents();
 
-/** First visit: create the Sport preset (root NACA 2412, tip NACA 2410) and open the Airfoils tab. */
+/** First visit: create the Sport preset with root NACA 2412 and tip NACA 2410 and open the Airfoils tab. */
 async function startSport(page) {
-  await createDesign(page, 'Sport');
+  await createDesign(page, 'Sport', { fields: { 'Root airfoil': '2412', 'Tip airfoil': '2410' } });
   await openTab(page, 'Airfoils');
   await expect(projectItems(page)).toHaveCount(2);
 }

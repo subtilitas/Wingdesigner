@@ -11,12 +11,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - **Library** holds the 56 MH airfoils of Martin Hepperle, MH 1 to MH 126, included with his written permission. Each
   entry names `Martin Hepperle, www.mh-aerotools.de` as author and links to the airfoil's coordinate page on
   mh-aerotools.de. Category and use text follow his description: flying wings, sailplanes, pylon racers, high-speed
-  models, propellers, wind turbines, hang gliders, paragliders and others, with the thickness and the lowest Reynolds
-  number his page states. Source, permission and changes per file: `airfoils/NOTICE.md` in the release zip file.
+  models, propellers, wind turbines, hang gliders, paragliders and others; the use text gives the thickness computed
+  from the file and, where his page states one, the lowest Reynolds number. Source, permission and changes per file:
+  `airfoils/NOTICE.md` in the release zip file.
 - The XFLR5 and flow5 import finds an airfoil named like an MH airfoil, such as `MH 45`, in **Library**.
 
 ### Changed
 
+- The wizard presets use MH airfoils of **Library**, root / tip: Trainer MH 38 / MH 38, Sport MH 32 / MH 32, Glider
+  MH 42 / MH 42, Sailplane MH 32 / MH 42, Delta jet, Double delta and Tail surface MH 52 / MH 52, Batwing MH 60 /
+  MH 64, Swept flying wing MH 60 / MH 45, Plank MH 45 / MH 45. The sample wing "Sport wing 1500" uses MH 32 at all
+  3 sections.
+- The wizard fields **Root airfoil** and **Tip airfoil** take a NACA designation or the name of a **Library** airfoil,
+  e.g. `MH 45`; a suggestion list offers the Library names and the NACA presets.
 - **Library** links the author of every bundled file to the source page of the file.
 - The box of external airfoil sources in the **Airfoils** tab is named **More airfoils (external sites)**; its
   MH-AeroTools note says that the MH airfoils are in **Library**.
