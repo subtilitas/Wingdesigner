@@ -64,7 +64,9 @@ describe('STL', () => {
     for (const t of tris.slice(0, 50)) expect(Math.hypot(...t.normal)).toBeCloseTo(1, 5);
   });
 
-  it('refuses visible triangles that turn over at 32-bit precision; ignores sub-resolution slivers', () => {
+  // The sliver case writes 310,392 triangles to STL and 3MF: 2 s without coverage, 11 s under coverage on
+  // CI, more than 20 s on a loaded runner.
+  it('refuses visible triangles that turn over at 32-bit precision; ignores sub-resolution slivers', { timeout: 60000 }, () => {
     const wing = (x, z, chord, settings) =>
       buildWing(
         createProject({
