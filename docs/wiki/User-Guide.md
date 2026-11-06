@@ -602,6 +602,34 @@ With **Settings** > **Wing tip** = Pointed, the wing does not use the typed tip 
 
 Construction: [[Geometry|Geometry]], section 9.
 
+### Rounded tip
+
+**Rounded tip…** below the table opens a dialog that appends a rounded tip beyond the tip section and sets **Settings** > **Wing tip** to Pointed. The chord follows a quarter ellipse from the tip chord to the point. With **Tangent to the last panel** the ellipse is scaled so that the chord starts with the taper of the last panel: leading and trailing edge run on without a corner at the tip section. Leading and trailing edge curve towards a straight line at a chosen share of the chord and meet on it. The sections run on along the last panel in y and z and keep the airfoil and twist of the tip section. **Add rounded tip** adds them as one undo step; **Undo** also restores the wing tip mode.
+
+| Field | Unit | Step | Limit | Default | Effect |
+| --- | --- | --- | --- | --- | --- |
+| Length beyond the tip section | mm | 5 | 5 to 100,000 | tip chord, at least 5 mm; at most half the distance at which the last panel would taper to zero chord | Length along the last panel from the tip section to the point |
+| Straight line | % of the chord from the leading edge | 5 | 0 to 100 | 25 | Chord position that stays on the line of the last panel; 0 = straight leading edge, 100 = straight trailing edge |
+| Number of sections | – | 1 | 2 to 24 | 6 | Added sections, the point included; closer together towards the point |
+| Tangent to the last panel | – | – | on, off | on | On: the chord starts with the taper of the last panel, no corner in the planform at the tip section. Off: the chord starts with slope 0, which leaves a corner where the last panel tapers |
+
+- The point takes the chord of a pointed tip: 1/200 of the section before (**Settings** > **Wing tip**, scale), at least 1 mm. **Sport** with the defaults (taper of the last panel −0.16 mm per mm): 6 sections, chords 133.34, 114.73, 90.31, 62.03 and 31.51 mm, point at y = 743.95 mm with 1 mm chord. Without tangent: 139.09, 124.71, 101.82, 72 and 37.27 mm.
+- The thickness falls with the chord, as the airfoil keeps its thickness ratio. Seen from the front, the tip outline follows the chord.
+- With tangent, a fixed trailing-edge thickness (**Settings** > **Trailing edge**) can exceed 5 % of the chord at a station before the last panel, where the chord falls faster than the ellipse. The build limits it there and reports a warning; on the presets **Delta jet** (1.6 mm) and **Double delta** (2 mm).
+- The preview draws the outer 40 % of the span from above, the rounded tip in the accent colour, and states the number of sections and the position of the point. A build error of the preview shows instead and disables **Add rounded tip**.
+
+**Add rounded tip** is disabled, with the reason below the preview, when:
+
+- a field lies outside its limit, or the number of sections is not a whole number;
+- a guide curve is on (`Switch the guide curves off first: …`);
+- **Settings** > **Wing tip** = Pointed (`… a rounded tip needs a flat tip.`);
+- with tangent, the last panel would taper to zero chord within 1/0.95 of the length (`Rounded tip: the last panel tapers to zero chord within … mm, …`); **Sport**: at most 855.29 mm;
+- the last section before the point would fall below 1 mm chord (`Rounded tip: with … sections the tip chord must be at least … mm; …`);
+- a rounded-tip panel spans less than 1 mm in y (`Rounded-tip panel … spans … mm in y, …`). The last of m panels spans 1 − cos(π / (2m)) of the length times the cosine of the last panel's angle: 3.4 % at 6 sections, 0.9 % at 12;
+- the sections would exceed 20,000, a coordinate ±1,000,000 mm, or a chord 100,000 mm.
+
+Construction: [[Geometry|Geometry]], section 10.
+
 ## Planform
 
 ![Planform editor: nose line and end line on (elliptic planform), guide point table](images/planform.png)

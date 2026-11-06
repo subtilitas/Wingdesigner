@@ -885,7 +885,7 @@ mit S ∘ T oder T ∘ S (**Linke Hälfte**, Abschnitt 3.9). Die Flags bleiben w
 Spiegelung kehrt die Orientierung um, die Drehung erhält sie.
 
 Prüfung: `scripts/validate_step.py` liest die von `scripts/export-step-cases.mjs` geschriebenen Dateien
-mit OpenCascade. Fälle: die 15 Fälle aus `test/step-cases.js`, 1 davon mit geschlossener, spitz
+mit OpenCascade. Fälle: die 16 Fälle aus `test/step-cases.js`, 1 davon mit Randbogen (`rounded-tip-smooth`, Abschnitt 10), 1 davon mit geschlossener, spitz
 auslaufender Endleiste (`cusped-closed`, Abschnitt 4), 6 davon mit Schnittebenen **Auf Gehrung**
 (ein 35°-V-Leitwerk mit **Gerade Felder**, einmal ohne und einmal mit **Fusion-360-Korrektur** (Y nach
 oben) geschrieben, ein Möwenflügel mit 15°/−5° mit **Linear** und mit **Glatt**, ein Profilwechsel mit **Gerade
@@ -1170,3 +1170,31 @@ bei Länge s:   x = x_T + s · tan Λ,   Tiefe = c_T + (k · c_T − c_T) · s /
 - Die Schnittebenen sind die winkelhalbierenden Ebenen **Auf Gehrung** aus Abschnitt 3.8, senkrecht zur Bezugslinie. Mit **Senkrechten** Ebenen (y = konstant) wäre ein Feld mit der Neigung a quer zum Feld cos a so dick, 0,26-mal bei 75°; der Dialog verlangt **Auf Gehrung**.
 - Leitkurven halten x und die Tiefe als Funktionen von y zwischen Wurzel und Rand; sie würden sich über das Winglet dehnen, deshalb verlangt der Dialog sie ausgeschaltet. Ein spitzes Flügelende (Abschnitt 3.5) würde das Profil der Wingletspitze verkleinern; der Dialog verlangt ein flaches Flügelende.
 - Vorgabe des Radius 0,3 c_T: Bei engerem Radius faltet ein etwa 25 % dickes Profil die Fläche auf der Innenseite des Bogens. Geprüft: Der Flügel **Sport** mit Neigung −89°, −45°, 0°, 45°, 75°, 89° und Radius 0, 0,3 und 0,6 c_T baut mit **Linear** ohne Fehler; mit **Glatt** alle bis auf 2: Bei ±89° mit 0,3 c_T biegt die kubische Kurve die Bezugslinie dort, wo der Bogen in das gerade Stück übergeht, und die Prüfung „Schnittebenen, Drehung“ (Abschnitt 3.6) stoppt den Aufbau. Jeder andere Entwurfstyp mit flachem Flügelende und ausgeschalteten Leitkurven baut mit dem Vorgabe-Winglet einen geschlossenen Flügel, mit **Linear** und **Glatt**. **Batwing** endet spitz (Tiefe unter 1 mm bei flachem Flügelende) und wird abgelehnt.
+
+## 10. Randbogen
+
+`src/model/roundtip.js` fügt den Randbogen als Schnitte an und setzt das Flügelende auf **Spitz** (Abschnitt 3.5); der Loft behandelt sie wie jedes andere Feld. Eingang: der Randschnitt T (y_T, z_T, x_T, Tiefe c_T, Schränkung t_T), der Schnitt P davor, der Winkel a0 des letzten Feldes (sein gespeicherter **Feldwinkel**, sonst atan2(z_T − z_P, y_T − y_P)), das Randverhältnis ρ aus **Einstellungen** > **Flügelende** und die Parameter Länge L, gerade Linie f (Anteil der Tiefe, 0 … 1), Schnittzahl m und Tangential (ein oder aus).
+
+```
+slope = (x_T + f · c_T − x_P − f · c_P) / (y_T − y_P)     dx/dy der geraden Linie des letzten Feldes
+c'    = (c_T − c_P) / (y_T − y_P)                         Zuspitzung des letzten Feldes (dc/dy)
+κ     = c' · L · cos a0 / c_T  mit Tangential,  0 ohne     muss > −0,95 sein
+
+Schnitt k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
+  y_k     = y_T + t_k · L · cos a0
+  z_k     = z_T + t_k · L · sin a0
+  c_k     = c_T · sqrt(1 − t_k²) · (1 + κ t_k)              k < m
+  c_m     = max(ρ · c_(m−1), 1 mm)
+  x_k     = x_T + f · c_T + (y_k − y_T) · slope − f · c_k
+  Profil und Schränkung = die von T
+```
+
+- Der Punkt bei f · c jedes Schnitts liegt auf der Linie des letzten Feldes durch f · c. Nasenleiste (x_k) und Endleiste (x_k + c_k) treffen diese Linie an der Spitze; f = 0 hält die Nasenleiste gerade, f = 1 die Endleiste.
+- Die Schnitte liegen zur Spitze hin dichter, wo die Tiefe am schnellsten fällt: Das letzte von m Feldern reicht 1 − cos(π / (2m)) der Länge in t. Ein Feld, das in y weniger als 1 mm (`SHORT_PANEL`) reicht, wird abgelehnt.
+- Tangential: Mit s = (y − y_T) / (L cos a0) hat c(s) = c_T · sqrt(1 − s²) · (1 + κ s) bei s = 0 die Steigung dc/dy = κ c_T / (L cos a0) = c', die Zuspitzung des letzten Feldes. Nasenleiste x_k und Endleiste x_k + c_k haben dann bei T die Steigungen der Kanten des letzten Feldes: kein Knick im Grundriss dort (stetige Tangente, nicht stetige Krümmung). Bei s = 1 schließt der Faktor sqrt(1 − s²) den Umriss weiterhin mit einer Tangente senkrecht zu y.
+- 1 + κ s muss bis zur Spitze positiv bleiben: κ ≤ −0,95 (das letzte Feld liefe innerhalb von L / 0,95 auf Tiefe null zu) wird abgelehnt. Die Vorgabe der Länge ist die Randtiefe, höchstens c_T / (−2 c' cos a0) (κ = −0,5). Ohne Tangential ist dc/dy bei T gleich 0, und wo sich das letzte Feld verjüngt, hat der Grundriss bei T einen Knick.
+- c_(m−1) muss die kleinste Tiefe von 1 mm erreichen: c_T ≥ 1 mm / (cos θ · (1 + κ sin θ)), θ = π (m − 1) / (2m); 3,87 mm bei m = 6 ohne Tangential.
+- Die Werte werden auf 0,01 mm gerundet. Ein gespeicherter **Feldwinkel** des letzten Feldes wird auf T und auf die angefügten Schnitte außer der Spitze übertragen, damit die Rundung ihre Ebenen **Auf Gehrung** nicht neigt; ohne ihn folgen die Ebenen den Bezugspunkten.
+- Die Dicke folgt der Tiefe (das Profil behält seine relative Dicke), daher hat die Vorderansicht des Randbogens die Form von c(s).
+- Leitkurven halten x und die Tiefe als Funktionen von y zwischen Wurzel und Rand; sie würden sich über den Randbogen dehnen, deshalb verlangt der Dialog sie ausgeschaltet. Ein Flügel mit spitzem Flügelende endet schon in einer Spitze und wird abgelehnt.
+- Geprüft: Jeder Entwurfstyp mit flachem Flügelende und ausgeschalteten Leitkurven außer **Batwing** (Tiefe unter 1 mm bei flachem Flügelende) baut mit dem Randbogen der Vorgaben einen geschlossenen Flügel, mit **Linear** und **Glatt**, mit Ebenen **Auf Gehrung** und **Senkrecht** und mit und ohne Tangential, ohne Fehler. Warnungen: keine, außer mit Tangential bei **Delta-Jet** (feste Endleiste 1,6 mm) und **Doppeldelta** (2 mm), wo die Endleistendicke an 1 Station vor dem letzten Feld 5 % der Tiefe überschreitet und dort begrenzt wird. Der Flügel **Sport** baut mit der geraden Linie bei 0, 25, 50, 75 und 100 % und 2, 4 und 8 Schnitten. Der STEP-Fall `rounded-tip-smooth` (Abschnitt 6) besteht die Prüfung mit OpenCascade.

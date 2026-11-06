@@ -75,6 +75,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/model/edit.js` | Edit operations |
 | `src/model/wizard.js` | Wizard presets, parameter ranges (`RANGES`) and panel ranges (`PANEL_RANGES`, at most `MAX_PANELS` = 24 panels); `wizardProject` builds the sections of the straight, elliptic and panel planforms and the elliptic tip (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` turns the straight planform into 1 panel |
 | `src/model/winglet.js` | Integral winglet: `wingletSections` (blend arc in steps of at most `WINGLET_STEP` = 15°, then the straight part), `wingletProblems`, `addWinglet`, `defaultWinglet`, ranges `WINGLET_RANGES` |
+| `src/model/roundtip.js` | Rounded tip: `roundTipSections` (quarter ellipse of chords at t = sin(π k / (2m)), times 1 + κ t), `roundTipKappa` (κ of **Tangent to the last panel**), `roundTipProblems`, `addRoundTip` (also sets the tip mode to Pointed), `defaultRoundTip`, ranges `ROUND_TIP_RANGES` |
 | `src/model/defaults.js` | Project on first load |
 | `src/ui/store.js` | Store with undo and redo |
 | `src/ui/viewer3d.js` | 3D view |
@@ -88,10 +89,11 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/ui/exportui.js` | **Export** dialog |
 | `src/ui/foam.js` | Foam-cutting wizard: `foamDialog`; stored settings (`storedFoamSettings`, key `wingdesigner.foam`) |
 | `src/ui/winglet.js` | Winglet dialog of the **Sections** tab: `wingletDialog` |
+| `src/ui/roundtip.js` | Rounded-tip dialog of the **Sections** tab: `roundTipDialog` |
 | `src/ui/dom.js` | DOM helpers |
 | `src/ui/styles.css` | Styles |
 | `src/i18n/index.js` | Language (`language`, `setLanguage`, `initialLanguage`), `tr()` and the number formats `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `flow5`; `index.js` merges them |
+| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `roundtip`, `flow5`; `index.js` merges them |
 
 ### Scripts
 
@@ -297,8 +299,9 @@ To add a text:
 | `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` and the texts of the XFLR5 import in `src/main.js` and `src/ui/airfoils.js`: title of **Open**, item in **Help**, count of further warnings, refusal of an XFLR5 file in the upload, `XFLR5: <file>` under an imported airfoil |
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` and the label and title of **Foam** in `src/main.js` |
 | `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` and the **Winglet…** button in `src/ui/sections.js` |
+| `roundtip.js` | `src/ui/roundtip.js`, `src/model/roundtip.js` and the **Rounded tip…** button in `src/ui/sections.js` |
 
-`src/i18n/de/index.js` merges the twelve files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 34 and 146 texts, the file of the flow5 import 44.
+`src/i18n/de/index.js` merges the thirteen files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 34 and 146 texts, the file of the flow5 import 44.
 
 To add a language:
 
@@ -430,15 +433,15 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 669 tests in 25 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 677 tests in 26 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit code 1 when a README table differs from `coverage/coverage-summary.json`; exit code 2 when that file or a marker is missing |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 15 STEP files, 15 3MF files and `cases.json` in `step-check/` |
-| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 13 test wings and `cases.json` in `foam-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 16 STEP files, 16 3MF files and `cases.json` in `step-check/` |
+| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 14 test wings and `cases.json` in `foam-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Portable Network Graphics (PNG) files: 14 in `docs/wiki/images/` (English) and 14 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
@@ -477,7 +480,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-202 tests in 15 spec files, 404 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+204 tests in 16 spec files, 408 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 
@@ -553,6 +556,7 @@ x and z: position of the leading edge.
 | `mitred-gull-smooth` | As `mitred-gull-15-5`, with smooth blending: rolls blended by the cubic, stretch from the slope of the blended reference line | 2 |
 | `mitred-switch-short-panel` | Not the base wing: NACA 2412 at y 0 and 299.5 mm (chords 200 and 180 mm), NACA 0012 at y 300 and 600 mm (chords 180 and 120 mm, tip z 52.8981 mm, twist −2°); **Straight panels**, **Mitred** section planes: the 0.5 mm panel counts as none, both switch sections roll 5.25°; the outer panel stores a panel angle of 10.5° (tip roll 10.5°) | 2 |
 | `part-tilt-roll` | As `mitred-gull-15-5`, with **Part tilt** 8° and **Part roll** 12° about the pivot (50, 0, −20) mm: turned surfaces, edge curves, cap planes and the mirror of a placed part | 2 |
+| `rounded-tip-smooth` | As `mitred-gull-smooth`, with the default rounded tip (`src/model/roundtip.js`): 6 sections beyond the tip on a quarter ellipse of chords to a 1 mm point, straight line at 25 %; tip mode Pointed | 2 |
 
 ### Foam-cutting file validation
 
@@ -564,7 +568,7 @@ npm run foam:cases
 python scripts/validate_foam.py foam-check/cases.json
 ```
 
-`scripts/export-foam-cases.mjs` takes the wings of `test/step-cases.js` without `mitred-vtail-35-y-up` and `part-tilt-roll` (13 cases): the first differs from its case in the STEP axes only, the cores of the second lie in the frame of the part, as those of `mitred-gull-15-5`. Cuts: the proposal for a longest core of 300 mm. Kerf 1 mm for `guided-elliptic`, paper A3 for `pointed-tip` and Letter for `mitred-gull-15-5`, else no kerf and A4. `cases.json` holds per case the name, the 4 files, the segment count, the points per profile, the kerf, the vertex count of each profile polyline, the page count, the page size and the paper size.
+`scripts/export-foam-cases.mjs` takes the wings of `test/step-cases.js` without `mitred-vtail-35-y-up` and `part-tilt-roll` (14 cases): the first differs from its case in the STEP axes only, the cores of the second lie in the frame of the part, as those of `mitred-gull-15-5`. Cuts: the proposal for a longest core of 300 mm. Kerf 1 mm for `guided-elliptic`, paper A3 for `pointed-tip` and Letter for `mitred-gull-15-5`, else no kerf and A4. `cases.json` holds per case the name, the 4 files, the segment count, the points per profile, the kerf, the vertex count of each profile polyline, the page count, the page size and the paper size.
 
 | Check per case (`validate_foam.py`) | Pass condition |
 | --- | --- |
@@ -713,7 +717,7 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 
 ## Release
 
-`<version>`: the version to release, e.g. `0.8.0`. `package.json` holds `0.7.0`.
+`<version>`: the version to release, e.g. `0.9.0`. `package.json` holds `0.8.0`.
 
 1. Set the version: `npm version <version> --no-git-tag-version` (updates `package.json` and `package-lock.json`).
 2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`. The section becomes the release notes: it describes the app, its files and its user documentation (README, User Guide, Geometry, File Formats, Airfoil Sources) and leaves out the handover, `RECORD.md`, the working agreements, continuous integration, tests, scripts, this page and the names of the source code. `npm run docs:check` reports the terms it knows (Documentation check).
