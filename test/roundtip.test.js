@@ -92,7 +92,9 @@ describe('tangent rounded tip', () => {
 });
 
 describe('rounded tip on the presets', () => {
-  it('builds a closed wing on every preset with a flat tip and no guide curves, Linear and Smooth, mitred and vertical planes, tangent or not', () => {
+  // 9 presets × 2 interpolations × 2 plane modes × tangent on and off: 72 builds and 144 meshes, 16 s
+  // under coverage in a cloud container, more than 20 s on CI.
+  it('builds a closed wing on every preset with a flat tip and no guide curves, Linear and Smooth, mitred and vertical planes, tangent or not', { timeout: 90000 }, () => {
     const limited = new Set();
     for (const [key, preset] of Object.entries(PRESETS)) {
       if (key === 'batwing') continue;
