@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-06
+
 ### Added
 
 - **Rounded tip…** in the **Sections** tab appends a rounded tip beyond a flat tip section as ordinary sections, in one
