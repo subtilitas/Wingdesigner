@@ -2,6 +2,7 @@
 // linear/smooth spanwise interpolation, guide curves, root off the symmetry plane, mirroring,
 // mitred section planes, a rigid placement of the part).
 import { createProject } from '../src/model/project.js';
+import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
 import { cuspedAirfoil, naca, sampleProject } from './helpers.js';
 
 const DEG = Math.PI / 180;
@@ -91,5 +92,10 @@ export function stepCases() {
   const turned = structuredClone(gull);
   turned.settings = { ...turned.settings, partTilt: 8, partRoll: 12, partPivot: { x: 50, y: 0, z: -20 } };
   cases.push({ name: 'part-tilt-roll', project: turned, mirror: true });
+  // A rounded tip (src/model/roundtip.js) on the mitred gull, Smooth: 6 sections on a quarter ellipse
+  // of chords to the 1 mm point, the panels of the quarter ellipse 37 to 4 mm wide in y.
+  const rounded = structuredClone(smoothGull);
+  addRoundTip(rounded, defaultRoundTip(rounded));
+  cases.push({ name: 'rounded-tip-smooth', project: rounded, mirror: true });
   return cases;
 }

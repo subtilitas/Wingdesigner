@@ -833,7 +833,7 @@ S ∘ T or T ∘ S (**Left half**, section 3.9). The flags stay as in the table:
 orientation, the turn keeps it.
 
 Validation: `scripts/validate_step.py` reads the files written by `scripts/export-step-cases.mjs`
-with OpenCascade. Cases: the 15 cases of `test/step-cases.js`, 1 of them with a closed, cusped trailing
+with OpenCascade. Cases: the 16 cases of `test/step-cases.js`, 1 of them with a rounded tip (`rounded-tip-smooth`, section 10), 1 of them with a closed, cusped trailing
 edge (`cusped-closed`, section 4), 6 of them with **Mitred** section
 planes (a 35° V-tail with **Straight panels**, written once without and once with the **Fusion 360
 fix** (Y up), a 15°/−5° gull with **Linear** and with **Smooth**, an airfoil switch with **Straight panels**: two
@@ -1084,3 +1084,27 @@ at length s:   x = x_T + s · tan Λ,   chord = c_T + (k · c_T − c_T) · s / 
 - The section planes are the **Mitred** bisector planes of section 3.8, square to the reference line. With **Vertical** planes (y = const) a panel at cant angle a would be cos a as thick across the panel, 0.26 times at 75°; the dialog requires **Mitred**.
 - Guide curves hold x and the chord as functions of y between root and tip; they would stretch over the winglet, so the dialog requires them off. A pointed tip (section 3.5) would scale the winglet tip profile; the dialog requires a flat tip.
 - Default radius 0.3 c_T: on a tighter radius an airfoil about 25 % thick folds the surface on the inner side of the arc. Tested: the **Sport** wing with cant −89°, −45°, 0°, 45°, 75°, 89° and radius 0, 0.3 and 0.6 c_T builds without errors with **Linear**; with **Smooth** all but 2: at ±89° with 0.3 c_T the cubic bends the reference line where the arc meets the straight part, and the check "Section planes, turning" (section 3.6) stops the build. Every other preset with a flat tip and the guide curves off builds a closed wing with the default winglet, **Linear** and **Smooth**. **Batwing** ends in a point (chord below 1 mm with a flat tip) and is refused.
+
+## 10. Rounded tip
+
+`src/model/roundtip.js` appends the rounded tip as sections and sets the tip mode to Pointed (section 3.5); the loft treats them as any other panel. Input: the tip section T (y_T, z_T, x_T, chord c_T, twist t_T), the section P before it, the angle a0 of the last panel (its stored **Panel angle**, else atan2(z_T − z_P, y_T − y_P)), the tip ratio ρ of **Settings** > **Wing tip**, and the parameters length L, straight line f (share of the chord, 0 … 1) and section count m.
+
+```
+slope = (x_T + f · c_T − x_P − f · c_P) / (y_T − y_P)     dx/dy of the straight line of the last panel
+
+section k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
+  y_k     = y_T + t_k · L · cos a0
+  z_k     = z_T + t_k · L · sin a0
+  c_k     = c_T · cos(π k / (2m)) = c_T · sqrt(1 − t_k²)     k < m
+  c_m     = max(ρ · c_(m−1), 1 mm)
+  x_k     = x_T + f · c_T + (y_k − y_T) · slope − f · c_k
+  airfoil and twist = those of T
+```
+
+- The point at f · c of every section lies on the line of the last panel through f · c. The leading edge (x_k) and the trailing edge (x_k + c_k) meet that line at the point; f = 0 keeps the leading edge straight, f = 1 the trailing edge.
+- The sections lie closer together towards the point, where the chord falls fastest: the last of m panels spans 1 − cos(π / (2m)) of the length in t. A panel narrower than 1 mm (`SHORT_PANEL`) in y is refused.
+- c_(m−1) = c_T · cos(π (m − 1) / (2m)) must reach the 1 mm minimum chord: c_T ≥ 1 mm / cos(π (m − 1) / (2m)), 3.87 mm at m = 6.
+- Values are rounded to 0.01 mm. A stored **Panel angle** of the last panel is copied to T and to the added sections but the point, so that the rounding does not tilt their **Mitred** planes; without one, the planes follow the reference points.
+- dc/dy at T is 0: the planform has a kink at T where the last panel tapers. The thickness follows the chord (the airfoil keeps its thickness ratio), so the front view of the tip is a quarter ellipse as well.
+- Guide curves hold x and the chord as functions of y between root and tip; they would stretch over the rounded tip, so the dialog requires them off. A wing with a pointed tip already ends in a point and is refused.
+- Tested: every preset with a flat tip and the guide curves off but **Batwing** (chord below 1 mm with a flat tip) builds a closed wing with the default rounded tip, with **Linear** and **Smooth** and with **Mitred** and **Vertical** planes, without errors or warnings. The **Sport** wing builds with the straight line at 0, 25, 50, 75 and 100 % and 2, 4 and 8 sections. The STEP case `rounded-tip-smooth` (section 6) passes the OpenCascade check.

@@ -602,6 +602,31 @@ With **Settings** > **Wing tip** = Pointed, the wing does not use the typed tip 
 
 Construction: [[Geometry|Geometry]], section 9.
 
+### Rounded tip
+
+**Rounded tip…** below the table opens a dialog that appends a rounded tip beyond the tip section and sets **Settings** > **Wing tip** to Pointed. The chord follows a quarter ellipse from the tip chord to the point. Leading and trailing edge curve towards a straight line at a chosen share of the chord and meet on it. The sections run on along the last panel in y and z and keep the airfoil and twist of the tip section. **Add rounded tip** adds them as one undo step; **Undo** also restores the wing tip mode.
+
+| Field | Unit | Step | Limit | Default | Effect |
+| --- | --- | --- | --- | --- | --- |
+| Length beyond the tip section | mm | 5 | 5 to 100,000 | tip chord, at least 5 mm | Length along the last panel from the tip section to the point |
+| Straight line | % of the chord from the leading edge | 5 | 0 to 100 | 25 | Chord position that stays on the line of the last panel; 0 = straight leading edge, 100 = straight trailing edge |
+| Number of sections | – | 1 | 2 to 24 | 6 | Added sections, the point included; closer together towards the point |
+
+- The point takes the chord of a pointed tip: 1/200 of the section before (**Settings** > **Wing tip**, scale), at least 1 mm. **Sport** with the defaults: 6 sections, chords 139.09, 124.71, 101.82, 72 and 37.27 mm, point at y = 743.95 mm with 1 mm chord.
+- The thickness falls with the chord, as the airfoil keeps its thickness ratio. Seen from the front, the tip outline is a quarter ellipse too.
+- The preview draws the outer 40 % of the span from above, the rounded tip in the accent colour, and states the number of sections and the position of the point. A build error of the preview shows instead and disables **Add rounded tip**.
+
+**Add rounded tip** is disabled, with the reason below the preview, when:
+
+- a field lies outside its limit, or the number of sections is not a whole number;
+- a guide curve is on (`Switch the guide curves off first: …`);
+- **Settings** > **Wing tip** = Pointed (`… a rounded tip needs a flat tip.`);
+- the last section before the point would fall below 1 mm chord (`Rounded tip: with … sections the tip chord must be at least … mm; …`);
+- a rounded-tip panel spans less than 1 mm in y (`Rounded-tip panel … spans … mm in y, …`). The last of m panels spans 1 − cos(π / (2m)) of the length times the cosine of the last panel's angle: 3.4 % at 6 sections, 0.9 % at 12;
+- the sections would exceed 20,000 or a coordinate ±1,000,000 mm.
+
+Construction: [[Geometry|Geometry]], section 10.
+
 ## Planform
 
 ![Planform editor: nose line and end line on (elliptic planform), guide point table](images/planform.png)

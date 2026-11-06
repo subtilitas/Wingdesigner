@@ -75,6 +75,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/model/edit.js` | Bearbeitungsoperationen |
 | `src/model/wizard.js` | Entwurfstypen und Wertebereiche des Assistenten (`RANGES`) und der Felder (`PANEL_RANGES`, höchstens `MAX_PANELS` = 24 Felder); `wizardProject` erzeugt die Schnitte des geraden, des elliptischen und des Feld-Grundrisses und des elliptischen Flügelendes (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` macht aus dem geraden Grundriss 1 Feld |
 | `src/model/winglet.js` | Integriertes Winglet: `wingletSections` (Übergangsbogen in Schritten von höchstens `WINGLET_STEP` = 15°, dann das gerade Stück), `wingletProblems`, `addWinglet`, `defaultWinglet`, Wertebereiche `WINGLET_RANGES` |
+| `src/model/roundtip.js` | Randbogen: `roundTipSections` (Viertelellipse der Profiltiefen bei t = sin(π k / (2m))), `roundTipProblems`, `addRoundTip` (setzt auch das Flügelende auf Spitz), `defaultRoundTip`, Wertebereiche `ROUND_TIP_RANGES` |
 | `src/model/defaults.js` | Projekt beim ersten Laden |
 | `src/ui/store.js` | Store mit Rückgängig und Wiederholen |
 | `src/ui/viewer3d.js` | 3D-Ansicht |
@@ -88,10 +89,11 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/exportui.js` | Dialog **Exportieren** (Export) |
 | `src/ui/foam.js` | Schaumschnitt-Assistent: `foamDialog`; gespeicherte Einstellungen (`storedFoamSettings`, Schlüssel `wingdesigner.foam`) |
 | `src/ui/winglet.js` | Winglet-Dialog der Registerkarte **Schnitte**: `wingletDialog` |
+| `src/ui/roundtip.js` | Randbogen-Dialog der Registerkarte **Schnitte**: `roundTipDialog` |
 | `src/ui/dom.js` | DOM-Hilfsfunktionen |
 | `src/ui/styles.css` | Stile |
 | `src/i18n/index.js` | Sprache (`language`, `setLanguage`, `initialLanguage`), `tr()` und die Zahlenformate `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `flow5`; `index.js` fasst sie zusammen |
+| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `roundtip`, `flow5`; `index.js` fasst sie zusammen |
 
 ### Skripte
 
@@ -297,8 +299,9 @@ Einen Text hinzufügen:
 | `xflr5.js` | `src/import/xflr5.js`, `src/ui/xflr5.js` und die Texte des XFLR5-Imports in `src/main.js` und `src/ui/airfoils.js`: Titel von **Öffnen** (Open), Eintrag in **Hilfe** (Help), Anzahl weiterer Warnungen, Ablehnung einer XFLR5-Datei beim Hochladen, `XFLR5: <file>` unter einem importierten Profil |
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` sowie Beschriftung und Titel von **Schaum** (Foam) in `src/main.js` |
 | `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` und die Schaltfläche **Winglet …** in `src/ui/sections.js` |
+| `roundtip.js` | `src/ui/roundtip.js`, `src/model/roundtip.js` und die Schaltfläche **Randbogen …** in `src/ui/sections.js` |
 
-`src/i18n/de/index.js` fasst die zwölf Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 34 und 146 Texte, die Datei des flow5-Imports 44.
+`src/i18n/de/index.js` fasst die dreizehn Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 34 und 146 Texte, die Datei des flow5-Imports 44.
 
 Eine Sprache hinzufügen:
 
@@ -430,15 +433,15 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 669 Tests in 25 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 675 Tests in 26 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit-Code 1, wenn eine README-Tabelle von `coverage/coverage-summary.json` abweicht; Exit-Code 2, wenn diese Datei oder eine Markierung fehlt |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Prüfungen unter [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek); Exit-Code 1 bei einem Problem |
 | `npm run e2e` | `npm run build && playwright test` | Browsertests in `e2e/` gegen `vite preview` auf Port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 15 STEP-Dateien, 15 3MF-Dateien und `cases.json` in `step-check/` |
-| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profil-ZIP, SVG, DXF und PDF von 13 Testflügeln und `cases.json` in `foam-check/` |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 16 STEP-Dateien, 16 3MF-Dateien und `cases.json` in `step-check/` |
+| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profil-ZIP, SVG, DXF und PDF von 14 Testflügeln und `cases.json` in `foam-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Dateien im Format Portable Network Graphics (PNG): 14 in `docs/wiki/images/` (Englisch) und 14 in `docs/wiki/images/de/` (Deutsch) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Prüfungen unter [Prüfung der Testanzahlen](#prüfung-der-testanzahlen); Exit-Code 1 bei einer Abweichung |
@@ -477,7 +480,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-202 Tests in 15 Spec-Dateien, 404 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+204 Tests in 16 Spec-Dateien, 408 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 
@@ -553,6 +556,7 @@ x und z: Lage der Profilnase.
 | `mitred-gull-smooth` | Wie `mitred-gull-15-5`, mit glatter Interpolation: Neigungen von der kubischen Kurve überblendet, Dickenstreckung aus der Steigung der überblendeten Bezugslinie | 2 |
 | `mitred-switch-short-panel` | Nicht der Basisflügel: NACA 2412 bei y 0 und 299,5 mm (Profiltiefen 200 und 180 mm), NACA 0012 bei y 300 und 600 mm (Profiltiefen 180 und 120 mm, Rand-z 52,8981 mm, Schränkung −2°); **Gerade Felder**, Schnittebenen **Auf Gehrung**: Das 0,5 mm breite Feld gilt als keines, beide Schnitte des Profilwechsels sind um 5,25° geneigt; das äußere Feld speichert einen Feldwinkel von 10,5° (Neigung am Rand 10,5°) | 2 |
 | `part-tilt-roll` | Wie `mitred-gull-15-5`, mit **Einstellwinkel des Teils** 8° und **Rollwinkel des Teils** 12° um den Drehpunkt (50, 0, −20) mm: gedrehte Flächen, Randkurven, Ebenen der Abschlussflächen und die Spiegelung eines gedrehten Teils | 2 |
+| `rounded-tip-smooth` | Wie `mitred-gull-smooth`, mit dem Randbogen der Vorgaben (`src/model/roundtip.js`): 6 Schnitte außerhalb des Randes auf einer Viertelellipse der Profiltiefen bis zu einer Spitze von 1 mm, gerade Linie bei 25 %; Flügelende **Spitz** | 2 |
 
 ### Validierung der Schaumschnitt-Dateien
 
@@ -564,7 +568,7 @@ npm run foam:cases
 python scripts/validate_foam.py foam-check/cases.json
 ```
 
-`scripts/export-foam-cases.mjs` nimmt die Flügel aus `test/step-cases.js` ohne `mitred-vtail-35-y-up` und `part-tilt-roll` (13 Testfälle): Der erste unterscheidet sich von seinem Testfall nur in den STEP-Achsen, die Kerne des zweiten liegen im Koordinatensystem des Teils, wie die von `mitred-gull-15-5`. Schnitte: der Vorschlag für einen längsten Kern von 300 mm. Schnittbreite 1 mm für `guided-elliptic`, Papier A3 für `pointed-tip` und Letter für `mitred-gull-15-5`, sonst keine Schnittbreite und A4. `cases.json` enthält je Testfall den Namen, die 4 Dateien, die Anzahl der Segmente, die Punkte je Profil, die Schnittbreite, die Anzahl der Eckpunkte jeder Profil-Polylinie, die Seitenzahl, die Seitengröße und die Papiergröße.
+`scripts/export-foam-cases.mjs` nimmt die Flügel aus `test/step-cases.js` ohne `mitred-vtail-35-y-up` und `part-tilt-roll` (14 Testfälle): Der erste unterscheidet sich von seinem Testfall nur in den STEP-Achsen, die Kerne des zweiten liegen im Koordinatensystem des Teils, wie die von `mitred-gull-15-5`. Schnitte: der Vorschlag für einen längsten Kern von 300 mm. Schnittbreite 1 mm für `guided-elliptic`, Papier A3 für `pointed-tip` und Letter für `mitred-gull-15-5`, sonst keine Schnittbreite und A4. `cases.json` enthält je Testfall den Namen, die 4 Dateien, die Anzahl der Segmente, die Punkte je Profil, die Schnittbreite, die Anzahl der Eckpunkte jeder Profil-Polylinie, die Seitenzahl, die Seitengröße und die Papiergröße.
 
 | Prüfung je Testfall (`validate_foam.py`) | Bestanden, wenn |
 | --- | --- |

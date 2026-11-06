@@ -8,6 +8,7 @@ import { LAZY_OPTIONS, WARN, costPhrase, displayName, loftGrid, projectSize } fr
 import { mitredPlanes, panelDihedrals, rolledPanelCount, storesPanelAngle } from '../geom/planes.js';
 import { count, fixed, plain, tr } from '../i18n/index.js';
 import { wingletDialog } from './winglet.js';
+import { roundTipDialog } from './roundtip.js';
 
 const C = LIMITS.maxCoordinate;
 
@@ -266,7 +267,12 @@ export class SectionsPanel {
           h('tbody', {}, rows),
         ),
       ),
-      h('div', { class: 'row' }, h('button', { type: 'button', title: tr('Append a winglet beyond the wing tip'), onclick: () => wingletDialog(this.store, (m) => this.onMessage(m)) }, tr('Winglet…'))),
+      h(
+        'div',
+        { class: 'row' },
+        h('button', { type: 'button', title: tr('Append a winglet beyond the wing tip'), onclick: () => wingletDialog(this.store, (m) => this.onMessage(m)) }, tr('Winglet…')),
+        h('button', { type: 'button', title: tr('Append a rounded tip beyond the wing tip'), onclick: () => roundTipDialog(this.store, (m) => this.onMessage(m)) }, tr('Rounded tip…')),
+      ),
       h(
         'p',
         { class: 'muted small' },

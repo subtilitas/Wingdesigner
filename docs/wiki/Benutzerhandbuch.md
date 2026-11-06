@@ -602,6 +602,31 @@ Mit **Einstellungen** > **Flügelende** (Wing tip) = **Spitz** (Pointed) verwend
 
 Konstruktion: [[Geometrie|Geometrie]], Abschnitt 9.
 
+### Randbogen
+
+**Randbogen …** unter der Tabelle öffnet einen Dialog, der außen am Randschnitt einen Randbogen anfügt und **Einstellungen** > **Flügelende** auf **Spitz** setzt. Die Profiltiefe folgt einer Viertelellipse von der Randtiefe bis zur Spitze. Nasenleiste und Endleiste laufen auf eine gerade Linie bei einem gewählten Anteil der Profiltiefe zu und treffen sich auf ihr. Die Schnitte setzen das letzte Feld in y und z fort und behalten Profil und Schränkung des Randschnitts. **Randbogen anfügen** (Add rounded tip) fügt sie als ein Rückgängig-Schritt an; **Rückgängig** stellt auch das Flügelende wieder her.
+
+| Feld | Einheit | Schritt | Grenze | Vorgabe | Wirkung |
+| --- | --- | --- | --- | --- | --- |
+| Länge außerhalb des Randschnitts | mm | 5 | 5 bis 100.000 | Randtiefe, mindestens 5 mm | Länge entlang des letzten Feldes vom Randschnitt bis zur Spitze |
+| Gerade Linie | % der Profiltiefe ab der Nasenleiste | 5 | 0 bis 100 | 25 | Tiefenposition, die auf der Linie des letzten Feldes bleibt; 0 = gerade Nasenleiste, 100 = gerade Endleiste |
+| Anzahl der Schnitte | – | 1 | 2 bis 24 | 6 | Angefügte Schnitte einschließlich der Spitze; zur Spitze hin dichter |
+
+- Die Spitze erhält die Profiltiefe eines spitzen Flügelendes: 1/200 des Schnitts davor (**Einstellungen** > **Flügelende**, Maßstab), mindestens 1 mm. **Sport** mit den Vorgaben: 6 Schnitte, Profiltiefen 139,09, 124,71, 101,82, 72 und 37,27 mm, Spitze bei y = 743,95 mm mit 1 mm Profiltiefe.
+- Die Dicke fällt mit der Profiltiefe, da das Profil seine relative Dicke behält. Von vorn gesehen ist der Umriss des Randbogens ebenfalls eine Viertelellipse.
+- Die Vorschau zeigt die äußeren 40 % der Spannweite von oben, den Randbogen in der Akzentfarbe, und nennt die Zahl der Schnitte und die Lage der Spitze. Ein Baufehler der Vorschau steht stattdessen dort und sperrt **Randbogen anfügen**.
+
+**Randbogen anfügen** ist gesperrt, mit dem Grund unter der Vorschau, wenn:
+
+- ein Feld außerhalb seiner Grenze liegt oder die Anzahl der Schnitte keine ganze Zahl ist;
+- eine Leitkurve eingeschaltet ist (`Zuerst die Leitkurven ausschalten: …`);
+- **Einstellungen** > **Flügelende** = **Spitz** (`… Ein Randbogen braucht ein flaches Flügelende.`);
+- der letzte Schnitt vor der Spitze unter 1 mm Profiltiefe fiele (`Randbogen: Mit … Schnitten muss die Randtiefe mindestens … mm betragen; …`);
+- ein Randbogenfeld in y weniger als 1 mm reicht (`Randbogenfeld … reicht … mm in y, …`). Das letzte von m Feldern reicht 1 − cos(π / (2m)) der Länge mal dem Kosinus des Winkels des letzten Feldes: 3,4 % bei 6 Schnitten, 0,9 % bei 12;
+- die Schnitte 20.000 überschreiten oder eine Koordinate ±1.000.000 mm überschreitet.
+
+Konstruktion: [[Geometrie|Geometrie]], Abschnitt 10.
+
 ## Grundriss
 
 ![Grundriss-Editor: Nasenlinie und Endlinie an (elliptischer Grundriss), Tabelle der Leitkurvenpunkte](images/de/planform.png)

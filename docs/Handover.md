@@ -10,7 +10,7 @@ how the owner works with contributors, and what the repository does not hold.
 | Item | State on 2026-10-03 |
 | --- | --- |
 | Version | `package.json` holds 0.7.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), `v0.7.0` on 1347f03 (2026-10-03), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | Not planned; the version number is unknown. `CHANGELOG.md`, section Unreleased, is empty. The owner pushes the tag on the merge commit of the release pull request (section Working with the owner). |
+| Next release | Not planned; the version number is unknown. `CHANGELOG.md`, section Unreleased, holds the rounded tip (**Rounded tip…**, 2026-11-06). The owner pushes the tag on the merge commit of the release pull request (section Working with the owner). |
 | Release texts | The notes of `v0.2.0`, `v0.3.0`, `v0.5.0`, `v0.6.0` and `v0.7.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
 | `main` | Release 0.7.0 (1347f03, pull request #33). |
 | Unit tests | `RECORD.md`, row Unit tests. |
@@ -125,7 +125,7 @@ npm run screenshots
   `CHANGELOG.md` name no contributor material from its list of terms (Development, section
   Documentation check). It does not compare the contents of the two languages and does not read this
   page, `docs/Flow5upgrade.md` or `RECORD.md`.
-- `npm run i18n:check` checks that every interface text has a German translation (850 texts).
+- `npm run i18n:check` checks that every interface text has a German translation (993 texts on 2026-11-06).
 - `npm run e2e` took 6.5 min for 368 runs in the cloud container.
 - `npm run screenshots` regenerates 28 images. An image that differs only by rendering noise is
   restored on its own: `git checkout -- docs/wiki/images/<name>.png` (German:
