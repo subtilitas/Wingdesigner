@@ -1087,15 +1087,17 @@ at length s:   x = x_T + s · tan Λ,   chord = c_T + (k · c_T − c_T) · s / 
 
 ## 10. Rounded tip
 
-`src/model/roundtip.js` appends the rounded tip as sections and sets the tip mode to Pointed (section 3.5); the loft treats them as any other panel. Input: the tip section T (y_T, z_T, x_T, chord c_T, twist t_T), the section P before it, the angle a0 of the last panel (its stored **Panel angle**, else atan2(z_T − z_P, y_T − y_P)), the tip ratio ρ of **Settings** > **Wing tip**, and the parameters length L, straight line f (share of the chord, 0 … 1) and section count m.
+`src/model/roundtip.js` appends the rounded tip as sections and sets the tip mode to Pointed (section 3.5); the loft treats them as any other panel. Input: the tip section T (y_T, z_T, x_T, chord c_T, twist t_T), the section P before it, the angle a0 of the last panel (its stored **Panel angle**, else atan2(z_T − z_P, y_T − y_P)), the tip ratio ρ of **Settings** > **Wing tip**, and the parameters length L, straight line f (share of the chord, 0 … 1), section count m and tangent (on or off).
 
 ```
 slope = (x_T + f · c_T − x_P − f · c_P) / (y_T − y_P)     dx/dy of the straight line of the last panel
+c'    = (c_T − c_P) / (y_T − y_P)                         taper of the last panel (dc/dy)
+κ     = c' · L · cos a0 / c_T  with tangent,  0 without    must be > −0.95
 
 section k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
   y_k     = y_T + t_k · L · cos a0
   z_k     = z_T + t_k · L · sin a0
-  c_k     = c_T · cos(π k / (2m)) = c_T · sqrt(1 − t_k²)     k < m
+  c_k     = c_T · sqrt(1 − t_k²) · (1 + κ t_k)              k < m
   c_m     = max(ρ · c_(m−1), 1 mm)
   x_k     = x_T + f · c_T + (y_k − y_T) · slope − f · c_k
   airfoil and twist = those of T
@@ -1103,8 +1105,10 @@ section k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
 
 - The point at f · c of every section lies on the line of the last panel through f · c. The leading edge (x_k) and the trailing edge (x_k + c_k) meet that line at the point; f = 0 keeps the leading edge straight, f = 1 the trailing edge.
 - The sections lie closer together towards the point, where the chord falls fastest: the last of m panels spans 1 − cos(π / (2m)) of the length in t. A panel narrower than 1 mm (`SHORT_PANEL`) in y is refused.
-- c_(m−1) = c_T · cos(π (m − 1) / (2m)) must reach the 1 mm minimum chord: c_T ≥ 1 mm / cos(π (m − 1) / (2m)), 3.87 mm at m = 6.
+- Tangent: with s = (y − y_T) / (L cos a0), c(s) = c_T · sqrt(1 − s²) · (1 + κ s) has dc/dy = κ c_T / (L cos a0) = c' at s = 0, the taper of the last panel. Leading edge x_k and trailing edge x_k + c_k then have the slopes of the edges of the last panel at T: no corner in the planform there (continuity of the tangent, not of the curvature). At s = 1 the factor sqrt(1 − s²) still closes the outline with a tangent square to y.
+- 1 + κ s must stay positive up to the point: κ ≤ −0.95 (the last panel would taper to zero chord within L / 0.95) is refused. The default length is the tip chord, at most c_T / (−2 c' cos a0) (κ = −0.5). Without tangent dc/dy at T is 0, and where the last panel tapers the planform has a corner at T.
+- c_(m−1) must reach the 1 mm minimum chord: c_T ≥ 1 mm / (cos θ · (1 + κ sin θ)), θ = π (m − 1) / (2m); 3.87 mm at m = 6 without tangent.
 - Values are rounded to 0.01 mm. A stored **Panel angle** of the last panel is copied to T and to the added sections but the point, so that the rounding does not tilt their **Mitred** planes; without one, the planes follow the reference points.
-- dc/dy at T is 0: the planform has a kink at T where the last panel tapers. The thickness follows the chord (the airfoil keeps its thickness ratio), so the front view of the tip is a quarter ellipse as well.
+- The thickness follows the chord (the airfoil keeps its thickness ratio), so the front view of the tip has the shape of c(s).
 - Guide curves hold x and the chord as functions of y between root and tip; they would stretch over the rounded tip, so the dialog requires them off. A wing with a pointed tip already ends in a point and is refused.
-- Tested: every preset with a flat tip and the guide curves off but **Batwing** (chord below 1 mm with a flat tip) builds a closed wing with the default rounded tip, with **Linear** and **Smooth** and with **Mitred** and **Vertical** planes, without errors or warnings. The **Sport** wing builds with the straight line at 0, 25, 50, 75 and 100 % and 2, 4 and 8 sections. The STEP case `rounded-tip-smooth` (section 6) passes the OpenCascade check.
+- Tested: every preset with a flat tip and the guide curves off but **Batwing** (chord below 1 mm with a flat tip) builds a closed wing with the default rounded tip, with **Linear** and **Smooth**, with **Mitred** and **Vertical** planes and with tangent on and off, without errors. Warnings: none, except with tangent on **Delta jet** (fixed trailing edge 1.6 mm) and **Double delta** (2 mm), where the trailing-edge thickness exceeds 5 % of the chord at 1 station before the last panel and is limited there. The **Sport** wing builds with the straight line at 0, 25, 50, 75 and 100 % and 2, 4 and 8 sections. The STEP case `rounded-tip-smooth` (section 6) passes the OpenCascade check.

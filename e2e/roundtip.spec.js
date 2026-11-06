@@ -2,7 +2,8 @@
 // checks that disable Add, and Add and Undo as one step with the wing tip mode.
 //
 // Sport (src/model/wizard.js): 2 sections, half span 600 mm, tip chord 144 mm, dihedral 1.5°.
-// Default rounded tip: 144 mm long (one tip chord), straight line at 25 %, 6 sections; the point at
+// Default rounded tip: 144 mm long (one tip chord), straight line at 25 %, 6 sections, tangent to the
+// last panel (κ = −0.16); the point at
 // y = 600 + 144 · cos 1.5° = 743.95 mm with the 1 mm chord of a pointed tip.
 import { createDesign, dialogOf, expect, openTab, savedProject, sectionRows as rows, statusOf as status, test, toastOf } from './helpers.js';
 
@@ -33,8 +34,19 @@ test.describe('Rounded-tip dialog', () => {
     await dlg.getByLabel('Number of sections').fill('12');
     await expect(add).toBeDisabled();
     await expect(dlg.locator('p[aria-live]')).toHaveText(/^Rounded-tip panel 12 spans 0\.42 mm in y, less than 1 mm/);
-    await dlg.getByLabel('Length beyond the tip section (mm)').fill('144');
     await dlg.getByLabel('Number of sections').fill('6');
+
+    // Tangent is on: the Sport tip panel tapers to zero chord 900.31 mm beyond the tip, so a tangent tip
+    // stops at 855.29 mm; switched off, the same length is allowed.
+    const tangent = dlg.getByLabel('Tangent to the last panel');
+    await expect(tangent).toBeChecked();
+    await dlg.getByLabel('Length beyond the tip section (mm)').fill('856');
+    await expect(add).toBeDisabled();
+    await expect(dlg.locator('p[aria-live]')).toHaveText(/^Rounded tip: the last panel tapers to zero chord within 900\.31 mm, so a tangent tip can be at most 855\.29 mm long/);
+    await tangent.uncheck();
+    await expect(add).toBeEnabled();
+    await tangent.check();
+    await dlg.getByLabel('Length beyond the tip section (mm)').fill('144');
     await expect(add).toBeEnabled();
 
     await add.click();
@@ -45,6 +57,8 @@ test.describe('Rounded-tip dialog', () => {
     expect(saved.settings.tip.mode).toBe('pointed');
     const tip = saved.sections.slice().sort((a, b) => a.y - b.y).at(-1);
     expect([tip.y, tip.chord]).toEqual([743.95, 1]);
+    // Tangent: the first rounded-tip section at y = 637.26 mm has 133.34 mm chord, on the taper of the last panel.
+    expect(saved.sections.find((q) => q.y === 637.26).chord).toBe(133.34);
     await expect(status(page)).not.toHaveText(SPORT);
 
     await page.getByRole('button', { name: 'Undo', exact: true }).click();

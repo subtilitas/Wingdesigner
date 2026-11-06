@@ -9,10 +9,15 @@
 //             last panel through that chord position; the leading edge and the trailing edge
 //             curve towards it and meet on it. 0 = straight leading edge, 100 = straight trailing edge.
 //   sections  number of added sections, the point included
+//   tangent   true: the chord starts with the taper of the last panel, so that leading and trailing
+//             edge run on tangent to the last panel at the tip section; false: the chord starts with
+//             slope 0, which leaves a corner in the planform where the last panel tapers
 //
 // Section k = 1 … m (m = sections) lies at t = sin(π k / (2 m)) of the length, closer together
-// towards the point, with the chord c_T · cos(π k / (2 m)) = c_T · sqrt(1 − t²) (c_T: chord of the
-// tip section). The point (k = m) takes the chord of a pointed tip: tip.ratio of the chord before, at
+// towards the point, with the chord c_T · sqrt(1 − t²) · (1 + κ t) (c_T: chord of the tip section).
+// κ = 0 without tangent; with tangent κ = (dc/dy of the last panel) · (length in y) / c_T, which gives
+// the chord the slope dc/dy at the tip section. The factor stays positive up to the point only for
+// κ > −1: a last panel that would taper to zero chord within the length is refused. The point (k = m) takes the chord of a pointed tip: tip.ratio of the chord before, at
 // least LIMITS.minChord. Airfoil and twist stay those of the tip section; the reference points run
 // on along the last panel in y and z.
 
@@ -30,6 +35,9 @@ export const ROUND_TIP_RANGES = Object.freeze({
   sections: Object.freeze([2, 24]),
 });
 
+/** κ ≤ −1 + KAPPA_MARGIN is refused: the chord would fall to zero before the point. */
+const KAPPA_MARGIN = 0.05;
+
 const r2 = (v) => Math.round(v * 100) / 100;
 
 /** The two outermost sections and the angle (degrees) and chord-line slope dx/dy of the last panel. */
@@ -41,13 +49,27 @@ function lastPanel(project, line) {
   const f = line / 100;
   const dy = tip.y - prev.y;
   const slope = dy > 0 ? (tip.x + f * tip.chord - (prev.x + f * prev.chord)) / dy : 0;
-  return { tip, prev, angle, slope };
+  const taper = dy > 0 ? (tip.chord - prev.chord) / dy : 0;
+  return { tip, prev, angle, slope, taper };
 }
 
-/** Starting values: one tip chord long, straight line at 25 % of the chord, 6 sections. */
+/** κ of the chord factor 1 + κ t (see the header); 0 without tangent. */
+export function roundTipKappa(project, params) {
+  if (!params.tangent) return 0;
+  const { tip, angle, taper } = lastPanel(project, params.line);
+  return (taper * params.length * Math.cos(angle * DEG)) / tip.chord;
+}
+
+/**
+ * Starting values: one tip chord long, straight line at 25 % of the chord, 6 sections, tangent. A last
+ * panel that tapers to zero chord within two tip chords shortens the length to half that distance
+ * (κ = −0.5), so that the tangent tip keeps a rounded outline.
+ */
 export function defaultRoundTip(project) {
-  const tip = sortedSections(project).at(-1);
-  return { length: Math.max(ROUND_TIP_RANGES.length[0], Math.round(tip.chord)), line: 25, sections: 6 };
+  const { tip, taper, angle } = lastPanel(project, 25);
+  let length = tip.chord;
+  if (taper < 0) length = Math.min(length, tip.chord / (-2 * taper * Math.cos(angle * DEG)));
+  return { length: Math.max(ROUND_TIP_RANGES.length[0], Math.round(length)), line: 25, sections: 6, tangent: true };
 }
 
 /** Sections of the rounded tip (without ids), from the tip section outward. Assumes valid parameters. */
@@ -59,10 +81,11 @@ export function roundTipSections(project, params) {
   const dy = params.length * Math.cos(angle * DEG);
   const dz = params.length * Math.sin(angle * DEG);
   const xLine = tip.x + f * tip.chord;
+  const kappa = roundTipKappa(project, params);
   const out = [];
   for (let k = 1; k <= m; k++) {
     const t = k === m ? 1 : Math.sin((Math.PI * k) / (2 * m));
-    const chord = k === m ? Math.max(ratio * out.at(-1).chord, LIMITS.minChord) : tip.chord * Math.cos((Math.PI * k) / (2 * m));
+    const chord = k === m ? Math.max(ratio * out.at(-1).chord, LIMITS.minChord) : tip.chord * Math.cos((Math.PI * k) / (2 * m)) * (1 + kappa * t);
     const q = { airfoil: tip.airfoil, x: r2(xLine + t * dy * slope - f * chord), y: r2(tip.y + t * dy), z: r2(tip.z + t * dz), chord: r2(chord), twist: tip.twist };
     out.push(q);
   }
@@ -78,12 +101,22 @@ export function roundTipProblems(project, params) {
     if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi) out.push(tr('Rounded tip: {param} must be between {min} and {max}.', { param: names[k](), min: plain(lo), max: plain(hi) }));
   }
   if (Number.isFinite(params.sections) && !Number.isInteger(params.sections)) out.push(tr('Rounded tip: the number of sections must be a whole number.'));
+  if (typeof params.tangent !== 'boolean') out.push(tr('Rounded tip: tangent must be on or off.'));
   if (project.guides?.nose?.enabled || project.guides?.end?.enabled) out.push(tr('Switch the guide curves off first: they hold x as a function of y and would stretch over the rounded tip.'));
   if (project.settings.tip?.mode === 'pointed') out.push(tr('The wing already ends in a point (Settings > Wing tip = Pointed): a rounded tip needs a flat tip.'));
   if (out.length) return out;
-  const { tip } = lastPanel(project, params.line);
-  // The last section before the point keeps cos(π (m − 1) / (2 m)) of the tip chord.
-  const need = LIMITS.minChord / Math.cos((Math.PI * (params.sections - 1)) / (2 * params.sections));
+  const { tip, taper, angle } = lastPanel(project, params.line);
+  const kappa = roundTipKappa(project, params);
+  if (kappa <= -1 + KAPPA_MARGIN) {
+    // κ = −1 + margin at the length L_max = (1 − margin) · c_T / (−dc/dy · cos a0).
+    const max = ((1 - KAPPA_MARGIN) * tip.chord) / (-taper * Math.cos(angle * DEG));
+    out.push(tr('Rounded tip: the last panel tapers to zero chord within {at} mm, so a tangent tip can be at most {max} mm long; reduce the length or switch off Tangent to the last panel.', { at: plain(r2(tip.chord / (-taper * Math.cos(angle * DEG)))), max: plain(Math.floor(max * 100) / 100) }));
+    return out;
+  }
+  // The last section before the point keeps cos(π (m − 1) / (2 m)) · (1 + κ sin(π (m − 1) / (2 m)))
+  // of the tip chord.
+  const th = (Math.PI * (params.sections - 1)) / (2 * params.sections);
+  const need = LIMITS.minChord / (Math.cos(th) * (1 + kappa * Math.sin(th)));
   if (tip.chord < need) {
     out.push(tr('Rounded tip: with {n} sections the tip chord must be at least {min} mm; use fewer sections.', { n: params.sections, min: plain(Math.ceil(need * 100) / 100) }));
     return out;
@@ -97,6 +130,7 @@ export function roundTipProblems(project, params) {
     }
     y = q.y;
     if ([q.x, q.y, q.z].some((v) => Math.abs(v) > LIMITS.maxCoordinate)) out.push(tr('Rounded-tip section {n} lies beyond ±{max} mm.', { n: i + 1, max: whole(LIMITS.maxCoordinate) }));
+    if (q.chord > LIMITS.maxChord) out.push(tr('Rounded-tip section {n}: the chord is above {max} mm.', { n: i + 1, max: whole(LIMITS.maxChord) }));
   });
   return out;
 }

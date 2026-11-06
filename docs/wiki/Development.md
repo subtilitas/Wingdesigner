@@ -75,7 +75,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/model/edit.js` | Edit operations |
 | `src/model/wizard.js` | Wizard presets, parameter ranges (`RANGES`) and panel ranges (`PANEL_RANGES`, at most `MAX_PANELS` = 24 panels); `wizardProject` builds the sections of the straight, elliptic and panel planforms and the elliptic tip (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` turns the straight planform into 1 panel |
 | `src/model/winglet.js` | Integral winglet: `wingletSections` (blend arc in steps of at most `WINGLET_STEP` = 15°, then the straight part), `wingletProblems`, `addWinglet`, `defaultWinglet`, ranges `WINGLET_RANGES` |
-| `src/model/roundtip.js` | Rounded tip: `roundTipSections` (quarter ellipse of chords at t = sin(π k / (2m))), `roundTipProblems`, `addRoundTip` (also sets the tip mode to Pointed), `defaultRoundTip`, ranges `ROUND_TIP_RANGES` |
+| `src/model/roundtip.js` | Rounded tip: `roundTipSections` (quarter ellipse of chords at t = sin(π k / (2m)), times 1 + κ t), `roundTipKappa` (κ of **Tangent to the last panel**), `roundTipProblems`, `addRoundTip` (also sets the tip mode to Pointed), `defaultRoundTip`, ranges `ROUND_TIP_RANGES` |
 | `src/model/defaults.js` | Project on first load |
 | `src/ui/store.js` | Store with undo and redo |
 | `src/ui/viewer3d.js` | 3D view |
@@ -433,7 +433,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 675 tests in 26 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 677 tests in 26 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |

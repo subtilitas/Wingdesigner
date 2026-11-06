@@ -11,8 +11,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 - **Rounded tip…** in the **Sections** tab appends a rounded tip beyond a flat tip section as ordinary sections, in one
   undo step, and sets **Wing tip** to Pointed. The chord follows a quarter ellipse to a point of 1/200 of the section
   before, at least 1 mm. Leading and trailing edge curve towards a straight line at 0 to 100 % of the chord, default
-  25 %. Length 5 to 100,000 mm, default one tip chord; 2 to 24 sections, default 6. A top-view preview builds the wing
-  first. German: **Randbogen …**.
+  25 %. **Tangent to the last panel**, on by default, scales the ellipse so that the chord starts with the taper of
+  the last panel: leading and trailing edge run on without a corner at the tip section. Length 5 to 100,000 mm,
+  default one tip chord; 2 to 24 sections, default 6. A top-view preview builds the wing first. German: **Randbogen …**.
 
 ## [0.7.0] - 2026-10-03
 

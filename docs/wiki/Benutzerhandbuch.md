@@ -604,16 +604,18 @@ Konstruktion: [[Geometrie|Geometrie]], Abschnitt 9.
 
 ### Randbogen
 
-**Randbogen …** unter der Tabelle öffnet einen Dialog, der außen am Randschnitt einen Randbogen anfügt und **Einstellungen** > **Flügelende** auf **Spitz** setzt. Die Profiltiefe folgt einer Viertelellipse von der Randtiefe bis zur Spitze. Nasenleiste und Endleiste laufen auf eine gerade Linie bei einem gewählten Anteil der Profiltiefe zu und treffen sich auf ihr. Die Schnitte setzen das letzte Feld in y und z fort und behalten Profil und Schränkung des Randschnitts. **Randbogen anfügen** (Add rounded tip) fügt sie als ein Rückgängig-Schritt an; **Rückgängig** stellt auch das Flügelende wieder her.
+**Randbogen …** unter der Tabelle öffnet einen Dialog, der außen am Randschnitt einen Randbogen anfügt und **Einstellungen** > **Flügelende** auf **Spitz** setzt. Die Profiltiefe folgt einer Viertelellipse von der Randtiefe bis zur Spitze. Mit **Tangential zum letzten Feld** (Tangent to the last panel) wird die Ellipse so skaliert, dass die Profiltiefe mit der Zuspitzung des letzten Feldes beginnt: Nasenleiste und Endleiste laufen ohne Knick über den Randschnitt. Nasenleiste und Endleiste laufen auf eine gerade Linie bei einem gewählten Anteil der Profiltiefe zu und treffen sich auf ihr. Die Schnitte setzen das letzte Feld in y und z fort und behalten Profil und Schränkung des Randschnitts. **Randbogen anfügen** (Add rounded tip) fügt sie als ein Rückgängig-Schritt an; **Rückgängig** stellt auch das Flügelende wieder her.
 
 | Feld | Einheit | Schritt | Grenze | Vorgabe | Wirkung |
 | --- | --- | --- | --- | --- | --- |
-| Länge außerhalb des Randschnitts | mm | 5 | 5 bis 100.000 | Randtiefe, mindestens 5 mm | Länge entlang des letzten Feldes vom Randschnitt bis zur Spitze |
+| Länge außerhalb des Randschnitts | mm | 5 | 5 bis 100.000 | Randtiefe, mindestens 5 mm; höchstens die Hälfte des Abstands, in dem das letzte Feld auf Profiltiefe null zuliefe | Länge entlang des letzten Feldes vom Randschnitt bis zur Spitze |
 | Gerade Linie | % der Profiltiefe ab der Nasenleiste | 5 | 0 bis 100 | 25 | Tiefenposition, die auf der Linie des letzten Feldes bleibt; 0 = gerade Nasenleiste, 100 = gerade Endleiste |
 | Anzahl der Schnitte | – | 1 | 2 bis 24 | 6 | Angefügte Schnitte einschließlich der Spitze; zur Spitze hin dichter |
+| Tangential zum letzten Feld | – | – | ein, aus | ein | Ein: Die Profiltiefe beginnt mit der Zuspitzung des letzten Feldes, kein Knick im Grundriss am Randschnitt. Aus: Die Profiltiefe beginnt mit Steigung 0, was einen Knick lässt, wo sich das letzte Feld verjüngt |
 
-- Die Spitze erhält die Profiltiefe eines spitzen Flügelendes: 1/200 des Schnitts davor (**Einstellungen** > **Flügelende**, Maßstab), mindestens 1 mm. **Sport** mit den Vorgaben: 6 Schnitte, Profiltiefen 139,09, 124,71, 101,82, 72 und 37,27 mm, Spitze bei y = 743,95 mm mit 1 mm Profiltiefe.
-- Die Dicke fällt mit der Profiltiefe, da das Profil seine relative Dicke behält. Von vorn gesehen ist der Umriss des Randbogens ebenfalls eine Viertelellipse.
+- Die Spitze erhält die Profiltiefe eines spitzen Flügelendes: 1/200 des Schnitts davor (**Einstellungen** > **Flügelende**, Maßstab), mindestens 1 mm. **Sport** mit den Vorgaben (Zuspitzung des letzten Feldes −0,16 mm je mm): 6 Schnitte, Profiltiefen 133,34, 114,73, 90,31, 62,03 und 31,51 mm, Spitze bei y = 743,95 mm mit 1 mm Profiltiefe. Ohne Tangential: 139,09, 124,71, 101,82, 72 und 37,27 mm.
+- Die Dicke fällt mit der Profiltiefe, da das Profil seine relative Dicke behält. Von vorn gesehen folgt der Umriss des Randbogens der Profiltiefe.
+- Mit Tangential kann eine feste Endleistendicke (**Einstellungen** > **Endleiste**) an einer Station vor dem letzten Feld 5 % der Profiltiefe überschreiten, wo die Tiefe schneller fällt als die Ellipse. Der Aufbau begrenzt sie dort und meldet eine Warnung; bei den Entwurfstypen **Delta-Jet** (Delta jet, 1,6 mm) und **Doppeldelta** (Double delta, 2 mm).
 - Die Vorschau zeigt die äußeren 40 % der Spannweite von oben, den Randbogen in der Akzentfarbe, und nennt die Zahl der Schnitte und die Lage der Spitze. Ein Baufehler der Vorschau steht stattdessen dort und sperrt **Randbogen anfügen**.
 
 **Randbogen anfügen** ist gesperrt, mit dem Grund unter der Vorschau, wenn:
@@ -621,9 +623,10 @@ Konstruktion: [[Geometrie|Geometrie]], Abschnitt 9.
 - ein Feld außerhalb seiner Grenze liegt oder die Anzahl der Schnitte keine ganze Zahl ist;
 - eine Leitkurve eingeschaltet ist (`Zuerst die Leitkurven ausschalten: …`);
 - **Einstellungen** > **Flügelende** = **Spitz** (`… Ein Randbogen braucht ein flaches Flügelende.`);
+- das letzte Feld mit Tangential innerhalb von 1/0,95 der Länge auf Profiltiefe null zuliefe (`Randbogen: Das letzte Feld liefe innerhalb von … mm auf Profiltiefe null zu, …`); **Sport**: höchstens 855,29 mm;
 - der letzte Schnitt vor der Spitze unter 1 mm Profiltiefe fiele (`Randbogen: Mit … Schnitten muss die Randtiefe mindestens … mm betragen; …`);
 - ein Randbogenfeld in y weniger als 1 mm reicht (`Randbogenfeld … reicht … mm in y, …`). Das letzte von m Feldern reicht 1 − cos(π / (2m)) der Länge mal dem Kosinus des Winkels des letzten Feldes: 3,4 % bei 6 Schnitten, 0,9 % bei 12;
-- die Schnitte 20.000 überschreiten oder eine Koordinate ±1.000.000 mm überschreitet.
+- die Schnitte 20.000, eine Koordinate ±1.000.000 mm oder eine Profiltiefe 100.000 mm überschreiten.
 
 Konstruktion: [[Geometrie|Geometrie]], Abschnitt 10.
 
