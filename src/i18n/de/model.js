@@ -46,6 +46,7 @@ export default {
   'Section {n}: twist must be within ±{max} degrees.': 'Schnitt {n}: Schränkung muss innerhalb von ±{max} Grad liegen.',
   'Section {n}: panelAngle must be within ±{max} degrees.': 'Schnitt {n}: panelAngle muss innerhalb von ±{max} Grad liegen.',
   'Section {n}: panelAngle must be a finite number or null.': 'Schnitt {n}: panelAngle muss eine endliche Zahl oder null sein.',
+  'Section {n}: roundTip must be "tangent" or "corner".': 'Schnitt {n}: roundTip muss "tangent" oder "corner" sein.',
   'guides.{key}.points: at most {max} points (found {found}).': 'guides.{key}.points: höchstens {max} Punkte ({found} gefunden).',
   'guides.{key}.points: x must be within ±{maxX} mm and y within ±{maxY} mm.': 'guides.{key}.points: x muss innerhalb von ±{maxX} mm und y innerhalb von ±{maxY} mm liegen.',
 
@@ -106,6 +107,7 @@ export default {
   'foldedTilt.{axis} must be within ±{max} mm.': 'foldedTilt.{axis} muss innerhalb von ±{max} mm liegen.',
   'settings.trailingEdge.mode must be "asis", "closed" or "thickness".': 'settings.trailingEdge.mode muss "asis", "closed" oder "thickness" sein.',
   'settings.trailingEdge.thickness must be >= 0.': 'settings.trailingEdge.thickness muss >= 0 sein.',
+  'settings.trailingEdge.smooth must be true or false.': 'settings.trailingEdge.smooth muss true oder false sein.',
   'settings.tip.mode must be "flat" or "pointed".': 'settings.tip.mode muss "flat" oder "pointed" sein.',
   'settings.tip.ratio must be within {range} (1/1000 to 1/100).': 'settings.tip.ratio muss innerhalb von {range} liegen (1/1000 bis 1/100).',
   'settings.twistPivot must be within 0..1.': 'settings.twistPivot muss innerhalb von 0..1 liegen.',

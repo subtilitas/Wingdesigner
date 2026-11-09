@@ -17,6 +17,8 @@
 // length: an airfoil's own coordinates move the sections of an XFLR5 airfoil switch (two sections
 // 0.5 mm apart) by up to a few mm in their shared plane, mostly in z.
 
+import { roundTipStart } from './tipblend.js';
+
 export const SECTION_PLANES = Object.freeze(['vertical', 'mitred']);
 
 /** Largest thickness stretch: 60° between a section plane and its panel (R6 of docs/Flow5upgrade.md). */
@@ -34,14 +36,17 @@ export const stretchOf = (roll, dihedral) => 1 / Math.cos((roll - dihedral) * DE
 export const mitredPlanes = (settings) => settings.sectionPlanes === 'mitred';
 
 /**
- * Linear panels whose two section planes differ (they get the stations per panel of a guide curve),
- * for sections in any order and settings with their defaults.
+ * Linear panels that get the stations per panel of a guide curve: panels whose two section planes
+ * differ and the panels of a rounded tip (src/geom/tipblend.js), for sections in any order and
+ * settings with their defaults.
  */
 export function rolledPanelCount(sections, settings) {
-  if (!(mitredPlanes(settings) && settings.spanwise === 'linear') || sections.length < 2) return 0;
-  const { rolls } = sectionPlanes(sections.slice().sort((a, b) => a.y - b.y), 'mitred');
+  if (settings.spanwise !== 'linear' || sections.length < 2) return 0;
+  const sorted = sections.slice().sort((a, b) => a.y - b.y);
+  const tip = roundTipStart(sorted, settings);
+  const rolls = mitredPlanes(settings) ? sectionPlanes(sorted, 'mitred').rolls : null;
   let n = 0;
-  for (let i = 0; i + 1 < rolls.length; i++) if (rolls[i] !== rolls[i + 1]) n++;
+  for (let i = 0; i + 1 < sorted.length; i++) if ((rolls && rolls[i] !== rolls[i + 1]) || (tip >= 0 && i >= tip)) n++;
   return n;
 }
 

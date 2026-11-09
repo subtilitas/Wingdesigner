@@ -6,6 +6,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-09
+
+### Changed
+
+- A rounded tip added with **Rounded tip…** is built along its tip ellipse: its outline has no waves, with **Spanwise
+  interpolation** Linear and Smooth alike, and with **Tangent to the last panel** it leaves the wing tangent to it,
+  also with Smooth. Before, Linear built the tip as a polygon of its sections, and Smooth gave the trailing edge of the
+  default tip of the Sport preset an S-bend 20 to 35 mm before the point. The rest of the wing keeps its
+  interpolation. With **Straight panels**, the tip stays a polygon of its sections.
+- **Rounded tip…** has a **Fullness** field, 2 to 3, default 2.5: the chord follows the superellipse
+  (1 − t^n)^(1/n) of exponent n. 2 is the quarter ellipse of 0.8.0; a larger value keeps the chord fuller towards the
+  point and closes it in a shorter, blunter turn. The rounded tip is built as one piece from the tip section to the
+  point.
+- **Rounded tip…** works on wings with guide curves, such as the elliptic Glider preset: the guide curves end at the
+  old tip section, and the rounded tip leaves them with their slope. **Continue the ellipse of the wing**, on by default
+  when a guide curve is on, carries the wing's own ellipse, centred at the root, on to where it closes: one ellipse
+  from root to point without waves. The Glider preset grows from 2,000 to 2,240 mm span.
+- **Settings** > **Smooth transition to the 5 % limit**, on by default, with **Trailing edge** Fixed thickness in mm: the
+  trailing-edge gap keeps the set thickness down to 1.5 times the chord where 5 % of the chord reaches it (12 mm at
+  0.4 mm), then blends into the 5 % limit without a corner by half that chord (4 mm). Switched off, the gap switches
+  at that chord with a corner, which left small waves in the trailing edge within 1 mm of a pointed tip. Projects
+  without the setting, also earlier ones, build with the smooth transition.
+- The project file marks the sections of a rounded tip (`roundTip`) and is then saved as format version 5, which
+  Wingdesigner 0.8.0 and earlier refuse. A rounded tip added with 0.8.0 has no marker and keeps its former shape; it
+  takes the new one when it is added again.
+
 ## [0.8.0] - 2026-11-06
 
 ### Added

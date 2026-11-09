@@ -143,6 +143,9 @@ export default {
     'Maßstab des Randprofils 1 : N der Tiefe des vorherigen Schnitts (N = {min} bis {max}; Randtiefe mindestens {chord} mm)',
   'Tip profile scale denominator': 'Nenner des Maßstabs des Randprofils',
   'Trailing-edge thickness (mm)': 'Endleistendicke (mm)',
+  'Smooth transition to the 5 % limit': 'Weicher Übergang zur 5-%-Grenze',
+  'The thickness stays fixed down to 1.5 times the chord where 5 % of the chord reaches it, then blends smoothly into the 5 % limit by half that chord, without a corner in the trailing edge':
+    'Die Dicke bleibt fest bis zum 1,5-Fachen der Profiltiefe, bei der 5 % der Profiltiefe sie erreichen, und geht dann bis zur Hälfte dieser Profiltiefe weich in die 5-%-Grenze über, ohne Knick in der Endleiste',
   'Resolution': 'Auflösung',
   'Chordwise stations per surface ({min}-{max})': 'Stationen je Profilseite ({min} bis {max})',
   'Spanwise stations per panel with guides, smooth mode or mitred linear panels ({min}-{max})': 'Stationen je Feld mit Leitkurve, glatter Interpolation oder linearen Feldern auf Gehrung ({min} bis {max})',

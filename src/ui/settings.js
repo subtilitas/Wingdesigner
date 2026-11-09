@@ -176,6 +176,19 @@ export class SettingsPanel {
               numberInput({ focusKey: 'set:te', value: s.trailingEdge.thickness, step: 0.1, min: 0, onCommit: (v) => set((q) => (q.trailingEdge = { ...q.trailingEdge, thickness: Math.max(0, v) })) }),
             )
           : null,
+        s.trailingEdge.mode === 'thickness'
+          ? h(
+              'label',
+              { class: 'check', title: tr('The thickness stays fixed down to 1.5 times the chord where 5 % of the chord reaches it, then blends smoothly into the 5 % limit by half that chord, without a corner in the trailing edge') },
+              h('input', {
+                type: 'checkbox',
+                dataset: { focusKey: 'set:teSmooth' },
+                checked: s.trailingEdge.smooth !== false,
+                onchange: (e) => set((q) => (q.trailingEdge = { ...q.trailingEdge, smooth: e.target.checked })),
+              }),
+              tr('Smooth transition to the 5 % limit'),
+            )
+          : null,
         // Rigid placement of the whole part (src/geom/part.js).
         h(
           'label',

@@ -267,7 +267,7 @@ The checks run:
 | Key | Type | Written | On **Open** |
 | --- | --- | --- | --- |
 | `format` | `"wingdesigner-project"` | always | required, must match |
-| `version` | integer `3`, or `4` when `settings.leftHalf` is `"turned"` | always | required, 1 to 4. A version 1 file opens with `settings.sectionPlanes` `"vertical"`, the section planes it was designed with. A version 2 file with `foldedTilt` is upgraded (section "Upgrade of version 2 files"). A version 1 or 2 file opens with `partTilt` and `partRoll` 0 and `partPivot` null unless the upgrade of its `foldedTilt` sets them: `partTilt`, `partRoll` and `partPivot` in its settings are unknown keys of that version and are dropped, as the apps of that version drop them. An app that reads version 1 only refuses a version 2 file (`Unsupported project version 2.`) instead of dropping `sectionPlanes` and `foldedTilt`; Wingdesigner 0.3.0 and earlier refuse a version 3 file (`Unsupported project version 3.`) instead of dropping `partTilt`, `partRoll` and `partPivot`. A file of version 1 to 3 opens with `settings.leftHalf` `"mirror"`; a `leftHalf` key in it is dropped. Wingdesigner 0.4.0 and earlier refuse a version 4 file (`Unsupported project version 4.`). |
+| `version` | integer `3`; `4` when `settings.leftHalf` is `"turned"`; `5` when a section has `roundTip` | always | required, 1 to 5. A version 1 file opens with `settings.sectionPlanes` `"vertical"`, the section planes it was designed with. A version 2 file with `foldedTilt` is upgraded (section "Upgrade of version 2 files"). A version 1 or 2 file opens with `partTilt` and `partRoll` 0 and `partPivot` null unless the upgrade of its `foldedTilt` sets them: `partTilt`, `partRoll` and `partPivot` in its settings are unknown keys of that version and are dropped, as the apps of that version drop them. An app that reads version 1 only refuses a version 2 file (`Unsupported project version 2.`) instead of dropping `sectionPlanes` and `foldedTilt`; Wingdesigner 0.3.0 and earlier refuse a version 3 file (`Unsupported project version 3.`) instead of dropping `partTilt`, `partRoll` and `partPivot`. A file of version 1 to 3 opens with `settings.leftHalf` `"mirror"`; a `leftHalf` key in it is dropped. Wingdesigner 0.4.0 and earlier refuse a version 4 file (`Unsupported project version 4.`), Wingdesigner 0.8.0 and earlier a version 5 file (`Unsupported project version 5.`) instead of dropping `roundTip`. |
 | `generator` | `{ "name": "Wingdesigner", "version": "<app version>" }` | always | ignored |
 | `exportedAt` | ISO 8601 time, UTC | always | ignored |
 | `name` | string | always | not a string: `Imported wing` (German interface: `Importierter Flügel`); at most 10,000 characters |
@@ -327,6 +327,7 @@ Ids made by the app:
 | `chord` | mm | 1 to 100,000 mm |
 | `twist` | ° | rotation about the chord point at `settings.twistPivot`; positive = LE up; −360 to 360° |
 | `panelAngle` | ° | optional; `null` or missing: the dihedral from `y` and `z`. Angle of the panel to the next section (in the order of `y`) that **Mitred** section planes use for the rolls and the thickness stretch ([[Geometry]], section 3.8); −89.9999 to 89.9999°. Unused on the tip section and with **Vertical**. Written by the XFLR5 import (section "XFLR5 import", step 4) and the **Panel angle** column of the Sections tab. |
+| `roundTip` | – | optional; `"tangent"` or `"corner"`. Marks a section of a rounded tip, written by **Rounded tip…** on every section it adds; a section inserted inside a rounded tip takes the marker of the section after it. An outer run of 2 or more marked sections, not with **Straight panels**, is blended along the tip ellipse, and guide curves end at the section before it ([[Geometry]], section 10): `"tangent"` leaves the section before the run with the slope of the wing, `"corner"` with its own. Otherwise ignored. A project with a marked section is saved as format version 5. |
 
 - Every value except `panelAngle` is a finite number.
 - Limits: `LIMITS` in `src/model/project.js` (`minChord`, `maxChord`, `maxCoordinate`, `maxTwist`, `maxSections`, `maxAirfoils`, `maxAirfoilPoints`, `maxGuidePoints`, `maxGuideCoordinate`, `maxExtent`, `maxName`, `maxId`, `maxText`); points per airfoil: `MAX_POINTS` in `src/airfoil/parse.js`; names: `MAX_NAME` in `src/airfoil/parse.js`.
@@ -354,6 +355,7 @@ Ids made by the app:
 | `twistPivot` | `0`–`1`, fraction of chord | `0.25` | **Twist pivot (fraction of chord)** |
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Trailing edge** |
 | `trailingEdge.thickness` | ≥ 0 mm; used with `"thickness"`; limited to 5 % of the local chord | `0.4` | **Trailing-edge thickness (mm)** |
+| `trailingEdge.smooth` | `true`, `false`; used with `"thickness"` | `true` | **Smooth transition to the 5 % limit**: `true` blends the thickness into the 5 % limit without a corner ([[Geometry]], section 3.7). A project file without the key, also one of an earlier version, builds with `true`; Wingdesigner 0.8.0 and earlier drop the key and build with the corner. |
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Wing tip** |
 | `tip.ratio` | `0.001`–`0.01` (tip profile 1/1000 to 1/100 of the previous section chord); tip chord at least 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N of the previous section chord** |
 | `chordSamples` | integer `16`–`200` | `60` | **Chordwise stations per surface** |
@@ -400,7 +402,7 @@ The file is rejected, and the first 3 messages are shown, when:
 - `name` is longer than 10,000 characters, or an airfoil `name` is present and not a string or longer than 10,000 characters;
 - an airfoil `source` is present, not `null` and not an object, or a known `source` key holds something other than a string, `true`, `false` or `null`, or a string longer than 2,000 characters;
 - an airfoil has fewer than 5 or more than 100,000 points, or a point that is not an `[x, y]` pair of finite numbers;
-- a section `x`, `y`, `z`, `chord` or `twist` is not a finite number, or `panelAngle` is present and neither `null` nor a finite number;
+- a section `x`, `y`, `z`, `chord` or `twist` is not a finite number, `panelAngle` is present and neither `null` nor a finite number, or `roundTip` is present and neither `"tangent"` nor `"corner"` (`Section 3: roundTip must be "tangent" or "corner".`);
 - `chord` < 1 mm or > 100,000 mm, `y` < 0, 2 sections share `y`, or `airfoil` names an unknown id;
 - a section `x`, `y` or `z` lies outside −1,000,000 to 1,000,000 mm, `twist` outside −360 to 360°, or `panelAngle` outside −89.9999 to 89.9999°;
 - a `settings` value is outside the table above;
@@ -473,7 +475,7 @@ Sample wing `Sport wing 1500`, shortened; `"..."` marks omitted entries:
 {
  "format": "wingdesigner-project",
  "version": 3,
- "generator": { "name": "Wingdesigner", "version": "0.8.0" },
+ "generator": { "name": "Wingdesigner", "version": "0.9.0" },
  "exportedAt": "2026-09-30T12:00:00.000Z",
  "name": "Sport wing 1500",
  "units": "mm",

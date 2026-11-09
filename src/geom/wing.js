@@ -13,6 +13,7 @@ import { setTrailingEdgeGap } from '../airfoil/geometry.js';
 import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, paramsApart, secantEndInterpolation, surfacePoint } from './nurbs.js';
 import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile, sampleCurve } from './profile.js';
 import { spanwiseBlender } from './spanwise.js';
+import { guideEndIndex, roundTipBlender, roundTipStart, spanParameter } from './tipblend.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { MAX_STRETCH, SHORT_PANEL, firstFold, mitredPlanes, overStretched, sectionPlanes, stretchOf, upExtent } from './planes.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
@@ -49,6 +50,27 @@ const MAX_EXTRA_STATIONS = 32;
 
 /** Largest trailing-edge gap as a fraction of the local chord. */
 export const MAX_GAP_FRACTION = 0.05;
+
+/** Half width of the smooth transition of the gap limit, as a share of the chord where it sets in. */
+export const GAP_BLEND = 0.5;
+
+/**
+ * Trailing-edge gap in mm of the 'thickness' mode at a chord (mm): the thickness t, at most
+ * MAX_GAP_FRACTION of the chord. Hard, the gap is min(t, 0.05 · c), with a corner at c* = t / 0.05,
+ * which the loft carries into the trailing edge near a pointed tip. Smooth, the two meet in the
+ * parabola t · (r − (r − 1 + w)² / (4w)), r = 0.05 · c / t, w = GAP_BLEND: the gap is exactly t for
+ * c ≥ (1 + w) c*, exactly 0.05 · c for c ≤ (1 − w) c*, joins both with equal value and slope, and
+ * stays at or below both in between.
+ */
+export function trailingEdgeGap(chord, thickness, smooth) {
+  if (!(thickness > 0) || !(chord > 0)) return 0;
+  const r = (MAX_GAP_FRACTION * chord) / thickness;
+  if (!smooth) return thickness * Math.min(r, 1);
+  const w = GAP_BLEND;
+  if (r <= 1 - w) return thickness * r;
+  if (r >= 1 + w) return thickness;
+  return thickness * (r - (r - 1 + w) ** 2 / (4 * w));
+}
 
 /**
  * Crossed surfaces past 99 % chord up to this fraction of the chord, and at most CROSSING_LIMIT mm,
@@ -491,6 +513,15 @@ export function buildWing(project) {
   const y0 = ys[0];
   const y1 = ys[ys.length - 1];
   const dense = guideOn.nose || guideOn.end || settings.spanwise === 'smooth';
+  // Rounded tip (src/geom/tipblend.js): section index T before the marked outer run, else -1. Its
+  // panels are blended in the angle of the tip ellipse and, with Linear, get stations along the panel.
+  const tipStart = roundTipStart(sections, settings);
+  // Guide curves run from the root to the last section not marked as a rounded tip (yG).
+  const yG = ys[guideEndIndex(sections)];
+  const tipPanel = (i) => tipStart >= 0 && i >= tipStart;
+  // Span parameter v of the loft and its inverse: y-proportional, or along the angle of the tip
+  // ellipse in a rounded tip (spanParameter in src/geom/tipblend.js).
+  const span = spanParameter(y0, y1, tipStart >= 0 ? ys[tipStart] : null);
   // Section planes. Smooth blends the rolls of the sections with the shape-preserving cubic, as every
   // other section value; the stretch then follows the local slope of the blended reference line.
   const planesOn = mitredPlanes(settings);
@@ -517,7 +548,7 @@ export function buildWing(project) {
   }
   // Linear panels between two section planes that differ get stations as with a guide curve (R4 of
   // docs/Flow5upgrade.md): the airfoil in every plane between. Straight panels stay ruled.
-  const rolledPanel = (i) => planesOn && settings.spanwise === 'linear' && R[i] !== R[i + 1];
+  const rolledPanel = (i) => settings.spanwise === 'linear' && ((planesOn && R[i] !== R[i + 1]) || tipPanel(i));
   let rolledPanels = 0;
   for (let i = 0; i + 1 < sections.length; i++) if (rolledPanel(i)) rolledPanels++;
   // Grid: stations times profile points (2N + 1). Above LIMITS.maxGridPoints, where a desktop
@@ -551,15 +582,19 @@ export function buildWing(project) {
   // place from its neighbours and from the next section (the tolerance knotMultiplicities merges):
   // in a panel only a few doubles wide the stations round together, and repeated parameters make
   // the interpolation singular. Every section stays (the span-fraction check above keeps them apart).
-  const vOf = (y) => (y - y0) / (y1 - y0);
+  const vOf = span.vOf;
   const stationYs = [];
   for (let i = 0; i < sections.length - 1; i++) {
     stationYs.push(ys[i]);
     let last = vOf(ys[i]);
     const vEnd = vOf(ys[i + 1]);
     const Kp = dense || rolledPanel(i) ? K : 1;
+    const vStart = last;
     for (let k = 1; k < Kp; k++) {
-      const y = ys[i] + (ys[i + 1] - ys[i]) * (1 - Math.cos((Math.PI * k) / Kp)) / 2;
+      // Cosine spacing in y; in a rounded tip in the span parameter, along the tip ellipse, where
+      // spacing in y leaves the stations far apart near the point.
+      const w = (1 - Math.cos((Math.PI * k) / Kp)) / 2;
+      const y = tipPanel(i) ? span.yOf(vStart + ((vEnd - vStart) * k) / Kp) : ys[i] + (ys[i + 1] - ys[i]) * w;
       const v = vOf(y);
       if (paramsApart(last, v) && paramsApart(v, vEnd)) {
         stationYs.push(y);
@@ -580,8 +615,9 @@ export function buildWing(project) {
   const te = settings.trailingEdge;
   const pointed = settings.tip.mode === 'pointed';
   // Trailing-edge gap as a fraction of the local chord: the thickness in mm, limited to
-  // MAX_GAP_FRACTION of the chord (used by the 'thickness' mode only).
-  const teGap = (chord) => Math.min(te.thickness / chord, MAX_GAP_FRACTION);
+  // MAX_GAP_FRACTION of the chord (used by the 'thickness' mode only), with a smooth transition
+  // unless settings.trailingEdge.smooth is false (trailingEdgeGap).
+  const teGap = (chord) => (chord > 0 ? trailingEdgeGap(chord, te.thickness, te.smooth !== false) / chord : 0);
   const yPrev = ys[ys.length - 2];
   let tipChord = 0;
   // Leading-edge x, chord, z and twist of every section, blended from the two neighbouring sections
@@ -596,7 +632,28 @@ export function buildWing(project) {
     const near = [panelOffset[i - 1], panelOffset[i]].filter((v) => v !== undefined);
     return near.length ? near.reduce((a, b) => a + b, 0) / near.length : 0;
   });
-  const scalarBlender = () => spanwiseBlender(ys, settings.spanwise, sections.map((_, i) => [[X[i], C[i], Z[i], T[i], R[i], E[i]]]));
+  const scalarLists = () => sections.map((_, i) => [[X[i], C[i], Z[i], T[i], R[i], E[i]]]);
+  // With a guide curve the rounded tip leaves T with the leading edge and trailing edge of the guide
+  // curves there, and their slopes (one-sided, inboard of T).
+  const guideAnchor = () => {
+    if (!(guideOn.nose || guideOn.end)) return null;
+    const plain = spanwiseBlender(ys.slice(0, tipStart + 1), settings.spanwise, scalarLists().slice(0, tipStart + 1));
+    // As in place(): both guides set both edges; one guide sets its edge, and the other edge lies the
+    // blended chord from it.
+    const edges = (y) => {
+      const [[, c]] = plain(y);
+      const xL = guideOn.nose ? guideXAt(result.guides.nose, y, y0, yG) : null;
+      const xT = guideOn.end ? guideXAt(result.guides.end, y, y0, yG) : null;
+      return [xL ?? xT - c, xT ?? xL + c];
+    };
+    const h = 1e-4 * (yG - y0);
+    const [a, b] = [edges(yG), edges(yG - h)];
+    return { 0: { value: a[0], slope: (a[0] - b[0]) / h }, 1: { value: a[1], slope: (a[1] - b[1]) / h } };
+  };
+  const scalarBlender = () =>
+    tipStart >= 0
+      ? roundTipBlender(ys, settings.spanwise, scalarLists(), tipStart, sections.map((s) => s.roundTip), [0, 1], guideAnchor())
+      : spanwiseBlender(ys, settings.spanwise, scalarLists());
   // Panel of a span position (binary search): the stretch follows from the blended roll and the angle
   // the planes of that panel are square to, so every station keeps the airfoil thickness across it.
   const panelOf = (y) => {
@@ -627,13 +684,15 @@ export function buildWing(project) {
     const raw = blendScalars(y)[0];
     let xLE = raw[0];
     let chord = raw[1];
-    const xTE = guideOn.end ? guideXAt(result.guides.end, y, y0, y1) : null;
-    if (guideOn.nose) xLE = guideXAt(result.guides.nose, y, y0, y1);
-    if (guideOn.nose && guideOn.end) chord = xTE - xLE;
+    // Guide curves end at yG; a rounded tip beyond it follows its own blend.
+    const inGuides = y <= yG;
+    const xTE = guideOn.end && inGuides ? guideXAt(result.guides.end, y, y0, yG) : null;
+    if (guideOn.nose && inGuides) xLE = guideXAt(result.guides.nose, y, y0, yG);
+    if (guideOn.nose && guideOn.end && inGuides) chord = xTE - xLE;
     // Pointed tip: in the last panel the chord does not fall below the tip chord, so guide
     // curves that meet at the tip end in a scaled-down profile instead of a zero chord.
     if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
-    if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
+    if (guideOn.end && !guideOn.nose && inGuides) xLE = xTE - chord;
     const roll = raw[4];
     const stretch = planesOn ? stretchOf(roll, smooth ? slopes(y).square : planes.panels[panelOf(y)]) : 1;
     return { xLE, chord, z: raw[2], twist: raw[3], roll, stretch };
@@ -698,7 +757,7 @@ export function buildWing(project) {
     if (!c) continue;
     const gy0 = c.points[0][1];
     const gy1 = c.points[c.points.length - 1][1];
-    const toWing = (gy) => y0 + ((gy - gy0) / (gy1 - gy0)) * (y1 - y0);
+    const toWing = (gy) => y0 + ((gy - gy0) / (gy1 - gy0)) * (yG - y0);
     for (const P of c.points) guideBreaks.add(toWing(P[1]));
     for (const u of c.knots) guideBreaks.add(toWing(curvePoint(c, u)[1]));
   }
@@ -939,7 +998,7 @@ export function buildWing(project) {
     for (const y of yList) {
       if (!(y >= y0 && y <= y1) || !(y1 > y0)) continue;
       const pl = placement(y);
-      const v = (y - y0) / (y1 - y0);
+      const v = vOf(y);
       const shape = finalShape(applyTrailingEdge(blendSub(y), te.mode, teGap(pl.chord), leSub), pl.chord, closedTE, leSub);
       const intended = placeSection([...pos.map((j) => shape[j]), [1, 0]], { ...pl, y }, pivot);
       const axis = intended[idx.length];
@@ -1000,7 +1059,7 @@ export function buildWing(project) {
       const { xLE, chord, z, twist, roll, stretch } = placement(y);
       if (te.mode === 'thickness' && te.thickness / chord > MAX_GAP_FRACTION && !(pointed && y > yPrev)) limited++;
       const shape = applyTrailingEdge(blendCompat(y), te.mode, teGap(chord), N);
-      stations.push({ xLE, y, z, chord, twist, roll, stretch, v: y1 > y0 ? (y - y0) / (y1 - y0) : 0, shape });
+      stations.push({ xLE, y, z, chord, twist, roll, stretch, v: vOf(y), shape });
     }
     // Trailing-edge topology: closed when every station is closed, otherwise open with a minimum gap.
     const closedTE = stations.every((st) => Math.abs(gapMm(st.shape, st.chord)) < 1e-6);
@@ -1048,7 +1107,15 @@ export function buildWing(project) {
     yList.forEach((y, i) => {
       if (!stationOf.has(y)) stationOf.set(y, i);
     });
-    for (let i = 0; i < ys.length - 1; i++) panelIdx.push([stationOf.get(ys[i]), stationOf.get(ys[i + 1])]);
+    for (let i = 0; i < ys.length - 1; i++) {
+      // A rounded tip is one piece from its tip section to the point: its blend is smooth across the
+      // tip sections, and a fit per panel would join them with a corner.
+      if (tipPanel(i)) {
+        panelIdx.push([stationOf.get(ys[i]), stationOf.get(ys[ys.length - 1])]);
+        break;
+      }
+      panelIdx.push([stationOf.get(ys[i]), stationOf.get(ys[i + 1])]);
+    }
     // Every panel on its own: the smooth blend is C1 at the sections, a cubic through all stations
     // swings beside a short panel with a fast change (a 0.5 mm airfoil switch next to a 300 mm panel).
     const along = interpolateAlongV(rowCtrl, { kind: 'panels', params: paramsV, panels: panelIdx, degree: degreeV });
@@ -1217,14 +1284,14 @@ export function buildWing(project) {
   gaps.sort((a, b) => b[0] - a[0]);
   for (const [, y] of gaps.slice(0, MAX_STATION_ROWS)) rowSet.add(y);
   const rowY = [...rowSet].sort((a, b) => a - b);
-  const rowV = rowY.map((y) => (y1 > y0 ? (y - y0) / (y1 - y0) : 0));
-  const chordAtV = (v) => placement(y0 + v * (y1 - y0)).chord;
+  const rowV = rowY.map(vOf);
+  const chordAtV = (v) => placement(span.yOf(v)).chord;
   for (const v of rowV) {
-    const cross = surfaceRowCrossing(surface, v, Math.min(CROSSING_TOLERANCE * chordAtV(v), CROSSING_LIMIT), placement(y0 + v * (y1 - y0)).roll);
+    const cross = surfaceRowCrossing(surface, v, Math.min(CROSSING_TOLERANCE * chordAtV(v), CROSSING_LIMIT), placement(span.yOf(v)).roll);
     if (cross) {
       errors.push(
         `${tr('The loft surface crosses itself at y = {y} mm near x = {x} mm: the surface rows overshoot between the resampled points.', {
-          y: fixed(y0 + v * (y1 - y0), 1),
+          y: fixed(span.yOf(v), 1),
           x: fixed(cross.x, 1),
         })} ${tr('Increase Settings > Chord samples.')}`,
       );
@@ -1318,6 +1385,9 @@ export function buildWing(project) {
   }
   result.paramsU = paramsU;
   result.paramsV = paramsV;
+  // Span parameter of a span position and the span position of a parameter (see spanParameter).
+  result.vAt = span.vOf;
+  result.yAt = span.yOf;
   result.uLE = paramsU[N];
   result.leIndex = N;
   result.closedTE = closedTE;

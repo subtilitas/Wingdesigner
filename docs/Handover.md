@@ -1,18 +1,18 @@
 # Handover
 
-State of Wingdesigner on 2026-11-06, for the next person or session that works on it. Read
+State of Wingdesigner on 2026-11-09, for the next person or session that works on it. Read
 `RECORD.md` first: it holds the verified state, the decisions with their reasons, the measurements and
 the open items, each as a claim to re-check. This page adds where the work stands, what comes next,
 how the owner works with contributors, and what the repository does not hold.
 
 ## Where the work stands
 
-| Item | State on 2026-11-06 |
+| Item | State on 2026-11-09 |
 | --- | --- |
-| Version | `package.json` holds 0.8.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), `v0.7.0` on 1347f03 (2026-10-03), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | 0.8.0: `CHANGELOG.md` section 0.8.0 (**Rounded tip…** with **Tangent to the last panel**). The tag `v0.8.0` is pushed by the owner on the merge commit of the release pull request #35 (section Working with the owner). |
+| Version | `package.json` holds 0.9.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), `v0.7.0` on 1347f03 (2026-10-03), `v0.8.0` on 1618c89 (2026-11-06), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
+| Next release | 0.9.0: `CHANGELOG.md` section 0.9.0 (rounded tips built along their tip ellipse, **Fullness**, **Continue the ellipse of the wing**, project format version 5). The tag `v0.9.0` goes on the merge commit of the release pull request #36; the owner pushes it (section Working with the owner). |
 | Release texts | The notes of `v0.2.0`, `v0.3.0`, `v0.5.0`, `v0.6.0` and `v0.7.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
-| `main` | Release 0.7.0 (1347f03, pull request #33); the rounded tip and version 0.8.0 (release pull request #35). |
+| `main` | Release 0.8.0 (1618c89, pull request #35); the rounded tip along the tip ellipse and version 0.9.0 (release pull request #36). |
 | Unit tests | `RECORD.md`, row Unit tests. |
 | Browser tests | Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); counts in `RECORD.md`, row UI. |
 | Export validation | 15 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 13 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
@@ -125,7 +125,7 @@ npm run screenshots
   `CHANGELOG.md` name no contributor material from its list of terms (Development, section
   Documentation check). It does not compare the contents of the two languages and does not read this
   page, `docs/Flow5upgrade.md` or `RECORD.md`.
-- `npm run i18n:check` checks that every interface text has a German translation (998 texts on 2026-11-06).
+- `npm run i18n:check` checks that every interface text has a German translation (999 texts on 2026-11-09).
 - `npm run e2e` took 6.5 min for 368 runs in the cloud container.
 - `npm run screenshots` regenerates 28 images. An image that differs only by rendering noise is
   restored on its own: `git checkout -- docs/wiki/images/<name>.png` (German:

@@ -3,7 +3,7 @@
 //
 // Sport (src/model/wizard.js): 2 sections, half span 600 mm, tip chord 144 mm, dihedral 1.5°.
 // Default rounded tip: 144 mm long (one tip chord), straight line at 25 %, 6 sections, tangent to the
-// last panel (κ = −0.16); the point at
+// last panel (κ = −0.16), fullness 2.5; the point at
 // y = 600 + 144 · cos 1.5° = 743.95 mm with the 1 mm chord of a pointed tip.
 import { createDesign, dialogOf, expect, openTab, savedProject, sectionRows as rows, statusOf as status, test, toastOf } from './helpers.js';
 
@@ -25,6 +25,7 @@ test.describe('Rounded-tip dialog', () => {
     await expect(dlg.getByLabel('Length beyond the tip section (mm)')).toHaveValue('144');
     await expect(dlg.getByLabel('Straight line (% of the chord from the leading edge)')).toHaveValue('25');
     await expect(dlg.getByLabel('Number of sections')).toHaveValue('6');
+    await expect(dlg.getByLabel('Fullness (2 = ellipse, 3 = fullest)')).toHaveValue('2.5');
     await expect(dlg.locator('p[aria-live]')).toHaveText('Adds 6 sections and sets Settings > Wing tip to Pointed. Point at y = 744.0 mm, 144.0 mm beyond the tip section, chord 1.00 mm.');
     const add = dlg.getByRole('button', { name: 'Add rounded tip', exact: true });
     await expect(add).toBeEnabled();
@@ -57,14 +58,44 @@ test.describe('Rounded-tip dialog', () => {
     expect(saved.settings.tip.mode).toBe('pointed');
     const tip = saved.sections.slice().sort((a, b) => a.y - b.y).at(-1);
     expect([tip.y, tip.chord]).toEqual([743.95, 1]);
-    // Tangent: the first rounded-tip section at y = 637.26 mm has 133.34 mm chord, on the taper of the last panel.
-    expect(saved.sections.find((q) => q.y === 637.26).chord).toBe(133.34);
+    // Tangent, fullness 2.5: the first rounded-tip section at y = 637.26 mm has 136.14 mm chord.
+    expect(saved.sections.find((q) => q.y === 637.26).chord).toBe(136.14);
+    // The added sections carry the rounded-tip marker that the loft blends along the tip ellipse.
+    expect(saved.sections.filter((q) => q.y > 600).map((q) => q.roundTip)).toEqual(Array(6).fill('tangent'));
     await expect(status(page)).not.toHaveText(SPORT);
 
     await page.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(rows(page)).toHaveCount(2);
     await expect(status(page)).toHaveText(SPORT);
     expect((await savedProject(page)).settings.tip.mode).toBe('flat');
+  });
+
+  test('continues the ellipse of the Glider, whose guide curves end at the old tip section', async ({ page }) => {
+    // Glider: elliptic planform by guide curves, half span 1000 mm, taper 0.45. The ellipse closes at
+    // 1000 / sqrt(1 − 0.45²) = 1119.8 mm: the span grows to about 2240 mm.
+    await createDesign(page, 'Glider');
+    const dlg = await openRoundTip(page);
+    const ellipse = dlg.getByLabel('Continue the ellipse of the wing');
+    await expect(ellipse).toBeChecked();
+    const length = dlg.getByLabel('Length beyond the tip section (mm)');
+    await expect(length).toBeDisabled();
+    await expect(length).toHaveValue(/^1[12]\d(\.\d+)?$/);
+    await expect(dlg.getByLabel('Tangent to the last panel')).toBeDisabled();
+    await dlg.getByRole('button', { name: 'Add rounded tip', exact: true }).click();
+    await expect(dialogOf(page)).toHaveCount(0);
+    await expect(status(page)).toHaveText(/^Span 22[34]\d mm · /);
+    const saved = await savedProject(page);
+    expect(saved.guides.end.points.at(-1)[1]).toBe(1000);
+    expect(saved.settings.tip.mode).toBe('pointed');
+    // Unticked, Length and Tangent apply again.
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    const again = await openRoundTip(page);
+    await again.getByLabel('Continue the ellipse of the wing').uncheck();
+    await expect(again.getByLabel('Length beyond the tip section (mm)')).toBeEnabled();
+    // The field shows the manual length again (one tip chord, 90 mm), the length the tip is built with.
+    await expect(again.getByLabel('Length beyond the tip section (mm)')).toHaveValue('90');
+    await expect(again.locator('p[aria-live]')).toHaveText(/ 89\.\d mm beyond the tip section/);
+    await expect(again.getByLabel('Tangent to the last panel')).toBeEnabled();
   });
 
   test('refuses a pointed wing tip and leaves the sections unchanged on Cancel', async ({ page }) => {

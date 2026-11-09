@@ -267,7 +267,7 @@ Die Prüfungen laufen:
 | Schlüssel | Typ | Geschrieben | Bei **Öffnen** |
 | --- | --- | --- | --- |
 | `format` | `"wingdesigner-project"` | immer | Pflicht, muss übereinstimmen |
-| `version` | ganze Zahl `3`, oder `4`, wenn `settings.leftHalf` `"turned"` ist | immer | Pflicht, 1 bis 4. Eine Datei der Version 1 öffnet mit `settings.sectionPlanes` `"vertical"`, den Schnittebenen, mit denen sie entworfen wurde. Eine Datei der Version 2 mit `foldedTilt` wird aktualisiert (Abschnitt „Aktualisierung von Dateien der Version 2“). Eine Datei der Version 1 oder 2 öffnet mit `partTilt` und `partRoll` 0 und `partPivot` null, außer die Aktualisierung ihres `foldedTilt` setzt sie: `partTilt`, `partRoll` und `partPivot` in ihren Einstellungen sind unbekannte Schlüssel dieser Version und entfallen, wie die Apps dieser Version sie verwerfen. Eine App, die nur Version 1 liest, lehnt eine Datei der Version 2 ab (`Nicht unterstützte Projektversion 2.`), statt `sectionPlanes` und `foldedTilt` zu verwerfen; Wingdesigner 0.3.0 und älter lehnen eine Datei der Version 3 ab (`Nicht unterstützte Projektversion 3.`), statt `partTilt`, `partRoll` und `partPivot` zu verwerfen. Eine Datei der Version 1 bis 3 öffnet mit `settings.leftHalf` `"mirror"`; ein Schlüssel `leftHalf` darin entfällt. Wingdesigner 0.4.0 und älter lehnen eine Datei der Version 4 ab (`Nicht unterstützte Projektversion 4.`). |
+| `version` | ganze Zahl `3`; `4`, wenn `settings.leftHalf` `"turned"` ist; `5`, wenn ein Schnitt `roundTip` hat | immer | Pflicht, 1 bis 5. Eine Datei der Version 1 öffnet mit `settings.sectionPlanes` `"vertical"`, den Schnittebenen, mit denen sie entworfen wurde. Eine Datei der Version 2 mit `foldedTilt` wird aktualisiert (Abschnitt „Aktualisierung von Dateien der Version 2“). Eine Datei der Version 1 oder 2 öffnet mit `partTilt` und `partRoll` 0 und `partPivot` null, außer die Aktualisierung ihres `foldedTilt` setzt sie: `partTilt`, `partRoll` und `partPivot` in ihren Einstellungen sind unbekannte Schlüssel dieser Version und entfallen, wie die Apps dieser Version sie verwerfen. Eine App, die nur Version 1 liest, lehnt eine Datei der Version 2 ab (`Nicht unterstützte Projektversion 2.`), statt `sectionPlanes` und `foldedTilt` zu verwerfen; Wingdesigner 0.3.0 und älter lehnen eine Datei der Version 3 ab (`Nicht unterstützte Projektversion 3.`), statt `partTilt`, `partRoll` und `partPivot` zu verwerfen. Eine Datei der Version 1 bis 3 öffnet mit `settings.leftHalf` `"mirror"`; ein Schlüssel `leftHalf` darin entfällt. Wingdesigner 0.4.0 und älter lehnen eine Datei der Version 4 ab (`Nicht unterstützte Projektversion 4.`), Wingdesigner 0.8.0 und älter eine Datei der Version 5 (`Nicht unterstützte Projektversion 5.`), statt `roundTip` zu verwerfen. |
 | `generator` | `{ "name": "Wingdesigner", "version": "<App-Version>" }` | immer | ignoriert |
 | `exportedAt` | Zeitpunkt nach ISO 8601, UTC | immer | ignoriert |
 | `name` | Zeichenkette | immer | keine Zeichenkette: „Importierter Flügel“ (englische Oberfläche: `Imported wing`); höchstens 10 000 Zeichen |
@@ -327,6 +327,7 @@ Von der App erzeugte IDs:
 | `chord` | mm | Profiltiefe, 1 bis 100 000 mm |
 | `twist` | ° | Schränkung: Drehung um den Tiefenpunkt bei `settings.twistPivot`; positiv = Nase hoch; −360 bis 360° |
 | `panelAngle` | ° | optional; `null` oder fehlend: die V-Form aus `y` und `z`. Winkel des Feldes zum nächsten Schnitt (in der Reihenfolge von `y`), den Schnittebenen **Auf Gehrung** für die Neigungen und die Dickenstreckung verwenden ([[Geometrie]], Abschnitt 3.8); −89,9999 bis 89,9999°. Am Randschnitt und mit **Senkrecht** ungenutzt. Geschrieben vom XFLR5-Import (Abschnitt „XFLR5-Import“, Schritt 4) und von der Spalte **Feldwinkel** der Registerkarte Schnitte. |
+| `roundTip` | – | optional; `"tangent"` oder `"corner"`. Kennzeichnet einen Schnitt eines Randbogens, geschrieben von **Randbogen …** an jedem Schnitt, den er anfügt; ein innerhalb eines Randbogens eingefügter Schnitt übernimmt die Kennzeichnung des Schnitts nach ihm. Eine äußere Folge von 2 oder mehr gekennzeichneten Schnitten, nicht mit **Gerade Felder**, wird entlang der Randellipse interpoliert, und Leitkurven enden am Schnitt davor ([[Geometrie]], Abschnitt 10): `"tangent"` verlässt den Schnitt vor der Folge mit der Steigung des Flügels, `"corner"` mit der eigenen. Sonst ignoriert. Ein Projekt mit einem gekennzeichneten Schnitt wird im Format Version 5 gespeichert. |
 
 - Jeder Wert außer `panelAngle` ist eine endliche Zahl.
 - Grenzen: `LIMITS` in `src/model/project.js` (`minChord`, `maxChord`, `maxCoordinate`, `maxTwist`, `maxSections`, `maxAirfoils`, `maxAirfoilPoints`, `maxGuidePoints`, `maxGuideCoordinate`, `maxExtent`, `maxName`, `maxId`, `maxText`); Punkte je Profil: `MAX_POINTS` in `src/airfoil/parse.js`; Namen: `MAX_NAME` in `src/airfoil/parse.js`.
@@ -354,6 +355,7 @@ Von der App erzeugte IDs:
 | `twistPivot` | `0`–`1`, Anteil der Profiltiefe | `0.25` | **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)) |
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Endleiste** (Trailing edge) |
 | `trailingEdge.thickness` | ≥ 0 mm; wirkt bei `"thickness"`; begrenzt auf 5 % der örtlichen Profiltiefe | `0.4` | **Endleistendicke (mm)** (Trailing-edge thickness (mm)) |
+| `trailingEdge.smooth` | `true`, `false`; wirkt bei `"thickness"` | `true` | **Weicher Übergang zur 5-%-Grenze** (Smooth transition to the 5 % limit): `true` führt die Dicke ohne Knick in die 5-%-Grenze über ([[Geometrie]], Abschnitt 3.7). Eine Projektdatei ohne den Schlüssel, auch eine früherer Versionen, baut mit `true`; Wingdesigner 0.8.0 und älter verwerfen den Schlüssel und bauen mit dem Knick. |
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Flügelende** (Wing tip) |
 | `tip.ratio` | `0.001`–`0.01` (Randprofil 1/1000 bis 1/100 der Profiltiefe des vorherigen Schnitts); Randtiefe mindestens 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Maßstab des Randprofils 1 : N der Tiefe des vorherigen Schnitts** (Tip profile scale 1 : N of the previous section chord) |
 | `chordSamples` | ganze Zahl `16`–`200` | `60` | **Stationen je Profilseite** (Chordwise stations per surface) |
@@ -400,7 +402,7 @@ Die Datei wird abgelehnt, und die ersten 3 Meldungen erscheinen, wenn:
 - `name` länger als 10 000 Zeichen ist, oder der `name` eines Profils vorhanden und keine Zeichenkette oder länger als 10 000 Zeichen ist;
 - `source` eines Profils vorhanden, nicht `null` und kein Objekt ist, oder ein bekannter Schlüssel in `source` etwas anderes als eine Zeichenkette, `true`, `false` oder `null` enthält oder eine Zeichenkette mit mehr als 2000 Zeichen;
 - ein Profil weniger als 5 oder mehr als 100 000 Punkte hat oder ein Punkt kein Paar `[x, y]` aus endlichen Zahlen ist;
-- `x`, `y`, `z`, `chord` oder `twist` eines Schnitts keine endliche Zahl ist oder `panelAngle` vorhanden und weder `null` noch eine endliche Zahl ist;
+- `x`, `y`, `z`, `chord` oder `twist` eines Schnitts keine endliche Zahl ist, `panelAngle` vorhanden und weder `null` noch eine endliche Zahl ist oder `roundTip` vorhanden und weder `"tangent"` noch `"corner"` ist (`Schnitt 3: roundTip muss "tangent" oder "corner" sein.`);
 - `chord` < 1 mm oder > 100 000 mm, `y` < 0, 2 Schnitte dasselbe `y` haben oder `airfoil` eine unbekannte ID nennt;
 - `x`, `y` oder `z` eines Schnitts außerhalb von −1 000 000 bis 1 000 000 mm liegt, `twist` außerhalb von −360 bis 360° oder `panelAngle` außerhalb von −89,9999 bis 89,9999°;
 - ein Wert in `settings` außerhalb der Tabelle oben liegt;
@@ -473,7 +475,7 @@ Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 15
 {
  "format": "wingdesigner-project",
  "version": 3,
- "generator": { "name": "Wingdesigner", "version": "0.8.0" },
+ "generator": { "name": "Wingdesigner", "version": "0.9.0" },
  "exportedAt": "2026-09-30T12:00:00.000Z",
  "name": "Sportflügel 1500",
  "units": "mm",
