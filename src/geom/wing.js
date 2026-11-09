@@ -616,11 +616,13 @@ export function buildWing(project) {
   const guideAnchor = () => {
     if (!(guideOn.nose || guideOn.end)) return null;
     const plain = spanwiseBlender(ys.slice(0, tipStart + 1), settings.spanwise, scalarLists().slice(0, tipStart + 1));
+    // As in place(): both guides set both edges; one guide sets its edge, and the other edge lies the
+    // blended chord from it.
     const edges = (y) => {
-      const [[x, c]] = plain(y);
-      const xT = guideOn.end ? guideXAt(result.guides.end, y, y0, yG) : x + c;
-      const xL = guideOn.nose ? guideXAt(result.guides.nose, y, y0, yG) : guideOn.end ? xT - c : x;
-      return [xL, xT];
+      const [[, c]] = plain(y);
+      const xL = guideOn.nose ? guideXAt(result.guides.nose, y, y0, yG) : null;
+      const xT = guideOn.end ? guideXAt(result.guides.end, y, y0, yG) : null;
+      return [xL ?? xT - c, xT ?? xL + c];
     };
     const h = 1e-4 * (yG - y0);
     const [a, b] = [edges(yG), edges(yG - h)];

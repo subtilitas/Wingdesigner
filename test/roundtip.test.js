@@ -101,6 +101,24 @@ describe('continue the ellipse', () => {
   });
 });
 
+describe('rounded tip after one guide curve', () => {
+  it('starts from the guided edge and the blended chord when only one guide curve is on', () => {
+    // Glider with the end line off and the last nose-line point moved 20 mm aft: the leading edge
+    // follows the nose line, the chord the sections (90 mm at the tip section).
+    for (const key of ['nose', 'end']) {
+      const p = wizardProject(PRESETS.glider.params);
+      p.guides[key === 'nose' ? 'end' : 'nose'].enabled = false;
+      p.guides[key].points.at(-1)[0] += 20;
+      addRoundTip(p, { ...defaultRoundTip(p), ellipse: false });
+      const b = buildWing(p);
+      expect(b.errors, key).toEqual([]);
+      const [a, c] = [b.planformAt(1000), b.planformAt(1000 + 1e-6)];
+      expect(Math.abs(c.chord - a.chord), key).toBeLessThan(1e-3);
+      expect(Math.abs(c.xLE - a.xLE), key).toBeLessThan(1e-3);
+    }
+  });
+});
+
 describe('tangent rounded tip', () => {
   it('starts the chord with the taper of the last panel; without tangent with slope 0', () => {
     const p = sport();

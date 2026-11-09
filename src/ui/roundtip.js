@@ -59,6 +59,8 @@ export function roundTipDialog(store, notify = () => {}) {
     checked: params.ellipse,
     onchange: (e) => {
       params.ellipse = e.target.checked;
+      // Unticked, the field shows the manual length again, the one the tip is built with.
+      if (!params.ellipse && Number.isFinite(params.length)) showNumber(inputs.length, params.length);
       refresh();
     },
   });

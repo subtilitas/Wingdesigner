@@ -92,6 +92,9 @@ test.describe('Rounded-tip dialog', () => {
     const again = await openRoundTip(page);
     await again.getByLabel('Continue the ellipse of the wing').uncheck();
     await expect(again.getByLabel('Length beyond the tip section (mm)')).toBeEnabled();
+    // The field shows the manual length again (one tip chord, 90 mm), the length the tip is built with.
+    await expect(again.getByLabel('Length beyond the tip section (mm)')).toHaveValue('90');
+    await expect(again.locator('p[aria-live]')).toHaveText(/ 89\.\d mm beyond the tip section/);
     await expect(again.getByLabel('Tangent to the last panel')).toBeEnabled();
   });
 
