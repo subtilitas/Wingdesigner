@@ -14,6 +14,7 @@ const FIELDS = [
   { key: 'length', label: () => tr('Length beyond the tip section (mm)'), step: 5 },
   { key: 'line', label: () => tr('Straight line (% of the chord from the leading edge)'), step: 5 },
   { key: 'sections', label: () => tr('Number of sections'), step: 1 },
+  { key: 'fullness', label: () => tr('Fullness (2 = ellipse, 3 = fullest)'), step: 0.1 },
 ];
 
 /** Opens the rounded-tip dialog for the project in `store`. */
@@ -157,7 +158,7 @@ export function roundTipDialog(store, notify = () => {}) {
       h(
         'p',
         { class: 'small muted' },
-        tr('Appends sections beyond the tip section whose chord follows a quarter ellipse to a point, with Tangent to the last panel scaled to start with the taper of the last panel; leading and trailing edge curve towards the straight line and meet on it. Airfoil and twist stay those of the tip section. They are ordinary sections afterwards: editable in the Sections table, removable with Undo.'),
+        tr('Appends sections beyond the tip section whose chord follows a superellipse to a point (Fullness 2: a quarter ellipse), with Tangent to the last panel scaled to start with the taper of the last panel; leading and trailing edge curve towards the straight line and meet on it. Airfoil and twist stay those of the tip section. They are ordinary sections afterwards: editable in the Sections table, removable with Undo.'),
       ),
       h('div', { class: 'wizard-body' }, h('div', { class: 'wizard-left' }, h('div', { class: 'wizard-fields' }, ...fields), h('label', { class: 'check', title: tr('The chord starts with the taper of the last panel: no corner in the planform at the tip section') }, tangent, tr('Tangent to the last panel'))), h('div', { class: 'wizard-right' }, h('div', { class: 'canvas-wrap' }, canvas), summary)),
       h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close() }, tr('Cancel')), addBtn),

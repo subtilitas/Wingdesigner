@@ -13,6 +13,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   also with Smooth. Before, Linear built the tip as a polygon of its sections, and Smooth gave the trailing edge of the
   default tip of the Sport preset an S-bend 20 to 35 mm before the point. The rest of the wing keeps its
   interpolation. With **Straight panels** or a guide curve on, the tip stays a polygon of its sections.
+- **Rounded tip…** has a **Fullness** field, 2 to 3, default 2.5: the chord follows the superellipse
+  (1 − t^n)^(1/n) of exponent n. 2 is the quarter ellipse of 0.8.0; a larger value keeps the chord fuller towards the
+  point and closes it in a shorter, blunter turn. The rounded tip is built as one piece from the tip section to the
+  point.
 - The project file marks the sections of a rounded tip (`roundTip`) and is then saved as format version 5, which
   Wingdesigner 0.8.0 and earlier refuse. A rounded tip added with 0.8.0 has no marker and keeps its former shape; it
   takes the new one when it is added again.

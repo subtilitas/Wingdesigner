@@ -1,4 +1,4 @@
-// Rounded wing tip: sections appended beyond a flat wing tip whose chord follows a quarter ellipse and
+// Rounded wing tip: sections appended beyond a flat wing tip whose chord follows a superellipse and
 // ends in a point (Settings > Wing tip = Pointed). The sections carry the marker roundTip ('tangent'
 // or 'corner'), with which the loft blends them in the angle of the tip ellipse instead of in y
 // (src/geom/tipblend.js), so that the outline stays smooth with Linear and with Smooth. Otherwise they
@@ -14,9 +14,11 @@
 //   tangent   true: the chord starts with the taper of the last panel, so that leading and trailing
 //             edge run on tangent to the last panel at the tip section; false: the chord starts with
 //             slope 0, which leaves a corner in the planform where the last panel tapers
+//   fullness  exponent n of the superellipse, 2 to 3: 2 is the quarter ellipse, a larger n keeps the
+//             chord fuller towards the point and closes it in a shorter, blunter turn
 //
 // Section k = 1 … m (m = sections) lies at t = sin(π k / (2 m)) of the length, closer together
-// towards the point, with the chord c_T · sqrt(1 − t²) · (1 + κ t) (c_T: chord of the tip section).
+// towards the point, with the chord c_T · (1 − t^n)^(1/n) · (1 + κ t) (c_T: chord of the tip section).
 // κ = 0 without tangent; with tangent κ = (dc/dy of the wing at the tip section) · (length in y) / c_T,
 // which gives the chord that slope at the tip section (lastPanel: the secant of the last panel with
 // Linear, the shape-preserving cubic with Smooth). The factor stays positive up to the point only for
@@ -37,7 +39,14 @@ export const ROUND_TIP_RANGES = Object.freeze({
   length: Object.freeze([5, 100000]),
   line: Object.freeze([0, 100]),
   sections: Object.freeze([2, 24]),
+  fullness: Object.freeze([2, 3]),
 });
+
+/**
+ * Share of the tip chord at t (0 … 1) of the length for fullness n: the superellipse
+ * (1 − t^n)^(1/n); n = 2 is the quarter ellipse, a larger n keeps the chord fuller towards the point.
+ */
+export const fullnessShape = (t, n) => Math.pow(Math.max(0, 1 - Math.pow(t, n)), 1 / n);
 
 /** κ ≤ −1 + KAPPA_MARGIN is refused: the chord would fall to zero before the point. */
 const KAPPA_MARGIN = 0.05;
@@ -87,7 +96,7 @@ export function defaultRoundTip(project) {
   const { tip, taper, angle } = lastPanel(project, 25);
   let length = tip.chord;
   if (taper < 0) length = Math.min(length, tip.chord / (-2 * taper * Math.cos(angle * DEG)));
-  return { length: Math.max(ROUND_TIP_RANGES.length[0], Math.round(length)), line: 25, sections: 6, tangent: true };
+  return { length: Math.max(ROUND_TIP_RANGES.length[0], Math.round(length)), line: 25, sections: 6, tangent: true, fullness: 2.5 };
 }
 
 /** Sections of the rounded tip (without ids), from the tip section outward. Assumes valid parameters. */
@@ -103,7 +112,7 @@ export function roundTipSections(project, params) {
   const out = [];
   for (let k = 1; k <= m; k++) {
     const t = k === m ? 1 : Math.sin((Math.PI * k) / (2 * m));
-    const chord = k === m ? Math.max(ratio * out.at(-1).chord, LIMITS.minChord) : tip.chord * Math.cos((Math.PI * k) / (2 * m)) * (1 + kappa * t);
+    const chord = k === m ? Math.max(ratio * out.at(-1).chord, LIMITS.minChord) : tip.chord * fullnessShape(t, params.fullness) * (1 + kappa * t);
     const q = { airfoil: tip.airfoil, x: r2(xLine + t * dy * slope - f * chord), y: r2(tip.y + t * dy), z: r2(tip.z + t * dz), chord: r2(chord), twist: tip.twist };
     out.push(q);
   }
@@ -113,7 +122,7 @@ export function roundTipSections(project, params) {
 /** Why the rounded tip cannot be added to the project; empty when it can. */
 export function roundTipProblems(project, params) {
   const out = [];
-  const names = { length: () => tr('length'), line: () => tr('straight line'), sections: () => tr('number of sections') };
+  const names = { length: () => tr('length'), line: () => tr('straight line'), sections: () => tr('number of sections'), fullness: () => tr('fullness') };
   for (const [k, [lo, hi]] of Object.entries(ROUND_TIP_RANGES)) {
     const v = params[k];
     if (typeof v !== 'number' || !Number.isFinite(v) || v < lo || v > hi) out.push(tr('Rounded tip: {param} must be between {min} and {max}.', { param: names[k](), min: plain(lo), max: plain(hi) }));
@@ -134,7 +143,7 @@ export function roundTipProblems(project, params) {
   // The last section before the point keeps cos(π (m − 1) / (2 m)) · (1 + κ sin(π (m − 1) / (2 m)))
   // of the tip chord.
   const th = (Math.PI * (params.sections - 1)) / (2 * params.sections);
-  const need = LIMITS.minChord / (Math.cos(th) * (1 + kappa * Math.sin(th)));
+  const need = LIMITS.minChord / (fullnessShape(Math.sin(th), params.fullness) * (1 + kappa * Math.sin(th)));
   if (tip.chord < need) {
     out.push(tr('Rounded tip: with {n} sections the tip chord must be at least {min} mm; use fewer sections.', { n: params.sections, min: plain(Math.ceil(need * 100) / 100) }));
     return out;

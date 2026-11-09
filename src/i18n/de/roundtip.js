@@ -4,8 +4,8 @@ export default {
   'Rounded tip…': 'Randbogen …',
   'Append a rounded tip beyond the wing tip': 'Einen Randbogen außen an den Randschnitt anfügen',
   'Rounded tip': 'Randbogen',
-  'Appends sections beyond the tip section whose chord follows a quarter ellipse to a point, with Tangent to the last panel scaled to start with the taper of the last panel; leading and trailing edge curve towards the straight line and meet on it. Airfoil and twist stay those of the tip section. They are ordinary sections afterwards: editable in the Sections table, removable with Undo.':
-    'Fügt außen am Randschnitt Schnitte an, deren Profiltiefe einer Viertelellipse bis zu einer Spitze folgt, mit Tangential zum letzten Feld so skaliert, dass sie mit der Zuspitzung des letzten Feldes beginnt; Nasenleiste und Endleiste laufen auf die gerade Linie zu und treffen sich auf ihr. Profil und Schränkung bleiben die des Randschnitts. Danach sind es gewöhnliche Schnitte: in der Tabelle Schnitte bearbeitbar, mit Rückgängig entfernbar.',
+  'Appends sections beyond the tip section whose chord follows a superellipse to a point (Fullness 2: a quarter ellipse), with Tangent to the last panel scaled to start with the taper of the last panel; leading and trailing edge curve towards the straight line and meet on it. Airfoil and twist stay those of the tip section. They are ordinary sections afterwards: editable in the Sections table, removable with Undo.':
+    'Fügt außen am Randschnitt Schnitte an, deren Profiltiefe einer Superellipse bis zu einer Spitze folgt (Fülle 2: eine Viertelellipse), mit Tangential zum letzten Feld so skaliert, dass sie mit der Zuspitzung des letzten Feldes beginnt; Nasenleiste und Endleiste laufen auf die gerade Linie zu und treffen sich auf ihr. Profil und Schränkung bleiben die des Randschnitts. Danach sind es gewöhnliche Schnitte: in der Tabelle Schnitte bearbeitbar, mit Rückgängig entfernbar.',
   'Length beyond the tip section (mm)': 'Länge außerhalb des Randschnitts (mm)',
   'Straight line (% of the chord from the leading edge)': 'Gerade Linie (% der Profiltiefe ab der Nasenleiste)',
   'Top view of the wing with the rounded tip': 'Draufsicht des Flügels mit dem Randbogen',
@@ -34,4 +34,6 @@ export default {
   'Rounded tip: the last panel tapers to zero chord within {at} mm, so a tangent tip can be at most {max} mm long; reduce the length or switch off Tangent to the last panel.':
     'Randbogen: Das letzte Feld liefe innerhalb von {at} mm auf Profiltiefe null zu, daher darf ein tangentialer Randbogen höchstens {max} mm lang sein; die Länge verkleinern oder Tangential zum letzten Feld ausschalten.',
   'Rounded-tip section {n}: the chord is above {max} mm.': 'Randbogenschnitt {n}: Die Profiltiefe liegt über {max} mm.',
+  'Fullness (2 = ellipse, 3 = fullest)': 'Fülle (2 = Ellipse, 3 = am vollsten)',
+  fullness: 'Fülle',
 };

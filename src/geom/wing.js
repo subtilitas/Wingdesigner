@@ -1064,7 +1064,15 @@ export function buildWing(project) {
     yList.forEach((y, i) => {
       if (!stationOf.has(y)) stationOf.set(y, i);
     });
-    for (let i = 0; i < ys.length - 1; i++) panelIdx.push([stationOf.get(ys[i]), stationOf.get(ys[i + 1])]);
+    for (let i = 0; i < ys.length - 1; i++) {
+      // A rounded tip is one piece from its tip section to the point: its blend is smooth across the
+      // tip sections, and a fit per panel would join them with a corner.
+      if (tipPanel(i)) {
+        panelIdx.push([stationOf.get(ys[i]), stationOf.get(ys[ys.length - 1])]);
+        break;
+      }
+      panelIdx.push([stationOf.get(ys[i]), stationOf.get(ys[i + 1])]);
+    }
     // Every panel on its own: the smooth blend is C1 at the sections, a cubic through all stations
     // swings beside a short panel with a fast change (a 0.5 mm airfoil switch next to a 300 mm panel).
     const along = interpolateAlongV(rowCtrl, { kind: 'panels', params: paramsV, panels: panelIdx, degree: degreeV });
