@@ -230,6 +230,8 @@ Node.js 24 at 1,000 and 2,000 airfoils, 3 ms of it by the point term; not measur
 Export per triangle: STL 0.8 µs, 210 bytes of memory, 50 bytes of file; 3MF 5.8 µs, 110 bytes,
 11.5 bytes of file; STEP per control point 2.5 µs, 620 bytes, 98 bytes of file.
 
+Rounded tip, cuts of the wing end (2026-11-09, `docs/analysis/rounded-tip-cuts/`): the **Glider** with **Continue the ellipse of the wing**, 56 cuts of the loft surface at y = const, 1 mm apart, over the outer 5 % of the half span. Chord within −0.07 to −0.01 mm of the ellipse up to 3.8 mm before the point; +0.04, +0.14 and +0.34 mm at 2.8, 1.8 and 0.8 mm before it, from the 1 mm chord of the pointed tip. Point at 1119.830 mm, ellipse end 1119.825 mm. Scripts and figures in that folder.
+
 ## Open items
 
 - Rounded tip: a wing switched between Linear and Smooth after the tip was added has sections built for the other slope at the tip section; the blend stays tangent to the wing, the waves of that case are not measured.
