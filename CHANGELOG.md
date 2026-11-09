@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-09
+
 ### Changed
 
 - A rounded tip added with **Rounded tip…** is built along its tip ellipse: its outline has no waves, with **Spanwise
