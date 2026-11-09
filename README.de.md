@@ -196,7 +196,7 @@ Beispiel: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 | Schaumkerne werden gerade zwischen ihren Endprofilen geschnitten. | Ein Flügel, der zwischen zwei Schnitten keine Regelfläche ist (Leitkurven, Interpolation **Glatt** (Smooth), Interpolation **Linear** mit Stationen zwischen den Profilschnitten, wie zwischen Schnittebenen **Auf Gehrung** (Mitred) verschiedener Neigung), weicht vom Kern ab; der Assistent zeigt die Abweichung je Segment und teilt Segmente über der Grenze. Die Schnitte werden nicht mit dem Projekt gespeichert. |
 | Die Schaumschnitt-Dateien sind mit Schneideprogrammen und Druckern ungetestet. | Die Schablonen werden mit unabhängigen Leseprogrammen geprüft (ezdxf, pypdf, ein XML-Parser), die `.dat`-Dateien und `segments.csv` mit dem eigenen Leser des Prüfskripts; Jedicut, GMFC, DevFoam, CAD-Programme, Laserschneider und Drucker wurden damit nicht getestet. Schablonen mit Versatz für die Schnittbreite haben Gehrungsecken, deren Spitze auf das 4-Fache des Versatzes begrenzt ist; diese Grenze stumpft eine spitze Endleiste ab. |
 | Das Winglet setzt am Randschnitt an, und y bleibt der Spannweitenparameter des Lofts. | Neigungen über ±89° (ein über den Flügel gefaltetes Winglet) sind nicht möglich. Mit eingeschalteten Leitkurven, spitzem Flügelende oder Schnittebenen **Senkrecht** lehnt der Dialog ab; Leitkurven, die nach dem Anfügen eines Winglets eingeschaltet werden, dehnen sich über die Wingletschnitte. Aerodynamische Wirkung des Winglets: nicht berechnet. |
-| Der Randbogen behält das Profil des Randschnitts. | Die Dicke fällt im Verhältnis zur Profiltiefe; ein dünneres Profil zur Spitze hin braucht eigene Schnitte. Das Flügelende endet in einem Profil von mindestens 1 mm Tiefe, nicht in einem einzelnen Punkt. Mit ausgeschaltetem **Tangential zum letzten Feld** hat der Grundriss am Randschnitt einen Knick, wo sich das letzte Feld verjüngt; eingeschaltet sind die Kanten dort tangential, die Krümmung ändert sich aber. Mit **Gerade Felder** ist der Randbogen ein Polygon seiner Schnitte. Mit **Endleiste** **Feste Dicke in mm** kann die Spaltbegrenzung auf 5 % der Profiltiefe innerhalb von 1 mm vor der Spitze eine kleine Welle in der Endleiste hinterlassen. Projekte mit Randbogen werden im Format Version 5 gespeichert, das Wingdesigner 0.8.0 und älter ablehnen. |
+| Der Randbogen behält das Profil des Randschnitts. | Die Dicke fällt im Verhältnis zur Profiltiefe; ein dünneres Profil zur Spitze hin braucht eigene Schnitte. Das Flügelende endet in einem Profil von mindestens 1 mm Tiefe, nicht in einem einzelnen Punkt. Mit ausgeschaltetem **Tangential zum letzten Feld** hat der Grundriss am Randschnitt einen Knick, wo sich das letzte Feld verjüngt; eingeschaltet sind die Kanten dort tangential, die Krümmung ändert sich aber. Mit **Gerade Felder** ist der Randbogen ein Polygon seiner Schnitte. Mit **Endleiste** **Feste Dicke in mm** und ausgeschaltetem **Weicher Übergang zur 5-%-Grenze** kann der Knick der Spaltbegrenzung innerhalb von 1 mm vor der Spitze eine kleine Welle in der Endleiste hinterlassen. Projekte mit Randbogen werden im Format Version 5 gespeichert, das Wingdesigner 0.8.0 und älter ablehnen. |
 | Rechenzeit und Speicherbedarf der Flügelberechnung auf Smartphones: nicht gemessen. | — |
 
 ## Schnellstart
@@ -238,7 +238,7 @@ Versionsgeschichte: [CHANGELOG.md](CHANGELOG.md). Verifizierter Stand und offene
 npm ci
 npx playwright install chromium   # Browser für End-to-End-Tests (e2e) und Screenshots (oder PW_CHROMIUM=/pfad/zu/chrome setzen)
 npm run dev              # Entwicklungsserver auf http://localhost:5173
-npm test                 # 687 Unit-Tests (Vitest)
+npm test                 # 689 Unit-Tests (Vitest)
 npm run lint             # ESLint
 npm run build            # Produktions-Build nach dist/
 npm run preview          # dist/ auf http://localhost:4173 ausliefern
@@ -268,7 +268,7 @@ Die Playwright-Tests führen den DOM-Code (Document Object Model) aus; seine Abd
 <!-- coverage:start -->
 | Anweisungen | Verzweigungen | Funktionen | Zeilen |
 | ---: | ---: | ---: | ---: |
-| 98,0 % | 94,4 % | 98,2 % | 98,8 % |
+| 98,0 % | 94,3 % | 98,2 % | 98,8 % |
 
 Unit-Tests (Vitest, V8-Coverage) über `src/`, ohne den DOM-Code in `src/ui/` und `src/main.js`.
 <!-- coverage:end -->

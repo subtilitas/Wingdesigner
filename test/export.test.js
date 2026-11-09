@@ -716,7 +716,7 @@ describe('import hardening', () => {
     }
     const t = base();
     t.settings.trailingEdge = null;
-    expect(projectFromJsonText(JSON.stringify(t)).project.settings.trailingEdge).toEqual({ mode: 'asis', thickness: 0.4 });
+    expect(projectFromJsonText(JSON.stringify(t)).project.settings.trailingEdge).toEqual({ mode: 'asis', thickness: 0.4, smooth: true });
   });
 });
 

@@ -51,6 +51,27 @@ const MAX_EXTRA_STATIONS = 32;
 /** Largest trailing-edge gap as a fraction of the local chord. */
 export const MAX_GAP_FRACTION = 0.05;
 
+/** Half width of the smooth transition of the gap limit, as a share of the chord where it sets in. */
+export const GAP_BLEND = 0.5;
+
+/**
+ * Trailing-edge gap in mm of the 'thickness' mode at a chord (mm): the thickness t, at most
+ * MAX_GAP_FRACTION of the chord. Hard, the gap is min(t, 0.05 · c), with a corner at c* = t / 0.05,
+ * which the loft carries into the trailing edge near a pointed tip. Smooth, the two meet in the
+ * parabola t · (r − (r − 1 + w)² / (4w)), r = 0.05 · c / t, w = GAP_BLEND: the gap is exactly t for
+ * c ≥ (1 + w) c*, exactly 0.05 · c for c ≤ (1 − w) c*, joins both with equal value and slope, and
+ * stays at or below both in between.
+ */
+export function trailingEdgeGap(chord, thickness, smooth) {
+  if (!(thickness > 0) || !(chord > 0)) return 0;
+  const r = (MAX_GAP_FRACTION * chord) / thickness;
+  if (!smooth) return thickness * Math.min(r, 1);
+  const w = GAP_BLEND;
+  if (r <= 1 - w) return thickness * r;
+  if (r >= 1 + w) return thickness;
+  return thickness * (r - (r - 1 + w) ** 2 / (4 * w));
+}
+
 /**
  * Crossed surfaces past 99 % chord up to this fraction of the chord, and at most CROSSING_LIMIT mm,
  * count as zero thickness: the resampled trailing edge of a cusped airfoil can lie in a sliver that
@@ -594,8 +615,9 @@ export function buildWing(project) {
   const te = settings.trailingEdge;
   const pointed = settings.tip.mode === 'pointed';
   // Trailing-edge gap as a fraction of the local chord: the thickness in mm, limited to
-  // MAX_GAP_FRACTION of the chord (used by the 'thickness' mode only).
-  const teGap = (chord) => Math.min(te.thickness / chord, MAX_GAP_FRACTION);
+  // MAX_GAP_FRACTION of the chord (used by the 'thickness' mode only), with a smooth transition
+  // unless settings.trailingEdge.smooth is false (trailingEdgeGap).
+  const teGap = (chord) => (chord > 0 ? trailingEdgeGap(chord, te.thickness, te.smooth !== false) / chord : 0);
   const yPrev = ys[ys.length - 2];
   let tipChord = 0;
   // Leading-edge x, chord, z and twist of every section, blended from the two neighbouring sections

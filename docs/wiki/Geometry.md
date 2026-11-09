@@ -519,7 +519,7 @@ Per station, after blending:
 | --- | --- |
 | **As in the airfoil files** (`asis`) | blended shape unchanged |
 | **Closed (sharp)** (`closed`) | g = 0; both end points move to their midpoint |
-| **Fixed thickness in mm** (`thickness`) | g = t / c, t = **Trailing-edge thickness (mm)** (default 0.4 mm), limited to 5 % of the chord |
+| **Fixed thickness in mm** (`thickness`) | g = gap(c) / c, t = **Trailing-edge thickness (mm)** (default 0.4 mm), limited to 5 % of the chord: with r = 0.05 c / t, gap = t · min(r, 1) with **Smooth transition to the 5 % limit** off; on (default), gap = t · r for r ≤ 0.5, t · (r − (r − 0.5)² / 2) for 0.5 < r < 1.5, t for r ≥ 1.5 (`trailingEdgeGap`) |
 
 | Project | **Trailing edge** | t |
 | --- | --- | --- |
@@ -1176,7 +1176,8 @@ c_k   = c(y_T + t_k · (end − y_T))              k < m, t_k as in section 10
 | Blend in y (sections without the marker), **Sport**, Smooth, n = 2, closed trailing edge | 2 or more on the trailing edge |
 | Blend along the tip ellipse, every preset but **Batwing**, Linear and Smooth, tangent on and off, straight line at 0, 25 and 100 %, 6 sections, n = 2.5, closed trailing edge | 0 (108 builds, in the suite) |
 | The same with straight line at 0, 25, 50 and 100 % and 3, 6 and 12 sections, closed trailing edge (368 builds each, measured once) | 0 at n = 2 and 2.5; 2 at n = 3 (**Sport**, tangent off, straight line 100 %, 6 sections: 0.4 mm before the point); 9 at n = 4, which the dialog does not offer |
-| The same with **Trailing edge** Fixed thickness in mm | n = 2.5: 7 of 368, 0.3 to 0.7 mm before the point, 1 rising more than 0.05 mm; n = 2: 5 of 368, 0.8 to 1.1 mm before the point, none above 0.05 mm |
+| The same with **Trailing edge** Fixed thickness in mm, **Smooth transition to the 5 % limit** on (default), n = 2.5 | 0 of 368 |
+| The same with **Smooth transition to the 5 % limit** off | n = 2.5: 7 of 368, 0.3 to 0.7 mm before the point, 1 rising more than 0.05 mm; n = 2: 5 of 368, 0.8 to 1.1 mm before the point, none above 0.05 mm |
 
-The gap of a fixed trailing-edge thickness is limited to 5 % of the chord (section 3.7): below a chord of thickness / 0.05 (8.4 mm at 0.42 mm) the gap follows the chord instead of staying constant. That corner of the gap function moves the trailing-edge corner of the surface and shows as a wave close to the point. It applies to every pointed tip, not only to a rounded one.
+The gap of a fixed trailing-edge thickness is limited to 5 % of the chord (section 3.7): below a chord of thickness / 0.05 (8.4 mm at 0.42 mm) the gap follows the chord instead of staying constant. Without the smooth transition, that corner of the gap function moves the trailing-edge corner of the surface and shows as a wave close to the point, on every pointed tip. The smooth transition joins both with equal value and slope.
 

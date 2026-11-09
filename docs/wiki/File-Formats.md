@@ -355,6 +355,7 @@ Ids made by the app:
 | `twistPivot` | `0`–`1`, fraction of chord | `0.25` | **Twist pivot (fraction of chord)** |
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Trailing edge** |
 | `trailingEdge.thickness` | ≥ 0 mm; used with `"thickness"`; limited to 5 % of the local chord | `0.4` | **Trailing-edge thickness (mm)** |
+| `trailingEdge.smooth` | `true`, `false`; used with `"thickness"` | `true` | **Smooth transition to the 5 % limit**: `true` blends the thickness into the 5 % limit without a corner ([[Geometry]], section 3.7). A project file without the key, also one of an earlier version, builds with `true`; Wingdesigner 0.8.0 and earlier drop the key and build with the corner. |
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Wing tip** |
 | `tip.ratio` | `0.001`–`0.01` (tip profile 1/1000 to 1/100 of the previous section chord); tip chord at least 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N of the previous section chord** |
 | `chordSamples` | integer `16`–`200` | `60` | **Chordwise stations per surface** |

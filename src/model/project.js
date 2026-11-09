@@ -43,7 +43,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   // Owner decision R2 (docs/Flow5upgrade.md): mitred for new projects; version 1 files open vertical.
   sectionPlanes: 'mitred',
   twistPivot: 0.25,
-  trailingEdge: Object.freeze({ mode: 'asis', thickness: 0.4 }),
+  trailingEdge: Object.freeze({ mode: 'asis', thickness: 0.4, smooth: true }),
   tip: Object.freeze({ mode: 'flat', ratio: 0.005 }),
   chordSamples: 60,
   panelStations: 8,
@@ -302,6 +302,7 @@ export function validateProject(p) {
   if (p.foldedTiltUnknown !== undefined && typeof p.foldedTiltUnknown !== 'boolean') errors.push(tr('foldedTiltUnknown must be true or false.'));
   if (!['asis', 'closed', 'thickness'].includes(st.trailingEdge.mode)) errors.push(tr('settings.trailingEdge.mode must be "asis", "closed" or "thickness".'));
   if (!isNum(st.trailingEdge.thickness) || st.trailingEdge.thickness < 0) errors.push(tr('settings.trailingEdge.thickness must be >= 0.'));
+  if (typeof st.trailingEdge.smooth !== 'boolean') errors.push(tr('settings.trailingEdge.smooth must be true or false.'));
   if (!['flat', 'pointed'].includes(st.tip.mode)) errors.push(tr('settings.tip.mode must be "flat" or "pointed".'));
   if (!isNum(st.tip.ratio) || st.tip.ratio < LIMITS.tipRatio[0] || st.tip.ratio > LIMITS.tipRatio[1]) {
     errors.push(tr('settings.tip.ratio must be within {range} (1/1000 to 1/100).', { range: LIMITS.tipRatio.map(plain).join('..') }));

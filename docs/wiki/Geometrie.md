@@ -547,7 +547,7 @@ Je Station, nach der Interpolation:
 | --- | --- |
 | **Wie in den Profildateien** (`asis`) | interpolierte Kontur unverändert |
 | **Geschlossen (scharf)** (Closed (sharp)) (`closed`) | g = 0; beide Endpunkte rücken auf ihre Mitte |
-| **Feste Dicke in mm** (`thickness`) | g = t / c, t = **Endleistendicke (mm)** (Trailing-edge thickness (mm)) (Vorgabe 0,4 mm), begrenzt auf 5 % der Profiltiefe |
+| **Feste Dicke in mm** (`thickness`) | g = Spalt(c) / c, t = **Endleistendicke (mm)** (Trailing-edge thickness (mm)) (Vorgabe 0,4 mm), begrenzt auf 5 % der Profiltiefe: mit r = 0,05 c / t ist Spalt = t · min(r, 1) mit ausgeschaltetem **Weicher Übergang zur 5-%-Grenze**; eingeschaltet (Vorgabe) Spalt = t · r für r ≤ 0,5, t · (r − (r − 0,5)² / 2) für 0,5 < r < 1,5, t für r ≥ 1,5 (`trailingEdgeGap`) |
 
 | Projekt | **Endleiste** | t |
 | --- | --- | --- |
@@ -1262,7 +1262,8 @@ c_k   = c(y_T + t_k · (Ende − y_T))             k < m, t_k wie in Abschnitt 1
 | Interpolation in y (Schnitte ohne Kennzeichnung), **Sport**, **Glatt**, n = 2, geschlossene Endleiste | 2 oder mehr an der Endleiste |
 | Interpolation entlang der Randellipse, jeder Entwurfstyp außer **Batwing**, **Linear** und **Glatt**, mit und ohne Tangential, gerade Linie bei 0, 25 und 100 %, 6 Schnitte, n = 2,5, geschlossene Endleiste | 0 (108 Aufbauten, in der Testsuite) |
 | Dasselbe mit gerader Linie bei 0, 25, 50 und 100 % und 3, 6 und 12 Schnitten, geschlossene Endleiste (je 368 Aufbauten, einmal gemessen) | 0 bei n = 2 und 2,5; 2 bei n = 3 (**Sport**, ohne Tangential, gerade Linie 100 %, 6 Schnitte: 0,4 mm vor der Spitze); 9 bei n = 4, das der Dialog nicht anbietet |
-| Dasselbe mit **Endleiste** **Feste Dicke in mm** | n = 2,5: 7 von 368, 0,3 bis 0,7 mm vor der Spitze, 1 höher als 0,05 mm; n = 2: 5 von 368, 0,8 bis 1,1 mm vor der Spitze, keine höher als 0,05 mm |
+| Dasselbe mit **Endleiste** **Feste Dicke in mm**, **Weicher Übergang zur 5-%-Grenze** eingeschaltet (Vorgabe), n = 2,5 | 0 von 368 |
+| Dasselbe mit ausgeschaltetem **Weicher Übergang zur 5-%-Grenze** | n = 2,5: 7 von 368, 0,3 bis 0,7 mm vor der Spitze, 1 höher als 0,05 mm; n = 2: 5 von 368, 0,8 bis 1,1 mm vor der Spitze, keine höher als 0,05 mm |
 
-Der Spalt einer festen Endleistendicke ist auf 5 % der Tiefe begrenzt (Abschnitt 3.7): Unter einer Tiefe von Dicke / 0,05 (8,4 mm bei 0,42 mm) folgt der Spalt der Tiefe, statt konstant zu bleiben. Dieser Knick der Spaltfunktion verschiebt die Endleistenecke der Fläche und zeigt sich nahe der Spitze als Welle. Das gilt für jedes spitze Flügelende, nicht nur für einen Randbogen.
+Der Spalt einer festen Endleistendicke ist auf 5 % der Tiefe begrenzt (Abschnitt 3.7): Unter einer Tiefe von Dicke / 0,05 (8,4 mm bei 0,42 mm) folgt der Spalt der Tiefe, statt konstant zu bleiben. Ohne weichen Übergang verschiebt dieser Knick der Spaltfunktion die Endleistenecke der Fläche und zeigt sich nahe der Spitze als Welle, an jedem spitzen Flügelende. Der weiche Übergang verbindet beide mit gleichem Wert und gleicher Steigung.
 

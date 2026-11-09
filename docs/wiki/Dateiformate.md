@@ -355,6 +355,7 @@ Von der App erzeugte IDs:
 | `twistPivot` | `0`–`1`, Anteil der Profiltiefe | `0.25` | **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)) |
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Endleiste** (Trailing edge) |
 | `trailingEdge.thickness` | ≥ 0 mm; wirkt bei `"thickness"`; begrenzt auf 5 % der örtlichen Profiltiefe | `0.4` | **Endleistendicke (mm)** (Trailing-edge thickness (mm)) |
+| `trailingEdge.smooth` | `true`, `false`; wirkt bei `"thickness"` | `true` | **Weicher Übergang zur 5-%-Grenze** (Smooth transition to the 5 % limit): `true` führt die Dicke ohne Knick in die 5-%-Grenze über ([[Geometrie]], Abschnitt 3.7). Eine Projektdatei ohne den Schlüssel, auch eine früherer Versionen, baut mit `true`; Wingdesigner 0.8.0 und älter verwerfen den Schlüssel und bauen mit dem Knick. |
 | `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Flügelende** (Wing tip) |
 | `tip.ratio` | `0.001`–`0.01` (Randprofil 1/1000 bis 1/100 der Profiltiefe des vorherigen Schnitts); Randtiefe mindestens 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Maßstab des Randprofils 1 : N der Tiefe des vorherigen Schnitts** (Tip profile scale 1 : N of the previous section chord) |
 | `chordSamples` | ganze Zahl `16`–`200` | `60` | **Stationen je Profilseite** (Chordwise stations per surface) |

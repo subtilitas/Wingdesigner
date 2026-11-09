@@ -6,7 +6,7 @@ import { ROUND_TIP_START_SECTIONS, guideEndIndex, roundTipBlender, roundTipStart
 import { spanwiseBlender } from '../src/geom/spanwise.js';
 import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
 import { PRESETS, wizardProject } from '../src/model/wizard.js';
-import { buildWing } from '../src/geom/wing.js';
+import { GAP_BLEND, MAX_GAP_FRACTION, buildWing, trailingEdgeGap } from '../src/geom/wing.js';
 import { insertSection, sortedSections } from '../src/model/edit.js';
 import { fileVersion, validateProject } from '../src/model/project.js';
 import { projectFromJsonText, projectToJsonText } from '../src/model/io.js';
@@ -157,3 +157,55 @@ describe('fairness of the built rounded tip', () => {
     expect(waves).toEqual([]);
   });
 });
+
+describe('smooth trailing-edge gap limit', () => {
+  it('keeps the fixed thickness down to 1.5 c*, joins the 5 % limit by 0.5 c* with equal value and slope, and stays below both', () => {
+    // t = 0.4 mm: c* = t / 0.05 = 8 mm; fixed above 12 mm, 5 % below 4 mm.
+    const t = 0.4;
+    const cs = t / MAX_GAP_FRACTION;
+    expect(GAP_BLEND).toBe(0.5);
+    expect(trailingEdgeGap(12, t, true)).toBe(t);
+    expect(trailingEdgeGap(30, t, true)).toBe(t);
+    expect(trailingEdgeGap(4, t, true)).toBeCloseTo(0.2, 12);
+    expect(trailingEdgeGap(2, t, true)).toBeCloseTo(0.1, 12);
+    // Hard: the corner at c* = 8 mm.
+    expect([trailingEdgeGap(8, t, false), trailingEdgeGap(6, t, false), trailingEdgeGap(10, t, false)]).toEqual([0.4, 0.30000000000000004, 0.4]);
+    const h = 1e-6;
+    const slope = (c) => (trailingEdgeGap(c + h, t, true) - trailingEdgeGap(c - h, t, true)) / (2 * h);
+    for (const c of [0.5 * cs, 1.5 * cs]) {
+      expect(Math.abs(trailingEdgeGap(c + 1e-9, t, true) - trailingEdgeGap(c - 1e-9, t, true))).toBeLessThan(1e-9);
+      expect(slope(c + 1e-4)).toBeCloseTo(slope(c - 1e-4), 3);
+    }
+    for (let c = 0.5; c <= 20; c += 0.25) {
+      const g = trailingEdgeGap(c, t, true);
+      expect(g).toBeLessThanOrEqual(Math.min(t, MAX_GAP_FRACTION * c) + 1e-12);
+      expect(g).toBeGreaterThan(0);
+    }
+    expect(trailingEdgeGap(10, 0, true)).toBe(0);
+  });
+
+  // Every preset with the default rounded tip and the Fixed thickness in mm the wizard sets, Linear and
+  // Smooth, with the smooth gap limit (the default). The wider sweep is measured once (Geometry,
+  // section 10.3).
+  it('leaves no wave on the presets with the default rounded tip and a fixed trailing-edge thickness', { timeout: 120000 }, () => {
+    const waves = [];
+    for (const [key, preset] of Object.entries(PRESETS)) {
+      if (key === 'batwing') continue;
+      for (const spanwise of ['linear', 'smooth']) {
+        const p = wizardProject({ ...preset.params, tip: 'flat' });
+        p.guides.nose.enabled = false;
+        p.guides.end.enabled = false;
+        p.settings.spanwise = spanwise;
+        expect(p.settings.trailingEdge.mode, key).toBe('thickness');
+        const yT = sortedSections(p).at(-1).y;
+        addRoundTip(p, defaultRoundTip(p));
+        const b = buildWing(p);
+        expect(b.errors, key).toEqual([]);
+        const f = edgeInflections(b, yT + 0.5, b.tipY - 0.3);
+        if (f.le.count || f.te.count) waves.push(`${key} ${spanwise}: ${f.le.at} | ${f.te.at}`);
+      }
+    }
+    expect(waves).toEqual([]);
+  });
+});
+

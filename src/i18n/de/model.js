@@ -107,6 +107,7 @@ export default {
   'foldedTilt.{axis} must be within ±{max} mm.': 'foldedTilt.{axis} muss innerhalb von ±{max} mm liegen.',
   'settings.trailingEdge.mode must be "asis", "closed" or "thickness".': 'settings.trailingEdge.mode muss "asis", "closed" oder "thickness" sein.',
   'settings.trailingEdge.thickness must be >= 0.': 'settings.trailingEdge.thickness muss >= 0 sein.',
+  'settings.trailingEdge.smooth must be true or false.': 'settings.trailingEdge.smooth muss true oder false sein.',
   'settings.tip.mode must be "flat" or "pointed".': 'settings.tip.mode muss "flat" oder "pointed" sein.',
   'settings.tip.ratio must be within {range} (1/1000 to 1/100).': 'settings.tip.ratio muss innerhalb von {range} liegen (1/1000 bis 1/100).',
   'settings.twistPivot must be within 0..1.': 'settings.twistPivot muss innerhalb von 0..1 liegen.',

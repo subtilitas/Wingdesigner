@@ -1,4 +1,4 @@
-// Settings tab: trailing-edge modes, pointed wing tip, its scale and the 1 mm tip chord floor,
+// Settings tab: trailing-edge modes and the smooth transition to the 5 % limit, pointed wing tip, its scale and the 1 mm tip chord floor,
 // spanwise interpolation, chordwise resolution, twist pivot, part tilt and roll, the mirrored-half display, project
 // name (export file names) and persistence across reloads.
 //
@@ -88,10 +88,18 @@ test.describe('Settings tab', () => {
     // The wizard sets a fixed thickness of 240 mm * 0.002 = 0.48 mm.
     await expect(teMode(page)).toHaveValue('thickness');
     await expect(teThickness(page)).toHaveValue('0.48');
+    // The smooth transition to the 5 % limit is on by default; switched off it is stored.
+    const smooth = page.getByLabel('Smooth transition to the 5 % limit');
+    await expect(smooth).toBeChecked();
+    await smooth.uncheck();
+    await expect.poll(async () => (await savedProject(page)).settings.trailingEdge.smooth).toBe(false);
+    await page.getByLabel('Smooth transition to the 5 % limit').check();
+    await expect.poll(async () => (await savedProject(page)).settings.trailingEdge.smooth).toBe(true);
 
-    // Closed: sharp trailing edge; the thickness field disappears.
+    // Closed: sharp trailing edge; the thickness field and the smooth option disappear.
     await choose(teMode(page), { label: 'Closed (sharp)' });
     await expect(teThickness(page)).toHaveCount(0);
+    await expect(page.getByLabel('Smooth transition to the 5 % limit')).toHaveCount(0);
     await openTab(page, 'Checks');
     await expect(checksValue(page, 'Trailing edge')).toHaveText('closed');
     await expect.poll(async () => (await savedProject(page)).settings.trailingEdge.mode).toBe('closed');

@@ -196,7 +196,7 @@ Example: `Flügel V2 (neu)` → `Fluegel_V2_neu.step`.
 | Foam cores are cut straight between their end profiles. | A wing that is not ruled between two cuts (guide curves, **Smooth** blending, **Linear** blending with stations between the sections, as between **Mitred** section planes of different roll) deviates from the core; the wizard shows the deviation per segment and splits segments above the limit. The cuts are not saved with the project. |
 | The foam-cutting files are untested with cutting programs and printers. | The templates are checked with independent readers (ezdxf, pypdf, an XML parser), the `.dat` files and `segments.csv` with the validation script's own reader; Jedicut, GMFC, DevFoam, CAD programs, laser cutters and printers were not run with them. Templates offset for the kerf use mitred corners limited to 4 times the offset, so a sharp trailing edge is blunted by the limit. |
 | The winglet attaches at the tip section, and y stays the span parameter of the loft. | Cant angles beyond ±89° (a winglet folded over the wing) are not possible. With guide curves on, a pointed tip or **Vertical** section planes the dialog refuses; switching guide curves on after adding a winglet stretches them over the winglet sections. Aerodynamic effect of the winglet: not computed. |
-| The rounded tip keeps the airfoil of the tip section. | Thickness falls in proportion to the chord; a thinner airfoil towards the point needs its own sections. The tip ends in a profile of at least 1 mm chord, not in a single point. With **Tangent to the last panel** off, the planform has a corner at the tip section where the last panel tapers; with it on, the edges are tangent there but the curvature changes. With **Straight panels**, the tip is a polygon of its sections. With **Trailing edge** Fixed thickness in mm, the gap limit of 5 % of the chord can leave a small wave in the trailing edge within 1 mm of the point. Projects with a rounded tip are saved as format version 5, which Wingdesigner 0.8.0 and earlier refuse. |
+| The rounded tip keeps the airfoil of the tip section. | Thickness falls in proportion to the chord; a thinner airfoil towards the point needs its own sections. The tip ends in a profile of at least 1 mm chord, not in a single point. With **Tangent to the last panel** off, the planform has a corner at the tip section where the last panel tapers; with it on, the edges are tangent there but the curvature changes. With **Straight panels**, the tip is a polygon of its sections. With **Trailing edge** Fixed thickness in mm and **Smooth transition to the 5 % limit** off, the corner of the gap limit can leave a small wave in the trailing edge within 1 mm of the point. Projects with a rounded tip are saved as format version 5, which Wingdesigner 0.8.0 and earlier refuse. |
 | Wing computation time and memory use on phones: not measured. | — |
 
 ## Quick start
@@ -238,7 +238,7 @@ Version history: [CHANGELOG.md](CHANGELOG.md). Verified state and open items: [R
 npm ci
 npx playwright install chromium   # browser for end-to-end (e2e) tests and screenshots (or set PW_CHROMIUM=/path/to/chrome)
 npm run dev              # development server on http://localhost:5173
-npm test                 # 687 unit tests (Vitest)
+npm test                 # 689 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
@@ -268,7 +268,7 @@ The Playwright tests run the DOM (Document Object Model) code; its coverage is n
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.0 % | 94.4 % | 98.2 % | 98.8 % |
+| 98.0 % | 94.3 % | 98.2 % | 98.8 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->
