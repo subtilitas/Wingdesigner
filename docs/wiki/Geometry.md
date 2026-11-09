@@ -1087,11 +1087,13 @@ at length s:   x = x_T + s · tan Λ,   chord = c_T + (k · c_T − c_T) · s / 
 
 ## 10. Rounded tip
 
-`src/model/roundtip.js` appends the rounded tip as sections and sets the tip mode to Pointed (section 3.5); the loft treats them as any other panel. Input: the tip section T (y_T, z_T, x_T, chord c_T, twist t_T), the section P before it, the angle a0 of the last panel (its stored **Panel angle**, else atan2(z_T − z_P, y_T − y_P)), the tip ratio ρ of **Settings** > **Wing tip**, and the parameters length L, straight line f (share of the chord, 0 … 1), section count m and tangent (on or off).
+`src/model/roundtip.js` appends the rounded tip as sections marked `roundTip` and sets the tip mode to Pointed (section 3.5); the loft blends the marked sections along the tip ellipse (section 10.1). Input: the tip section T (y_T, z_T, x_T, chord c_T, twist t_T), the section P before it, the angle a0 of the last panel (its stored **Panel angle**, else atan2(z_T − z_P, y_T − y_P)), the tip ratio ρ of **Settings** > **Wing tip**, and the parameters length L, straight line f (share of the chord, 0 … 1), section count m and tangent (on or off).
 
 ```
-slope = (x_T + f · c_T − x_P − f · c_P) / (y_T − y_P)     dx/dy of the straight line of the last panel
-c'    = (c_T − c_P) / (y_T − y_P)                         taper of the last panel (dc/dy)
+slope = dx/dy + f · c'  at T                              dx/dy of the straight line along the wing
+c'    = dc/dy at T                                        taper of the wing at T
+        Linear: the secant of the last panel, (c_T − c_P) / (y_T − y_P) and so on;
+        Smooth: the slope of the shape-preserving cubic through all sections at T
 κ     = c' · L · cos a0 / c_T  with tangent,  0 without    must be > −0.95
 
 section k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
@@ -1111,4 +1113,52 @@ section k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
 - Values are rounded to 0.01 mm. A stored **Panel angle** of the last panel is copied to T and to the added sections but the point, so that the rounding does not tilt their **Mitred** planes; without one, the planes follow the reference points.
 - The thickness follows the chord (the airfoil keeps its thickness ratio), so the front view of the tip has the shape of c(s).
 - Guide curves hold x and the chord as functions of y between root and tip; they would stretch over the rounded tip, so the dialog requires them off. A wing with a pointed tip already ends in a point and is refused.
-- Tested: every preset with a flat tip and the guide curves off but **Batwing** (chord below 1 mm with a flat tip) builds a closed wing with the default rounded tip, with **Linear** and **Smooth**, with **Mitred** and **Vertical** planes and with tangent on and off, without errors. Warnings: none, except with tangent on **Delta jet** (fixed trailing edge 1.6 mm) and **Double delta** (2 mm), where the trailing-edge thickness exceeds 5 % of the chord at 1 station before the last panel and is limited there. The **Sport** wing builds with the straight line at 0, 25, 50, 75 and 100 % and 2, 4 and 8 sections. The STEP case `rounded-tip-smooth` (section 6) passes the OpenCascade check.
+- Tested (`test/roundtip.test.js`): every preset with a flat tip and the guide curves off but **Batwing** (chord below 1 mm with a flat tip) builds a closed wing with the default rounded tip, with **Linear** and **Smooth**, with **Mitred** and **Vertical** planes and with tangent on and off, without errors. Warnings: none, except with tangent on **Delta jet** (fixed trailing edge 1.6 mm) and **Double delta** (2 mm), where the trailing-edge thickness exceeds 5 % of the chord at 1 station before the last panel and is limited there. The **Sport** wing builds with the straight line at 0, 25, 50, 75 and 100 % and 2, 4 and 8 sections. The STEP case `rounded-tip-smooth` (section 6) passes the OpenCascade check.
+
+### 10.1 Blend along the tip ellipse
+
+`src/geom/tipblend.js`. Linear and Smooth blend section values in y. At the point the outline of the tip runs square to y, with an infinite slope in y. Blended in y, the tip of the **Sport** wing with the default rounded tip is a polygon of 6 straight panels with Linear; with Smooth the trailing edge changes the sign of its curvature twice, between y = 708 and 712 mm and between 724 and 728 mm (x″ from −0.027 to +0.049 per mm): a bulge 20 to 35 mm before the point.
+
+The loft therefore blends the outline of a rounded tip in the angle θ of the tip ellipse. It applies to an outer run of 2 or more sections marked `roundTip` after a section T with a panel inboard of it, when **Wing tip** is Pointed, no guide curve is on, and the interpolation is Linear or Smooth. Input: T, the last section E (the point), L = y_E − y_T, and per outline value f (leading edge x, trailing edge x + chord) its value f_T and slope s_f at T from the blend of the sections up to T (Linear: the secant of the last panel; Smooth: the shape-preserving cubic of section 3.1).
+
+```
+θ(y)  = asin((y − y_T) / L)                                0 at T, π/2 at the point
+r_k   = f_k − f_T − s_f · (y_k − y_T)                      residual of each tip section
+r(θ)  = cubic spline in θ through (θ_k, r_k)                natural at the point;
+        at T: r′(0) = 0 for "tangent", natural for "corner"
+f(y)  = f_T + s_f · (y − y_T) + r(θ(y))                     y > y_T
+```
+
+- Residuals that all lie within 0.01 mm, the rounding of the section values, count as zero: a straight edge (straight line at 0 % or 100 %) stays straight instead of rippling by ±0.005 mm.
+- The leading and trailing edge are blended, not x and chord, so that one of them is exactly straight at 0 % and 100 %. The chord is their difference.
+- z, twist, roll and the stored panel-angle offset keep the blend in y over all sections. Along the tip they run straight, and their slope in y stays bounded, which sets the stretch of **Mitred** planes. Blended in θ, dz/dy grows towards the point: on the mitred gull of `rounded-tip-smooth` it stretched the airfoil 14.8 times at y = 709.6 mm.
+- With "tangent" the outline leaves T with the slope of the wing: equal first derivative, the curvature changes. The dialog builds the sections with the same slope (section 10, c′), so that sections and blend agree. A wing switched between Linear and Smooth after the rounded tip was added has another slope at T than its sections: the blend stays tangent to the wing, and the sections pull the outline towards their own slope.
+- Inboard of T the outline follows the blend of the sections up to T: the tip sections do not change the shape of the wing.
+- **Straight panels** joins the sections with straight lines by definition, and a guide curve sets x and the chord itself: both keep their own blend, so a rounded tip there is a polygon of its sections.
+
+### 10.2 Span parameter
+
+The loft is fitted through its stations as a cubic in the span parameter v (section 4). With v proportional to y, the fit cannot follow an outline that runs square to y: on the presets with the blend of section 10.1 the fitted edge left the intended one by up to 0.39 mm, 3 mm before the point. In a rounded tip v follows the arc of the tip ellipse instead:
+
+```
+s(y) = y                          y ≤ y_T
+s(y) = y_T + L · θ(y)             y > y_T
+v(y) = (s(y) − y_0) / (y_T + L · π/2 − y_0)
+```
+
+- s has the first and second derivative of y at T (θ = (y − y_T)/L + O((y − y_T)³)), so v joins without a kink.
+- The stations of a rounded-tip panel are spaced evenly in v; with Linear the panel gets the stations of a panel with a guide curve (section 3.2). The build exports `vAt(y)` and `yAt(v)`; the foam cores, the 3D view and the section outlines use them.
+
+### 10.3 Fairness
+
+`test/fairness.js` samples the leading edge (u = u_LE) and the trailing edge (u = 0) of the fitted surface from above in 4,000 steps of v. A wave is a change of the sign of the curvature between points curved more than 1/m on both sides, where an arc next to it rises more than 0.01 mm above the line through its ends.
+
+| Rounded tip | Waves from T to 0.3 mm before the point |
+| --- | --- |
+| Blend in y (sections without the marker), **Sport**, Smooth, closed trailing edge | 2 or more on the trailing edge |
+| Blend along the tip ellipse, every preset but **Batwing**, Linear and Smooth, tangent on and off, straight line at 0, 25 and 100 %, 6 sections, closed trailing edge | 0 (108 builds) |
+| The same with 3, 6 and 12 sections | 0 (276 builds, measured once, not in the suite) |
+| The same with **Trailing edge** Fixed thickness in mm, 3, 6 and 12 sections | waves on the trailing edge in 9 of 276 builds, 0.8 to 3.5 mm before the point, 4 of them rising more than 0.05 mm |
+
+The gap of a fixed trailing-edge thickness is limited to 5 % of the chord (section 3.7): below a chord of thickness / 0.05 (8.4 mm at 0.42 mm) the gap follows the chord instead of staying constant. That corner of the gap function moves the trailing-edge corner of the surface and shows as a wave close to the point. It applies to every pointed tip, not only to a rounded one.
+

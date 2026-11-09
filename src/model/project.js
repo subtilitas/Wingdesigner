@@ -16,13 +16,18 @@ export const FORMAT = 'wingdesigner-project';
 // src/geom/part.js); version 2 files with a folded tilt are upgraded on Open (src/model/io.js).
 // Version 4: settings.leftHalf 'turned' (the left half turns with the whole wing). A project with the
 // default 'mirror' is saved as version 3, which Wingdesigner 0.4.0 opens (fileVersion).
-export const VERSION = 4;
+// Version 5: the rounded-tip marker of a section (section.roundTip, src/geom/tipblend.js). A project
+// without it is saved as version 3 or 4, as before.
+export const VERSION = 5;
 
 /** How the left half follows the rigid placement of the part (src/geom/part.js). */
 export const LEFT_HALVES = Object.freeze(['mirror', 'turned']);
 
-/** The version a project file of these settings is saved as: the lowest that holds them. */
-export const fileVersion = (settings) => (settings?.leftHalf === 'turned' ? 4 : 3);
+/** The version a project file of these settings and sections is saved as: the lowest that holds them. */
+export const fileVersion = (settings, sections = []) => (sections.some((s) => s.roundTip !== undefined) ? 5 : settings?.leftHalf === 'turned' ? 4 : 3);
+
+/** Values of section.roundTip: the end condition of the rounded-tip blend at the section before the tip. */
+export const ROUND_TIP_MARKERS = Object.freeze(['tangent', 'corner']);
 
 /**
  * Spanwise interpolation: 'linear' blends every section value (leading edge, chord, z, twist, airfoil
@@ -261,6 +266,8 @@ export function validateProject(p) {
     if (isNum(s.chord) && s.chord < LIMITS.minChord) errors.push(tr('Section {n}: chord must be at least {min} mm.', { n, min: plain(LIMITS.minChord) }));
     // The angle of the panel to the next section that the mitred planes use; absent or null: from y and z.
     if (s.panelAngle !== undefined && s.panelAngle !== null && !isNum(s.panelAngle)) errors.push(tr('Section {n}: panelAngle must be a finite number or null.', { n }));
+    // Marker of a rounded-tip section (src/geom/tipblend.js).
+    if (s.roundTip !== undefined && !ROUND_TIP_MARKERS.includes(s.roundTip)) errors.push(tr('Section {n}: roundTip must be "tangent" or "corner".', { n }));
     if (isNum(s.y) && s.y < 0) errors.push(tr('Section {n}: y must be >= 0 (the half wing lies on the +y side).', { n }));
     if (!ids.has(s.airfoil)) errors.push(tr('Section {n}: unknown airfoil "{id}".', { n, id: shown(s.airfoil) }));
     // Sections without an id get "s<n>" on import; check the effective id.

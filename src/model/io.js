@@ -24,7 +24,7 @@ function curveJson(c) {
 export function projectToJson(project, build, meta = {}) {
   const out = {
     format: FORMAT,
-    version: fileVersion(project.settings),
+    version: fileVersion(project.settings, project.sections),
     generator: { name: 'Wingdesigner', version: meta.generatorVersion ?? '0.0.0' },
     exportedAt: meta.exportedAt ?? new Date().toISOString(),
     name: project.name,
@@ -268,7 +268,7 @@ export function projectFromJsonText(text) {
       points: a.points.map((p) => [p[0], p[1]]),
       ...(isObject(a.source) ? { source: Object.fromEntries(SOURCE_KEYS.filter((k) => a.source[k] !== undefined).map((k) => [k, a.source[k]])) } : {}),
     })),
-    sections: data.sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, airfoil: s.airfoil, x: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist, ...(isNum(s.panelAngle) ? { panelAngle: s.panelAngle } : {}) })),
+    sections: data.sections.map((s, i) => ({ id: s.id ?? `s${i + 1}`, airfoil: s.airfoil, x: s.x, y: s.y, z: s.z, chord: s.chord, twist: s.twist, ...(isNum(s.panelAngle) ? { panelAngle: s.panelAngle } : {}), ...(s.roundTip !== undefined ? { roundTip: s.roundTip } : {}) })),
     // Version 1 files predate section planes: they open with vertical planes (owner decision R2,
     // docs/Flow5upgrade.md), set before the defaults fill the missing settings.
     settings: resolveSettings(data.version < 2 ? { ...(isObject(data.settings) ? data.settings : {}), sectionPlanes: 'vertical' } : data.settings),

@@ -46,6 +46,7 @@ export default {
   'Section {n}: twist must be within ±{max} degrees.': 'Schnitt {n}: Schränkung muss innerhalb von ±{max} Grad liegen.',
   'Section {n}: panelAngle must be within ±{max} degrees.': 'Schnitt {n}: panelAngle muss innerhalb von ±{max} Grad liegen.',
   'Section {n}: panelAngle must be a finite number or null.': 'Schnitt {n}: panelAngle muss eine endliche Zahl oder null sein.',
+  'Section {n}: roundTip must be "tangent" or "corner".': 'Schnitt {n}: roundTip muss "tangent" oder "corner" sein.',
   'guides.{key}.points: at most {max} points (found {found}).': 'guides.{key}.points: höchstens {max} Punkte ({found} gefunden).',
   'guides.{key}.points: x must be within ±{maxX} mm and y within ±{maxY} mm.': 'guides.{key}.points: x muss innerhalb von ±{maxX} mm und y innerhalb von ±{maxY} mm liegen.',
 

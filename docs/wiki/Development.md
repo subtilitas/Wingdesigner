@@ -25,7 +25,7 @@ The bundled airfoil library needs no network request: plugin `airfoilLibrary` in
 | `src/geom/`, `src/airfoil/`, `src/export/`, `src/import/`, `src/model/`, `src/ui/` | See [Modules](#modules) |
 | `public/airfoils/` | 62 coordinate files (`.dat`, Selig format), `index.json` with 62 entries, `NOTICE.md` (source, legal basis, conditions and attribution per file). An entry needs a free license or a recorded written permission, and a line in `NOTICE.md` (see [Airfoil library check](#airfoil-library-check)). The 17 National Advisory Committee for Aeronautics (NACA) presets are computed at run time, not stored. |
 | `scripts/` | See [Scripts](#scripts) |
-| `test/` | Vitest unit tests (`*.test.js`), `helpers.js` (NACA sample project), `step-cases.js` (validation cases for Standard for the Exchange of Product model data (STEP) files and 3MF files), `xflr5-writer.js` (writer of XFLR5 project files), `fixtures/xflr5/` (XFLR5 test files, see [XFLR5 test files and tests](#xflr5-test-files-and-tests)) |
+| `test/` | Vitest unit tests (`*.test.js`), `helpers.js` (NACA sample project), `step-cases.js` (validation cases for Standard for the Exchange of Product model data (STEP) files and 3MF files), `xflr5-writer.js` (writer of XFLR5 project files), `fairness.js` (waves of the leading and trailing edge of a built wing), `fixtures/xflr5/` (XFLR5 test files, see [XFLR5 test files and tests](#xflr5-test-files-and-tests)) |
 | `e2e/` | Playwright end-to-end (E2E) browser tests (`*.spec.js`), `helpers.js` |
 | `docs/Flow5upgrade.md` | Plan and owner decisions for mitred section planes, a rigid tilt of the whole part and the flow5 import (English only) |
 | `docs/Handover.md` | Where the work stands, next steps, working agreements with the owner, what the repository does not hold (English only) |
@@ -42,6 +42,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/geom/linalg.js` | Band lower-upper (LU) factorization without pivoting (B-spline interpolation, used by `src/geom/nurbs.js`); dense LU factorization with partial pivoting (unit tests only) |
 | `src/geom/profile.js` | Airfoil as NURBS curve; chordwise resampling; `fitProfile` (curve fit and shape check of an airfoil, used by the airfoil preview and the XFLR5 import) |
 | `src/geom/spanwise.js` | Spanwise blending of section values (`linear`, `smooth`) |
+| `src/geom/tipblend.js` | Rounded tip in the loft: `roundTipStart` (the marked run), `roundTipBlender` (outline along the tip ellipse), `spanParameter` (span parameter v along the ellipse arc) |
 | `src/geom/guide.js` | Guide curves (nose line, end line) |
 | `src/geom/planes.js` | Section planes: roll and stretch of each section (`sectionPlanes`), stretch limit, extent of a placed airfoil (`upExtent`) and fold test of two neighbouring planes (`planeFold`, `firstFold`) |
 | `src/geom/wing.js` | Wing loft: `buildWing`; `mitredPlaneProblem` (stretch and fold checks without the loft, for the XFLR5 import); profile cache |
@@ -433,7 +434,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 677 tests in 26 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 684 tests in 27 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |

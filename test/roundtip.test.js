@@ -134,7 +134,8 @@ describe('rounded tip on the presets', () => {
         addRoundTip(p, { ...defaultRoundTip(p), line, sections, tangent: sections !== 4 });
         const b = buildWing(p);
         expect(b.errors, `${line} % ${sections}`).toEqual([]);
-        expect(b.tipChord, `${line} % ${sections}`).toBe(1);
+        // A straight edge is blended without its 0.01 mm rounding (src/geom/tipblend.js): within 0.01 mm.
+        expect(Math.abs(b.tipChord - 1), `${line} % ${sections}`).toBeLessThanOrEqual(0.01);
       }
     }
   });

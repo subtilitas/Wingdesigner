@@ -1,6 +1,8 @@
 // Rounded wing tip: sections appended beyond a flat wing tip whose chord follows a quarter ellipse and
-// ends in a point (Settings > Wing tip = Pointed). The sections are ordinary sections afterwards: the
-// loft, the section planes and the exports treat them as any other panel.
+// ends in a point (Settings > Wing tip = Pointed). The sections carry the marker roundTip ('tangent'
+// or 'corner'), with which the loft blends them in the angle of the tip ellipse instead of in y
+// (src/geom/tipblend.js), so that the outline stays smooth with Linear and with Smooth. Otherwise they
+// are ordinary sections: editable, and written to every export like any other.
 //
 // Parameters (lengths in mm):
 //   length    length of the rounded tip along the last panel, from the tip section to the point
@@ -15,16 +17,18 @@
 //
 // Section k = 1 … m (m = sections) lies at t = sin(π k / (2 m)) of the length, closer together
 // towards the point, with the chord c_T · sqrt(1 − t²) · (1 + κ t) (c_T: chord of the tip section).
-// κ = 0 without tangent; with tangent κ = (dc/dy of the last panel) · (length in y) / c_T, which gives
-// the chord the slope dc/dy at the tip section. The factor stays positive up to the point only for
-// κ > −1: a last panel that would taper to zero chord within the length is refused. The point (k = m) takes the chord of a pointed tip: tip.ratio of the chord before, at
-// least LIMITS.minChord. Airfoil and twist stay those of the tip section; the reference points run
-// on along the last panel in y and z.
+// κ = 0 without tangent; with tangent κ = (dc/dy of the wing at the tip section) · (length in y) / c_T,
+// which gives the chord that slope at the tip section (lastPanel: the secant of the last panel with
+// Linear, the shape-preserving cubic with Smooth). The factor stays positive up to the point only for
+// κ > −1: a wing that would taper to zero chord within the length is refused. The point (k = m)
+// takes the chord of a pointed tip: tip.ratio of the chord before, at least LIMITS.minChord. Airfoil
+// and twist stay those of the tip section; the reference points run on along the last panel in y and z.
 
 import { plain, tr, whole } from '../i18n/index.js';
 import { LIMITS, newId } from './project.js';
 import { resetDisabledGuides, sortedSections, syncGuidesToSpan } from './edit.js';
 import { SHORT_PANEL, storesPanelAngle } from '../geom/planes.js';
+import { spanwiseBlender } from '../geom/spanwise.js';
 
 const DEG = Math.PI / 180;
 
@@ -40,7 +44,12 @@ const KAPPA_MARGIN = 0.05;
 
 const r2 = (v) => Math.round(v * 100) / 100;
 
-/** The two outermost sections and the angle (degrees) and chord-line slope dx/dy of the last panel. */
+/**
+ * The two outermost sections, the angle (degrees) of the last panel, and the slopes dx/dy of the
+ * chord-line point and dc/dy of the chord at the tip section: those of the blend the loft uses inboard
+ * of a rounded tip (src/geom/tipblend.js), the secant of the last panel with Linear, the slope of the
+ * shape-preserving cubic with Smooth, so that the rounded tip leaves the tip section along the wing.
+ */
 function lastPanel(project, line) {
   const sorted = sortedSections(project);
   const tip = sorted[sorted.length - 1];
@@ -48,8 +57,17 @@ function lastPanel(project, line) {
   const angle = storesPanelAngle(prev) ? prev.panelAngle : Math.atan2(tip.z - prev.z, tip.y - prev.y) / DEG;
   const f = line / 100;
   const dy = tip.y - prev.y;
-  const slope = dy > 0 ? (tip.x + f * tip.chord - (prev.x + f * prev.chord)) / dy : 0;
-  const taper = dy > 0 ? (tip.chord - prev.chord) / dy : 0;
+  let slope = dy > 0 ? (tip.x + f * tip.chord - (prev.x + f * prev.chord)) / dy : 0;
+  let taper = dy > 0 ? (tip.chord - prev.chord) / dy : 0;
+  if (project.settings.spanwise === 'smooth' && sorted.length >= 3 && dy > 0) {
+    const [[dx, dc]] = spanwiseBlender(
+      sorted.map((s) => s.y),
+      'smooth',
+      sorted.map((s) => [[s.x, s.chord]]),
+    ).derivative(tip.y);
+    slope = dx + f * dc;
+    taper = dc;
+  }
   return { tip, prev, angle, slope, taper };
 }
 
@@ -142,7 +160,9 @@ export function roundTipProblems(project, params) {
 export function addRoundTip(project, params) {
   if (roundTipProblems(project, params).length) return null;
   const { tip, prev } = lastPanel(project, params.line);
-  const added = roundTipSections(project, params).map((q) => ({ id: newId('s'), ...q }));
+  // The marker selects the blend in the angle of the tip ellipse (src/geom/tipblend.js).
+  const marker = params.tangent ? 'tangent' : 'corner';
+  const added = roundTipSections(project, params).map((q) => ({ id: newId('s'), ...q, roundTip: marker }));
   // The added panels run on along the last panel: a stored angle of the last panel holds for them
   // too, so that the rounding of y and z to 0.01 mm does not tilt their section planes.
   if (storesPanelAngle(prev)) {

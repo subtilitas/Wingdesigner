@@ -115,7 +115,7 @@ function save(project) {
   try {
     if (!validateProject(project).ok) return;
     // The stored copy carries the version a saved file would: the lowest that holds the settings.
-    const text = JSON.stringify({ ...project, version: fileVersion(project.settings) });
+    const text = JSON.stringify({ ...project, version: fileVersion(project.settings, project.sections) });
     length = text.length;
     localStorage.setItem(STORAGE_KEY, text);
     if (autosaveFailed) {
@@ -464,7 +464,7 @@ function rebuild() {
       build.sizeWarning = large;
     }
     const sel = store.project.sections.find((s) => s.id === store.selection.section);
-    const selV = sel && build.surface ? (sel.y - build.rootY) / (build.tipY - build.rootY || 1) : null;
+    const selV = sel && build.surface ? build.vAt(sel.y) : null;
     if (redraw) {
       viewer.setBuild(build.surface ? build : null, { mirror: store.project.settings.mirror !== false, selectedV: selV });
       sectionsPanel.update();

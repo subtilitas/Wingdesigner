@@ -1173,11 +1173,13 @@ bei Länge s:   x = x_T + s · tan Λ,   Tiefe = c_T + (k · c_T − c_T) · s /
 
 ## 10. Randbogen
 
-`src/model/roundtip.js` fügt den Randbogen als Schnitte an und setzt das Flügelende auf **Spitz** (Abschnitt 3.5); der Loft behandelt sie wie jedes andere Feld. Eingang: der Randschnitt T (y_T, z_T, x_T, Tiefe c_T, Schränkung t_T), der Schnitt P davor, der Winkel a0 des letzten Feldes (sein gespeicherter **Feldwinkel**, sonst atan2(z_T − z_P, y_T − y_P)), das Randverhältnis ρ aus **Einstellungen** > **Flügelende** und die Parameter Länge L, gerade Linie f (Anteil der Tiefe, 0 … 1), Schnittzahl m und Tangential (ein oder aus).
+`src/model/roundtip.js` fügt den Randbogen als mit `roundTip` gekennzeichnete Schnitte an und setzt das Flügelende auf **Spitz** (Abschnitt 3.5); der Loft interpoliert die gekennzeichneten Schnitte entlang der Randellipse (Abschnitt 10.1). Eingang: der Randschnitt T (y_T, z_T, x_T, Tiefe c_T, Schränkung t_T), der Schnitt P davor, der Winkel a0 des letzten Feldes (sein gespeicherter **Feldwinkel**, sonst atan2(z_T − z_P, y_T − y_P)), das Randverhältnis ρ aus **Einstellungen** > **Flügelende** und die Parameter Länge L, gerade Linie f (Anteil der Tiefe, 0 … 1), Schnittzahl m und Tangential (ein oder aus).
 
 ```
-slope = (x_T + f · c_T − x_P − f · c_P) / (y_T − y_P)     dx/dy der geraden Linie des letzten Feldes
-c'    = (c_T − c_P) / (y_T − y_P)                         Zuspitzung des letzten Feldes (dc/dy)
+slope = dx/dy + f · c'  bei T                             dx/dy der geraden Linie entlang des Flügels
+c'    = dc/dy bei T                                       Zuspitzung des Flügels bei T
+        Linear: die Sekante des letzten Feldes, (c_T − c_P) / (y_T − y_P) usw.;
+        Glatt: die Steigung der formerhaltenden kubischen Kurve durch alle Schnitte bei T
 κ     = c' · L · cos a0 / c_T  mit Tangential,  0 ohne     muss > −0,95 sein
 
 Schnitt k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
@@ -1197,4 +1199,52 @@ Schnitt k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
 - Die Werte werden auf 0,01 mm gerundet. Ein gespeicherter **Feldwinkel** des letzten Feldes wird auf T und auf die angefügten Schnitte außer der Spitze übertragen, damit die Rundung ihre Ebenen **Auf Gehrung** nicht neigt; ohne ihn folgen die Ebenen den Bezugspunkten.
 - Die Dicke folgt der Tiefe (das Profil behält seine relative Dicke), daher hat die Vorderansicht des Randbogens die Form von c(s).
 - Leitkurven halten x und die Tiefe als Funktionen von y zwischen Wurzel und Rand; sie würden sich über den Randbogen dehnen, deshalb verlangt der Dialog sie ausgeschaltet. Ein Flügel mit spitzem Flügelende endet schon in einer Spitze und wird abgelehnt.
-- Geprüft: Jeder Entwurfstyp mit flachem Flügelende und ausgeschalteten Leitkurven außer **Batwing** (Tiefe unter 1 mm bei flachem Flügelende) baut mit dem Randbogen der Vorgaben einen geschlossenen Flügel, mit **Linear** und **Glatt**, mit Ebenen **Auf Gehrung** und **Senkrecht** und mit und ohne Tangential, ohne Fehler. Warnungen: keine, außer mit Tangential bei **Delta-Jet** (feste Endleiste 1,6 mm) und **Doppeldelta** (2 mm), wo die Endleistendicke an 1 Station vor dem letzten Feld 5 % der Tiefe überschreitet und dort begrenzt wird. Der Flügel **Sport** baut mit der geraden Linie bei 0, 25, 50, 75 und 100 % und 2, 4 und 8 Schnitten. Der STEP-Fall `rounded-tip-smooth` (Abschnitt 6) besteht die Prüfung mit OpenCascade.
+- Geprüft (`test/roundtip.test.js`): Jeder Entwurfstyp mit flachem Flügelende und ausgeschalteten Leitkurven außer **Batwing** (Tiefe unter 1 mm bei flachem Flügelende) baut mit dem Randbogen der Vorgaben einen geschlossenen Flügel, mit **Linear** und **Glatt**, mit Ebenen **Auf Gehrung** und **Senkrecht** und mit und ohne Tangential, ohne Fehler. Warnungen: keine, außer mit Tangential bei **Delta-Jet** (feste Endleiste 1,6 mm) und **Doppeldelta** (2 mm), wo die Endleistendicke an 1 Station vor dem letzten Feld 5 % der Tiefe überschreitet und dort begrenzt wird. Der Flügel **Sport** baut mit der geraden Linie bei 0, 25, 50, 75 und 100 % und 2, 4 und 8 Schnitten. Der STEP-Fall `rounded-tip-smooth` (Abschnitt 6) besteht die Prüfung mit OpenCascade.
+
+### 10.1 Interpolation entlang der Randellipse
+
+`src/geom/tipblend.js`. **Linear** und **Glatt** interpolieren Schnittwerte in y. An der Spitze verläuft der Umriss des Randbogens senkrecht zu y, mit unendlicher Steigung in y. In y interpoliert ist der Randbogen der Vorgaben am Flügel **Sport** mit **Linear** ein Polygon aus 6 geraden Feldern; mit **Glatt** wechselt die Endleiste zweimal das Vorzeichen ihrer Krümmung, zwischen y = 708 und 712 mm und zwischen 724 und 728 mm (x″ von −0,027 bis +0,049 je mm): eine Beule 20 bis 35 mm vor der Spitze.
+
+Der Loft interpoliert den Umriss eines Randbogens deshalb im Winkel θ der Randellipse. Das gilt für eine äußere Folge von 2 oder mehr mit `roundTip` gekennzeichneten Schnitten nach einem Schnitt T mit einem Feld innen davor, wenn **Flügelende** **Spitz** ist, keine Leitkurve eingeschaltet ist und die Interpolation **Linear** oder **Glatt** ist. Eingang: T, der letzte Schnitt E (die Spitze), L = y_E − y_T, und je Umrisswert f (x der Nasenleiste, x + Tiefe der Endleiste) sein Wert f_T und seine Steigung s_f bei T aus der Interpolation der Schnitte bis T (**Linear**: die Sekante des letzten Feldes; **Glatt**: die formerhaltende kubische Kurve aus Abschnitt 3.1).
+
+```
+θ(y)  = asin((y − y_T) / L)                                0 bei T, π/2 an der Spitze
+r_k   = f_k − f_T − s_f · (y_k − y_T)                      Rest jedes Randbogenschnitts
+r(θ)  = kubischer Spline in θ durch (θ_k, r_k)              natürlich an der Spitze;
+        bei T: r′(0) = 0 für "tangent", natürlich für "corner"
+f(y)  = f_T + s_f · (y − y_T) + r(θ(y))                     y > y_T
+```
+
+- Reste, die alle innerhalb von 0,01 mm liegen, der Rundung der Schnittwerte, gelten als null: Eine gerade Kante (gerade Linie bei 0 % oder 100 %) bleibt gerade, statt um ±0,005 mm zu wellen.
+- Interpoliert werden Nasenleiste und Endleiste, nicht x und Tiefe, damit bei 0 % und 100 % eine von beiden genau gerade ist. Die Tiefe ist ihre Differenz.
+- z, Schränkung, Neigung und der gespeicherte Feldwinkelanteil behalten die Interpolation in y über alle Schnitte. Entlang des Randbogens verlaufen sie gerade, und ihre Steigung in y bleibt beschränkt; sie bestimmt die Dickenstreckung von Ebenen **Auf Gehrung**. In θ interpoliert wächst dz/dy zur Spitze hin: Am Möwenflügel von `rounded-tip-smooth` streckte das das Profil bei y = 709,6 mm 14,8-fach.
+- Mit "tangent" verlässt der Umriss T mit der Steigung des Flügels: gleiche erste Ableitung, die Krümmung ändert sich. Der Dialog baut die Schnitte mit derselben Steigung (Abschnitt 10, c′), sodass Schnitte und Interpolation übereinstimmen. Ein Flügel, der nach dem Anfügen des Randbogens zwischen **Linear** und **Glatt** umgestellt wird, hat bei T eine andere Steigung als seine Schnitte: Die Interpolation bleibt tangential zum Flügel, und die Schnitte ziehen den Umriss zu ihrer eigenen Steigung.
+- Innerhalb von T folgt der Umriss der Interpolation der Schnitte bis T: Die Randbogenschnitte ändern die Form des Flügels nicht.
+- **Gerade Felder** verbindet die Schnitte definitionsgemäß mit Geraden, und eine Leitkurve bestimmt x und Tiefe selbst: Beide behalten ihre eigene Interpolation, ein Randbogen ist dort ein Polygon seiner Schnitte.
+
+### 10.2 Spannweitenparameter
+
+Der Loft wird als kubische Kurve im Spannweitenparameter v durch seine Stationen gelegt (Abschnitt 4). Mit v proportional zu y kann die Anpassung einem Umriss, der senkrecht zu y verläuft, nicht folgen: Auf den Entwurfstypen mit der Interpolation aus Abschnitt 10.1 wich die angepasste Kante bis zu 0,39 mm von der beabsichtigten ab, 3 mm vor der Spitze. In einem Randbogen folgt v stattdessen dem Bogen der Randellipse:
+
+```
+s(y) = y                          y ≤ y_T
+s(y) = y_T + L · θ(y)             y > y_T
+v(y) = (s(y) − y_0) / (y_T + L · π/2 − y_0)
+```
+
+- s hat bei T die erste und zweite Ableitung von y (θ = (y − y_T)/L + O((y − y_T)³)), v schließt also ohne Knick an.
+- Die Stationen eines Randbogenfeldes liegen gleichmäßig in v; mit **Linear** erhält das Feld die Stationen eines Feldes mit Leitkurve (Abschnitt 3.2). Der Aufbau stellt `vAt(y)` und `yAt(v)` bereit; Schaumkerne, 3D-Ansicht und Schnittumrisse verwenden sie.
+
+### 10.3 Glätte
+
+`test/fairness.js` tastet die Nasenleiste (u = u_LE) und die Endleiste (u = 0) der angepassten Fläche von oben in 4000 Schritten von v ab. Eine Welle ist ein Vorzeichenwechsel der Krümmung zwischen Punkten, die auf beiden Seiten stärker als 1/m gekrümmt sind, wobei ein Bogen daneben mehr als 0,01 mm über die Gerade durch seine Enden steigt.
+
+| Randbogen | Wellen von T bis 0,3 mm vor der Spitze |
+| --- | --- |
+| Interpolation in y (Schnitte ohne Kennzeichnung), **Sport**, **Glatt**, geschlossene Endleiste | 2 oder mehr an der Endleiste |
+| Interpolation entlang der Randellipse, jeder Entwurfstyp außer **Batwing**, **Linear** und **Glatt**, mit und ohne Tangential, gerade Linie bei 0, 25 und 100 %, 6 Schnitte, geschlossene Endleiste | 0 (108 Aufbauten) |
+| Dasselbe mit 3, 6 und 12 Schnitten | 0 (276 Aufbauten, einmal gemessen, nicht in der Testsuite) |
+| Dasselbe mit **Endleiste** Feste Dicke in mm, 3, 6 und 12 Schnitte | Wellen an der Endleiste in 9 von 276 Aufbauten, 0,8 bis 3,5 mm vor der Spitze, 4 davon höher als 0,05 mm |
+
+Der Spalt einer festen Endleistendicke ist auf 5 % der Tiefe begrenzt (Abschnitt 3.7): Unter einer Tiefe von Dicke / 0,05 (8,4 mm bei 0,42 mm) folgt der Spalt der Tiefe, statt konstant zu bleiben. Dieser Knick der Spaltfunktion verschiebt die Endleistenecke der Fläche und zeigt sich nahe der Spitze als Welle. Das gilt für jedes spitze Flügelende, nicht nur für einen Randbogen.
+

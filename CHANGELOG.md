@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Changed
+
+- A rounded tip added with **Rounded tip…** is built along its tip ellipse: its outline has no waves, with **Spanwise
+  interpolation** Linear and Smooth alike, and with **Tangent to the last panel** it leaves the wing tangent to it,
+  also with Smooth. Before, Linear built the tip as a polygon of its sections, and Smooth gave the trailing edge of the
+  default tip of the Sport preset an S-bend 20 to 35 mm before the point. The rest of the wing keeps its
+  interpolation. With **Straight panels** or a guide curve on, the tip stays a polygon of its sections.
+- The project file marks the sections of a rounded tip (`roundTip`) and is then saved as format version 5, which
+  Wingdesigner 0.8.0 and earlier refuse. A rounded tip added with 0.8.0 has no marker and keeps its former shape; it
+  takes the new one when it is added again.
+
 ## [0.8.0] - 2026-11-06
 
 ### Added

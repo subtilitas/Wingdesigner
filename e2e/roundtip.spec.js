@@ -59,6 +59,8 @@ test.describe('Rounded-tip dialog', () => {
     expect([tip.y, tip.chord]).toEqual([743.95, 1]);
     // Tangent: the first rounded-tip section at y = 637.26 mm has 133.34 mm chord, on the taper of the last panel.
     expect(saved.sections.find((q) => q.y === 637.26).chord).toBe(133.34);
+    // The added sections carry the rounded-tip marker that the loft blends along the tip ellipse.
+    expect(saved.sections.filter((q) => q.y > 600).map((q) => q.roundTip)).toEqual(Array(6).fill('tangent'));
     await expect(status(page)).not.toHaveText(SPORT);
 
     await page.getByRole('button', { name: 'Undo', exact: true }).click();

@@ -141,7 +141,9 @@ function stationValue(stations, y, key) {
   return a[key] + t * (b[key] - a[key]);
 }
 
-const vAt = (build, y) => (build.tipY > build.rootY ? Math.min(1, Math.max(0, (y - build.rootY) / (build.tipY - build.rootY))) : 0);
+// Span parameter of a span position: build.vAt (src/geom/wing.js), which follows the angle of the tip
+// ellipse in a rounded tip.
+const vAt = (build, y) => (build.tipY > build.rootY ? Math.min(1, Math.max(0, build.vAt(y))) : 0);
 
 /** Length (mm) of the reference line (y, z of the stations) from ya to yb. */
 function lineLength(stations, ya, yb) {
@@ -406,8 +408,8 @@ function deviationOf(cols, a, up, dIn, dOut, va, vb, P, xRef, hRef, build) {
   // segment, where a guide curve or Smooth blending bends the loft between evenly spaced planes. Each
   // station lies in one segment, and the loft grid limit bounds stations times profile points, so the
   // planes of all segments stay within that limit plus DEVIATION_PLANES per segment.
-  const ya0 = build.rootY + va * (build.tipY - build.rootY);
-  const yb0 = build.rootY + vb * (build.tipY - build.rootY);
+  const ya0 = build.yAt(va);
+  const yb0 = build.yAt(vb);
   const fractions = [];
   for (let j = 1; j <= DEVIATION_PLANES; j++) fractions.push(j / (DEVIATION_PLANES + 1));
   for (const st of build.stations) {

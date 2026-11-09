@@ -120,6 +120,8 @@ function nextSection(project, afterIndex) {
         chord: (a.chord + b.chord) / 2,
         twist: (a.twist + b.twist) / 2,
         ...(storesPanelAngle(a) ? { panelAngle: a.panelAngle } : {}),
+        // Inside a rounded tip the new section joins it, so the marked run at the tip stays whole.
+        ...(b.roundTip !== undefined ? { roundTip: b.roundTip } : {}),
       },
     };
   }

@@ -283,7 +283,7 @@ export class Viewer3D {
       // MAX_OUTLINE_SEGMENTS every step-th outline, root and tip included.
       const closing = build.closedTE ? 0 : 1;
       const sectionVs = outlineIndices(build.sections.length, us.length - 1 + closing).map((i) =>
-        build.tipY > build.rootY ? (build.sections[i].y - build.rootY) / (build.tipY - build.rootY) : 0,
+        build.tipY > build.rootY ? build.vAt(build.sections[i].y) : 0,
       );
       const segs = new Float32Array(sectionVs.length * (us.length - 1 + closing) * 6);
       let at = 0;

@@ -25,7 +25,7 @@ Die mitgelieferte Profilbibliothek braucht keine Netzanfrage: Das Plugin `airfoi
 | `src/geom/`, `src/airfoil/`, `src/export/`, `src/import/`, `src/model/`, `src/ui/` | Siehe [Module](#module) |
 | `public/airfoils/` | 62 Koordinatendateien (`.dat`, Selig-Format), `index.json` mit 62 Einträgen, `NOTICE.md` (Quelle, Rechtsgrundlage, Bedingungen und Quellenangabe je Datei). Ein Eintrag braucht eine freie Lizenz oder eine verzeichnete schriftliche Erlaubnis und eine Zeile in `NOTICE.md` (siehe [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek)). Die 17 Vorlagen nach National Advisory Committee for Aeronautics (NACA) werden zur Laufzeit berechnet, nicht gespeichert. |
 | `scripts/` | Siehe [Skripte](#skripte) |
-| `test/` | Vitest-Unit-Tests (`*.test.js`), `helpers.js` (NACA-Beispielprojekt), `step-cases.js` (Testfälle für die Validierung von Dateien im Standard for the Exchange of Product model data (STEP) und von 3MF-Dateien), `xflr5-writer.js` (Schreiber für XFLR5-Projektdateien), `fixtures/xflr5/` (XFLR5-Testdateien, siehe [XFLR5-Testdateien und Tests](#xflr5-testdateien-und-tests)) |
+| `test/` | Vitest-Unit-Tests (`*.test.js`), `helpers.js` (NACA-Beispielprojekt), `step-cases.js` (Testfälle für die Validierung von Dateien im Standard for the Exchange of Product model data (STEP) und von 3MF-Dateien), `xflr5-writer.js` (Schreiber für XFLR5-Projektdateien), `fairness.js` (Wellen der Nasen- und Endleiste eines gebauten Flügels), `fixtures/xflr5/` (XFLR5-Testdateien, siehe [XFLR5-Testdateien und Tests](#xflr5-testdateien-und-tests)) |
 | `e2e/` | Playwright-End-to-End-Tests (E2E) im Browser (`*.spec.js`), `helpers.js` |
 | `docs/Flow5upgrade.md` | Plan und Entscheidungen des Eigentümers zu Schnitten in Gehrungsebenen, einer starren Drehung des ganzen Teils um den Einstellwinkel und dem flow5-Import (nur Englisch) |
 | `docs/Handover.md` | Stand der Arbeit, nächste Schritte, Absprachen mit dem Eigentümer, was das Repository nicht enthält (nur Englisch) |
@@ -42,6 +42,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/geom/linalg.js` | Band-LU-Zerlegung (Lower-Upper, untere und obere Dreiecksmatrix) ohne Pivotsuche (B-Spline-Interpolation, verwendet von `src/geom/nurbs.js`); LU-Zerlegung dichter Matrizen mit Spaltenpivotsuche (nur Unit-Tests) |
 | `src/geom/profile.js` | Profil als NURBS-Kurve; Neuabtastung in Profiltiefenrichtung; `fitProfile` (Kurvenanpassung und Formprüfung eines Profils, verwendet von der Profilvorschau und vom XFLR5-Import) |
 | `src/geom/spanwise.js` | Interpolation der Schnittwerte in Spannweitenrichtung (`linear`, `smooth`) |
+| `src/geom/tipblend.js` | Randbogen im Loft: `roundTipStart` (die gekennzeichnete Folge), `roundTipBlender` (Umriss entlang der Randellipse), `spanParameter` (Spannweitenparameter v entlang des Ellipsenbogens) |
 | `src/geom/guide.js` | Leitkurven (Nasenlinie, Endlinie) |
 | `src/geom/planes.js` | Schnittebenen: Neigung und Dickenstreckung jedes Schnitts (`sectionPlanes`), Grenze der Dickenstreckung, Ausdehnung eines platzierten Profils (`upExtent`) und Faltungstest zweier benachbarter Ebenen (`planeFold`, `firstFold`) |
 | `src/geom/wing.js` | Flügel-Loft: `buildWing`; `mitredPlaneProblem` (Prüfungen auf Dickenstreckung und Faltung ohne den Loft, für den XFLR5-Import); Profil-Cache |
@@ -433,7 +434,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 677 Tests in 26 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 684 Tests in 27 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
