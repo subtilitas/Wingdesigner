@@ -3,7 +3,7 @@
 
 import { surfacePoint } from '../geom/nurbs.js';
 import { guideCurve, sampleGuide } from '../geom/guide.js';
-import { addGuidePoint, chordFromTrailingEdge, dragLeadingEdge, moveGuidePoint, removeGuidePoint, resetDisabledGuides, resetGuide, setGuideEnabled, sortedSections, syncGuidesToSpan } from '../model/edit.js';
+import { addGuidePoint, chordFromTrailingEdge, dragLeadingEdge, moveGuidePoint, removeGuidePoint, resetDisabledGuides, resetGuide, setGuideEnabled, guideSections, sortedSections, syncGuidesToSpan } from '../model/edit.js';
 import { PanZoomCanvas, cssVar } from './panzoom.js';
 import { clear, formatNum, h, numberInput } from './dom.js';
 import { stationAt } from './sections.js';
@@ -68,7 +68,7 @@ function outlinePoints(build) {
  * stored points to it, except on spans too narrow for distinct numbers, where they keep their y.
  */
 function guideSpan(project, gd) {
-  const s = sortedSections(project);
+  const s = guideSections(project);
   const [y0, y1] = [s[0].y, s[s.length - 1].y];
   const [a, b] = [gd.points[0][1], gd.points[gd.points.length - 1][1]];
   if (!(b > a) || (a === y0 && b === y1)) return { toWing: (y) => y, toGuide: (y) => y };

@@ -70,6 +70,31 @@ test.describe('Rounded-tip dialog', () => {
     expect((await savedProject(page)).settings.tip.mode).toBe('flat');
   });
 
+  test('continues the ellipse of the Glider, whose guide curves end at the old tip section', async ({ page }) => {
+    // Glider: elliptic planform by guide curves, half span 1000 mm, taper 0.45. The ellipse closes at
+    // 1000 / sqrt(1 − 0.45²) = 1119.8 mm: the span grows to about 2240 mm.
+    await createDesign(page, 'Glider');
+    const dlg = await openRoundTip(page);
+    const ellipse = dlg.getByLabel('Continue the ellipse of the wing');
+    await expect(ellipse).toBeChecked();
+    const length = dlg.getByLabel('Length beyond the tip section (mm)');
+    await expect(length).toBeDisabled();
+    await expect(length).toHaveValue(/^1[12]\d(\.\d+)?$/);
+    await expect(dlg.getByLabel('Tangent to the last panel')).toBeDisabled();
+    await dlg.getByRole('button', { name: 'Add rounded tip', exact: true }).click();
+    await expect(dialogOf(page)).toHaveCount(0);
+    await expect(status(page)).toHaveText(/^Span 22[34]\d mm · /);
+    const saved = await savedProject(page);
+    expect(saved.guides.end.points.at(-1)[1]).toBe(1000);
+    expect(saved.settings.tip.mode).toBe('pointed');
+    // Unticked, Length and Tangent apply again.
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    const again = await openRoundTip(page);
+    await again.getByLabel('Continue the ellipse of the wing').uncheck();
+    await expect(again.getByLabel('Length beyond the tip section (mm)')).toBeEnabled();
+    await expect(again.getByLabel('Tangent to the last panel')).toBeEnabled();
+  });
+
   test('refuses a pointed wing tip and leaves the sections unchanged on Cancel', async ({ page }) => {
     await createDesign(page, 'Sport', { tip: 'pointed' });
     const dlg = await openRoundTip(page);

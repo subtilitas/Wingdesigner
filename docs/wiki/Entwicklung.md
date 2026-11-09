@@ -42,7 +42,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/geom/linalg.js` | Band-LU-Zerlegung (Lower-Upper, untere und obere Dreiecksmatrix) ohne Pivotsuche (B-Spline-Interpolation, verwendet von `src/geom/nurbs.js`); LU-Zerlegung dichter Matrizen mit Spaltenpivotsuche (nur Unit-Tests) |
 | `src/geom/profile.js` | Profil als NURBS-Kurve; Neuabtastung in Profiltiefenrichtung; `fitProfile` (Kurvenanpassung und Formprüfung eines Profils, verwendet von der Profilvorschau und vom XFLR5-Import) |
 | `src/geom/spanwise.js` | Interpolation der Schnittwerte in Spannweitenrichtung (`linear`, `smooth`) |
-| `src/geom/tipblend.js` | Randbogen im Loft: `roundTipStart` (die gekennzeichnete Folge), `roundTipBlender` (Umriss entlang der Randellipse), `spanParameter` (Spannweitenparameter v entlang des Ellipsenbogens) |
+| `src/geom/tipblend.js` | Randbogen im Loft: `roundTipStart` (die gekennzeichnete Folge), `guideEndIndex` (wo Leitkurven enden), `roundTipBlender` (Umriss entlang der Randellipse, wahlweise an Leitkurven angesetzt), `spanParameter` (Spannweitenparameter v entlang des Ellipsenbogens) |
 | `src/geom/guide.js` | Leitkurven (Nasenlinie, Endlinie) |
 | `src/geom/planes.js` | Schnittebenen: Neigung und Dickenstreckung jedes Schnitts (`sectionPlanes`), Grenze der Dickenstreckung, Ausdehnung eines platzierten Profils (`upExtent`) und Faltungstest zweier benachbarter Ebenen (`planeFold`, `firstFold`) |
 | `src/geom/wing.js` | Flügel-Loft: `buildWing`; `mitredPlaneProblem` (Prüfungen auf Dickenstreckung und Faltung ohne den Loft, für den XFLR5-Import); Profil-Cache |
@@ -76,7 +76,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/model/edit.js` | Bearbeitungsoperationen |
 | `src/model/wizard.js` | Entwurfstypen und Wertebereiche des Assistenten (`RANGES`) und der Felder (`PANEL_RANGES`, höchstens `MAX_PANELS` = 24 Felder); `wizardProject` erzeugt die Schnitte des geraden, des elliptischen und des Feld-Grundrisses und des elliptischen Flügelendes (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` macht aus dem geraden Grundriss 1 Feld |
 | `src/model/winglet.js` | Integriertes Winglet: `wingletSections` (Übergangsbogen in Schritten von höchstens `WINGLET_STEP` = 15°, dann das gerade Stück), `wingletProblems`, `addWinglet`, `defaultWinglet`, Wertebereiche `WINGLET_RANGES` |
-| `src/model/roundtip.js` | Randbogen: `roundTipSections` (Viertelellipse der Profiltiefen bei t = sin(π k / (2m)), mal 1 + κ t), `roundTipKappa` (κ von **Tangential zum letzten Feld**), `roundTipProblems`, `addRoundTip` (setzt auch das Flügelende auf Spitz), `defaultRoundTip`, Wertebereiche `ROUND_TIP_RANGES` |
+| `src/model/roundtip.js` | Randbogen: `roundTipSections` (Viertelellipse der Profiltiefen bei t = sin(π k / (2m)), mal 1 + κ t), `roundTipKappa` (κ von **Tangential zum letzten Feld**), `roundTipProblems`, `addRoundTip` (setzt auch das Flügelende auf Spitz), `defaultRoundTip`, `wingEllipse` und `roundTipLength` (Ellipse fortsetzen), Wertebereiche `ROUND_TIP_RANGES` |
 | `src/model/defaults.js` | Projekt beim ersten Laden |
 | `src/ui/store.js` | Store mit Rückgängig und Wiederholen |
 | `src/ui/viewer3d.js` | 3D-Ansicht |
@@ -434,7 +434,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 685 Tests in 27 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 686 Tests in 27 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
@@ -481,7 +481,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-204 Tests in 16 Spec-Dateien, 408 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+205 Tests in 16 Spec-Dateien, 410 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
 31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 

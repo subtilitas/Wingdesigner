@@ -27,12 +27,23 @@ export const ROUND_TIP_START_SECTIONS = 2;
 export const STRAIGHT_RESOLUTION = 0.01;
 
 /**
+ * Index of the last section (sorted by y) that is not marked as a rounded tip: guide curves run from
+ * the root to it, and a rounded tip beyond it follows the blend below. The last section when none is
+ * marked; at least section 1, so that a guide curve keeps a span.
+ */
+export function guideEndIndex(sections) {
+  let i = sections.length - 1;
+  while (i > 1 && ROUND_TIP_MARKERS.includes(sections[i].roundTip)) i--;
+  return i;
+}
+
+/**
  * Index of section T (sorted by y) before the outer run of rounded-tip sections, or -1 when the
  * rounded blend does not apply: no marked run at the tip, a run of fewer than 2 sections, no section
- * before T, a tip that is not pointed, Straight panels, or a guide curve on (it sets x and chord).
+ * before T, a tip that is not pointed, or Straight panels. Guide curves end at T (guideEndIndex).
  */
-export function roundTipStart(sections, settings, guidesOn = false) {
-  if (settings.tip?.mode !== 'pointed' || settings.spanwise === 'straight' || guidesOn) return -1;
+export function roundTipStart(sections, settings) {
+  if (settings.tip?.mode !== 'pointed' || settings.spanwise === 'straight') return -1;
   let i = sections.length;
   while (i > 0 && ROUND_TIP_MARKERS.includes(sections[i - 1].roundTip)) i--;
   const t = i - 1;
@@ -108,8 +119,11 @@ const MIN_COS = 1e-3;
  * `edge` = [ix, ic]: the flat indices of leading-edge x and chord, blended as leading and trailing
  * edge in θ; every other value follows spanwiseBlender over all sections. `sectionModes`: the
  * roundTip marker of each section. The outline inboard of T follows the blend of sections 0 … t.
+ * `anchor` (optional, with guide curves): { value, slope } per flat outline index, the leading-edge
+ * x and the trailing edge (x + chord) of the guide curves at T and their slopes in y, in place of
+ * those of the blend of sections 0 … t.
  */
-export function roundTipBlender(ys, mode, lists, t, sectionModes, edge) {
+export function roundTipBlender(ys, mode, lists, t, sectionModes, edge, anchor = null) {
   const inner = spanwiseBlender(ys.slice(0, t + 1), mode, lists.slice(0, t + 1));
   const full = spanwiseBlender(ys, mode, lists);
   const outline = new Set(edge);
@@ -139,6 +153,12 @@ export function roundTipBlender(ys, mode, lists, t, sectionModes, edge) {
     return out;
   })();
   const FT = innerFlat(yT);
+  if (anchor) {
+    for (const [q, a] of Object.entries(anchor)) {
+      FT[q] = a.value;
+      innerSlope[q] = a.slope;
+    }
+  }
   const splines = [];
   for (let q = 0; q < size; q++) {
     if (!outline.has(q)) {

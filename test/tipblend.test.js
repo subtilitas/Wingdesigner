@@ -2,7 +2,7 @@
 // the blend through the sections, the inboard blend and the slope at the tip section, the project
 // format of the marker, and the fairness of the built tip on the presets.
 import { describe, expect, it } from 'vitest';
-import { ROUND_TIP_START_SECTIONS, roundTipBlender, roundTipStart, spanParameter } from '../src/geom/tipblend.js';
+import { ROUND_TIP_START_SECTIONS, guideEndIndex, roundTipBlender, roundTipStart, spanParameter } from '../src/geom/tipblend.js';
 import { spanwiseBlender } from '../src/geom/spanwise.js';
 import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
 import { PRESETS, wizardProject } from '../src/model/wizard.js';
@@ -21,14 +21,17 @@ const roundedSport = (spanwise = 'linear', params = {}) => {
 };
 
 describe('rounded-tip run', () => {
-  it('applies to an outer run of 2 or more marked sections after a section with a panel inboard, on a pointed tip, without Straight panels or guide curves', () => {
+  it('applies to an outer run of 2 or more marked sections after a section with a panel inboard, on a pointed tip, without Straight panels; guide curves end before it', () => {
     const p = roundedSport();
     const s = sortedSections(p);
     expect(ROUND_TIP_START_SECTIONS).toBe(2);
     expect(roundTipStart(s, p.settings)).toBe(1);
     expect(roundTipStart(s, { ...p.settings, tip: { mode: 'flat', ratio: 0.005 } })).toBe(-1);
     expect(roundTipStart(s, { ...p.settings, spanwise: 'straight' })).toBe(-1);
-    expect(roundTipStart(s, p.settings, true)).toBe(-1);
+    // Guide curves end at the last unmarked section, T; at least at section 1.
+    expect(guideEndIndex(s)).toBe(1);
+    expect(guideEndIndex(s.slice(0, 2))).toBe(1);
+    expect(guideEndIndex([s[0], { ...s[1], roundTip: 'tangent' }, s.at(-1)])).toBe(1);
     // The run has to reach the tip, and a single marked section is no run.
     expect(roundTipStart([...s.slice(0, -1), { ...s.at(-1), roundTip: undefined }], p.settings)).toBe(-1);
     expect(roundTipStart([...s.slice(0, 2), s.at(-1)], p.settings)).toBe(-1);

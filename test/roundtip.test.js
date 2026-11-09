@@ -1,7 +1,8 @@
 // Rounded wing tip (src/model/roundtip.js): the quarter ellipse of chords, the straight line, the
 // reference points along the last panel, the checks, and the built wing with the rounded tip.
 import { afterEach, describe, expect, it } from 'vitest';
-import { addRoundTip, defaultRoundTip, roundTipKappa, roundTipProblems, roundTipSections } from '../src/model/roundtip.js';
+import { addRoundTip, defaultRoundTip, roundTipKappa, roundTipLength, roundTipProblems, roundTipSections, wingEllipse } from '../src/model/roundtip.js';
+import { edgeInflections } from './fairness.js';
 import { addWinglet, defaultWinglet } from '../src/model/winglet.js';
 import { PRESETS, wizardProject } from '../src/model/wizard.js';
 import { buildWing } from '../src/geom/wing.js';
@@ -67,6 +68,36 @@ describe('fullness', () => {
     expect([ellipse[4].chord, full[4].chord]).toEqual([37.27, 53.22]);
     expect(roundTipProblems(p, { ...base, fullness: 3.5 })).toEqual(['Rounded tip: fullness must be between 2 and 3.']);
     expect(roundTipProblems(p, { ...base, fullness: 3 })).toEqual([]);
+  });
+});
+
+describe('continue the ellipse', () => {
+  it('finds the ellipse of the Glider from chord and taper at the tip section and carries it on to its end, without waves from root to point', () => {
+    // Glider: half span 1000 mm, root chord 200 mm, elliptic planform with taper 0.45 by guide curves:
+    // c = 200 · sqrt(1 − (1 − 0.45²) η²), which closes at η = 1 / sqrt(1 − 0.45²), y = 1119.8 mm.
+    const glider = () => wizardProject(PRESETS.glider.params);
+    const p = glider();
+    expect([p.guides.nose.enabled, p.guides.end.enabled]).toEqual([true, true]);
+    const e = wingEllipse(p);
+    expect(e.y0 + 1 / Math.sqrt(e.m)).toBeCloseTo(1000 / Math.sqrt(1 - 0.45 ** 2), -0.5);
+    expect(e.chordAt(1000)).toBeCloseTo(90, 0);
+    const r = defaultRoundTip(p);
+    expect(r.ellipse).toBe(true);
+    expect(roundTipLength(p, r)).toBe(Math.round(e.length * 100) / 100);
+    for (const spanwise of ['linear', 'smooth']) {
+      const q = glider();
+      q.settings.spanwise = spanwise;
+      q.settings.trailingEdge = { mode: 'closed', thickness: 0 };
+      const added = addRoundTip(q, defaultRoundTip(q));
+      // The guide curves keep ending at the tip section; the sections follow the ellipse.
+      expect(q.guides.end.points.at(-1)[1]).toBe(1000);
+      added.slice(0, -1).forEach((s) => expect(s.chord).toBeCloseTo(e.chordAt(s.y), 1));
+      const b = buildWing(q);
+      expect(b.errors, spanwise).toEqual([]);
+      expect(b.tipY).toBeCloseTo(e.y0 + 1 / Math.sqrt(e.m), 1);
+      const f = edgeInflections(b, b.rootY + 1, b.tipY - 0.3);
+      expect([f.le.count, f.te.count], spanwise).toEqual([0, 0]);
+    }
   });
 });
 
@@ -183,11 +214,15 @@ describe('rounded-tip checks', () => {
   it('refuse values out of range, guide curves, a pointed tip, a small tip chord and short panels', () => {
     const p = sport();
     const r = defaultRoundTip(p);
-    expect(r).toEqual({ length: 144, line: 25, sections: 6, tangent: true, fullness: 2.5 });
+    expect(r).toEqual({ length: 144, line: 25, sections: 6, tangent: true, fullness: 2.5, ellipse: false });
     expect(roundTipProblems(p, { ...r, line: 101, sections: 2.5 })).toEqual(['Rounded tip: straight line must be between 0 and 100.', 'Rounded tip: the number of sections must be a whole number.']);
     const guided = sport();
     guided.guides.end.enabled = true;
-    expect(roundTipProblems(guided, r)).toEqual(['Switch the guide curves off first: they hold x as a function of y and would stretch over the rounded tip.']);
+    expect(roundTipProblems(guided, r)).toEqual([]);
+    // A wing that widens at the tip section has no ellipse to continue.
+    const widening = sport();
+    sortedSections(widening).at(-1).chord = 260;
+    expect(roundTipProblems(widening, { ...r, ellipse: true })).toEqual(['Continue the ellipse: the wing does not narrow towards the tip section, so it has no ellipse to continue.']);
     const pointed = sport();
     pointed.settings.tip.mode = 'pointed';
     expect(roundTipProblems(pointed, r)).toEqual(['The wing already ends in a point (Settings > Wing tip = Pointed): a rounded tip needs a flat tip.']);

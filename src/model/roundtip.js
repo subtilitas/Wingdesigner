@@ -31,6 +31,7 @@ import { LIMITS, newId } from './project.js';
 import { resetDisabledGuides, sortedSections, syncGuidesToSpan } from './edit.js';
 import { SHORT_PANEL, storesPanelAngle } from '../geom/planes.js';
 import { spanwiseBlender } from '../geom/spanwise.js';
+import { buildWing } from '../geom/wing.js';
 
 const DEG = Math.PI / 180;
 
@@ -53,11 +54,34 @@ const KAPPA_MARGIN = 0.05;
 
 const r2 = (v) => Math.round(v * 100) / 100;
 
+// Planform at the tip section of a wing with guide curves: built once per state of the wing.
+const guidedTips = new WeakMap();
+
 /**
- * The two outermost sections, the angle (degrees) of the last panel, and the slopes dx/dy of the
- * chord-line point and dc/dy of the chord at the tip section: those of the blend the loft uses inboard
- * of a rounded tip (src/geom/tipblend.js), the secant of the last panel with Linear, the slope of the
- * shape-preserving cubic with Smooth, so that the rounded tip leaves the tip section along the wing.
+ * Leading-edge x, chord and their slopes in y at the tip section of a wing with a guide curve on: from
+ * the built planform, one-sided inboard (the guide curves end there). Null when the wing does not build.
+ */
+function guidedTip(project, yT) {
+  const key = JSON.stringify([project.sections, project.guides, project.settings]);
+  const hit = guidedTips.get(project);
+  if (hit && hit.key === key) return hit.value;
+  let value = null;
+  const b = buildWing(project);
+  if (!b.errors.length && b.planformAt) {
+    const h = 1e-4 * (yT - b.rootY);
+    const [a, c] = [b.planformAt(yT), b.planformAt(yT - h)];
+    value = { x: a.xLE, chord: a.chord, dx: (a.xLE - c.xLE) / h, dc: (a.chord - c.chord) / h };
+  }
+  guidedTips.set(project, { key, value });
+  return value;
+}
+
+/**
+ * The two outermost sections, the angle (degrees) of the last panel, the leading-edge x (x0) and chord
+ * (c0) of the wing at the tip section, and the slopes dx/dy of the chord-line point and dc/dy of the
+ * chord there: those of the blend the loft uses inboard of a rounded tip (src/geom/tipblend.js), the
+ * secant of the last panel with Linear, the slope of the shape-preserving cubic with Smooth, those of
+ * the guide curves when one is on, so that the rounded tip leaves the tip section along the wing.
  */
 function lastPanel(project, line) {
   const sorted = sortedSections(project);
@@ -66,9 +90,15 @@ function lastPanel(project, line) {
   const angle = storesPanelAngle(prev) ? prev.panelAngle : Math.atan2(tip.z - prev.z, tip.y - prev.y) / DEG;
   const f = line / 100;
   const dy = tip.y - prev.y;
+  let [x0, c0] = [tip.x, tip.chord];
   let slope = dy > 0 ? (tip.x + f * tip.chord - (prev.x + f * prev.chord)) / dy : 0;
   let taper = dy > 0 ? (tip.chord - prev.chord) / dy : 0;
-  if (project.settings.spanwise === 'smooth' && sorted.length >= 3 && dy > 0) {
+  const guided = (project.guides?.nose?.enabled || project.guides?.end?.enabled) && dy > 0 ? guidedTip(project, tip.y) : null;
+  if (guided) {
+    [x0, c0] = [guided.x, guided.chord];
+    slope = guided.dx + f * guided.dc;
+    taper = guided.dc;
+  } else if (project.settings.spanwise === 'smooth' && sorted.length >= 3 && dy > 0) {
     const [[dx, dc]] = spanwiseBlender(
       sorted.map((s) => s.y),
       'smooth',
@@ -77,14 +107,36 @@ function lastPanel(project, line) {
     slope = dx + f * dc;
     taper = dc;
   }
-  return { tip, prev, angle, slope, taper };
+  return { tip, prev, angle, slope, taper, x0, c0, root: sorted[0] };
+}
+
+/**
+ * The ellipse c(y) = sqrt(k · (1 − m · (y − y_root)²)) through the chord and its slope at the tip
+ * section, centred at the root: k = c (c − c′ Y), m = −c c′ / (Y k), Y = y_T − y_root. It closes at
+ * Y = 1 / sqrt(m). Null when the wing does not narrow at the tip section (c′ ≥ 0).
+ */
+export function wingEllipse(project) {
+  const { tip, c0, taper, angle, root } = lastPanel(project, 0);
+  const Y = tip.y - root.y;
+  if (!(taper < 0) || !(Y > 0)) return null;
+  const k = c0 * (c0 - taper * Y);
+  const m = (-c0 * taper) / (Y * k);
+  const lengthY = 1 / Math.sqrt(m) - Y;
+  return { k, m, y0: root.y, lengthY, length: lengthY / Math.cos(angle * DEG), chordAt: (y) => Math.sqrt(Math.max(0, k * (1 - m * (y - root.y) ** 2))) };
+}
+
+/** Length of the rounded tip: the given one, or with params.ellipse the length to the end of the wing's ellipse. */
+export function roundTipLength(project, params) {
+  if (!params.ellipse) return params.length;
+  const e = wingEllipse(project);
+  return e ? Math.round(e.length * 100) / 100 : NaN;
 }
 
 /** κ of the chord factor 1 + κ t (see the header); 0 without tangent. */
 export function roundTipKappa(project, params) {
-  if (!params.tangent) return 0;
-  const { tip, angle, taper } = lastPanel(project, params.line);
-  return (taper * params.length * Math.cos(angle * DEG)) / tip.chord;
+  if (!params.tangent || params.ellipse) return 0;
+  const { c0, angle, taper } = lastPanel(project, params.line);
+  return (taper * params.length * Math.cos(angle * DEG)) / c0;
 }
 
 /**
@@ -93,26 +145,31 @@ export function roundTipKappa(project, params) {
  * (κ = −0.5), so that the tangent tip keeps a rounded outline.
  */
 export function defaultRoundTip(project) {
-  const { tip, taper, angle } = lastPanel(project, 25);
-  let length = tip.chord;
-  if (taper < 0) length = Math.min(length, tip.chord / (-2 * taper * Math.cos(angle * DEG)));
-  return { length: Math.max(ROUND_TIP_RANGES.length[0], Math.round(length)), line: 25, sections: 6, tangent: true, fullness: 2.5 };
+  const { c0, taper, angle } = lastPanel(project, 25);
+  let length = c0;
+  if (taper < 0) length = Math.min(length, c0 / (-2 * taper * Math.cos(angle * DEG)));
+  // A wing with a guide curve on (an elliptic planform) continues its ellipse by default.
+  const guided = Boolean(project.guides?.nose?.enabled || project.guides?.end?.enabled);
+  return { length: Math.max(ROUND_TIP_RANGES.length[0], Math.round(length)), line: 25, sections: 6, tangent: true, fullness: 2.5, ellipse: guided && wingEllipse(project) !== null };
 }
 
 /** Sections of the rounded tip (without ids), from the tip section outward. Assumes valid parameters. */
 export function roundTipSections(project, params) {
-  const { tip, angle, slope } = lastPanel(project, params.line);
+  const { tip, angle, slope, x0, c0 } = lastPanel(project, params.line);
   const m = params.sections;
   const f = params.line / 100;
   const ratio = project.settings.tip?.ratio ?? 0.005;
-  const dy = params.length * Math.cos(angle * DEG);
-  const dz = params.length * Math.sin(angle * DEG);
-  const xLine = tip.x + f * tip.chord;
+  const length = roundTipLength(project, params);
+  const dy = length * Math.cos(angle * DEG);
+  const dz = length * Math.sin(angle * DEG);
+  const xLine = x0 + f * c0;
   const kappa = roundTipKappa(project, params);
+  const ellipse = params.ellipse ? wingEllipse(project) : null;
   const out = [];
   for (let k = 1; k <= m; k++) {
     const t = k === m ? 1 : Math.sin((Math.PI * k) / (2 * m));
-    const chord = k === m ? Math.max(ratio * out.at(-1).chord, LIMITS.minChord) : tip.chord * fullnessShape(t, params.fullness) * (1 + kappa * t);
+    const shaped = ellipse ? ellipse.chordAt(tip.y + t * dy) : c0 * fullnessShape(t, params.fullness) * (1 + kappa * t);
+    const chord = k === m ? Math.max(ratio * out.at(-1).chord, LIMITS.minChord) : shaped;
     const q = { airfoil: tip.airfoil, x: r2(xLine + t * dy * slope - f * chord), y: r2(tip.y + t * dy), z: r2(tip.z + t * dz), chord: r2(chord), twist: tip.twist };
     out.push(q);
   }
@@ -129,28 +186,40 @@ export function roundTipProblems(project, params) {
   }
   if (Number.isFinite(params.sections) && !Number.isInteger(params.sections)) out.push(tr('Rounded tip: the number of sections must be a whole number.'));
   if (typeof params.tangent !== 'boolean') out.push(tr('Rounded tip: tangent must be on or off.'));
-  if (project.guides?.nose?.enabled || project.guides?.end?.enabled) out.push(tr('Switch the guide curves off first: they hold x as a function of y and would stretch over the rounded tip.'));
+  if (params.ellipse !== undefined && typeof params.ellipse !== 'boolean') out.push(tr('Rounded tip: Continue the ellipse must be on or off.'));
   if (project.settings.tip?.mode === 'pointed') out.push(tr('The wing already ends in a point (Settings > Wing tip = Pointed): a rounded tip needs a flat tip.'));
   if (out.length) return out;
-  const { tip, taper, angle } = lastPanel(project, params.line);
+  const { c0, taper, angle } = lastPanel(project, params.line);
+  if (params.ellipse) {
+    const e = wingEllipse(project);
+    if (!e) {
+      out.push(tr('Continue the ellipse: the wing does not narrow towards the tip section, so it has no ellipse to continue.'));
+      return out;
+    }
+    if (e.length > ROUND_TIP_RANGES.length[1]) {
+      out.push(tr('Continue the ellipse: the ellipse of the wing closes {length} mm beyond the tip section, more than {max} mm.', { length: whole(Math.round(e.length)), max: whole(ROUND_TIP_RANGES.length[1]) }));
+      return out;
+    }
+  }
   const kappa = roundTipKappa(project, params);
   if (kappa <= -1 + KAPPA_MARGIN) {
     // κ = −1 + margin at the length L_max = (1 − margin) · c_T / (−dc/dy · cos a0).
-    const max = ((1 - KAPPA_MARGIN) * tip.chord) / (-taper * Math.cos(angle * DEG));
-    out.push(tr('Rounded tip: the last panel tapers to zero chord within {at} mm, so a tangent tip can be at most {max} mm long; reduce the length or switch off Tangent to the last panel.', { at: plain(r2(tip.chord / (-taper * Math.cos(angle * DEG)))), max: plain(Math.floor(max * 100) / 100) }));
+    const max = ((1 - KAPPA_MARGIN) * c0) / (-taper * Math.cos(angle * DEG));
+    out.push(tr('Rounded tip: the last panel tapers to zero chord within {at} mm, so a tangent tip can be at most {max} mm long; reduce the length or switch off Tangent to the last panel.', { at: plain(r2(c0 / (-taper * Math.cos(angle * DEG)))), max: plain(Math.floor(max * 100) / 100) }));
     return out;
   }
   // The last section before the point keeps cos(π (m − 1) / (2 m)) · (1 + κ sin(π (m − 1) / (2 m)))
   // of the tip chord.
   const th = (Math.PI * (params.sections - 1)) / (2 * params.sections);
-  const need = LIMITS.minChord / (fullnessShape(Math.sin(th), params.fullness) * (1 + kappa * Math.sin(th)));
-  if (tip.chord < need) {
+  const share = params.ellipse ? Math.cos(th) : fullnessShape(Math.sin(th), params.fullness) * (1 + kappa * Math.sin(th));
+  const need = LIMITS.minChord / share;
+  if (c0 < need) {
     out.push(tr('Rounded tip: with {n} sections the tip chord must be at least {min} mm; use fewer sections.', { n: params.sections, min: plain(Math.ceil(need * 100) / 100) }));
     return out;
   }
   const added = roundTipSections(project, params);
   if (project.sections.length + added.length > LIMITS.maxSections) out.push(tr('At most {max} sections.', { max: whole(LIMITS.maxSections) }));
-  let y = tip.y;
+  let y = sortedSections(project).at(-1).y;
   added.forEach((q, i) => {
     if (q.y - y < SHORT_PANEL) {
       out.push(tr('Rounded-tip panel {n} spans {dy} mm in y, less than {min} mm; increase the length or use fewer sections.', { n: i + 1, dy: plain(r2(q.y - y)), min: plain(SHORT_PANEL) }));
@@ -170,7 +239,7 @@ export function addRoundTip(project, params) {
   if (roundTipProblems(project, params).length) return null;
   const { tip, prev } = lastPanel(project, params.line);
   // The marker selects the blend in the angle of the tip ellipse (src/geom/tipblend.js).
-  const marker = params.tangent ? 'tangent' : 'corner';
+  const marker = params.tangent || params.ellipse ? 'tangent' : 'corner';
   const added = roundTipSections(project, params).map((q) => ({ id: newId('s'), ...q, roundTip: marker }));
   // The added panels run on along the last panel: a stored angle of the last panel holds for them
   // too, so that the rounding of y and z to 0.01 mm does not tilt their section planes.

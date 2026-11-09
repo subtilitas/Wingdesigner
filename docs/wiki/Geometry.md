@@ -1113,14 +1113,14 @@ section k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
 - c_(m−1) must reach the 1 mm minimum chord: c_T ≥ 1 mm / ((1 − sin^n θ)^(1/n) · (1 + κ sin θ)), θ = π (m − 1) / (2m); 3.87 mm at m = 6 and n = 2 without tangent.
 - Values are rounded to 0.01 mm. A stored **Panel angle** of the last panel is copied to T and to the added sections but the point, so that the rounding does not tilt their **Mitred** planes; without one, the planes follow the reference points.
 - The thickness follows the chord (the airfoil keeps its thickness ratio), so the front view of the tip has the shape of c(s).
-- Guide curves hold x and the chord as functions of y between root and tip; they would stretch over the rounded tip, so the dialog requires them off. A wing with a pointed tip already ends in a point and is refused.
+- Guide curves stay on: they end at the tip section T (section 10.1), and the rounded tip starts from their leading edge, chord and slopes there. A wing with a pointed tip already ends in a point and is refused.
 - Tested (`test/roundtip.test.js`): every preset with a flat tip and the guide curves off but **Batwing** (chord below 1 mm with a flat tip) builds a closed wing with the default rounded tip, with **Linear** and **Smooth**, with **Mitred** and **Vertical** planes and with tangent on and off, without errors. Warnings, with the default fullness 2.5: none, except with tangent on **Delta jet** (fixed trailing edge 1.6 mm), where the trailing-edge thickness exceeds 5 % of the chord at 1 station before the last panel and is limited there. The **Sport** wing builds with the straight line at 0, 25, 50, 75 and 100 % and 2, 4 and 8 sections. The STEP case `rounded-tip-smooth` (section 6) passes the OpenCascade check.
 
 ### 10.1 Blend along the tip ellipse
 
 `src/geom/tipblend.js`. Linear and Smooth blend section values in y. At the point the outline of the tip runs square to y, with an infinite slope in y. Blended in y, the tip of the **Sport** wing with the default rounded tip is a polygon of 6 straight panels with Linear; with Smooth the trailing edge changes the sign of its curvature twice, between y = 708 and 712 mm and between 724 and 728 mm (x″ from −0.027 to +0.049 per mm): a bulge 20 to 35 mm before the point.
 
-The loft therefore blends the outline of a rounded tip in the angle θ of the tip ellipse. It applies to an outer run of 2 or more sections marked `roundTip` after a section T with a panel inboard of it, when **Wing tip** is Pointed, no guide curve is on, and the interpolation is Linear or Smooth. Input: T, the last section E (the point), L = y_E − y_T, and per outline value f (leading edge x, trailing edge x + chord) its value f_T and slope s_f at T from the blend of the sections up to T (Linear: the secant of the last panel; Smooth: the shape-preserving cubic of section 3.1).
+The loft therefore blends the outline of a rounded tip in the angle θ of the tip ellipse. It applies to an outer run of 2 or more sections marked `roundTip` after a section T with a panel inboard of it, when **Wing tip** is Pointed and the interpolation is Linear or Smooth. Input: T, the last section E (the point), L = y_E − y_T, and per outline value f (leading edge x, trailing edge x + chord) its value f_T and slope s_f at T from the blend of the sections up to T (Linear: the secant of the last panel; Smooth: the shape-preserving cubic of section 3.1), or from the guide curves when one is on (one-sided at T, over 1e-4 of the span inboard of it).
 
 ```
 θ(y)  = asin((y − y_T) / L)                                0 at T, π/2 at the point
@@ -1135,7 +1135,8 @@ f(y)  = f_T + s_f · (y − y_T) + r(θ(y))                     y > y_T
 - z, twist, roll and the stored panel-angle offset keep the blend in y over all sections. Along the tip they run straight, and their slope in y stays bounded, which sets the stretch of **Mitred** planes. Blended in θ, dz/dy grows towards the point: on the mitred gull of `rounded-tip-smooth` it stretched the airfoil 14.8 times at y = 709.6 mm.
 - With "tangent" the outline leaves T with the slope of the wing: equal first derivative, the curvature changes. The dialog builds the sections with the same slope (section 10, c′), so that sections and blend agree. A wing switched between Linear and Smooth after the rounded tip was added has another slope at T than its sections: the blend stays tangent to the wing, and the sections pull the outline towards their own slope.
 - Inboard of T the outline follows the blend of the sections up to T: the tip sections do not change the shape of the wing.
-- **Straight panels** joins the sections with straight lines by definition, and a guide curve sets x and the chord itself: both keep their own blend, so a rounded tip there is a polygon of its sections.
+- Guide curves (section 3.3) run from the root to T, the last section not marked `roundTip`, not to the point: the build, the guide sync of edits and the Planform tab map their y onto that span. Beyond T the rounded tip follows its blend.
+- **Straight panels** joins the sections with straight lines by definition: a rounded tip there is a polygon of its sections.
 
 ### 10.2 Span parameter
 
@@ -1149,6 +1150,22 @@ v(y) = (s(y) − y_0) / (y_T + L · π/2 − y_0)
 
 - s has the first and second derivative of y at T (θ = (y − y_T)/L + O((y − y_T)³)), so v joins without a kink.
 - The stations of a rounded-tip panel are spaced evenly in v; with Linear the panel gets the stations of a panel with a guide curve (section 3.2). The loft fits the rounded tip as one piece from T to the point, not panel by panel: a fit per panel joins the panels with only a common point, which left a pair of waves at a tip section (swept flying wing, Linear, n = 2.5). The build exports `vAt(y)` and `yAt(v)`; the foam cores, the 3D view and the section outlines use them.
+
+### 10.2a Continue the ellipse
+
+With **Continue the ellipse of the wing**, `wingEllipse` (`src/model/roundtip.js`) fits the ellipse centred at the root through the chord c and its slope c′ = dc/dy of the wing at T (with guide curves, from the built planform), Y = y_T − y_root:
+
+```
+c(y)² = k · (1 − m · (y − y_root)²)
+k     = c · (c − c′ · Y)
+m     = −c · c′ / (Y · k)                       requires c′ < 0
+end   = y_root + 1 / sqrt(m)                    the ellipse closes there
+L     = (end − y_T) / cos a0                    length along the last panel
+c_k   = c(y_T + t_k · (end − y_T))              k < m, t_k as in section 10
+```
+
+- The ellipse has the chord and the slope of the wing at T; on a wing that is an ellipse centred at the root, also its curvature. Tangent applies by construction; Fullness and Length do not.
+- **Glider** preset (elliptic planform by guide curves, half span 1,000 mm, taper 0.45): the planform closes at η = 1/sqrt(1 − 0.45²) = 1.1198 of the half span; the fit from the guide curves at T gives a length of 120.1 mm and a half span of 1,120.1 mm. Leading and trailing edge have no wave from the root to 0.3 mm before the point, with Linear and Smooth (`test/roundtip.test.js`). With **Wing tip** Pointed instead, the guide curves end in the point and the edges have 2 waves each, the outermost about 46 mm before it.
 
 ### 10.3 Fairness
 

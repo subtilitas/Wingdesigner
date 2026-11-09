@@ -13,7 +13,7 @@ import { setTrailingEdgeGap } from '../airfoil/geometry.js';
 import { averagingKnots, basisFuns, collocationFactor, collocationSolve, curvePoint, findSpan, interpolateCurve, parametrize, paramsApart, secantEndInterpolation, surfacePoint } from './nurbs.js';
 import { CROSSING_LIMIT, CROSSING_TOLERANCE, cosineStations, curveCrossing, profileCurve, profileProblem, resampleProfile, sampleCurve } from './profile.js';
 import { spanwiseBlender } from './spanwise.js';
-import { roundTipBlender, roundTipStart, spanParameter } from './tipblend.js';
+import { guideEndIndex, roundTipBlender, roundTipStart, spanParameter } from './tipblend.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { MAX_STRETCH, SHORT_PANEL, firstFold, mitredPlanes, overStretched, sectionPlanes, stretchOf, upExtent } from './planes.js';
 import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
@@ -494,7 +494,9 @@ export function buildWing(project) {
   const dense = guideOn.nose || guideOn.end || settings.spanwise === 'smooth';
   // Rounded tip (src/geom/tipblend.js): section index T before the marked outer run, else -1. Its
   // panels are blended in the angle of the tip ellipse and, with Linear, get stations along the panel.
-  const tipStart = roundTipStart(sections, settings, guideOn.nose || guideOn.end);
+  const tipStart = roundTipStart(sections, settings);
+  // Guide curves run from the root to the last section not marked as a rounded tip (yG).
+  const yG = ys[guideEndIndex(sections)];
   const tipPanel = (i) => tipStart >= 0 && i >= tipStart;
   // Span parameter v of the loft and its inverse: y-proportional, or along the angle of the tip
   // ellipse in a rounded tip (spanParameter in src/geom/tipblend.js).
@@ -609,9 +611,24 @@ export function buildWing(project) {
     return near.length ? near.reduce((a, b) => a + b, 0) / near.length : 0;
   });
   const scalarLists = () => sections.map((_, i) => [[X[i], C[i], Z[i], T[i], R[i], E[i]]]);
+  // With a guide curve the rounded tip leaves T with the leading edge and trailing edge of the guide
+  // curves there, and their slopes (one-sided, inboard of T).
+  const guideAnchor = () => {
+    if (!(guideOn.nose || guideOn.end)) return null;
+    const plain = spanwiseBlender(ys.slice(0, tipStart + 1), settings.spanwise, scalarLists().slice(0, tipStart + 1));
+    const edges = (y) => {
+      const [[x, c]] = plain(y);
+      const xT = guideOn.end ? guideXAt(result.guides.end, y, y0, yG) : x + c;
+      const xL = guideOn.nose ? guideXAt(result.guides.nose, y, y0, yG) : guideOn.end ? xT - c : x;
+      return [xL, xT];
+    };
+    const h = 1e-4 * (yG - y0);
+    const [a, b] = [edges(yG), edges(yG - h)];
+    return { 0: { value: a[0], slope: (a[0] - b[0]) / h }, 1: { value: a[1], slope: (a[1] - b[1]) / h } };
+  };
   const scalarBlender = () =>
     tipStart >= 0
-      ? roundTipBlender(ys, settings.spanwise, scalarLists(), tipStart, sections.map((s) => s.roundTip), [0, 1])
+      ? roundTipBlender(ys, settings.spanwise, scalarLists(), tipStart, sections.map((s) => s.roundTip), [0, 1], guideAnchor())
       : spanwiseBlender(ys, settings.spanwise, scalarLists());
   // Panel of a span position (binary search): the stretch follows from the blended roll and the angle
   // the planes of that panel are square to, so every station keeps the airfoil thickness across it.
@@ -643,13 +660,15 @@ export function buildWing(project) {
     const raw = blendScalars(y)[0];
     let xLE = raw[0];
     let chord = raw[1];
-    const xTE = guideOn.end ? guideXAt(result.guides.end, y, y0, y1) : null;
-    if (guideOn.nose) xLE = guideXAt(result.guides.nose, y, y0, y1);
-    if (guideOn.nose && guideOn.end) chord = xTE - xLE;
+    // Guide curves end at yG; a rounded tip beyond it follows its own blend.
+    const inGuides = y <= yG;
+    const xTE = guideOn.end && inGuides ? guideXAt(result.guides.end, y, y0, yG) : null;
+    if (guideOn.nose && inGuides) xLE = guideXAt(result.guides.nose, y, y0, yG);
+    if (guideOn.nose && guideOn.end && inGuides) chord = xTE - xLE;
     // Pointed tip: in the last panel the chord does not fall below the tip chord, so guide
     // curves that meet at the tip end in a scaled-down profile instead of a zero chord.
     if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
-    if (guideOn.end && !guideOn.nose) xLE = xTE - chord;
+    if (guideOn.end && !guideOn.nose && inGuides) xLE = xTE - chord;
     const roll = raw[4];
     const stretch = planesOn ? stretchOf(roll, smooth ? slopes(y).square : planes.panels[panelOf(y)]) : 1;
     return { xLE, chord, z: raw[2], twist: raw[3], roll, stretch };
@@ -714,7 +733,7 @@ export function buildWing(project) {
     if (!c) continue;
     const gy0 = c.points[0][1];
     const gy1 = c.points[c.points.length - 1][1];
-    const toWing = (gy) => y0 + ((gy - gy0) / (gy1 - gy0)) * (y1 - y0);
+    const toWing = (gy) => y0 + ((gy - gy0) / (gy1 - gy0)) * (yG - y0);
     for (const P of c.points) guideBreaks.add(toWing(P[1]));
     for (const u of c.knots) guideBreaks.add(toWing(curvePoint(c, u)[1]));
   }

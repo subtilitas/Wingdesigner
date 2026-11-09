@@ -3,12 +3,22 @@
 import { defaultGuides, guideXAt } from '../geom/guide.js';
 import { paramsApart } from '../geom/nurbs.js';
 import { storesPanelAngle } from '../geom/planes.js';
+import { guideEndIndex } from '../geom/tipblend.js';
 import { LIMITS, airfoilPoints, newId } from './project.js';
 import { nacaAirfoil } from '../airfoil/naca.js';
 import { count, plain, tr, whole } from '../i18n/index.js';
 
 export function sortedSections(project) {
   return project.sections.slice().sort((a, b) => a.y - b.y);
+}
+
+/**
+ * Sections the guide curves span, sorted by y: from the root to the last section not marked as a
+ * rounded tip (guideEndIndex in src/geom/tipblend.js); a rounded tip beyond it has its own blend.
+ */
+export function guideSections(project) {
+  const s = sortedSections(project);
+  return s.slice(0, guideEndIndex(s) + 1);
 }
 
 /**
@@ -69,8 +79,9 @@ export function dragLeadingEdge(project, id, x, y, endCurve = null) {
   const sorted = sortedSections(project);
   const newY = clampSectionY(sorted, sorted.indexOf(s), y);
   let te = s.x + s.chord;
-  if (project.guides?.end?.enabled && endCurve) {
-    const ys = sorted.map((q) => (q === s ? newY : q.y));
+  const spanned = guideSections(project);
+  if (project.guides?.end?.enabled && endCurve && spanned.includes(s)) {
+    const ys = spanned.map((q) => (q === s ? newY : q.y));
     te = guideXAt(endCurve, newY, Math.min(...ys), Math.max(...ys));
   }
   // Leading edge within the coordinate limit and LIMITS.minChord..maxChord ahead of the trailing
@@ -81,7 +92,7 @@ export function dragLeadingEdge(project, id, x, y, endCurve = null) {
 }
 
 export function syncGuidesToSpan(project) {
-  const s = sortedSections(project);
+  const s = guideSections(project);
   if (s.length < 2 || !project.guides) return project;
   const y0 = s[0].y;
   const y1 = s[s.length - 1].y;
@@ -176,7 +187,7 @@ export function removeSection(project, id) {
 
 /** Guides that are switched off follow the sections; switched-on guides keep the user's edits. */
 export function resetDisabledGuides(project) {
-  const d = defaultGuides(project.sections);
+  const d = defaultGuides(guideSections(project));
   for (const key of ['nose', 'end']) {
     const g = project.guides?.[key];
     if (!g) {
@@ -191,7 +202,7 @@ export function resetDisabledGuides(project) {
 
 /** Replace a guide's points with the section edges. */
 export function resetGuide(project, key) {
-  const d = defaultGuides(project.sections);
+  const d = defaultGuides(guideSections(project));
   project.guides[key].points = d[key].points;
   project.guides[key].edited = false;
   return project;

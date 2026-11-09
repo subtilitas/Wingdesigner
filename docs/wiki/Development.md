@@ -42,7 +42,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/geom/linalg.js` | Band lower-upper (LU) factorization without pivoting (B-spline interpolation, used by `src/geom/nurbs.js`); dense LU factorization with partial pivoting (unit tests only) |
 | `src/geom/profile.js` | Airfoil as NURBS curve; chordwise resampling; `fitProfile` (curve fit and shape check of an airfoil, used by the airfoil preview and the XFLR5 import) |
 | `src/geom/spanwise.js` | Spanwise blending of section values (`linear`, `smooth`) |
-| `src/geom/tipblend.js` | Rounded tip in the loft: `roundTipStart` (the marked run), `roundTipBlender` (outline along the tip ellipse), `spanParameter` (span parameter v along the ellipse arc) |
+| `src/geom/tipblend.js` | Rounded tip in the loft: `roundTipStart` (the marked run), `guideEndIndex` (where guide curves end), `roundTipBlender` (outline along the tip ellipse, optionally anchored to guide curves), `spanParameter` (span parameter v along the ellipse arc) |
 | `src/geom/guide.js` | Guide curves (nose line, end line) |
 | `src/geom/planes.js` | Section planes: roll and stretch of each section (`sectionPlanes`), stretch limit, extent of a placed airfoil (`upExtent`) and fold test of two neighbouring planes (`planeFold`, `firstFold`) |
 | `src/geom/wing.js` | Wing loft: `buildWing`; `mitredPlaneProblem` (stretch and fold checks without the loft, for the XFLR5 import); profile cache |
@@ -76,7 +76,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/model/edit.js` | Edit operations |
 | `src/model/wizard.js` | Wizard presets, parameter ranges (`RANGES`) and panel ranges (`PANEL_RANGES`, at most `MAX_PANELS` = 24 panels); `wizardProject` builds the sections of the straight, elliptic and panel planforms and the elliptic tip (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` turns the straight planform into 1 panel |
 | `src/model/winglet.js` | Integral winglet: `wingletSections` (blend arc in steps of at most `WINGLET_STEP` = 15°, then the straight part), `wingletProblems`, `addWinglet`, `defaultWinglet`, ranges `WINGLET_RANGES` |
-| `src/model/roundtip.js` | Rounded tip: `roundTipSections` (quarter ellipse of chords at t = sin(π k / (2m)), times 1 + κ t), `roundTipKappa` (κ of **Tangent to the last panel**), `roundTipProblems`, `addRoundTip` (also sets the tip mode to Pointed), `defaultRoundTip`, ranges `ROUND_TIP_RANGES` |
+| `src/model/roundtip.js` | Rounded tip: `roundTipSections` (quarter ellipse of chords at t = sin(π k / (2m)), times 1 + κ t), `roundTipKappa` (κ of **Tangent to the last panel**), `roundTipProblems`, `addRoundTip` (also sets the tip mode to Pointed), `defaultRoundTip`, `wingEllipse` and `roundTipLength` (Continue the ellipse), ranges `ROUND_TIP_RANGES` |
 | `src/model/defaults.js` | Project on first load |
 | `src/ui/store.js` | Store with undo and redo |
 | `src/ui/viewer3d.js` | 3D view |
@@ -434,7 +434,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 685 tests in 27 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 686 tests in 27 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
@@ -481,7 +481,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-204 tests in 16 spec files, 408 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+205 tests in 16 spec files, 410 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 31 tests run in one project only (`test.skip` in the other project):
 

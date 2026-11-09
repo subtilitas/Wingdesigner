@@ -1,7 +1,7 @@
 // Rounded-tip dialog: appends the sections of a rounded wing tip (src/model/roundtip.js) as one undo
 // step. The preview builds the wing with the rounded tip and draws it from above (y, x).
 
-import { ROUND_TIP_RANGES, addRoundTip, defaultRoundTip, roundTipProblems } from '../model/roundtip.js';
+import { ROUND_TIP_RANGES, addRoundTip, defaultRoundTip, roundTipLength, roundTipProblems } from '../model/roundtip.js';
 import { buildWing } from '../geom/wing.js';
 import { cloneProject } from '../model/project.js';
 import { sortedSections } from '../model/edit.js';
@@ -29,6 +29,7 @@ export function roundTipDialog(store, notify = () => {}) {
   const canvas = h('canvas', { class: 'wizard-canvas', role: 'img', 'aria-label': tr('Top view of the wing with the rounded tip') });
   const addBtn = h('button', { type: 'button', class: 'primary' }, tr('Add rounded tip'));
 
+  const inputs = {};
   const fields = FIELDS.map((f) => {
     const [lo, hi] = ROUND_TIP_RANGES[f.key];
     const input = numberField({ value: params[f.key], step: f.step, min: lo, max: hi, fallback: () => (Number.isFinite(params[f.key]) ? params[f.key] : defaultRoundTip(project)[f.key]) });
@@ -39,6 +40,7 @@ export function roundTipDialog(store, notify = () => {}) {
     input.addEventListener('change', () => {
       if (Number.isFinite(params[f.key])) showNumber(input, params[f.key]);
     });
+    inputs[f.key] = input;
     return h('label', { class: 'field' }, f.label(), input);
   });
 
@@ -50,8 +52,24 @@ export function roundTipDialog(store, notify = () => {}) {
       refresh();
     },
   });
+  // Continue the ellipse of the wing: the length follows from it, the chord is the ellipse's and
+  // tangent, so Length, Fullness and Tangent do not apply.
+  const ellipse = h('input', {
+    type: 'checkbox',
+    checked: params.ellipse,
+    onchange: (e) => {
+      params.ellipse = e.target.checked;
+      refresh();
+    },
+  });
 
   const refresh = () => {
+    for (const key of ['length', 'fullness']) inputs[key].disabled = params.ellipse;
+    tangent.disabled = params.ellipse;
+    if (params.ellipse) {
+      const length = roundTipLength(project, params);
+      if (Number.isFinite(length)) showNumber(inputs.length, length);
+    }
     problems = roundTipProblems(project, params);
     preview = null;
     added = [];
@@ -160,7 +178,7 @@ export function roundTipDialog(store, notify = () => {}) {
         { class: 'small muted' },
         tr('Appends sections beyond the tip section whose chord follows a superellipse to a point (Fullness 2: a quarter ellipse), with Tangent to the last panel scaled to start with the taper of the last panel; leading and trailing edge curve towards the straight line and meet on it. Airfoil and twist stay those of the tip section. They are ordinary sections afterwards: editable in the Sections table, removable with Undo.'),
       ),
-      h('div', { class: 'wizard-body' }, h('div', { class: 'wizard-left' }, h('div', { class: 'wizard-fields' }, ...fields), h('label', { class: 'check', title: tr('The chord starts with the taper of the last panel: no corner in the planform at the tip section') }, tangent, tr('Tangent to the last panel'))), h('div', { class: 'wizard-right' }, h('div', { class: 'canvas-wrap' }, canvas), summary)),
+      h('div', { class: 'wizard-body' }, h('div', { class: 'wizard-left' }, h('div', { class: 'wizard-fields' }, ...fields), h('label', { class: 'check', title: tr('The chord starts with the taper of the last panel: no corner in the planform at the tip section') }, tangent, tr('Tangent to the last panel')), h('label', { class: 'check', title: tr('The chord follows the ellipse through the chord and taper of the wing at the tip section, centred at the root, to its end; this sets the length') }, ellipse, tr('Continue the ellipse of the wing'))), h('div', { class: 'wizard-right' }, h('div', { class: 'canvas-wrap' }, canvas), summary)),
       h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close() }, tr('Cancel')), addBtn),
     ),
   );
