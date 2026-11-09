@@ -21,12 +21,13 @@ const roundedSport = (spanwise = 'linear', params = {}) => {
 };
 
 describe('rounded-tip run', () => {
-  it('applies to an outer run of 2 or more marked sections after a section with a panel inboard, on a pointed tip, without Straight panels; guide curves end before it', () => {
+  it('applies to an outer run of 2 or more marked sections after a section with a panel inboard, without Straight panels, with every Wing tip setting; guide curves end before it', () => {
     const p = roundedSport();
     const s = sortedSections(p);
     expect(ROUND_TIP_START_SECTIONS).toBe(2);
     expect(roundTipStart(s, p.settings)).toBe(1);
-    expect(roundTipStart(s, { ...p.settings, tip: { mode: 'flat', ratio: 0.005 } })).toBe(-1);
+    // Every Wing tip setting keeps the blend: guide curves end at T whatever the tip.
+    expect(roundTipStart(s, { ...p.settings, tip: { mode: 'flat', ratio: 0.005 } })).toBe(1);
     expect(roundTipStart(s, { ...p.settings, spanwise: 'straight' })).toBe(-1);
     // Guide curves end at the last unmarked section, T; at least at section 1.
     expect(guideEndIndex(s)).toBe(1);
@@ -206,6 +207,21 @@ describe('smooth trailing-edge gap limit', () => {
       }
     }
     expect(waves).toEqual([]);
+  });
+});
+
+describe('rounded tip switched to a flat tip', () => {
+  it('keeps the outline continuous at the end of the guide curves', () => {
+    // Glider with the default rounded tip, last nose-line point moved 20 mm aft, then Wing tip Flat.
+    const p = wizardProject(PRESETS.glider.params);
+    addRoundTip(p, defaultRoundTip(p));
+    p.guides.nose.points.at(-1)[0] += 20;
+    p.settings.tip = { ...p.settings.tip, mode: 'flat' };
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    const [a, c] = [b.planformAt(1000), b.planformAt(1000 + 1e-6)];
+    expect(Math.abs(c.xLE - a.xLE)).toBeLessThan(1e-3);
+    expect(Math.abs(c.chord - a.chord)).toBeLessThan(1e-3);
   });
 });
 

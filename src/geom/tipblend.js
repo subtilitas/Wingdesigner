@@ -40,10 +40,12 @@ export function guideEndIndex(sections) {
 /**
  * Index of section T (sorted by y) before the outer run of rounded-tip sections, or -1 when the
  * rounded blend does not apply: no marked run at the tip, a run of fewer than 2 sections, no section
- * before T, a tip that is not pointed, or Straight panels. Guide curves end at T (guideEndIndex).
+ * before T, or Straight panels (which join the sections with straight lines and refuse guide curves).
+ * It applies with every Wing tip setting: guide curves end at T (guideEndIndex) whatever the tip, so
+ * the run beyond T keeps the blend that starts from them.
  */
 export function roundTipStart(sections, settings) {
-  if (settings.tip?.mode !== 'pointed' || settings.spanwise === 'straight') return -1;
+  if (settings.spanwise === 'straight') return -1;
   let i = sections.length;
   while (i > 0 && ROUND_TIP_MARKERS.includes(sections[i - 1].roundTip)) i--;
   const t = i - 1;
