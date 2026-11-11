@@ -113,7 +113,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       # npm run e2e builds dist/ first and serves that build.
       - run: npm run e2e
       # test.skip decides at run time which tests run on one device only: counted from this run.
