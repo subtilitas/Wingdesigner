@@ -546,8 +546,8 @@ export function moldGeometry(build, input) {
   const block = { x0: xMin - p.margin, x1: xMax + p.margin, y0: yR, y1: yMax + p.margin };
   const grid = new SegmentGrid(poly, 2);
 
-  // Parting surface: at every span station the chord line, extended to the front and the back face of
-  // the block; beyond the tip the last chord line, moved along y.
+  // Parting surface: level along x at the height of the leading edge ahead of the wing and of the
+  // trailing edge behind it; beyond a flat tip it keeps the heights of the tip.
   // Around a tip that closes in a point the level lines turn with the tip: from x at the start of the
   // rounded tip to y at the point, with the angle of the tip ellipse, which the span parameter follows.
   const ys = build.sections.map((q) => q.y);

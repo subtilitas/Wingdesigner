@@ -1,7 +1,7 @@
 // Wing and mold configurations covering the STEP topology variants of the mold halves: a tip that
 // closes in a point and a flat tip, an open and a closed trailing edge, dihedral (a leaning root
-// face), twist (ramps), a reflexed airfoil at a flat tip, an under-cambered airfoil (the lower half
-// rises above the parting plane), each hole pattern, no resin channel, no holes, one half only, the
+// face), twist (a parting surface that changes height along the span), a reflexed airfoil at a flat
+// tip, an under-cambered airfoil (the lower half rises above the parting surface), each hole pattern, no resin channel, no holes, one half only, the
 // molds of the left wing, and Y as the up axis.
 import { createProject } from '../src/model/project.js';
 import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
@@ -38,6 +38,22 @@ export function undercamberedWing(settings = {}) {
   });
 }
 
+/**
+ * A swept wing of one airfoil with 8° washout: root chord 200 mm at y = 0, tip chord 120 mm at
+ * y = 500 mm, leading edge of the tip 125 mm aft of the root.
+ */
+export function sweptTwistedWing(settings = {}) {
+  return createProject({
+    name: 'Swept twisted wing',
+    airfoils: [naca('0010')],
+    sections: [
+      { airfoil: '0010', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+      { airfoil: '0010', x: 125, y: 500, z: 0, chord: 120, twist: -8 },
+    ],
+    settings,
+  });
+}
+
 const preset = (key, edit = () => {}) => {
   const p = wizardProject(PRESETS[key].params);
   edit(p);
@@ -57,7 +73,7 @@ export function moldCases() {
   cases.push({ name: 'flat-wing', project: flatWing(), mold: {} });
   cases.push({ name: 'flat-wing-closed-te', project: closed(flatWing()), mold: {} });
   cases.push({ name: 'flat-wing-round-tip', project: rounded(flatWing()), mold: {} });
-  // Twist and dihedral in three sections: a rolled frame and ramps of a few mm.
+  // Twist and dihedral in three sections: a rolled frame and a parting surface with creases.
   cases.push({ name: 'sample-twist-dihedral', project: sampleProject(), mold: { channel: { distance: 8 } } });
   cases.push({ name: 'sport-round-tip', project: rounded(preset('sport')), mold: {} });
   cases.push({ name: 'glider-ellipse-round-tip', project: rounded(preset('glider')), mold: { pins: { pattern: 'outline', spacing: 300 }, screws: { pattern: 'outline', spacing: 100, offset: 25 } } });
@@ -67,9 +83,13 @@ export function moldCases() {
   cases.push({ name: 'flying-wing-flat-tip', project: closed(preset('flyingWing')), mold: { channel: { distance: 10 } } });
   // A root chord of 800 mm, a straight trailing edge square to the root and a 6 mm resin channel.
   cases.push({ name: 'delta-jet-round-tip', project: rounded(preset('deltaJet')), mold: { channel: { diameter: 6, distance: 8 } } });
-  // The lower half rises 13.2 mm above the parting plane inside the cavity outline.
+  // The lower half rises 13.2 mm above the parting surface inside the cavity outline.
   cases.push({ name: 'undercambered-flat-tip', project: undercamberedWing(), mold: {} });
   cases.push({ name: 'undercambered-round-tip', project: rounded(undercamberedWing()), mold: {} });
+  // 25 mm sweep per 100 mm span and 8° washout: leading edge and trailing edge of the tip differ in
+  // height by 16.7 mm; a flat tip and a tip that closes in a point.
+  cases.push({ name: 'swept-twist-flat-tip', project: sweptTwistedWing(), mold: {} });
+  cases.push({ name: 'swept-twist-round-tip', project: rounded(sweptTwistedWing()), mold: {} });
   cases.push({ name: 'batwing', project: preset('batwing'), mold: {} });
   cases.push({ name: 'tail-no-channel', project: preset('tail'), mold: { channel: { on: false }, screws: { pattern: 'corners', edge: 25 } } });
   cases.push({ name: 'tail-no-holes', project: preset('tail'), mold: { pins: { on: false }, screws: { on: false } } });
