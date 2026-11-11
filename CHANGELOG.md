@@ -19,7 +19,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   **Sailplane** preset with the default mold values the parting surface spans −45.9 to +85.8 mm and the halves reach
   down to −60.9 mm and up to +111.3 mm. The rims of the resin channel lie on the parting surface within 5.6e-5 mm on the
   measured wings. The bottom of a pin hole lies its depth below the lowest point of its
-  mouth; the error for pin holes names the depth that reaches within 1 mm of the outer face of a half.
+  mouth; the error for pin holes names the depth that reaches within 1 mm of the outer face of a half. A parting
+  surface that folds over itself seen from above (a strongly swept tip that closes in a point) is an error. With the
+  resin channel off, a hole on the 3 mm strip beyond a flat tip is left out.
 
 ### Removed
 

@@ -1131,6 +1131,39 @@ describe('mold of an under-cambered wing', () => {
   });
 });
 
+describe('mold checks of the parting surface', () => {
+  const wing = (x, chord) =>
+    createProject({
+      name: 'Test wing',
+      airfoils: [naca('0010')],
+      sections: [
+        { airfoil: '0010', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+        { airfoil: '0010', x, y: 500, z: 0, chord, twist: 0 },
+      ],
+    });
+
+  it('refuses a rounded tip swept 800 mm forward over 500 mm span: the parting surface folds seen from above', () => {
+    const g = moldGeometry(built(rounded(wing(-800, 120))), { channel: { on: false }, pins: { on: false }, screws: { on: false } });
+    expect(g.errors).toEqual(['Mold: seen from above, the parting surface folds over itself beside the wing (a strongly swept tip that closes in a point); reduce the sweep of the tip or use a flat tip.']);
+    expect(g.halves).toBeUndefined();
+    setLanguage('de');
+    expect(moldGeometry(built(rounded(wing(-800, 120))), {}).errors[0]).toMatch(/^Form: Von oben gesehen faltet sich die Trennfläche/);
+  });
+
+  it('leaves out a hole on the 3 mm strip beyond a flat tip when the resin channel is off', () => {
+    // Pins around the wing 4 mm from the outline, 6 mm in diameter: the one hole lies at y = 504 mm
+    // and reaches to 501 mm, onto the strip from 500 to 503 mm.
+    const build = built(wing(0, 200));
+    const g = geometry(build, { channel: { on: false }, screws: { on: false }, pins: { pattern: 'outline', spacing: 1000, offset: 4 } });
+    expect(g.common.holes).toEqual([]);
+    expect(g.warnings).toEqual(['Mold: 1 pin hole(s) left out: too close to the cavity, the resin channel, a block edge or another hole.']);
+    // 7 mm from the outline (strip 3 mm, 1 mm material, radius 3 mm) the hole stays.
+    const far = geometry(build, { channel: { on: false }, screws: { on: false }, pins: { pattern: 'outline', spacing: 1000, offset: 7 } });
+    expect(far.common.holes).toHaveLength(1);
+    expect(() => moldToStep(far, STAMP)).not.toThrow();
+  });
+});
+
 describe('mold STEP file', () => {
   it('writes every mold case with closed shells, the solids of the chosen halves, the faces of the parting surface and 2 cylinders per hole and half', { timeout: 240000 }, () => {
     const names = [];

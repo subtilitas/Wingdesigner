@@ -92,6 +92,8 @@ const CREASE_SKEW = 3;
 const HOLE_POINTS = 64;
 /** Width (mm) of the strip beyond a flat tip face, at most half the distance of the resin channel. */
 const TIP_STRIP = 3;
+/** Grid (along x, along the span) of the fold test of a parting surface. */
+const FOLD_GRID = Object.freeze([40, 400]);
 /** Chord error (mm) the stations along the groove keep on its centre line. */
 const GROOVE_TOLERANCE = 0.002;
 /** Largest growth of the station step per mm along the groove. */
@@ -559,6 +561,9 @@ export function moldGeometry(build, input) {
     return th - Math.sin(2 * th) / 2;
   };
   const parting = pole ? fanParting(le, mid, block, psi) : partingSurface(le, mid, block, true);
+  if (parting.surfaces.some(foldsInTopView)) {
+    return fail(tr('Mold: seen from above, the parting surface folds over itself beside the wing (a strongly swept tip that closes in a point); reduce the sweep of the tip or use a flat tip.'));
+  }
   const height = (x, y) => parting.at(x, y)[2];
   const mz = mirrorZ(zp);
   // The same surface in the frame of the upper half, mirrored at z = zp.
@@ -648,6 +653,7 @@ export function moldGeometry(build, input) {
 
   // Holes.
   const keepOut = (p.channel.on ? p.channel.distance + 2 * r : 0) + MOLD_CLEARANCE;
+  const stripWidth = pole ? 0 : Math.min(TIP_STRIP, (p.channel.on ? p.channel.distance : p.margin) / 2);
   const holes = [];
   const dropped = { pins: 0, screws: 0 };
   for (const kind of ['pins', 'screws']) {
@@ -692,7 +698,8 @@ export function moldGeometry(build, input) {
     for (const c of centres) {
       const edge = rh + MOLD_CLEARANCE;
       const inside = c[0] - edge >= block.x0 && c[0] + edge <= block.x1 && c[1] - edge >= holeY0 && c[1] + edge <= block.y1;
-      const need = keepOut + rh;
+      // Beyond a flat tip the strip to the mean line of the tip face takes no hole either.
+      const need = Math.max(keepOut, stripWidth + MOLD_CLEARANCE) + rh;
       // Outside the wing outline, and far enough from it: the distance alone also holds deep inside the cavity.
       const clear = !insidePolygon(poly, c) && grid.distance(c, need) >= need - 1e-9;
       const apart = holes.every((o) => len(sub(o.centre, c)) >= o.radius + rh + MOLD_CLEARANCE);
@@ -751,7 +758,7 @@ export function moldGeometry(build, input) {
   // The halves in the frame of the lower half: the upper one mirrored at the plane z = zp.
   // A flat tip face is parted along its mean line; a strip joins the mean line to the parting surface
   // beyond the tip.
-  const strip = pole ? null : tipStrip(meanLine, Math.min(TIP_STRIP, (p.channel.on ? p.channel.distance : p.margin) / 2));
+  const strip = pole ? null : tipStrip(meanLine, stripWidth);
   const half3 = (cavity, edgeTE, upper) => ({
     upper,
     cavity,
@@ -1072,6 +1079,31 @@ function creaseCrossings(creases, q, t0, t1, samples) {
     }
   }
   return out.sort((a, b) => a - b).filter((t, i, list) => i === 0 || t - list[i - 1] > 1e-9 * (t1 - t0));
+}
+
+/**
+ * Whether a surface folds over itself seen from above: the cells of a grid of FOLD_GRID points turn
+ * both ways in the xy plane. Cells smaller than 1e-9 of the largest one (at a pole) do not count.
+ */
+function foldsInTopView(surface) {
+  const [nu, nv] = FOLD_GRID;
+  const P = [];
+  for (let i = 0; i <= nu; i++) {
+    const row = [];
+    for (let j = 0; j <= nv; j++) row.push(surfacePoint(surface, i / nu, j / nv));
+    P.push(row);
+  }
+  let lo = 0;
+  let hi = 0;
+  for (let i = 0; i < nu; i++) {
+    for (let j = 0; j < nv; j++) {
+      const [a, b, c, d] = [P[i][j], P[i + 1][j], P[i + 1][j + 1], P[i][j + 1]];
+      const area = ((c[0] - a[0]) * (d[1] - b[1]) - (c[1] - a[1]) * (d[0] - b[0])) / 2;
+      lo = Math.min(lo, area);
+      hi = Math.max(hi, area);
+    }
+  }
+  return Math.min(-lo, hi) > 1e-9 * Math.max(-lo, hi);
 }
 
 /**

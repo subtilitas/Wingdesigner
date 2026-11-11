@@ -71,6 +71,8 @@ export default {
     'Form: Von oben gesehen reicht das Profil {reach} mm über die Linie der Nasenleiste oder der Endleiste hinaus (geschränkte Schnitte), mehr als {limit} mm: Eine Formhälfte hätte einen Hinterschnitt. Die Schränkung verringern.',
   'Mold: the root face leans {roll}° with the dihedral and reaches the wing tip within the {thickness} mm of the thicker half; reduce the floor thickness.':
     'Form: Die Wurzelfläche neigt sich mit der V-Form um {roll}° und erreicht innerhalb der {thickness} mm der dickeren Hälfte das Flügelende; die Bodendicke verringern.',
+  'Mold: seen from above, the parting surface folds over itself beside the wing (a strongly swept tip that closes in a point); reduce the sweep of the tip or use a flat tip.':
+    'Form: Von oben gesehen faltet sich die Trennfläche neben dem Flügel über sich selbst (stark gepfeiltes Flügelende, das sich in einem Punkt schließt); die Pfeilung des Flügelendes verringern oder ein flaches Flügelende verwenden.',
   'Top view of the parting surface of the mold': 'Draufsicht auf die Trennfläche der Form',
   'Block {length} × {width} mm; lower half down to −{lower} mm, upper half up to +{upper} mm.': 'Formblock {length} × {width} mm; Unterform bis −{lower} mm, Oberform bis +{upper} mm.',
   'Parting surface at the height of leading edge and trailing edge, level in flight direction: from {low} to {high} mm; frame rolled {roll}° with the wing.':
