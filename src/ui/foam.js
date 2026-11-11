@@ -2,7 +2,7 @@
 // writes their end profiles and 1:1 templates (src/export/foam.js). The cuts live in the dialog only;
 // the settings (longest core, deviation limit, kerf, paper) are kept in browser storage.
 
-import { FOAM_LIMITS, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../geom/foam.js';
+import { FOAM_LIMITS, foamEnd, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../geom/foam.js';
 import { FRAME, PAPERS, layoutDxf, layoutPdf, layoutSvg, pagePlan, profileZip, templateLayout } from '../export/foam.js';
 import { cloneProject } from '../model/project.js';
 import { drawPlanform } from './wizard.js';
@@ -93,7 +93,7 @@ export function foamDialog(store, getBuild, notify = () => {}) {
 
   const renderCuts = () => {
     const rows = cuts.map((y, i) => {
-      const input = numberField({ value: Number(y.toFixed(3)), step: 1, min: build.rootY, max: build.tipY });
+      const input = numberField({ value: Number(y.toFixed(3)), step: 1, min: build.rootY, max: foamEnd(build) });
       input.setAttribute('aria-label', tr('Cut {i}, y in mm', { i: i + 1 }));
       input.addEventListener('change', () => {
         const v = readNumber(input.value);
@@ -214,7 +214,8 @@ export function foamDialog(store, getBuild, notify = () => {}) {
       if (blocked) return;
       ctx.strokeStyle = cssVar('--accent', '#2f6fdf');
       ctx.lineWidth = 1.5;
-      for (const y of [build.rootY, ...cuts, build.tipY]) {
+      // The cores end at foamEnd: before the point of a round tip.
+      for (const y of [build.rootY, ...cuts, foamEnd(build)]) {
         const { xLE, chord } = build.planformAt(y);
         for (const sign of [1, -1]) {
           const [x0, y0] = view.toScreen(sign * y, -xLE);

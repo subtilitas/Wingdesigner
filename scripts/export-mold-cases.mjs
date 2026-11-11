@@ -15,7 +15,17 @@ const { buildWing } = await load('/src/geom/wing.js');
 const { halfWingMesh, meshVolume, tessellateHalf } = await load('/src/geom/mesh.js');
 const { moldGeometry } = await load('/src/geom/mold.js');
 const { moldToStep } = await load('/src/export/moldstep.js');
+const { surfacePoint } = await load('/src/geom/nurbs.js');
 const { moldCases } = await load('/test/mold-cases.js');
+
+/** Highest point of a cavity surface above the parting plane zp (the upper half is stored mirrored at it). */
+function cavityTop(surface, zp, nu = 400, nv = 200) {
+  const [u0, u1] = [surface.knotsU[0], surface.knotsU.at(-1)];
+  const [v0, v1] = [surface.knotsV[0], surface.knotsV.at(-1)];
+  let top = -Infinity;
+  for (let i = 0; i <= nu; i++) for (let j = 0; j <= nv; j++) top = Math.max(top, surfacePoint(surface, u0 + ((u1 - u0) * i) / nu, v0 + ((v1 - v0) * j) / nv)[2] - zp);
+  return top;
+}
 
 const out = process.argv[2] ?? 'mold-check';
 mkdirSync(out, { recursive: true });
@@ -32,9 +42,16 @@ for (const c of moldCases()) {
   const wing = meshVolume(halfWingMesh(tessellateHalf(build, { uRefine: 4, vRefine: 8 })));
   const solids = c.solids ?? 2;
   // Extent along the up axis, the parting plane at 0: each half from its block face to the highest
-  // (lower half) or lowest (upper half) point of leading edge and trailing edge, which the ramp meets.
+  // point (lower half) or the lowest point (upper half) of the parting plane, of leading edge and
+  // trailing edge (the middle of a blunt one), which the ramp meets, and of its cavity surface,
+  // sampled 400 × 200. An under-cambered airfoil puts the lower surface above the plane: the lower
+  // half reaches up there.
   const s = g.summary;
-  const range = { lower: [-s.lower, Math.max(0, s.edgeRange[1])], upper: [Math.min(0, s.edgeRange[0]), s.upper] };
+  const { zp } = g.common;
+  const range = {
+    lower: [-s.lower, Math.max(0, s.edgeRange[1], cavityTop(g.halves.lower.cavity, zp))],
+    upper: [Math.min(0, s.edgeRange[0], -cavityTop(g.halves.upper.cavity, zp)), s.upper],
+  };
   cases.push({ file, solids, total: solids === 2 ? s.blockVolume - wing : null, tolerance: 2e-4, up: c.up ?? 'z', lower: g.params.halves !== 'upper', upper: g.params.halves !== 'lower', holes: g.common.holes.length, range });
 }
 writeFileSync(join(out, 'cases.json'), JSON.stringify(cases, null, 2));

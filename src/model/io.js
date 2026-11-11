@@ -177,10 +177,10 @@ const DEG = Math.PI / 180;
  * Upgrade of a folded tilt (version 2 files of the XFLR5 import): the tilt angle that the import
  * folded into the sections becomes the rigid tilt of the part (settings.partTilt about the stored
  * pivot). Each section's twist pivot point (x + p · c, z; p: Settings > Twist pivot, c: the chord the
- * build uses, the scaled tip chord of a pointed tip) turns back about the pivot by the angle, and
- * the angle leaves every twist. A project with an enabled guide curve, or a disabled one with edited
- * points, keeps its folded sections (the guides hold x only, as a function of y), and so does one
- * whose twist would leave ±LIMITS.maxTwist. Changes `project` in place; returns the notes for the
+ * build uses, the scaled tip chord of a pointed tip, 0 at the point of a round tip) turns back about
+ * the pivot by the angle, and the angle leaves every twist. A project with an enabled guide curve,
+ * or a disabled one with edited points, keeps its folded sections (the guides hold x only, as a
+ * function of y), and so does one whose twist would leave ±LIMITS.maxTwist. Changes `project` in place; returns the notes for the
  * user (empty without a folded tilt).
  */
 export function upgradeFoldedTilt(project) {
@@ -198,8 +198,9 @@ export function upgradeFoldedTilt(project) {
   const s = Math.sin(tilt.angle * DEG);
   const sorted = project.sections.slice().sort((a, b) => a.y - b.y);
   const tip = sorted[sorted.length - 1];
-  // The chord the build uses at the tip of a pointed wing: tip.ratio of the previous section, at least minChord.
-  const tipChord = st.tip.mode === 'pointed' && sorted.length > 1 ? Math.max(st.tip.ratio * sorted[sorted.length - 2].chord, LIMITS.minChord) : null;
+  // The chord the build uses at the tip of a pointed wing: tip.ratio of the previous section, at least
+  // minChord; at the point of a round tip: 0.
+  const tipChord = st.tip.mode === 'round' ? 0 : st.tip.mode === 'pointed' && sorted.length > 1 ? Math.max(st.tip.ratio * sorted[sorted.length - 2].chord, LIMITS.minChord) : null;
   const unfolded = project.sections.map((q) => {
     const chord = q === tip && tipChord !== null ? tipChord : q.chord;
     const px = q.x + p * chord - tilt.x;

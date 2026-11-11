@@ -661,7 +661,7 @@ export function buildWing(project) {
   };
   const scalarBlender = () =>
     tipStart >= 0
-      ? roundTipBlender(ys, settings.spanwise, scalarLists(), tipStart, sections.map((s) => s.roundTip), [0, 1], guideAnchor())
+      ? roundTipBlender(ys, settings.spanwise, scalarLists(), tipStart, sections.map((s) => s.roundTip), [0, 1], guideAnchor(), { closed: round })
       : spanwiseBlender(ys, settings.spanwise, scalarLists());
   // Panel of a span position (binary search): the stretch follows from the blended roll and the angle
   // the planes of that panel are square to, so every station keeps the airfoil thickness across it.

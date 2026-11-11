@@ -109,7 +109,8 @@ export function displayGeometry(build, origin = [0, 0, 0]) {
   surfaceDerivatives1Grid(S, us, vs, (k, j, { point, du, dv }) => {
     let n = cross(dv, du);
     let l = Math.hypot(n[0], n[1], n[2]);
-    if (l < 1e-12) {
+    // At the point of a round tip du is round-off (about 1e-11 mm): its normal has no direction.
+    if (l < 1e-12 || (build.tipPole && k === V - 1)) {
       // Degenerate derivative (e.g. exactly at a sharp trailing edge): fall back to a neighbour.
       const u2 = us[j] + (j === M - 1 ? -1e-4 : 1e-4);
       // At the point of a round tip every u gives the same point: the normal next to it in v.

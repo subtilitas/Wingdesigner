@@ -99,8 +99,19 @@ export function segmentsCsv(segments) {
   return `${[CSV_HEAD, ...rows].map((r) => r.join(',')).join('\n')}\n`;
 }
 
+/**
+ * Note on the part of a round tip that no core holds (segment.beyond of the outermost segment,
+ * src/geom/foam.js), or null.
+ */
+export function tipRestText(segments) {
+  const last = segments[segments.length - 1];
+  if (!last?.beyond) return null;
+  return tr('The tip beyond y = {y} mm is not part of a core: it closes in a point at y = {tip} mm (Settings > Wing tip Round) and is shaped separately.', { y: fixed(last.yb, 2), tip: fixed(last.beyond.y, 2) });
+}
+
 /** README.txt of the profile ZIP, in the interface language. */
 function readme(name, segments) {
+  const rest = tipRestText(segments);
   return [
     segments.length === 1
       ? tr('Foam cores of {name}: 1 segment per half wing. Lengths in mm, angles in degrees.', { name })
@@ -111,6 +122,7 @@ function readme(name, segments) {
     tr('Point order: upper trailing edge, leading edge, lower trailing edge (Selig). No kerf offset: the cutting program adds it.'),
     tr('Each core is cut with parallel end faces square to its axis. At a joint of two cores, or at the root or tip, the end face is sanded to the joint plane: segments.csv lists the wedge (angle, depth along the axis, surface where it is deepest).'),
     tr('The files describe the right half. The left half is the mirror image: cut the same profiles with inboard and outboard sides swapped.'),
+    ...(rest ? [rest] : []),
     '',
   ].join('\r\n');
 }
@@ -228,11 +240,13 @@ function blockWidth(items) {
  */
 export function templateBlocks(name, segments, { kerf = 0 } = {}) {
   const blocks = [];
+  const rest = tipRestText(segments);
   const header = [
     tr('{name}: foam-core templates, scale 1:1, mm. Check the 100 mm scale bar after printing.', { name }),
     tr('Fix the two templates of a segment to the block ends with their frames flush with the bottom and front edges of the block.'),
     tr('Marks with equal numbers are passed at the same time. The left half uses the same templates, turned over.'),
     kerf > 0 ? tr('Outlines offset outward by half the kerf: {offset} mm (kerf {kerf} mm).', { offset: fixed(kerf / 2, 2), kerf: fixed(kerf, 2) }) : tr('Outlines without kerf offset.'),
+    ...(rest ? [rest] : []),
   ].flatMap((t) => wrapText(t, 180));
   {
     const items = [];

@@ -200,12 +200,15 @@ export function mirrorMesh({ positions, indices }) {
 
 /**
  * Triangles of an export: surface quads, trailing-edge strip and caps per half, times the shells.
- * The count is exact for the surface and trailing edge and bounds the caps by the ring size.
+ * The count is exact for the surface and trailing edge and bounds the caps by the ring size. At the
+ * point of a round tip (build.tipPole) each quad of the last row is one triangle, and there is no
+ * tip cap.
  */
 export function exportTriangles(build, mode = 'halves', { uRefine = 1, vRefine } = {}) {
   const M = (build.paramsU.length - 1) * uRefine + 1;
   const V = (build.paramsV.length - 1) * (vRefine ?? (build.surface.degreeV === 1 ? 1 : 3)) + 1;
-  const half = 2 * (M - 1) * (V - 1) + (build.closedTE ? 0 : 2 * (V - 1)) + 2 * M;
+  const pole = build.tipPole ? 1 : 0;
+  const half = 2 * (M - 1) * (V - 1) - pole * (M - 1) + (build.closedTE ? 0 : 2 * (V - 1) - pole) + (2 - pole) * M;
   return mode === 'right' || mode === 'left' ? half : 2 * half;
 }
 

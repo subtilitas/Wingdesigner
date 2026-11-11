@@ -24,6 +24,10 @@
 // (Straight panels, or Linear without rolled planes and guide curves) is ruled between them and cuts
 // exactly (0 up to round-off); guide curves, Smooth blending and Linear panels with stations between
 // the sections (rolled Mitred planes) give a deviation that shorter segments reduce.
+//
+// A tip that closes in a point (Settings > Wing tip Round, build.tipPole) has chord 0 there, which no
+// core end can hold: the outermost core ends at the last section before the point (foamEnd), and no
+// cut lies beyond it. The tip beyond that section is not part of a core (segment.beyond).
 
 import { basisFuns, findSpan, solveMonotonic } from './nurbs.js';
 
@@ -166,11 +170,23 @@ function yAtLength(stations, ya, yb, s) {
   return yb;
 }
 
-/** Span positions of the sections strictly between root and tip, closer ones merged (minSegment). */
+/**
+ * Span position (mm) where the outermost core ends: the tip, or, for a tip that closes in a point
+ * (build.tipPole), the last section before the point. Its chord is at least LIMITS.minChord (1 mm),
+ * the smallest chord a section holds.
+ */
+export function foamEnd(build) {
+  if (!build.tipPole) return build.tipY;
+  const inner = build.sections.filter((s) => s.y < build.tipY - 1e-9);
+  return inner.length ? inner[inner.length - 1].y : build.tipY;
+}
+
+/** Span positions of the sections strictly between root and the end of the cores, closer ones merged (minSegment). */
 function sectionCuts(build) {
   const out = [];
+  const end = foamEnd(build);
   for (const s of build.sections) {
-    if (s.y < build.rootY + FOAM_LIMITS.minSegment || s.y > build.tipY - FOAM_LIMITS.minSegment) continue;
+    if (s.y < build.rootY + FOAM_LIMITS.minSegment || s.y > end - FOAM_LIMITS.minSegment) continue;
     if (out.length && s.y - out[out.length - 1] < FOAM_LIMITS.minSegment) continue;
     out.push(s.y);
   }
@@ -188,7 +204,7 @@ function sectionCuts(build) {
  */
 export function proposeCuts(build, maxLength) {
   const sections = sectionCuts(build).slice(0, FOAM_LIMITS.maxSegments - 1);
-  const ends = [build.rootY, ...sections, build.tipY];
+  const ends = [build.rootY, ...sections, foamEnd(build)];
   const cap = FOAM_LIMITS.maxSegments;
   const pieces = [];
   for (let i = 1; i < ends.length; i++) {
@@ -224,7 +240,8 @@ export function proposeCuts(build, maxLength) {
 
 /**
  * Sorted cuts inside the half wing: cuts that are no number, lie closer than FOAM_LIMITS.minSegment
- * (less 1e-6 mm) to root or tip, or to the cut before, and cuts beyond FOAM_LIMITS.maxSegments segments are dropped.
+ * (less 1e-6 mm) to root or to the end of the cores (foamEnd: the tip, or the last section before
+ * the point of a round tip) or beyond it, or to the cut before, and cuts beyond FOAM_LIMITS.maxSegments segments are dropped.
  * Returns { cuts, dropped, capped } (dropped: removed cuts, capped: those of them removed by the
  * segment limit).
  */
@@ -234,8 +251,9 @@ export function normalizeCuts(build, cuts) {
   const sorted = cuts.filter(Number.isFinite).sort((a, b) => a - b);
   const out = [];
   let capped = 0;
+  const end = foamEnd(build);
   for (const y of sorted) {
-    if (y < build.rootY + min || y > build.tipY - min) continue;
+    if (y < build.rootY + min || y > end - min) continue;
     if (out.length && y - out[out.length - 1] < min) continue;
     if (out.length >= FOAM_LIMITS.maxSegments - 1) {
       capped++;
@@ -270,10 +288,13 @@ function jointPlane(build, y, before, after) {
  * coordinates: x, and h along the up direction of the segment), faces: [dIn, dOut] (positions of the
  * end faces along the axis, mm), ends: [inboard, outboard], deviation: { max, y } }
  * with ends { y, points: [[x, h], ...], chord, incidence (deg, nose up positive), le: [x, h],
- * te: [x, h], wedge: { angle (deg), depth (mm), side: 'upper' | 'lower' } | null }.
+ * te: [x, h], wedge: { angle (deg), depth (mm), side: 'upper' | 'lower' } | null }, and beyond: the
+ * part of the wing outboard of the segment that no core holds, { y: span position of the point (mm) },
+ * on the outermost segment of a round tip, else null. The cores end at foamEnd(build).
  */
 export function foamSegments(build, cuts, { deviation = true } = {}) {
-  const ys = [build.rootY, ...cuts, build.tipY];
+  const end = foamEnd(build);
+  const ys = [build.rootY, ...cuts, end];
   const zs = ys.map((y) => stationValue(build.stations, y, 'z'));
   const angles = [];
   for (let i = 1; i < ys.length; i++) angles.push(Math.atan2(zs[i] - zs[i - 1], ys[i] - ys[i - 1]));
@@ -288,7 +309,9 @@ export function foamSegments(build, cuts, { deviation = true } = {}) {
     const vb = vs[Math.min(vs.length - 1, i + 1)];
     return { n, points: cols.map((c) => planePoint(c, n, d, va, vb)) };
   });
-  return angles.map((angle, k) => segment(build, cols, k, ys, vs, angle, joints[k], joints[k + 1], deviation));
+  const out = angles.map((angle, k) => segment(build, cols, k, ys, vs, angle, joints[k], joints[k + 1], deviation));
+  if (out.length && end < build.tipY) out[out.length - 1].beyond = { y: build.tipY };
+  return out;
 }
 
 function segment(build, cols, k, ys, vs, angle, jointIn, jointOut, withDeviation) {
@@ -342,6 +365,7 @@ function segment(build, cols, k, ys, vs, angle, jointIn, jointOut, withDeviation
     faces: [dIn, dOut],
     ends,
     deviation: null,
+    beyond: null,
   };
   if (withDeviation) out.deviation = deviationOf(cols, a, up, dIn, dOut, va, vb, P, xRef, hRef, build);
   return out;

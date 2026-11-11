@@ -4,6 +4,7 @@ import { createProject } from '../src/model/project.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { surfacePoint } from '../src/geom/nurbs.js';
 import { sampleProject } from './helpers.js';
+import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
 import { MAX_EDGE_SAMPLES, MAX_NET_SEGMENTS, MAX_OUTLINE_SEGMENTS, controlNetSegments, displayGeometry, edgeParams, outlineIndices } from '../src/ui/viewer3d.js';
 
 describe('3D view geometry', () => {
@@ -101,6 +102,40 @@ describe('3D view geometry', () => {
     const vertices = displayGeometry(build).surface.getAttribute('position').count;
     expect(vertices).toBeLessThanOrEqual(100_000);
     expect(vertices).toBeGreaterThan(90_000);
+  });
+});
+
+describe('3D view of a tip closed in a point', () => {
+  it('draws no tip cap and gives every vertex of the point a unit normal on the side of the surface next to it', () => {
+    for (const te of ['closed', 'thickness']) {
+      const p = sampleProject({ settings: { trailingEdge: { mode: te, thickness: 0.4 } } });
+      addRoundTip(p, defaultRoundTip(p));
+      const build = buildWing(p);
+      expect([build.errors, build.tipPole], te).toEqual([[], true]);
+      const { surface, caps } = displayGeometry(build);
+      const M = build.paramsU.length;
+      const pos = surface.getAttribute('position').array;
+      const nrm = surface.getAttribute('normal').array;
+      const V = pos.length / 3 / M;
+      let bad = 0;
+      for (let i = 0; i < nrm.length; i += 3) if (!(Math.abs(Math.hypot(nrm[i], nrm[i + 1], nrm[i + 2]) - 1) < 1e-6)) bad++;
+      expect(bad, te).toBe(0);
+      // The point row: one position for every u. Its normals are those of the surface next to it in v:
+      // on the side of the normals of the row before (no normal turned into the wing).
+      const row = (k) => Array.from({ length: M }, (_, j) => [0, 1, 2].map((c) => pos[(k * M + j) * 3 + c]));
+      const point = row(V - 1);
+      for (const q of point) expect(Math.hypot(...q.map((v, c) => v - point[0][c])), te).toBeLessThan(1e-3);
+      let turned = 0;
+      for (let j = 0; j < M; j++) {
+        const [a, b] = [V - 1, V - 2].map((k) => (k * M + j) * 3);
+        if (!(nrm[a] * nrm[b] + nrm[a + 1] * nrm[b + 1] + nrm[a + 2] * nrm[b + 2] > 0)) turned++;
+      }
+      expect(turned, te).toBe(0);
+      // Caps: the root cap (a strip triangulation of the root ring, ring − 2 triangles) and, with an
+      // open trailing edge, 2 triangles per row interval of the trailing-edge strip.
+      const ring = build.closedTE ? M - 1 : M;
+      expect(caps.getAttribute('position').count / 3, te).toBe(ring - 2 + (build.closedTE ? 0 : 2 * (V - 1)));
+    }
   });
 });
 

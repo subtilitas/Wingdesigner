@@ -84,4 +84,6 @@ export default {
   'Chord {chord} mm, incidence {incidence}°': 'Profiltiefe {chord} mm, Anstellwinkel {incidence}°',
   '100 mm. Page {page} of {pages}.': '100 mm. Seite {page} von {pages}.',
   '{label}: part {part} of {parts} (row {row}, column {col})': '{label}: Teil {part} von {parts} (Zeile {row}, Spalte {col})',
+  'The tip beyond y = {y} mm is not part of a core: it closes in a point at y = {tip} mm (Settings > Wing tip Round) and is shaped separately.':
+    'Das Flügelende jenseits von y = {y} mm gehört zu keinem Kern: Es schließt sich bei y = {tip} mm in einem Punkt (Einstellungen > Flügelende Rund) und wird separat geformt.',
 };

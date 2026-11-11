@@ -79,6 +79,8 @@ const GROOVE_POINTS = 9;
 const GROOVE_STEP = 8;
 /** Chord error (mm) the stations along the groove keep on its centre line. */
 const GROOVE_TOLERANCE = 0.002;
+/** Largest growth of the station step per mm along the groove. */
+const GROOVE_GRADING = 0.25;
 
 /** Parameters with the defaults for every missing key. */
 export function resolveMold(params = {}) {
@@ -277,24 +279,39 @@ export function offsetOutline(poly, dist, rho, grid = null) {
       const tb = [-c.n[1], c.n[0]];
       const det = ta[0] * tb[1] - ta[1] * tb[0];
       let X = [(A.q[0] + c.q[0]) / 2, (A.q[1] + c.q[1]) / 2];
+      let corner = false;
       if (Math.abs(det) > 1e-6) {
         const d = sub(c.q, A.q);
         const s = (d[0] * tb[1] - d[1] * tb[0]) / det;
         const cand = [A.q[0] + s * ta[0], A.q[1] + s * ta[1]];
-        if (len(sub(cand, X)) < 2 * len(sub(c.q, A.q)) + 1) X = cand;
+        if (len(sub(cand, X)) < 2 * len(sub(c.q, A.q)) + 1) {
+          X = cand;
+          corner = true;
+        }
       }
-      const ra = sub(A.c, X);
-      const rb = sub(c.c, X);
+      // With the corner found, the arc has the radius rho and starts and ends on the two lines (the
+      // path runs along −ta and −tb): a sparse polygon, whose kept ends lie far from X, gets straight
+      // pieces up to the arc; a kept end past the start or the end of the arc ends it there.
+      const dot = (u, v) => u[0] * v[0] + u[1] * v[1];
+      const At = [X[0] - rho * A.n[0], X[1] - rho * A.n[1]];
+      const Bt = [X[0] - rho * c.n[0], X[1] - rho * c.n[1]];
+      const A0 = corner && dot(sub(At, A.c), ta) < 0 ? At : A.c;
+      const B0 = corner && dot(sub(c.c, Bt), tb) < 0 ? Bt : c.c;
+      const ra = sub(A0, X);
+      const rb = sub(B0, X);
       const aa = Math.atan2(ra[1], ra[0]);
       let sweep = Math.atan2(rb[1], rb[0]) - aa;
       while (sweep > Math.PI) sweep -= 2 * Math.PI;
       while (sweep < -Math.PI) sweep += 2 * Math.PI;
       const steps = Math.max(1, Math.ceil(Math.abs(sweep) / 0.04));
+      const far = (P, Q) => len(sub(P, Q)) > 1e-6;
+      if (far(A0, A.c)) out.push(A0);
       for (let j = 1; j < steps; j++) {
         const f = j / steps;
         const r = len(ra) + f * (len(rb) - len(ra));
         out.push([X[0] + r * Math.cos(aa + f * sweep), X[1] + r * Math.sin(aa + f * sweep)]);
       }
+      if (far(B0, c.c) && far(B0, A0)) out.push(B0);
     }
     if (k < m) out.push(c.c);
     prev = { k: first + k, c };
@@ -745,11 +762,16 @@ export function grooveSurface(path, r, zp, y0, slope = 0) {
     const area = Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]));
     return area > 1e-12 ? (ab * bc * ac) / (2 * area) : Infinity;
   };
+  // Step at each point: the chord error on the centre line sets it where the path curves; it grows by
+  // at most GROOVE_GRADING of the distance from a curved part, so that the stations close up before
+  // a bend (long steps next to a bend let the interpolating spline overshoot the tube).
+  const H = fine.map((_, i) => Math.min(GROOVE_STEP, Math.max(0.5, Math.sqrt(8 * GROOVE_TOLERANCE * radiusAt(i)))));
+  for (let i = 1; i < H.length; i++) H[i] = Math.min(H[i], H[i - 1] + GROOVE_GRADING * (s[i] - s[i - 1]));
+  for (let i = H.length - 2; i >= 0; i--) H[i] = Math.min(H[i], H[i + 1] + GROOVE_GRADING * (s[i + 1] - s[i]));
   const idx = [0];
   let at = 0;
   while (at < fine.length - 1) {
-    const R = radiusAt(at);
-    const step = Math.min(GROOVE_STEP, Math.max(0.5, Math.sqrt(8 * GROOVE_TOLERANCE * R)));
+    const step = H[at];
     let next = at + 1;
     while (next < fine.length - 1 && s[next] - s[at] < step) next++;
     // The last station is the end of the path: no short last step.

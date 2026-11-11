@@ -9,12 +9,14 @@
 //
 // r is the cubic spline in θ through the residuals r_k = f_k − f_T − s · (y_k − y_T) of the tip
 // sections (r = 0 at T), at T with either the slope 0 ('tangent': the blend leaves T with the slope
-// of the inboard blend) or a natural start ('corner'). At the point the two edges meet on a straight
-// line x = x_P − σ · (y_P − y), about which the chord closes like an ellipse: there both edges have
-// the second derivative −σ L in θ, so r″ = (s − σ) · L. σ follows from the point and the slopes at T:
-// with the line at the share a of the chord, σ = s_LE + a · (s_TE − s_LE) and
-// σ L = x_P − x_LE,T − a · c_T (pointEnd). A natural end (r″ = 0) holds for σ = s only, and leaves
-// the outline 0.1 mm thin 1 mm before the point of the Glider. Residuals
+// of the inboard blend) or a natural start ('corner'). With Wing tip Round (chord 0 at the point,
+// `closed`) the two edges meet on a straight line x = x_P − σ · (y_P − y), about which the chord
+// closes like an ellipse: there both edges have the second derivative −σ L in θ, so
+// r″ = (s − σ) · L. σ follows from the point and the slopes at T: with the line at the share a of
+// the chord, σ = s_LE + a · (s_TE − s_LE) and σ L = x_P − x_LE,T − a · c_T. A natural end (r″ = 0)
+// holds for σ = s only, and leaves the closed outline of the Glider 0.1 mm thin 1 mm before the
+// point. Wing tip Pointed (the 1 mm chord of a version 5 project at the point) keeps the natural
+// end. Residuals
 // that all lie within STRAIGHT_RESOLUTION, the rounding of the dialog, count as a straight value:
 // r = 0, so that a straight edge or a constant twist stays exact instead of rippling.
 // The leading edge and the trailing edge (x + chord) are interpolated, not x and chord: with the
@@ -130,9 +132,10 @@ const MIN_COS = 1e-3;
  * roundTip marker of each section. The outline inboard of T follows the blend of sections 0 … t.
  * `anchor` (optional, with guide curves): { value, slope } per flat outline index, the leading-edge
  * x and the trailing edge (x + chord) of the guide curves at T and their slopes in y, in place of
- * those of the blend of sections 0 … t.
+ * those of the blend of sections 0 … t. `closed`: the outline closes in the point (Wing tip Round),
+ * with the end condition of the straight line (see the header); else a natural end.
  */
-export function roundTipBlender(ys, mode, lists, t, sectionModes, edge, anchor = null) {
+export function roundTipBlender(ys, mode, lists, t, sectionModes, edge, anchor = null, { closed = false } = {}) {
   const inner = spanwiseBlender(ys.slice(0, t + 1), mode, lists.slice(0, t + 1));
   const full = spanwiseBlender(ys, mode, lists);
   const outline = new Set(edge);
@@ -169,8 +172,9 @@ export function roundTipBlender(ys, mode, lists, t, sectionModes, edge, anchor =
     }
   }
   // Slope σ of the straight line through the point on which the edges meet (see the header); null
-  // where the data give none (a chord that would not close, a line outside the wing).
+  // for an open end or where the data give none (a chord that would not close, a line outside the wing).
   const sigma = (() => {
+    if (!closed) return null;
     const [iL, iT] = edge;
     const cT = FT[iT] - FT[iL];
     const taper = innerSlope[iT] - innerSlope[iL];
