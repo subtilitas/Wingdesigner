@@ -15,7 +15,7 @@
 //   holes      two half cylinders each; a pin hole ends in a planar bottom, a screw hole in the
 //              bottom face of the block
 // Leading edge and trailing edge are lines of the parting surface. The rims of the channel and the
-// mouths of the holes are fitted through points of it and lie on it within summary.fit.
+// mouths of the holes are fitted through points of it; summary.fit is the largest miss of the rims.
 // A loop is listed counter-clockwise seen from outside the solid; a reflection keeps the lists and
 // flips the bound flag and the sense of the B-spline faces, as the left half of the wing export does.
 

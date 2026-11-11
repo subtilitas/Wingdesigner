@@ -1,15 +1,15 @@
 """Validate the STEP files of mold halves with OpenCascade (package cadquery-ocp).
 
 Usage: python scripts/validate_mold.py cases.json
-cases.json: [{"file": "a.step", "solids": 2, "total": v, "tolerance": 2e-4, "up": "z",
+cases.json: [{"file": "a.step", "solids": 2, "total": v, "tolerance": 5e-5, "up": "z",
               "lower": true, "upper": true, "holes": n,
               "range": {"lower": [lo, hi], "upper": [lo, hi]}}, ...]
 Checks per file: the reader transfers all roots; the solid count; every solid passes
 BRepCheck_Analyzer, has a closed, consistently oriented shell and a positive volume; the volumes of
 both halves add up to `total` (the slab of the two blocks less the half wing, the resin channel and
 the holes) within the tolerance, by the surface integral of OpenCascade or, where that misses (it
-is off by up to 1.2e-4 on the trimmed faces of a twisted parting surface), on a tessellation with
-MESH_DEFLECTION; each half spans its `range` along the up axis, the parting plane at 0, within
+is off by up to 1.2e-4 on trimmed faces of a parting surface that is not planar), on a tessellation with
+MESH_DEFLECTION; each half spans its `range` along the up axis, z = 0 at the mean height of leading edge and trailing edge, within
 RANGE_TOLERANCE; every solid has 2 cylindrical faces per hole; the edges of every planar face lie in its
 plane within PLANE_TOLERANCE.
 Exit code 1 on any failure.
