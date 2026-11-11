@@ -82,6 +82,8 @@ const GROOVE_POINTS = 9;
 const GROOVE_STEP = 8;
 /** Largest height (mm) by which the rims of the groove may miss the parting surface before the stations close up. */
 const GROOVE_FIT = 1e-6;
+/** Largest miss (mm) of the rims of the resin channel from the parting surface that a mold is built with. */
+export const GROOVE_FIT_LIMIT = 0.01;
 /** Span distance (mm) from the root over which the path of the resin channel moves onto the root line of the parting surface. */
 const ROOT_BLEND = 20;
 /** Distance (mm) a skewed groove station may leave the tube where the path curves. */
@@ -618,6 +620,15 @@ export function moldGeometry(build, input) {
     };
     const lower = fitted(lowerSide);
     channel = { lower, upper: fitted(upperSide), path, radius: r, length: lower.length, stations: lower.stations };
+    const miss = Math.max(channel.lower.fit, channel.upper.fit);
+    if (miss > GROOVE_FIT_LIMIT) {
+      return fail(
+        tr('Mold: the rims of the resin channel miss the parting surface by {miss} mm, more than {limit} mm; reduce the diameter of the resin channel or change its distance.', {
+          miss: fixed(miss, 3),
+          limit: plain(GROOVE_FIT_LIMIT),
+        }),
+      );
+    }
   }
 
   // Block heights: the floor below the deepest point of each half: its cavity, the parting surface at
@@ -1231,7 +1242,7 @@ export function grooveSurface(path, r, side, maxStep = GROOVE_STEP) {
   // Each station is a half circle square to the path. At a crease the station is skewed along the path
   // onto the crease, so that both rims break on it: its points keep their distance from the centre
   // line and move along the path by that distance times the tangent of the crossing angle (at most
-  // CREASE_SKEW). Within 6 radii of the crossing the skew fades out, so that no rim point of a station
+  // CREASE_SKEW). Within 6 radii of the crossing, or up to the next crease if that is closer, the skew fades out, so that no rim point of a station
   // next to the crease lies beyond it (a path that crosses at an angle, as along a swept leading edge).
   const normals = idx.map((i, k) => {
     if (k === 0) return [-1, 0];
@@ -1240,29 +1251,63 @@ export function grooveSurface(path, r, side, maxStep = GROOVE_STEP) {
     return [-t[1], t[0]];
   });
   // Where two creases lie within reach of a station, their skews are averaged by their weights.
+  // The station on a crease takes the skew of that crease alone, without the limit below: its rim points
+  // are where both rims break, and they must lie on the crease.
   const weight = new Float64Array(idx.length);
   const skewed = new Float64Array(idx.length);
+  const pinned = new Map();
   for (let j = 1; j + 1 < joints.length; j++) {
     const k0 = joints[j];
     const { along } = kept[j - 1];
+    // The skew of a crease ends at the next crease on either side: beyond it that crease sets the skew.
+    const before = Math.min(6 * r, s[idx[k0]] - s[idx[joints[j - 1]]]);
+    const after = Math.min(6 * r, s[idx[joints[j + 1]]] - s[idx[k0]]);
     for (let k = 1; k + 1 < idx.length; k++) {
-      const d = Math.abs(s[idx[k]] - s[idx[k0]]) / (6 * r);
+      const ds = s[idx[k]] - s[idx[k0]];
+      const d = Math.abs(ds) / (ds < 0 ? before : after);
       if (d >= 1) continue;
       const w = 1 - d * d * (3 - 2 * d);
       const n = normals[k];
       const across = along[0] * n[0] + along[1] * n[1];
       const skew = Math.max(-CREASE_SKEW, Math.min(CREASE_SKEW, (along[0] * n[1] - along[1] * n[0]) / (across || 1e-12)));
+      if (k === k0) pinned.set(k, skew);
       weight[k] += w;
       skewed[k] += w * skew;
     }
   }
   // A skewed station leaves the tube where the path curves, by (r · skew)² / (2 R) at the radius R:
   // the skew stays below the value that costs GROOVE_SKEW_ERROR there.
-  const turned = normals.map((n, k) => {
+  const skews = normals.map((n, k) => {
+    if (pinned.has(k)) return pinned.get(k);
     const limit = Math.sqrt(2 * GROOVE_SKEW_ERROR * radiusAt(idx[k])) / r;
-    const skew = Math.max(-limit, Math.min(limit, skewed[k] / Math.max(1, weight[k])));
-    return [n[0] + skew * n[1], n[1] - skew * n[0]];
+    return Math.max(-limit, Math.min(limit, skewed[k] / Math.max(1, weight[k])));
   });
+  // Both rim points of a station stay on the side of a nearby crease that its centre lies on (two
+  // creases close together, as at the corner of a flat tip, pull a station between them both ways):
+  // else the skew moves towards the one that sets the station parallel to that crease, in 8 steps.
+  const direction = (k, skew) => [normals[k][0] + skew * normals[k][1], normals[k][1] - skew * normals[k][0]];
+  for (let j = 1; j + 1 < joints.length; j++) {
+    const k0 = joints[j];
+    const { along } = kept[j - 1];
+    const C0 = centres[k0];
+    const sideOf = (P) => along[0] * (P[1] - C0[1]) - along[1] * (P[0] - C0[0]);
+    for (let k = 1; k + 1 < idx.length; k++) {
+      if (k === k0 || pinned.has(k) || Math.abs(s[idx[k]] - s[idx[k0]]) >= 6 * r) continue;
+      const C = centres[k];
+      const own = sideOf(C);
+      if (Math.abs(own) < 1e-9) continue;
+      const n = normals[k];
+      const across = along[0] * n[0] + along[1] * n[1];
+      const parallel = Math.max(-CREASE_SKEW, Math.min(CREASE_SKEW, (along[0] * n[1] - along[1] * n[0]) / (across || 1e-12)));
+      const crosses = (skew) => {
+        const t = direction(k, skew);
+        return [-1, 1].some((sg) => sideOf([C[0] + sg * r * t[0], C[1] + sg * r * t[1]]) * own < 0);
+      };
+      const from = skews[k];
+      for (let step = 1; step <= 8 && crosses(skews[k]); step++) skews[k] = from + ((parallel - from) * step) / 8;
+    }
+  }
+  const turned = normals.map((_, k) => direction(k, skews[k]));
   const Q = [];
   const paramsU = [];
   for (let a = 0; a < GROOVE_POINTS; a++) {

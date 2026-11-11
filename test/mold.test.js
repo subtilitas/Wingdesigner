@@ -1164,6 +1164,38 @@ describe('mold checks of the parting surface', () => {
   });
 });
 
+describe('resin channel at the corners of a twisted flat tip', () => {
+  // Three sections with a dihedral break and 8° washout: at each corner of the flat tip two creases of
+  // the parting surface lie one quarter turn of the channel apart.
+  const twisted = () =>
+    createProject({
+      name: 'Twisted wing',
+      airfoils: [naca('0010')],
+      sections: [
+        { airfoil: '0010', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+        { airfoil: '0010', x: 0, y: 250, z: 10, chord: 160, twist: -4 },
+        { airfoil: '0010', x: 40, y: 500, z: 0, chord: 120, twist: -8 },
+      ],
+    });
+
+  it('keeps the rims of a 4, 8 and 20 mm channel within 1e-5 mm of the parting surface', () => {
+    const build = built(twisted());
+    for (const diameter of [4, 8, 20]) {
+      const g = geometry(build, { channel: { diameter }, pins: { on: false }, screws: { on: false } });
+      expect(g.summary.fit, `diameter ${diameter}`).toBeLessThan(1e-5);
+      expect(() => moldToStep(g, STAMP)).not.toThrow();
+    }
+  });
+
+  it('refuses a channel whose rims miss the parting surface by more than 0.01 mm (Sailplane, 20 mm channel)', { timeout: 60000 }, () => {
+    const g = moldGeometry(built(preset('sailplane')), { channel: { diameter: 20, distance: 10 }, margin: 80, pins: { on: false }, screws: { on: false } });
+    expect(g.errors).toHaveLength(1);
+    expect(g.errors[0]).toMatch(/^Mold: the rims of the resin channel miss the parting surface by 0\.\d{3} mm, more than 0\.01 mm; reduce the diameter of the resin channel or change its distance\.$/);
+    setLanguage('de');
+    expect(moldGeometry(built(preset('sailplane')), { channel: { diameter: 20, distance: 10 }, margin: 80, pins: { on: false }, screws: { on: false } }).errors[0]).toMatch(/^Form: Die Ränder der Blutrinne verfehlen die Trennfläche um 0,\d{3} mm, mehr als 0,01 mm/);
+  });
+});
+
 describe('mold STEP file', () => {
   it('writes every mold case with closed shells, the solids of the chosen halves, the faces of the parting surface and 2 cylinders per hole and half', { timeout: 240000 }, () => {
     const names = [];

@@ -243,7 +243,7 @@ Version history: [CHANGELOG.md](CHANGELOG.md). Verified state and open items: [R
 npm ci
 npx playwright install chromium   # browser for end-to-end (e2e) tests and screenshots (or set PW_CHROMIUM=/path/to/chrome)
 npm run dev              # development server on http://localhost:5173
-npm test                 # 768 unit tests (Vitest)
+npm test                 # 770 unit tests (Vitest)
 npm run lint             # ESLint
 npm run build            # production build into dist/
 npm run preview          # serve dist/ on http://localhost:4173
@@ -275,7 +275,7 @@ The Playwright tests run the DOM (Document Object Model) code; its coverage is n
 <!-- coverage:start -->
 | Statements | Branches | Functions | Lines |
 | ---: | ---: | ---: | ---: |
-| 98.1 % | 94.3 % | 98.4 % | 98.9 % |
+| 98.2 % | 94.4 % | 98.4 % | 99.0 % |
 
 Unit tests (Vitest, V8 coverage) over `src/`, excluding the DOM code in `src/ui/` and `src/main.js`.
 <!-- coverage:end -->

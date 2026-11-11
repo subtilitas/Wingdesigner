@@ -21,7 +21,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
   measured wings. The bottom of a pin hole lies its depth below the lowest point of its
   mouth; the error for pin holes names the depth that reaches within 1 mm of the outer face of a half. A parting
   surface that folds over itself seen from above (a strongly swept tip that closes in a point) is an error. With the
-  resin channel off, a hole on the 3 mm strip beyond a flat tip is left out.
+  resin channel off, a hole on the 3 mm strip beyond a flat tip is left out. A resin channel whose rims miss the
+  parting surface by more than 0.01 mm is an error.
 
 ### Removed
 
