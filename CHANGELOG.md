@@ -6,6 +6,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Changed
+
+- **Export** > **Mold halves…** parts the halves on a parting surface that holds the leading and the trailing edge and
+  is level in flight direction: ahead of the wing it lies at the height of the leading edge of each span station, behind
+  the wing at the height of the trailing edge, so that it follows twist and dihedral along the span. Around a tip that
+  closes in a point (**Wing tip** Round) its level lines turn with the tip. z = 0 in the file is the mean height of
+  leading and trailing edge. This replaces the flat parting plane with a ramp to each edge. The front, back and
+  tip-side faces of the block end at the edge of the parting surface. The STEP file writes the parting surface as
+  B-spline faces: 2 with a flat tip, 4 with a tip that closes in a point (1 or 2 without resin channel). The summary
+  gives how far each half reaches below and above z = 0 and the height range of the parting surface; on the
+  **Sailplane** preset with the default mold values the parting surface spans −45.9 to +85.8 mm and the halves reach
+  down to −60.9 mm and up to +111.3 mm. The rims of the resin channel lie on the parting surface within 5.6e-5 mm on the
+  measured wings. The bottom of a pin hole lies its depth below the lowest point of its
+  mouth; the error for pin holes names the depth that reaches within 1 mm of the outer face of a half. A parting
+  surface that folds over itself seen from above (a strongly swept tip that closes in a point) is an error. With the
+  resin channel off, a hole on the 3 mm strip beyond a flat tip is left out. A resin channel whose rims miss the
+  parting surface by more than 0.01 mm is an error.
+
+### Removed
+
+- The **Ramp width** setting of the mold dialog, with the warning for a ramp steeper than 45° and the errors for a
+  ramp that folds or cannot be fitted. A ramp width kept in the browser from 0.10.0 is ignored.
+
 ## [0.10.0] - 2026-11-11
 
 ### Added

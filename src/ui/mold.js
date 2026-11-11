@@ -1,6 +1,6 @@
 // Mold dialog: mold halves of the half wing (src/geom/mold.js) with a resin channel, alignment pin
 // holes and clamping screw holes, written as STEP solids (src/export/moldstep.js). The preview draws
-// the parting plane from above. The values are kept in browser storage, not in the project.
+// the parting surface from above. The values are kept in browser storage, not in the project.
 
 import { HOLE_PATTERNS, MOLD_DEFAULTS, MOLD_HALVES, MOLD_RANGES, moldGeometry, moldProblems, resolveMold } from '../geom/mold.js';
 import { moldToStep } from '../export/moldstep.js';
@@ -61,7 +61,7 @@ export function moldDialog(store, getBuild, notify = () => {}) {
 
   const summary = h('p', { class: 'small', 'aria-live': 'polite' });
   const notes = h('p', { class: 'small sev-warning', 'aria-live': 'polite' });
-  const canvas = h('canvas', { class: 'wizard-canvas', role: 'img', 'aria-label': tr('Top view of the parting plane of the mold') });
+  const canvas = h('canvas', { class: 'wizard-canvas', role: 'img', 'aria-label': tr('Top view of the parting surface of the mold') });
   const saveBtn = h('button', { type: 'button', class: 'primary' }, tr('Download STEP'));
 
   const get = (path) => path.split('.').reduce((o, k) => o[k], params);
@@ -163,8 +163,8 @@ export function moldDialog(store, getBuild, notify = () => {}) {
         const s = geometry.summary;
         summary.className = 'small';
         summary.textContent = [
-          tr('Block {length} × {width} mm; lower half {lower} mm thick, upper half {upper} mm.', { length: fixed(s.length, 1), width: fixed(s.width, 1), lower: fixed(s.lower, 1), upper: fixed(s.upper, 1) }),
-          tr('Parting plane rolled {roll}° with the wing; leading and trailing edge up to {height} mm off it.', { roll: fixed(s.roll, 2), height: fixed(s.rampHeight, 2) }),
+          tr('Block {length} × {width} mm; lower half down to −{lower} mm, upper half up to +{upper} mm.', { length: fixed(s.length, 1), width: fixed(s.width, 1), lower: fixed(s.lower, 1), upper: fixed(s.upper, 1) }),
+          tr('Parting surface at the height of leading edge and trailing edge, level in flight direction: from {low} to {high} mm; frame rolled {roll}° with the wing.', { low: fixed(s.partingRange[0], 1), high: fixed(s.partingRange[1], 1), roll: fixed(s.roll, 2) }),
           params.channel.on ? tr('Resin channel {length} mm long.', { length: whole(Math.round(s.channelLength)) }) : '',
           tr('{pins} pin holes, {screws} screw holes.', { pins: s.pins, screws: s.screws }),
         ]
@@ -186,7 +186,7 @@ export function moldDialog(store, getBuild, notify = () => {}) {
     draw: (ctx, view, w, hgt) => {
       view.drawGrid(ctx, w, hgt, cssVar('--grid', '#dde3ea'), cssVar('--axis', '#9aa6b2'));
       if (!geometry) return;
-      const { block, outline, ramp, channel, holes: list } = geometry.preview;
+      const { block, outline, channel, holes: list } = geometry.preview;
       const ink = cssVar('--ink', '#1d2430');
       const accent = cssVar('--accent', '#2f6fdf');
       const path = (pts, close) => {
@@ -218,10 +218,6 @@ export function moldDialog(store, getBuild, notify = () => {}) {
         ctx.lineWidth = Math.max(1.5, 2 * channel.radius * scale);
         ctx.stroke();
       }
-      path(ramp, false);
-      ctx.strokeStyle = cssVar('--axis', '#9aa6b2');
-      ctx.lineWidth = 1;
-      ctx.stroke();
       path(outline, false);
       ctx.fillStyle = cssVar('--wing-fill', 'rgba(47,111,223,0.12)');
       ctx.fill();
@@ -268,7 +264,7 @@ export function moldDialog(store, getBuild, notify = () => {}) {
               'fieldset',
               {},
               h('legend', {}, tr('Block')),
-              h('div', { class: 'wizard-fields' }, number('margin', tr('Margin around the wing (mm)'), 5), number('floor', tr('Floor below the cavity (mm)'), 1), number('ramp', tr('Ramp width (mm)'), 0.5)),
+              h('div', { class: 'wizard-fields' }, number('margin', tr('Margin around the wing (mm)'), 5), number('floor', tr('Floor below the cavity (mm)'), 1)),
             ),
             h(
               'fieldset',
@@ -299,7 +295,7 @@ export function moldDialog(store, getBuild, notify = () => {}) {
         h(
           'p',
           { class: 'small muted' },
-          tr('The halves part along leading edge and trailing edge; a ramp joins the two edges to the parting plane, which lies at z = 0 in the file. The cavity is open at the root face of the block. The resin channel is half-round in each half; pin holes are blind, screw holes go through. The axes follow the last export (Export > Fusion 360 fix).'),
+          tr('The halves part on a surface that holds leading edge and trailing edge and is level in flight direction: ahead of the wing it lies at the height of the leading edge of that span station, behind the wing at the height of the trailing edge, so that it follows twist and dihedral along the span. Around a tip that closes in a point the level lines turn with the tip. z = 0 in the file is the mean height of leading edge and trailing edge. The cavity is open at the root face of the block. The resin channel is half-round in each half; pin holes are blind, screw holes go through. The axes follow the last export (Export > Fusion 360 fix).'),
         ),
       ];
 

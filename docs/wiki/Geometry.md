@@ -47,7 +47,7 @@ Derivatives are written dx/du and d²x/du². Subscripts are point indices (Q_k, 
 | 6. STEP (Standard for the Exchange of Product model data) topology | `src/export/step.js` | A5.1 |
 | 7. Planform statistics | `src/geom/stats.js`, `src/geom/wing.js` (`planformAt`) | – |
 | 8. Foam cores | `src/geom/foam.js` | A3.5 (per column curve) |
-| 11. Mold halves | `src/geom/mold.js`, `src/export/moldstep.js` | A9.1 (ramp edges, groove), A5.1 (split at the leading edge) |
+| 11. Mold halves | `src/geom/mold.js`, `src/export/moldstep.js` | A9.1 (groove, hole mouths, mean line of the tip, outer edge of the parting surface at a round tip), A5.1 (split at the leading edge) |
 
 The rigid placement of the part (section 3.9, `src/geom/part.js`) turns the result of steps 3 and 4 for steps 5 to 7.
 
@@ -1223,60 +1223,92 @@ The half wing in its build frame (x aft, y span, z up), before the rigid placeme
 
 | Tip | ω |
 | --- | --- |
-| Flat or Pointed | the roll of the tip section plane (`build.tipRoll`), so that the tip face stands square to the parting plane |
+| Flat or Pointed | the roll of the tip section plane (`build.tipRoll`), so that the tip face stands square to the rows of the parting surface beyond the tip |
 | Round (pole) | atan of the slope of the least-squares line z(y) through leading edge, lower and upper trailing edge, 201 points each |
 
 ```
 P_mold = (x, y_0 + (y − y_0) · cos ω + z · sin ω, −(y − y_0) · sin ω + z · cos ω)       y_0: root y
 ```
 
-- Parting plane: z = z_p, the mean height of the leading edge and of the trailing-edge middle (mean of lower and upper trailing edge; the trailing edge itself when closed), 401 points each. The file puts it at z = 0.
+- Reference height z_p: the mean height of the leading edge and of the trailing-edge middle (mean of lower and upper trailing edge; the trailing edge itself when closed), 401 points each. The file puts z_p at z = 0.
 - Root plane: y = y_R + tan ω · (z − z_p), y_R = y_0 + tan ω · z_p. The root row of the surface is set into it, the cavity is open there, and the root face of the block leans by ω.
-- Leading edge and trailing edge lie in one plane only for an untwisted wing of one airfoil with one dihedral angle. Measured: flat untwisted wing 0.007 mm off the plane, **Glider** with a rounded tip 1.67 mm (ω = 4.03°), **Sport** with a rounded tip 1.36 mm (ω = 1.54°), **Sailplane** (dihedral 2°, 6° and 10°) 85.76 mm.
+- Height range of leading edge and trailing edge about z_p (`summary.edgeRange`), measured 2026-11-11: flat untwisted wing 0 to 0 mm, **Glider** with a rounded tip −1.35 to +1.67 mm (ω = 4.03°), **Sport** with a rounded tip −1.15 to +1.36 mm (ω = 1.54°), **Sailplane** (dihedral 2°, 6° and 10°) −45.94 to +85.76 mm (ω = 9.99°).
 
-### 11.2 Ramp
+### 11.2 Parting surface
 
-A ruled surface joins each edge (leading edge, trailing-edge middle) to a curve in the parting plane at the ramp width w:
+The parting surface holds the leading edge and the trailing-edge middle and is level along x, the flight direction: ahead of the wing it lies at the height of the leading edge of the span station, behind the wing at the height of the trailing edge. Between them it spans the chord line of the station (inside the opening of the cavity). Along the span it follows twist and dihedral.
+
+Flat tip (Flat or Pointed; `parting.kind === 'flat'`, `partingSurface`): one B-spline surface, degree 1 along x (u), the degree and the knots of the wing along the span (v).
+
+| Row (u) | Points |
+| --- | --- |
+| 0 | the leading edge moved along x into the front face x = x_0 |
+| 1/3 | the leading edge |
+| 2/3 | the trailing-edge middle |
+| 1 | the trailing-edge middle moved along x into the back face x = x_1 |
+
+- Beyond the tip every row runs straight along y to the tip-side face y_1, at the height it has at the tip: one piece of the degree of the wing, joined to the row, with v halved on both parts.
+- Leading edge and trailing edge are iso-lines of the surface (u = 1/3 and 2/3): they lie on it exactly.
+- Flat tip face: parted along the mean line of the tip section. 49 points from the leading edge to the trailing-edge middle at cosine-spaced x, z the mean of lower and upper surface at that x, interpolated with degree 3. The chord line is not used: it leaves the profile of a reflexed airfoil with a closed trailing edge.
+- Tip strip (`tipStrip`): a ruled surface from the mean line to the line of the parting surface at TIP_STRIP = 3 mm beyond the tip (at most half the channel distance, without channel half the margin). Beyond the tip the parting surface runs straight from the height of the leading edge to that of the trailing edge, so the strip ends on a straight line of it.
+
+Tip that closes in a point (**Wing tip** Round; `parting.kind === 'pole'`, `fanParting`): two surfaces, degree 1 along u.
+
+| Surface | Rows (u = 0, u = 1) |
+| --- | --- |
+| front | the outer block edge, the leading edge |
+| back | the trailing-edge middle, the outer block edge |
 
 ```
-Q(v) = (x_E + side · w · cos ψ(v),  y_E + w · sin ψ(v) + cos ψ(v) · tan ω · (z_p − z_E),  z_p)
-side = −1 leading edge, +1 trailing edge
-ψ(v) = 0                                   flat tip, or v ≤ v_F
-ψ(v) = θ − sin(2θ) / 2,  θ = (v − v_F) / (1 − v_F) · π/2       round tip, v > v_F
+direction of the level line of station v: (side · cos ψ(v), sin ψ(v))       side = −1 front, +1 back
+ψ(v) = 0                                    v ≤ v_F
+ψ(v) = θ − sin(2θ) / 2,  θ = (v − v_F) / (1 − v_F) · π/2       v > v_F
 ```
 
-- Inboard the rulings run along x, in planes parallel to the root plane. Around a round tip they turn from x at the start of the rounded tip (v_F: section T of section 10) to y at the point, where both curves meet in one point.
-- The outer curve is interpolated at the Greville abscissae of the edge curve with its knots, so that ruling k joins control point k of both curves.
-- Flat tip face: parted along the mean line of the tip section. 49 points from the leading edge to the trailing-edge middle at cosine-spaced x, z the mean of lower and upper surface at that x, interpolated with degree 3. Beyond it a ruled strip of width w along y and a planar triangle at each corner. The chord line is not used: it leaves the profile of a reflexed airfoil with a closed trailing edge.
-- Fold test: neighbouring rulings sampled at 401 v must advance on the same side; else the error `Mold: the ramp folds over itself …`.
-- Slope: atan(h / w⊥), h the height of the edge above or below z_p, w⊥ the width of the ramp square to the outline. Above 45° a warning names the largest h and slope.
+- v_F: the start of the rounded tip (section T of section 10). Inboard of it the level lines run along x; around the rounded tip they turn from x to y at the point.
+- Each level line runs from its edge point to the block face (front or back face, or the tip-side face beyond the corner of the block) and keeps the height of its edge point: the surface is level along these lines, not along x. Level lines along x up to the point would drop with an unbounded slope ahead of a twisted tip, where the edge runs square to them.
+- The outer edge is interpolated at the Greville abscissae of the edge curve, with a knot of full multiplicity where it turns the corner of the block, so that ruling k joins control point k of both rows.
+- Seam: both surfaces meet in the straight line from the tip point along y to the tip-side face.
+
+Creases (lines where the surface may bend), used to break the groove and the hole mouths:
+
+- the span stations where the wing has a crease: a knot of the multiplicity of the degree (a section with C0 continuity); with a pole tip their level lines on both surfaces;
+- the lines at the x of leading edge and trailing edge (degree 1 along x); beyond a flat tip the lines along y through its leading edge and its trailing edge;
+- with a pole tip the seam.
 
 ### 11.3 Outline and resin channel
 
 - Outline: leading edge and trailing-edge middle in the top view, 4,000 samples each, resampled at 0.25 mm; at a flat tip the edge of the tip face. The outline is mirrored at the root line y = y_R into a closed polygon, clockwise seen from +z.
 - Offset with rounded inward corners (`offsetOutline`): the polygon is offset outward by d + ρ (one normal per point, a fan of normals at an outward corner, steps of 0.04 rad); offset points closer than d + ρ − 0.02 mm to the polygon are dropped; the rest is moved back by ρ, with an arc of radius ρ about the corner where each dropped run ends.
-- Channel centre line: d = distance + r, ρ = 2r + 2 mm (r = diameter / 2), the half on the side y ≥ y_R. Mirrored at the root, the path crosses the root line square to it.
-- Groove surface (`grooveSurface`): one bicubic B-spline surface, interpolated through 9 points of a half circle of radius r below z_p (u, from the rim next to the wing over the bottom to the outer rim) at stations along the path (v). Station spacing min(8 mm, sqrt(8 · 0.002 mm · R)), at least 0.5 mm, R the local radius of the path: a chord error of 0.002 mm on the centre line. The spacing grows by at most 0.25 mm per mm of path away from a bend, so that the stations close up before it (long steps next to a bend let the interpolating spline overshoot the half circle). The rims (u = 0 and u = 1) are iso-curves with every control point at z = z_p, so that they lie in the parting plane; the end rows lie in the root plane. Cross-section within 0.02 mm of a half circle on the presets measured: Sport 0.018 mm, flat test wing 0.0073 mm, Delta jet 0.0031 mm (not measured against a CAD model).
-- The upper half takes the groove mirrored at z_p, with its end rows in its own root plane (the lean of the root face is mirrored).
+- Channel centre line: d = distance + r, ρ = 2r + 2 mm (r = diameter / 2), the half on the side y ≥ y_R. Within ROOT_BLEND = 20 mm of the root the path moves onto the root line of the parting surface (smoothstep in y), which lies up to tan ω · its height off y = y_R.
+- Groove surface (`grooveSurface`): one bicubic B-spline surface, interpolated through 9 points of a half circle of radius r (u, from the rim next to the wing over the bottom to the outer rim) at stations along the path (v). Each station lies in the vertical plane square to the path and is lowered from the height of the parting surface: z = z_s(x, y) − r · sin φ. The end stations lie in the root plane, below the root line of the parting surface.
+- Station spacing: min(step, sqrt(8 · 0.002 mm · R)), at least 0.5 mm, R the local radius of the path: a chord error of 0.002 mm on the centre line. The spacing grows by at most 0.25 mm per mm of path away from a bend.
+- Pieces: the path is cut where it crosses a crease; each piece is fitted on its own (at least 4 stations) and the pieces join with C0 continuity. Near a crease each station is skewed along the path onto the crease, so that both rims break on it: the skew is the tangent of the crossing angle, at most CREASE_SKEW = 3 (71.6°), faded out within 6 r of the crossing or up to the next crease if that is closer (the station on a crease takes the skew of that crease alone), and limited where the path curves so that the station leaves the tube by at most GROOVE_SKEW_ERROR = 0.01 mm ((r · skew)² / (2R)).
+- Refinement: the groove is built with the largest step GROOVE_STEP = 8 mm, then 4, 2 and 1 mm, until its rims miss the parting surface by at most GROOVE_FIT = 1e-6 mm, or halving the step no longer halves the miss. `summary.fit`: the largest miss of the rims of both halves, sampled at 4 points per station. On the 18 cases of `test/mold-cases.js`: at most 5.6e-5 mm (`sport-round-tip`), at most 2.1e-6 mm with a flat tip (`batwing`), measured 2026-11-11.
+- The upper half takes the groove built on the parting surface mirrored at z_p, with its end rows in its own root plane (the lean of the root face is mirrored).
 
 ### 11.4 Block
 
 ```
 x_0 = x_min − margin          x_1 = x_max + margin          x of the outline
-y from y_R to y_max + margin
-t_lower = max(z_p − z_min(lower cavity), r_c) + floor
-t_upper = max(z_max(upper cavity) − z_p, r_c) + floor
+y from y_R to y_1 = y_max + margin
+lower = max(z_p − z_min(lower cavity), z_p − z_min(parting surface) + r_c) + floor
+upper = max(z_max(upper cavity) − z_p, z_max(parting surface) − z_p + r_c) + floor
 ```
 
-z_min and z_max are taken over the control points of the cavity surface. r_c = diameter / 2 of the resin channel, 0 without channel: a cavity shallower than the groove leaves the groove as the deepest point. An under-cambered airfoil (9 % camber, 5 % thick, 200 mm chord, untwisted, default floor 12 mm and channel 4 mm) puts the lower surface up to 13.2 mm above z_p: the lower half rises inside the cavity outline. The lower cavity is 0.6 mm deep, less than r_c = 2 mm, so t_lower = 2 + 12 = 14.0 mm; t_upper = 34.9 mm.
+- z_min and z_max are taken over the control points of the cavity and of the parting surfaces. r_c = diameter / 2 of the resin channel, 0 without channel. `summary.lower` and `summary.upper`: the distance of the outer face of each half from z = 0.
+- Faces: the bottom is a plane; the front, back and tip-side faces are planes whose top edge is the edge curve of the parting surface; the root face is the root plane.
+- `summary.partingRange`: lowest and highest control point of the parting surfaces about z_p. `summary.extent`: the z range of each half about z_p, from its outer face to the highest (lower half) or lowest (upper half) point of the parting surface and of its cavity, the cavity sampled 201 × 61.
+- An under-cambered airfoil (9 % camber, 5 % thick, 200 mm chord, untwisted, flat tip, default floor 12 mm and channel 4 mm) puts the lower surface up to 13.2 mm above z_p: the lower half rises inside the cavity outline. The lower cavity is 0.6 mm deep, less than r_c = 2 mm, so lower = 14.0 mm; upper = 34.9 mm (measured 2026-11-11).
+- Measured 2026-11-11 with the default mold values: **Sailplane** partingRange −45.9 to +85.8 mm, lower 60.9 mm, upper 111.3 mm; **Swept flying wing** partingRange −3.7 to +5.1 mm, lower 23.4 mm, upper 29.1 mm.
 
 | Check | Condition for an error |
 | --- | --- |
-| Channel distance | distance < w + 0.5 mm |
-| Margin | margin < distance + diameter + 1 mm (without channel: w + 1 mm) |
-| Channel in the block | a path point within r + 1 mm of the front, back or tip-side edge |
-| Pin depth | depth > min(t_lower, t_upper) − 1 mm |
+| Margin | resin channel on and margin < distance + diameter + 1 mm |
+| Channel in the block | a path point within r + 1 mm (MOLD_CLEARANCE) of the front, back or tip-side edge |
+| Pin depth | the bottom of a pin hole lies less than 1 mm above the outer face of its half |
 | Reach beyond the edge lines | seen from above, a point of a cavity surface lies more than 0.1 mm (`MOLD_OVERHANG`) in front of the leading-edge line or behind the trailing-edge line (twisted sections); up to 0.1 mm it stays a limitation, the cavity overhangs by about r · (1 − cos twist), r the nose radius |
+| Root face | the root face, leaning by ω, reaches y_1 − margin within the height of the thicker half |
 
 ### 11.5 Holes
 
@@ -1286,14 +1318,33 @@ z_min and z_max are taken over the control points of the cavity surface. r_c = d
 | Along the block edges | the polyline through these 4 points along front, tip side and back, each side divided into ceil(length / spacing) equal parts |
 | Around the wing | `offsetOutline` at keep-out − 1 mm + offset with ρ = 2 r_h + 2 mm, the half y ≥ y_R; round(length / spacing) holes, at least 1, at (k + 0.5) / count of its length |
 
-- y_h = y_R + |tan ω| · max(t_lower, t_upper): the leaning root face over the height of both halves.
-- Keep-out around the cavity: distance + diameter of the channel (its outer rim), without channel the ramp width w, plus the clearance of 1 mm.
-- A hole of radius r_h is kept when its centre lies outside the outline polygon, its distance from the outline is at least keep-out + r_h, its circle with 1 mm clearance lies within x_0 … x_1 and y_h … y_1, and it lies at least r_h + r_other + 1 mm from every hole kept before. Pins are placed first, then screws. A screw at the centre of a pin is left out without a warning; every other hole left out counts in the warning.
-- Pin holes are blind, depth p in each half, with a planar bottom. Screw holes run through both halves.
-- Each hole is a cylinder written as 2 half-cylinder faces (`CYLINDRICAL_SURFACE`), joined by 2 seam lines; its rims are 2 half circles (`CIRCLE`) each.
+- y_h = y_R + |tan ω| · max(lower, upper): the leaning root face over the height of both halves.
+- Keep-out around the cavity: distance + diameter of the channel (its outer rim), 0 without channel, plus the clearance of 1 mm.
+- A hole of radius r_h is kept when its centre lies outside the outline polygon, its distance from the outline is at least keep-out + r_h, its circle with 1 mm clearance lies within x_0 … x_1 and y_h … y_1, it lies at least r_h + r_other + 1 mm from every hole kept before, and, with a pole tip, its circle with 1 mm clearance does not cross the seam. Pins are placed first, then screws. A screw at the centre of a pin is left out without a warning; every other hole left out counts in the warning. All distances are taken in the top view.
+- Mouth: the intersection of the vertical cylinder of the hole with the parting surface, 2 half turns, each a cubic B-spline through HOLE_POINTS = 64 + 1 points per half turn on the cylinder at the height of the surface, broken into pieces with C0 continuity where it crosses a crease.
+- Pin holes are blind: the planar bottom lies `depth` below the lowest of these points, in each half. Screw holes run through both halves.
+- Each hole wall is written as 2 half-cylinder faces (`CYLINDRICAL_SURFACE`), joined by 2 seam lines.
 
 ### 11.6 Both halves
 
-The geometry of both halves is built in the frame of the lower half: the upper half is the mirror image at z = z_p (cavity: the upper surface with u reversed, mirrored), so that one construction writes both. The file maps a point to (x, ±y, ±(z − z_p)): + for the lower half and the right wing, − for the upper half and for the molds of the left wing.
+The geometry of both halves is built in the frame of the lower half: the upper half is the mirror image at z = z_p (cavity: the upper surface with u reversed, mirrored; parting surface, groove and holes on the mirrored parting surface), so that one construction writes both. The file maps a point to (x, ±y, ±(z − z_p)): + for the lower half and the right wing, − for the upper half and for the molds of the left wing.
 
-Validation: `scripts/validate_mold.py` reads the 16 files of `test/mold-cases.js` with OpenCascade ([[Development|Development]], section Mold validation).
+| Constant (`src/geom/mold.js`) | Value | Use |
+| --- | --- | --- |
+| `MOLD_CLEARANCE` | 1 mm | material between two features, and between a feature and a block edge |
+| `MOLD_OVERHANG` | 0.1 mm | largest reach of a cavity beyond the leading-edge or trailing-edge line seen from above |
+| `TIP_STRIP` | 3 mm | width of the strip beyond a flat tip face, at most half the channel distance |
+| `ROOT_BLEND` | 20 mm | span distance over which the channel path moves onto the root line of the parting surface |
+| `GROOVE_POINTS` | 9 | points across the half-round groove |
+| `GROOVE_STEP` | 8 mm | largest step of the groove stations, halved down to 1 mm |
+| `GROOVE_FIT` | 1e-6 mm | miss of the groove rims at which the refinement stops |
+| `GROOVE_FIT_LIMIT` | 0.01 mm | largest miss of the groove rims a mold is built with; above it the mold is refused |
+| `GROOVE_TOLERANCE` | 0.002 mm | chord error of the stations on the centre line |
+| `GROOVE_GRADING` | 0.25 | largest growth of the station step per mm of path |
+| `CREASE_SKEW` | 3 | largest skew of a station onto a crease (tangent of 71.6°) |
+| `GROOVE_SKEW_ERROR` | 0.01 mm | largest distance a skewed station may leave the tube |
+| `HOLE_POINTS` | 64 | points per half turn of a hole mouth |
+
+Time of `moldGeometry` on the 18 cases (Node 24.11.0, one run, 2026-11-11): 0.08 s (`tail-no-channel`) to 5.3 s (`glider-ellipse-round-tip`); the other pole-tip cases 0.55 to 1.3 s, the flat-tip cases 0.08 to 0.78 s.
+
+Validation: `scripts/validate_mold.py` reads the 18 files of `test/mold-cases.js` with OpenCascade ([[Development|Development]], section Mold validation).

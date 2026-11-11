@@ -49,7 +49,7 @@ Bezeichner (x_LE, x_norm).
 | 6. STEP-Topologie (STEP: Standard for the Exchange of Product model data) | `src/export/step.js` | A5.1 |
 | 7. Grundrisskennwerte | `src/geom/stats.js`, `src/geom/wing.js` (`planformAt`) | – |
 | 8. Schaumkerne | `src/geom/foam.js` | A3.5 (je Spaltenkurve) |
-| 11. Formhälften | `src/geom/mold.js`, `src/export/moldstep.js` | A9.1 (Rampenkanten, Rille), A5.1 (Teilung an der Nasenleiste) |
+| 11. Formhälften | `src/geom/mold.js`, `src/export/moldstep.js` | A9.1 (Rille, Mündungen der Bohrungen, Skelettlinie des Flügelendes, äußere Kante der Trennfläche bei rundem Flügelende), A5.1 (Teilung an der Nasenleiste) |
 
 Die starre Lage des Teils (Abschnitt 3.9, `src/geom/part.js`) dreht das Ergebnis der Schritte 3 und 4 für die Schritte 5 bis 7.
 
@@ -1309,77 +1309,128 @@ Die Flügelhälfte in ihrem Aufbausystem (x nach hinten, y Spannweite, z nach ob
 
 | Flügelende | ω |
 | --- | --- |
-| Flach oder Spitz | der Rollwinkel der Ebene des Randschnitts (`build.tipRoll`), sodass die Endfläche senkrecht auf der Trennebene steht |
+| Flach oder Spitz | der Rollwinkel der Ebene des Randschnitts (`build.tipRoll`), sodass die Endfläche senkrecht auf den Zeilen der Trennfläche jenseits des Flügelendes steht |
 | Rund (Pol) | atan der Steigung der Ausgleichsgeraden z(y) durch Nasenleiste, untere und obere Endleiste, je 201 Punkte |
 
 ```
 P_Form = (x, y_0 + (y − y_0) · cos ω + z · sin ω, −(y − y_0) · sin ω + z · cos ω)       y_0: y der Wurzel
 ```
 
-- Trennebene: z = z_p, die mittlere Höhe der Nasenleiste und der Endleistenmitte (Mittel aus unterer und oberer Endleiste; bei geschlossener Endleiste die Endleiste selbst), je 401 Punkte. Die Datei legt sie auf z = 0.
+- Bezugshöhe z_p: die mittlere Höhe der Nasenleiste und der Endleistenmitte (Mittel aus unterer und oberer Endleiste; bei geschlossener Endleiste die Endleiste selbst), je 401 Punkte. Die Datei legt z_p auf z = 0.
 - Wurzelebene: y = y_R + tan ω · (z − z_p), y_R = y_0 + tan ω · z_p. Die Wurzelzeile der Fläche wird in sie gelegt, das Formnest ist dort offen, und die Wurzelfläche des Formblocks ist um ω geneigt.
-- Nasenleiste und Endleiste liegen nur bei einem ungeschränkten Flügel aus einem Profil mit einem V-Form-Winkel in einer Ebene. Gemessen: flacher ungeschränkter Flügel 0,007 mm neben der Ebene, **Segelflugmodell** mit Randbogen 1,67 mm (ω = 4,03°), **Sport** mit Randbogen 1,36 mm (ω = 1,54°), **Hochleistungssegler** (V-Form 2°, 6° und 10°) 85,76 mm.
+- Höhenbereich von Nasenleiste und Endleiste bezogen auf z_p (`summary.edgeRange`), gemessen am 11.11.2026: flacher ungeschränkter Flügel 0 bis 0 mm, **Segelflugmodell** mit Randbogen −1,35 bis +1,67 mm (ω = 4,03°), **Sport** mit Randbogen −1,15 bis +1,36 mm (ω = 1,54°), **Hochleistungssegler** (V-Form 2°, 6° und 10°) −45,94 bis +85,76 mm (ω = 9,99°).
 
-### 11.2 Rampe
+### 11.2 Trennfläche
 
-Eine Regelfläche verbindet jede Kante (Nasenleiste, Endleistenmitte) mit einer Kurve in der Trennebene im Abstand der Rampenbreite w:
+Die Trennfläche enthält die Nasenleiste und die Endleistenmitte und ist entlang x, der Flugrichtung, eben: Vor dem Flügel liegt sie auf der Höhe der Nasenleiste der Spannweitenstation, hinter dem Flügel auf der Höhe der Endleiste. Zwischen beiden spannt sie die Profilsehne der Station auf (innerhalb der Öffnung des Formnests). Entlang der Spannweite folgt sie Schränkung und V-Form.
+
+Flaches Flügelende (Flach oder Spitz; `parting.kind === 'flat'`, `partingSurface`): eine B-Spline-Fläche, Grad 1 entlang x (u), Grad und Knoten des Flügels entlang der Spannweite (v).
+
+| Zeile (u) | Punkte |
+| --- | --- |
+| 0 | die Nasenleiste, entlang x in die vordere Fläche x = x_0 verschoben |
+| 1/3 | die Nasenleiste |
+| 2/3 | die Endleistenmitte |
+| 1 | die Endleistenmitte, entlang x in die hintere Fläche x = x_1 verschoben |
+
+- Jenseits des Flügelendes läuft jede Zeile gerade entlang y bis zur Seitenfläche y_1, auf der Höhe, die sie am Flügelende hat: ein Stück vom Grad des Flügels, an die Zeile angefügt, v auf beiden Teilen halbiert.
+- Nasenleiste und Endleiste sind Isolinien der Fläche (u = 1/3 und 2/3): Sie liegen exakt auf ihr.
+- Flache Endfläche: entlang der Skelettlinie des Randschnitts geteilt. 49 Punkte von der Nasenleiste bis zur Endleistenmitte bei kosinusverteiltem x, z das Mittel von Unter- und Oberseite bei diesem x, mit Grad 3 interpoliert. Die Profilsehne wird nicht verwendet: Sie verlässt ein S-Schlag-Profil mit geschlossener Endleiste.
+- Streifen am Flügelende (`tipStrip`): eine Regelfläche von der Skelettlinie zur Linie der Trennfläche TIP_STRIP = 3 mm jenseits des Flügelendes (höchstens der halbe Abstand der Blutrinne, ohne Blutrinne der halbe Rand). Jenseits des Flügelendes läuft die Trennfläche gerade von der Höhe der Nasenleiste zur Höhe der Endleiste, der Streifen endet also auf einer Geraden der Trennfläche.
+
+Flügelende, das sich in einem Punkt schließt (**Flügelende** Rund; `parting.kind === 'pole'`, `fanParting`): zwei Flächen, Grad 1 entlang u.
+
+| Fläche | Zeilen (u = 0, u = 1) |
+| --- | --- |
+| vorn | die äußere Blockkante, die Nasenleiste |
+| hinten | die Endleistenmitte, die äußere Blockkante |
 
 ```
-Q(v) = (x_E + Seite · w · cos ψ(v),  y_E + w · sin ψ(v) + cos ψ(v) · tan ω · (z_p − z_E),  z_p)
-Seite = −1 Nasenleiste, +1 Endleiste
-ψ(v) = 0                                   flaches Flügelende, oder v ≤ v_F
-ψ(v) = θ − sin(2θ) / 2,  θ = (v − v_F) / (1 − v_F) · π/2       rundes Flügelende, v > v_F
+Richtung der ebenen Linie der Station v: (Seite · cos ψ(v), sin ψ(v))       Seite = −1 vorn, +1 hinten
+ψ(v) = 0                                    v ≤ v_F
+ψ(v) = θ − sin(2θ) / 2,  θ = (v − v_F) / (1 − v_F) · π/2       v > v_F
 ```
 
-- Innen laufen die Erzeugenden entlang x, in Ebenen parallel zur Wurzelebene. Um ein rundes Flügelende drehen sie sich von x am Beginn des Randbogens (v_F: Schnitt T aus Abschnitt 10) bis y am Punkt, wo sich beide Kurven in einem Punkt treffen.
-- Die äußere Kurve wird an den Greville-Abszissen der Kantenkurve mit deren Knoten interpoliert, sodass Erzeugende k den Kontrollpunkt k beider Kurven verbindet.
-- Flache Endfläche: entlang der Skelettlinie des Randschnitts geteilt. 49 Punkte von der Nasenleiste bis zur Endleistenmitte bei kosinusverteiltem x, z das Mittel von Unter- und Oberseite bei diesem x, mit Grad 3 interpoliert. Außerhalb davon ein Regelstreifen der Breite w entlang y und an jeder Ecke ein ebenes Dreieck. Die Profilsehne wird nicht verwendet: Sie verlässt ein S-Schlag-Profil mit geschlossener Endleiste.
-- Faltprüfung: Benachbarte Erzeugende, an 401 Stellen in v abgetastet, müssen auf derselben Seite fortschreiten; sonst der Fehler `Form: Die Rampe faltet sich am Flügelumriss über sich selbst; …`.
-- Steigung: atan(h / w⊥), h die Höhe der Kante über oder unter z_p, w⊥ die Breite der Rampe senkrecht zum Umriss. Über 45° nennt eine Warnung das größte h und die Steigung.
+- v_F: der Beginn des Randbogens (Schnitt T aus Abschnitt 10). Innerhalb davon laufen die ebenen Linien entlang x; um den Randbogen drehen sie sich von x bis y am Punkt.
+- Jede ebene Linie läuft von ihrem Kantenpunkt zur Blockfläche (vordere oder hintere Fläche, oder jenseits der Blockecke die Seitenfläche am Flügelende) und behält die Höhe ihres Kantenpunkts: Die Fläche ist entlang dieser Linien eben, nicht entlang x. Ebene Linien entlang x bis zum Punkt fielen vor einem geschränkten Flügelende, wo die Kante senkrecht zu ihnen läuft, mit unbeschränkter Steigung ab.
+- Die äußere Kante wird an den Greville-Abszissen der Kantenkurve interpoliert, mit einem Knoten voller Vielfachheit, wo sie um die Blockecke biegt, sodass Erzeugende k den Kontrollpunkt k beider Zeilen verbindet.
+- Naht: Beide Flächen treffen sich in der Geraden vom Punkt des Flügelendes entlang y bis zur Seitenfläche.
+
+Knicke (Linien, an denen die Fläche abknicken darf), an denen Rille und Mündungen der Bohrungen geteilt werden:
+
+- die Spannweitenstationen, an denen der Flügel einen Knick hat: ein Knoten mit der Vielfachheit des Grads (ein Schnitt mit C0-Stetigkeit); bei rundem Flügelende ihre ebenen Linien auf beiden Flächen;
+- die Linien bei x von Nasenleiste und Endleiste (Grad 1 entlang x); jenseits eines flachen Flügelendes die Linien entlang y durch seine Nasenleiste und seine Endleiste;
+- bei rundem Flügelende die Naht.
 
 ### 11.3 Umriss und Blutrinne
 
 - Umriss: Nasenleiste und Endleistenmitte in der Draufsicht, je 4000 Abtastungen, auf 0,25 mm neu verteilt; bei flachem Flügelende die Kante der Endfläche. Der Umriss wird an der Wurzellinie y = y_R zu einem geschlossenen Polygon gespiegelt, von +z gesehen im Uhrzeigersinn.
 - Versatz mit gerundeten Innenecken (`offsetOutline`): Das Polygon wird um d + ρ nach außen versetzt (eine Normale je Punkt, ein Fächer von Normalen an einer Außenecke, Schritte von 0,04 rad); versetzte Punkte, die näher als d + ρ − 0,02 mm am Polygon liegen, entfallen; der Rest wird um ρ zurückgesetzt, mit einem Bogen vom Radius ρ um die Ecke, an der jede entfallene Folge endet.
-- Mittellinie der Blutrinne: d = Abstand + r, ρ = 2r + 2 mm (r = Durchmesser / 2), die Hälfte auf der Seite y ≥ y_R. An der Wurzel gespiegelt kreuzt der Verlauf die Wurzellinie senkrecht.
-- Fläche der Rille (`grooveSurface`): eine bikubische B-Spline-Fläche, interpoliert durch 9 Punkte eines Halbkreises vom Radius r unter z_p (u, vom Rand am Flügel über den Grund zum äußeren Rand) an Stationen entlang des Verlaufs (v). Abstand der Stationen min(8 mm, sqrt(8 · 0,002 mm · R)), mindestens 0,5 mm, R der örtliche Radius des Verlaufs: ein Sehnenfehler von 0,002 mm auf der Mittellinie. Der Abstand wächst von einer Biegung weg um höchstens 0,25 mm je mm des Verlaufs, sodass die Stationen vor ihr dichter werden (lange Schritte neben einer Biegung ließen den interpolierenden Spline über den Halbkreis hinausschwingen). Die Ränder (u = 0 und u = 1) sind Isokurven, deren Kontrollpunkte alle bei z = z_p liegen, sodass sie in der Trennebene liegen; die Endzeilen liegen in der Wurzelebene. Querschnitt an den gemessenen Entwurfstypen innerhalb von 0,02 mm an einem Halbkreis: Sport 0,018 mm, flacher Testflügel 0,0073 mm, Delta-Jet 0,0031 mm (nicht gegen ein CAD-Modell gemessen).
-- Die Oberform erhält die Rille an z_p gespiegelt, mit ihren Endzeilen in ihrer eigenen Wurzelebene (die Neigung der Wurzelfläche ist gespiegelt).
+- Mittellinie der Blutrinne: d = Abstand + r, ρ = 2r + 2 mm (r = Durchmesser / 2), die Hälfte auf der Seite y ≥ y_R. Innerhalb von ROOT_BLEND = 20 mm von der Wurzel geht der Verlauf auf die Wurzellinie der Trennfläche über (Smoothstep in y), die bis zu tan ω · ihre Höhe neben y = y_R liegt.
+- Fläche der Rille (`grooveSurface`): eine bikubische B-Spline-Fläche, interpoliert durch 9 Punkte eines Halbkreises vom Radius r (u, vom Rand am Flügel über den Grund zum äußeren Rand) an Stationen entlang des Verlaufs (v). Jede Station liegt in der senkrechten Ebene quer zum Verlauf und ist von der Höhe der Trennfläche abgesenkt: z = z_s(x, y) − r · sin φ. Die Endstationen liegen in der Wurzelebene, unter der Wurzellinie der Trennfläche.
+- Abstand der Stationen: min(Schritt, sqrt(8 · 0,002 mm · R)), mindestens 0,5 mm, R der örtliche Radius des Verlaufs: ein Sehnenfehler von 0,002 mm auf der Mittellinie. Der Abstand wächst von einer Biegung weg um höchstens 0,25 mm je mm des Verlaufs.
+- Stücke: Der Verlauf wird geteilt, wo er einen Knick kreuzt; jedes Stück wird für sich angepasst (mindestens 4 Stationen), die Stücke schließen mit C0-Stetigkeit aneinander. Nahe einem Knick wird jede Station entlang des Verlaufs auf den Knick geschert, sodass beide Ränder an ihm knicken: Die Scherung ist der Tangens des Kreuzungswinkels, höchstens CREASE_SKEW = 3 (71,6°), innerhalb von 6 r von der Kreuzung oder bis zum nächsten Knick, wenn dieser näher liegt, ausgeblendet (die Station auf einem Knick erhält allein die Scherung dieses Knicks) und dort begrenzt, wo der Verlauf gekrümmt ist, sodass die Station die Röhre um höchstens GROOVE_SKEW_ERROR = 0,01 mm verlässt ((r · Scherung)² / (2R)).
+- Verfeinerung: Die Rille wird mit dem größten Schritt GROOVE_STEP = 8 mm gebaut, dann mit 4, 2 und 1 mm, bis ihre Ränder die Trennfläche um höchstens GROOVE_FIT = 1e-6 mm verfehlen oder das Halbieren des Schritts die Abweichung nicht mehr halbiert. `summary.fit`: die größte Abweichung der Ränder beider Hälften, an 4 Punkten je Station abgetastet. An den 18 Testfällen aus `test/mold-cases.js`: höchstens 5,6e-5 mm (`sport-round-tip`), höchstens 2,1e-6 mm mit flachem Flügelende (`batwing`), gemessen am 11.11.2026.
+- Die Oberform erhält die Rille, gebaut auf der an z_p gespiegelten Trennfläche, mit ihren Endzeilen in ihrer eigenen Wurzelebene (die Neigung der Wurzelfläche ist gespiegelt).
 
 ### 11.4 Formblock
 
 ```
 x_0 = x_min − Rand          x_1 = x_max + Rand          x des Umrisses
-y von y_R bis y_max + Rand
-t_unten = max(z_p − z_min(Formnest der Unterform), r_R) + Boden
-t_oben  = max(z_max(Formnest der Oberform) − z_p, r_R) + Boden
+y von y_R bis y_1 = y_max + Rand
+unten = max(z_p − z_min(unteres Formnest), z_p − z_min(Trennfläche) + r_c) + Boden
+oben  = max(z_max(oberes Formnest) − z_p, z_max(Trennfläche) − z_p + r_c) + Boden
 ```
 
-z_min und z_max gelten über die Kontrollpunkte der Formnestfläche. r_R = Durchmesser / 2 der Blutrinne, 0 ohne Blutrinne: Ein Formnest, das flacher ist als die Rille, lässt die Rille als tiefsten Punkt. Ein Profil mit hohler Unterseite (9 % Wölbung, 5 % Dicke, 200 mm Profiltiefe, ungeschränkt, Boden 12 mm und Blutrinne 4 mm nach den Vorgaben) legt die Unterseite bis 13,2 mm über z_p: Die Unterform steigt innerhalb des Formnestumrisses an. Das untere Formnest ist 0,6 mm tief, weniger als r_R = 2 mm, daher t_unten = 2 + 12 = 14,0 mm; t_oben = 34,9 mm.
+- z_min und z_max werden über die Kontrollpunkte des Formnests und der Trennflächen genommen. r_c = Durchmesser / 2 der Blutrinne, 0 ohne Blutrinne. `summary.lower` und `summary.upper`: der Abstand der Außenfläche jeder Hälfte von z = 0.
+- Flächen: Der Boden ist eine Ebene; vordere, hintere und Seitenfläche am Flügelende sind Ebenen, deren obere Kante die Randkurve der Trennfläche ist; die Wurzelfläche ist die Wurzelebene.
+- `summary.partingRange`: tiefster und höchster Kontrollpunkt der Trennflächen bezogen auf z_p. `summary.extent`: der z-Bereich jeder Hälfte bezogen auf z_p, von ihrer Außenfläche bis zum höchsten (Unterform) oder tiefsten (Oberform) Punkt der Trennfläche und ihres Formnests, das Formnest 201 × 61 abgetastet.
+- Ein Profil mit hohler Unterseite (9 % Wölbung, 5 % dick, 200 mm Profiltiefe, ungeschränkt, flaches Flügelende, Vorgaben Boden 12 mm und Blutrinne 4 mm) legt die Unterseite bis zu 13,2 mm über z_p: Die Unterform steigt innerhalb des Umrisses des Formnests an. Das untere Formnest ist 0,6 mm tief, weniger als r_c = 2 mm, daher unten = 14,0 mm; oben = 34,9 mm (gemessen am 11.11.2026).
+- Gemessen am 11.11.2026 mit den Vorgaben der Form: **Hochleistungssegler** partingRange −45,9 bis +85,8 mm, unten 60,9 mm, oben 111,3 mm; **Pfeilnurflügel** partingRange −3,7 bis +5,1 mm, unten 23,4 mm, oben 29,1 mm.
 
 | Prüfung | Bedingung für einen Fehler |
 | --- | --- |
-| Abstand der Blutrinne | Abstand < w + 0,5 mm |
-| Rand | Rand < Abstand + Durchmesser + 1 mm (ohne Blutrinne: w + 1 mm) |
-| Blutrinne im Formblock | ein Punkt des Verlaufs innerhalb von r + 1 mm an der vorderen, hinteren oder randseitigen Kante |
-| Tiefe der Zentrierbohrungen | Tiefe > min(t_unten, t_oben) − 1 mm |
-| Überstand über die Kantenlinien | von oben gesehen liegt ein Punkt einer Formnestfläche mehr als 0,1 mm (`MOLD_OVERHANG`) vor der Linie der Nasenleiste oder hinter der Linie der Endleiste (geschränkte Schnitte); bis 0,1 mm bleibt es eine Einschränkung, das Formnest hat einen Hinterschnitt von etwa r · (1 − cos Schränkung), r der Nasenradius |
+| Rand | Blutrinne eingeschaltet und Rand < Abstand + Durchmesser + 1 mm |
+| Blutrinne im Formblock | ein Punkt des Verlaufs innerhalb von r + 1 mm (MOLD_CLEARANCE) an der vorderen, hinteren oder seitlichen Kante am Flügelende |
+| Tiefe der Zentrierbohrungen | der Grund einer Zentrierbohrung liegt weniger als 1 mm über der Außenfläche ihrer Hälfte |
+| Überstand über die Kantenlinien | von oben gesehen liegt ein Punkt einer Fläche des Formnests mehr als 0,1 mm (`MOLD_OVERHANG`) vor der Linie der Nasenleiste oder hinter der Linie der Endleiste (geschränkte Schnitte); bis 0,1 mm bleibt es eine Einschränkung, das Formnest hat einen Hinterschnitt von etwa r · (1 − cos Schränkung), r der Nasenradius |
+| Wurzelfläche | die um ω geneigte Wurzelfläche erreicht innerhalb der Höhe der dickeren Hälfte y_1 − Rand |
 
 ### 11.5 Bohrungen
 
 | Muster | Mittelpunkte |
 | --- | --- |
 | Ecken des Formblocks | (x_0 + e, y_h + e), (x_0 + e, y_1 − e), (x_1 − e, y_1 − e), (x_1 − e, y_h + e); e = Abstand von der Blockkante |
-| Entlang der Blockkanten | der Linienzug durch diese 4 Punkte entlang vorderer Kante, Randseite und hinterer Kante, jede Seite in ceil(Länge / Abstand) gleiche Teile geteilt |
-| Um den Flügel | `offsetOutline` bei Sperrzone − 1 mm + Abstand außerhalb der Blutrinne mit ρ = 2 r_h + 2 mm, die Hälfte y ≥ y_R; round(Länge / Abstand) Bohrungen, mindestens 1, bei (k + 0,5) / Anzahl ihrer Länge |
+| Entlang der Blockkanten | der Linienzug durch diese 4 Punkte entlang Vorderkante, Seite am Flügelende und Hinterkante, jede Seite in ceil(Länge / Abstand) gleiche Teile geteilt |
+| Um den Flügel | `offsetOutline` bei Sperrzone − 1 mm + Abstand mit ρ = 2 r_h + 2 mm, die Hälfte y ≥ y_R; round(Länge / Abstand) Bohrungen, mindestens 1, bei (k + 0,5) / Anzahl seiner Länge |
 
-- y_h = y_R + |tan ω| · max(t_unten, t_oben): die geneigte Wurzelfläche über die Höhe beider Hälften.
-- Sperrzone um das Formnest: Abstand + Durchmesser der Blutrinne (ihr äußerer Rand), ohne Blutrinne die Rampenbreite w, plus der Abstand von 1 mm.
-- Eine Bohrung vom Radius r_h bleibt, wenn ihr Mittelpunkt außerhalb des Umrisspolygons liegt, ihr Abstand vom Umriss mindestens Sperrzone + r_h beträgt, ihr Kreis mit 1 mm Abstand innerhalb von x_0 … x_1 und y_h … y_1 liegt und sie von jeder vorher behaltenen Bohrung mindestens r_h + r_andere + 1 mm entfernt ist. Zuerst werden die Zentrierbohrungen gesetzt, dann die Bohrungen für Spannschrauben. Eine Schraubenbohrung im Mittelpunkt einer Zentrierbohrung entfällt ohne Warnung; jede andere weggelassene Bohrung zählt in der Warnung.
-- Zentrierbohrungen sind Sacklöcher, Tiefe p in jeder Hälfte, mit ebenem Grund. Bohrungen für Spannschrauben gehen durch beide Hälften.
-- Jede Bohrung ist ein Zylinder aus 2 Halbzylinderflächen (`CYLINDRICAL_SURFACE`), verbunden durch 2 Mantellinien; ihre Ränder sind je 2 Halbkreise (`CIRCLE`).
+- y_h = y_R + |tan ω| · max(unten, oben): die geneigte Wurzelfläche über die Höhe beider Hälften.
+- Sperrzone um das Formnest: Abstand + Durchmesser der Blutrinne (ihr äußerer Rand), 0 ohne Blutrinne, plus der Abstand von 1 mm.
+- Eine Bohrung vom Radius r_h bleibt, wenn ihr Mittelpunkt außerhalb des Umrisspolygons liegt, ihr Abstand vom Umriss mindestens Sperrzone + r_h beträgt, ihr Kreis mit 1 mm Abstand innerhalb von x_0 … x_1 und y_h … y_1 liegt, sie mindestens r_h + r_andere + 1 mm von jeder vorher behaltenen Bohrung entfernt ist und, bei rundem Flügelende, ihr Kreis mit 1 mm Abstand die Naht nicht kreuzt. Zuerst werden die Zentrierbohrungen gesetzt, dann die Bohrungen für Spannschrauben. Eine Schraubenbohrung im Mittelpunkt einer Zentrierbohrung entfällt ohne Warnung; jede andere weggelassene Bohrung zählt in der Warnung. Alle Abstände werden in der Draufsicht genommen.
+- Mündung: der Schnitt des senkrechten Zylinders der Bohrung mit der Trennfläche, 2 halbe Umläufe, jeder ein kubischer B-Spline durch HOLE_POINTS = 64 + 1 Punkte je halbem Umlauf auf dem Zylinder in der Höhe der Fläche, in Stücke mit C0-Stetigkeit geteilt, wo er einen Knick kreuzt.
+- Zentrierbohrungen sind Sacklöcher: Der ebene Grund liegt `depth` unter dem tiefsten dieser Punkte, in jeder Hälfte. Bohrungen für Spannschrauben gehen durch beide Hälften.
+- Jede Bohrungswand wird als 2 Halbzylinderflächen (`CYLINDRICAL_SURFACE`) geschrieben, verbunden durch 2 Nahtlinien.
 
 ### 11.6 Beide Hälften
 
-Die Geometrie beider Hälften entsteht im Bezugssystem der Unterform: Die Oberform ist ihr Spiegelbild an z = z_p (Formnest: die Oberseite mit umgekehrtem u, gespiegelt), sodass eine Konstruktion beide schreibt. Die Datei bildet einen Punkt auf (x, ±y, ±(z − z_p)) ab: + für die Unterform und den rechten Flügel, − für die Oberform und für die Formen des linken Flügels.
+Die Geometrie beider Hälften entsteht im Bezugssystem der Unterform: Die Oberform ist ihr Spiegelbild an z = z_p (Formnest: die Oberseite mit umgekehrtem u, gespiegelt; Trennfläche, Rille und Bohrungen auf der gespiegelten Trennfläche), sodass eine Konstruktion beide schreibt. Die Datei bildet einen Punkt auf (x, ±y, ±(z − z_p)) ab: + für die Unterform und den rechten Flügel, − für die Oberform und für die Formen des linken Flügels.
 
-Prüfung: `scripts/validate_mold.py` liest die 16 Dateien aus `test/mold-cases.js` mit OpenCascade ([[Entwicklung|Entwicklung]], Abschnitt Validierung der Form).
+| Konstante (`src/geom/mold.js`) | Wert | Verwendung |
+| --- | --- | --- |
+| `MOLD_CLEARANCE` | 1 mm | Material zwischen zwei Merkmalen und zwischen einem Merkmal und einer Blockkante |
+| `MOLD_OVERHANG` | 0,1 mm | größter Überstand eines Formnests über die Linie der Nasenleiste oder der Endleiste, von oben gesehen |
+| `TIP_STRIP` | 3 mm | Breite des Streifens jenseits einer flachen Endfläche, höchstens der halbe Abstand der Blutrinne |
+| `ROOT_BLEND` | 20 mm | Spannweitenstrecke, auf der der Verlauf der Blutrinne auf die Wurzellinie der Trennfläche übergeht |
+| `GROOVE_POINTS` | 9 | Punkte quer über die halbrunde Rille |
+| `GROOVE_STEP` | 8 mm | größter Schritt der Stationen der Rille, halbiert bis 1 mm |
+| `GROOVE_FIT` | 1e-6 mm | Abweichung der Ränder der Rille, bei der die Verfeinerung endet |
+| `GROOVE_FIT_LIMIT` | 0,01 mm | größte Abweichung der Ränder der Rille, mit der eine Form gebaut wird; darüber wird die Form abgelehnt |
+| `GROOVE_TOLERANCE` | 0,002 mm | Sehnenfehler der Stationen auf der Mittellinie |
+| `GROOVE_GRADING` | 0,25 | größtes Wachstum des Stationsschritts je mm des Verlaufs |
+| `CREASE_SKEW` | 3 | größte Scherung einer Station auf einen Knick (Tangens von 71,6°) |
+| `GROOVE_SKEW_ERROR` | 0,01 mm | größter Abstand, um den eine gescherte Station die Röhre verlassen darf |
+| `HOLE_POINTS` | 64 | Punkte je halbem Umlauf einer Mündung |
+
+Laufzeit von `moldGeometry` an den 18 Testfällen (Node 24.11.0, ein Lauf, 11.11.2026): 0,08 s (`tail-no-channel`) bis 5,3 s (`glider-ellipse-round-tip`); die anderen Fälle mit rundem Flügelende 0,55 bis 1,3 s, die Fälle mit flachem Flügelende 0,08 bis 0,78 s.
+
+Prüfung: `scripts/validate_mold.py` liest die 18 Dateien aus `test/mold-cases.js` mit OpenCascade ([[Entwicklung|Entwicklung]], Abschnitt Validierung der Form).

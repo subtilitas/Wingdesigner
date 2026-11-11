@@ -1151,26 +1151,26 @@ Geschrieben von **Exportieren** > **Formhälften …** ([[Benutzerhandbuch|Benut
 | `FILE_DESCRIPTION` | `(('Wingdesigner mold'),'2;1')` |
 | `FILE_NAME` Name, `PRODUCT`, Formdarstellung | `<Projektname> mold` |
 | Volumenkörper | **Hälften** Unter- und Oberform: 2 `MANIFOLD_SOLID_BREP`, `<Projektname> mold lower` und `<Projektname> mold upper`; Nur Unterform oder Nur Oberform: 1 |
-| Lage | geschlossene Form: Trennebene bei z = 0, Unterform bei z ≤ 0, Oberform bei z ≥ 0 (mit **Fusion-360-Korrektur** beim letzten Export: Trennebene bei Y = 0, Oberform bei Y ≥ 0) |
+| Lage | geschlossene Form: z = 0 in der mittleren Höhe von Nasenleiste und Endleiste, die Unterform unter der Trennfläche, die Oberform darüber (mit **Fusion-360-Korrektur** beim letzten Export: Y = 0 in dieser Höhe, die Oberform zu +Y) |
 | Achsen | x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende (zum linken mit **Formen des linken Flügels**), z nach oben, im Bezugssystem der Form: das Aufbausystem um x um die V-Form gerollt, ohne **Einstellwinkel des Teils** und **Rollwinkel des Teils** ([[Geometrie]], Abschnitt 11.1). Mit **Fusion-360-Korrektur** beim letzten Export: (x, z, −y) |
 | Einheit | Millimeter |
-| Flächen | `B_SPLINE_SURFACE_WITH_KNOTS` (Formnest, Rampen, Blutrinne), `PLANE` (Flächen des Formblocks, Trennebene, Rampendreiecke, Hälfte einer flachen Endfläche, Grund der Zentrierbohrungen), `CYLINDRICAL_SURFACE` (Bohrungen) |
-| Kantenkurven | `B_SPLINE_CURVE_WITH_KNOTS`, `CIRCLE` (Ränder der Bohrungen) |
+| Flächen | `B_SPLINE_SURFACE_WITH_KNOTS` (Trennfläche, Formnest, stumpfe Endleiste, Streifen jenseits eines flachen Flügelendes, Blutrinne), `PLANE` (Boden, vordere, hintere, seitliche und Wurzelfläche des Formblocks, Hälfte einer flachen Endfläche, Grund der Zentrierbohrungen), `CYLINDRICAL_SURFACE` (Bohrungen) |
+| Kantenkurven | `B_SPLINE_CURVE_WITH_KNOTS` (gerade Kanten mit Grad 1), `CIRCLE` (Ränder der Bohrungen im Grund einer Zentrierbohrung und in der Bodenfläche) |
 | Browserspeicher | die Werte des Dialogs unter `wingdesigner.mold`, JSON; nicht in der Projektdatei |
 
-Flächen einer Hälfte (die Oberform ist das Spiegelbild an der Trennebene; die Formen des linken Flügels das Spiegelbild an y = 0, mit umgekehrten Bound-Flags und umgekehrtem Sinn der B-Spline-Flächen):
+Flächen einer Hälfte (die Oberform ist das Spiegelbild an z = 0; die Formen des linken Flügels das Spiegelbild an y = 0, mit umgekehrten Bound-Flags und umgekehrtem Sinn der B-Spline-Flächen):
 
 | Flächengruppe | Flächen |
 | --- | --- |
-| Formblock | Boden, vorn (Seite der Nasenleiste), hinten, Seite am Flügelende: Ebenen; die Wurzelfläche: eine Ebene, um den Rollwinkel des Bezugssystems geneigt, mit dem Wurzelschnitt und den Enden der Blutrinne in ihrem Umriss |
-| Trennebene | die Ebene z = 0 außerhalb der Rampe, von der Blutrinne in zwei Flächen geteilt (ohne Blutrinne eine Fläche); die Ränder der Bohrungen sind innere Schleifen der äußeren Fläche |
-| Rampe | zwei Regelflächen als B-Spline (Grad 1 quer) von Nasenleiste und Endleiste zur Ebene; bei flachem Flügelende zusätzlich eine Regelfläche von der Skelettlinie des Randschnitts und an jeder Ecke ein ebenes Dreieck |
+| Formblock | Boden: eine Ebene; vorn (Seite der Nasenleiste), hinten und Seite am Flügelende: Ebenen, deren obere Kante der Rand der Trennfläche ist; die Wurzelfläche: eine Ebene, um den Rollwinkel des Bezugssystems geneigt, mit der Wurzellinie der Trennfläche, dem Wurzelschnitt und den Enden der Blutrinne in ihrem Umriss |
+| Trennfläche | die Fläche über den ganzen Formblock, entlang x eben, vor dem Flügel auf der Höhe der Nasenleiste, hinter dem Flügel auf der Höhe der Endleiste. Flaches Flügelende: 2 Flächen auf einer Fläche (außerhalb und innerhalb der Blutrinne), 1 ohne Blutrinne; ein Regelstreifen als B-Spline von der Skelettlinie des Randschnitts zu ihr. Flügelende, das sich in einem Punkt schließt: 4 Flächen auf zwei Flächen (vor der Nasenleiste und hinter der Endleiste, jeweils außerhalb und innerhalb der Blutrinne), 2 ohne Blutrinne; die beiden Flächen treffen sich in der Naht vom Punkt des Flügelendes zur Seitenfläche. Die Mündungen der Bohrungen sind innere Schleifen der äußeren Flächen. |
 | Formnest | die Flügelfläche der Seite (die B-Spline-Fläche des Flügelexports), die Hälfte einer stumpfen Endleiste, bei flachem Flügelende die Hälfte der Endfläche bis zu ihrer Skelettlinie |
 | Blutrinne | eine B-Spline-Fläche mit halbrundem Querschnitt |
-| Bohrungen | je zwei Halbzylinder; eine Zentrierbohrung endet in einem ebenen Grund, eine Schraubenbohrung in der Bodenfläche des Formblocks |
+| Bohrungen | je 2 Halbzylinder; die Mündung: 2 B-Spline-Kanten auf der Trennfläche; eine Zentrierbohrung endet in einem ebenen Grund, eine Schraubenbohrung in der Bodenfläche des Formblocks |
 
 - Eine Schleife ist von außerhalb des Körpers gesehen gegen den Uhrzeigersinn aufgeführt. Jede Kante wird einmal in jeder Richtung verwendet (geschlossene Hülle); sonst verweigert der Schreiber die Hälfte.
-- Mit rundem Flügelende enden Formnest und beide Rampen in einem Knoten.
+- Nasenleiste und Endleiste sind Kanten der Trennfläche und des Formnests. Die Ränder der Blutrinne und die Mündungen der Bohrungen sind durch Punkte der Trennfläche angepasst und liegen in einem kleinen Abstand auf ihr ([[Geometrie]], Abschnitte 11.3 und 11.5).
+- Mit rundem Flügelende endet das Formnest in einem Knoten, dem Punkt des Flügelendes; dort beginnt die Naht der Trennfläche.
 - Prüfung: `scripts/validate_mold.py` mit OpenCascade ([[Entwicklung]], Abschnitt Validierung der Form).
 
 ## STL

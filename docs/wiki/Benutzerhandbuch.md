@@ -1188,22 +1188,22 @@ Für STEP nennt der Hinweis die Kontrollpunkte der Flächen in der Datei und die
 
 ## Formhälften
 
-![Dialog Form für den Entwurfstyp Sport mit Randbogen: Gruppen Formblock, Blutrinne, Zentrierbohrungen, Bohrungen für Spannschrauben und Datei; Draufsicht auf die Trennebene mit Umriss des Formblocks, Blutrinne um den Flügel, 4 Zentrierbohrungen an den Ecken und 14 Bohrungen für Spannschrauben entlang der Kanten; darunter die Zusammenfassung](images/de/mold-dialog.png)
+![Dialog Form für den Entwurfstyp Sport mit Randbogen: Gruppen Formblock, Blutrinne, Zentrierbohrungen, Bohrungen für Spannschrauben und Datei; Draufsicht auf die Trennfläche mit Umriss des Formblocks, Blutrinne um den Flügel, 4 Zentrierbohrungen an den Ecken und 14 Bohrungen für Spannschrauben entlang der Kanten; darunter die Zusammenfassung](images/de/mold-dialog.png)
 
-**Exportieren** > **Formhälften …** (Mold halves…) öffnet den Dialog **Form** (Mold). Er baut eine Unterform und eine Oberform der rechten Flügelhälfte als exakte STEP-Körper (AP214) und schreibt sie in eine Datei: `<Projektname>_mold.step`, mit der Regel für Dateinamen aus Abschnitt [Export](#export). Die Hälften stehen in geschlossener Lage, die Trennebene bei z = 0, die Unterform darunter, die Oberform darüber. Namen der Körper: `<Projektname> mold lower` und `<Projektname> mold upper`. Einheit: mm. Die Achsen folgen dem letzten Export: War **Fusion-360-Korrektur: Y nach oben** beim letzten Export als STEP, STL oder 3MF eingeschaltet, hat die Datei Y als Hochachse.
+**Exportieren** > **Formhälften …** (Mold halves…) öffnet den Dialog **Form** (Mold). Er baut eine Unterform und eine Oberform der rechten Flügelhälfte als exakte STEP-Körper (AP214) und schreibt sie in eine Datei: `<Projektname>_mold.step`, mit der Regel für Dateinamen aus Abschnitt [Export](#export). Die Hälften stehen in geschlossener Lage, die Unterform unter der Trennfläche, die Oberform darüber. z = 0 in der Datei ist die mittlere Höhe von Nasenleiste und Endleiste. Namen der Körper: `<Projektname> mold lower` und `<Projektname> mold upper`. Einheit: mm. Die Achsen folgen dem letzten Export: War **Fusion-360-Korrektur: Y nach oben** beim letzten Export als STEP, STL oder 3MF eingeschaltet, hat die Datei Y als Hochachse.
 
 | Teil | Aufbau |
 | --- | --- |
-| Formblock | Ein Quader je Hälfte. Länge: Flügel von der Nasenleiste bis zur Endleiste plus **Rand um den Flügel** vorn und hinten. Breite: Wurzelfläche bis zum Flügelende plus Rand. Dicke einer Hälfte: tiefster Punkt der Hälfte unter der Trennebene plus **Boden unter dem Formnest**. Der tiefste Punkt ist das Formnest oder, bei eingeschalteter Blutrinne und einem Formnest, das flacher ist als der Radius der Blutrinne (halber **Durchmesser**), die Rille. |
+| Formblock | Ein Block je Hälfte. Länge: Flügel von der Nasenleiste bis zur Endleiste plus **Rand um den Flügel** vorn und hinten. Breite: Wurzelfläche bis zum Flügelende plus Rand. Bodenfläche: eine Ebene. Vordere, hintere und Seitenfläche am Flügelende: Ebenen, deren obere Kante der Rand der Trennfläche ist. Tiefe einer Hälfte unter oder über z = 0: **Boden unter dem Formnest** plus das Tiefste aus Formnest und tiefstem Punkt der Trennfläche plus Rillenradius (halber **Durchmesser** der Blutrinne). |
 | Wurzelfläche | Die Fläche des Formblocks an der Wurzel. Der Wurzelschnitt liegt in ihr; das Formnest ist dort offen. Mit V-Form ist die Fläche um den Rollwinkel des Bezugssystems der Form geneigt (unten). |
 | Formnest | Die Flügelfläche der Hälfte: Unterseite in der Unterform, Oberseite in der Oberform; die Hälfte einer stumpfen Endleiste; bei flachem Flügelende die Hälfte der Endfläche. |
 | Trennlinie | Nasenleiste und Endleiste des Flügels; die Mitte einer stumpfen Endleiste. |
-| Rampe | Eine Regelfläche, **Breite der Rampe** breit, von Nasenleiste und Endleiste hinab oder hinauf zur Trennebene. Mit Schränkung, einer Änderung der V-Form oder einem Profil, dessen Nase neben seiner Profilsehne liegt, liegen Nasenleiste und Endleiste neben der Ebene; die Rampe verbindet sie mit ihr. Innen laufen ihre Erzeugenden entlang x; um ein Flügelende, das in einem Punkt schließt, drehen sie sich mit; eine flache Endfläche wird entlang der Skelettlinie des Randschnitts geteilt. |
-| Blutrinne | Eine halbrunde Rille in jeder Hälfte, sodass die geschlossene Form einen runden Kanal mit **Durchmesser** hat. Sie läuft um Nasenleiste, Flügelende und Endleiste, mit **Abstand vom Flügel** vom Flügelumriss bis zu ihrem inneren Rand, und endet in der Wurzelfläche. Innenecken ihres Verlaufs sind mit dem Radius Durchmesser + 2 mm gerundet. |
-| Zentrierbohrungen | Sacklöcher von der Trennebene aus, **Tiefe in jeder Hälfte** tief, in beiden Hälften an denselben Stellen. |
-| Bohrungen für Spannschrauben | Durchgangsbohrungen in beiden Hälften, von der Trennebene bis zur Bodenfläche, an denselben Stellen. |
+| Trennfläche | Eine Fläche über den ganzen Formblock, die die Trennlinie enthält und in Flugrichtung (entlang x) eben ist: Vor dem Flügel liegt sie auf der Höhe der Nasenleiste dieser Spannweitenstation, hinter dem Flügel auf der Höhe der Endleiste. Zwischen Nasenleiste und Endleiste spannt sie die Profilsehnen auf, innerhalb der Öffnung des Formnests. Entlang der Spannweite folgt sie Schränkung und V-Form; jenseits eines flachen Flügelendes behält sie die Höhen des Flügelendes. Um ein Flügelende, das sich in einem Punkt schließt (**Flügelende** Rund), drehen sich die ebenen Linien mit dem Flügelende, von x am Beginn des Randbogens bis y am Punkt. Eine flache Endfläche wird entlang der Skelettlinie des Randschnitts geteilt. |
+| Blutrinne | Eine halbrunde Rille in jeder Hälfte, sodass die geschlossene Form einen runden Kanal mit **Durchmesser** hat. Sie läuft um Nasenleiste, Flügelende und Endleiste, mit **Abstand vom Flügel** vom Flügelumriss bis zu ihrem inneren Rand, und endet in der Wurzelfläche. Ihr Verlauf wird in der Draufsicht angelegt; Innenecken sind mit dem Radius Durchmesser + 2 mm gerundet. Jeder Querschnitt ist ein Halbkreis unter der Trennfläche. |
+| Zentrierbohrungen | Sacklöcher von der Trennfläche aus, in beiden Hälften an denselben Stellen. Der Grund liegt **Tiefe in jeder Hälfte** unter dem tiefsten Punkt der Mündung. |
+| Bohrungen für Spannschrauben | Durchgangsbohrungen in beiden Hälften, von der Trennfläche bis zur Bodenfläche, an denselben Stellen. |
 
-Bezugssystem der Form: das System, in dem die Flügelhälfte gebaut wird, vor **Einstellwinkel des Teils** und **Rollwinkel des Teils** (die Form beachtet beide nicht), um x um die V-Form des Flügels gerollt: um den Rollwinkel eines flachen Randschnitts, sonst um die Steigung der Geraden, die an Nasenleiste und Endleiste angepasst ist. Die Trennebene liegt in der mittleren Höhe von Nasenleiste und Endleiste in diesem System. Konstruktion: [[Geometrie|Geometrie]], Abschnitt 11.
+Bezugssystem der Form: das System, in dem die Flügelhälfte gebaut wird, vor **Einstellwinkel des Teils** und **Rollwinkel des Teils** (die Form beachtet beide nicht), um x um die V-Form des Flügels gerollt: um den Rollwinkel eines flachen Randschnitts, sonst um die Steigung der Geraden, die an Nasenleiste und Endleiste angepasst ist. z = 0 liegt in der mittleren Höhe von Nasenleiste und Endleiste in diesem System. Konstruktion: [[Geometrie|Geometrie]], Abschnitt 11.
 
 ### Felder
 
@@ -1211,9 +1211,8 @@ Bezugssystem der Form: das System, in dem die Flügelhälfte gebaut wird, vor **
 | --- | --- | --- | --- | --- | --- |
 | **Formblock** (Block) | **Rand um den Flügel** (Margin around the wing) | mm | 5 | 5 bis 1000 | 40 |
 | Formblock | **Boden unter dem Formnest** (Floor below the cavity) | mm | 1 | 1 bis 1000 | 12 |
-| Formblock | **Breite der Rampe** (Ramp width) | mm | 0,5 | 0,5 bis 100 | 3 |
 | **Blutrinne** (Resin channel; Kontrollkästchen, ein) | **Durchmesser** (Diameter) | mm | 0,5 | 1 bis 20 | 4 |
-| Blutrinne | **Abstand vom Flügel** (Distance from the wing) | mm | 1 | 1 bis 500, mindestens Breite der Rampe + 0,5 | 6 |
+| Blutrinne | **Abstand vom Flügel** (Distance from the wing) | mm | 1 | 1 bis 500 | 6 |
 | **Zentrierbohrungen** (Alignment pin holes; Kontrollkästchen, ein) | **Durchmesser** | mm | 0,5 | 1 bis 50 | 6 |
 | Zentrierbohrungen | **Tiefe in jeder Hälfte** (Depth in each half) | mm | 1 | 1 bis 500 | 10 |
 | Zentrierbohrungen | **Muster** (Pattern) | – | – | siehe unten | Ecken des Formblocks |
@@ -1231,57 +1230,63 @@ Bezugssystem der Form: das System, in dem die Flügelhälfte gebaut wird, vor **
 - Ein Wert außerhalb seiner Grenze wird nicht übernommen: Das Feld zeigt wieder den letzten gültigen Wert.
 - Felder, die das gewählte Muster oder eine ausgeschaltete Gruppe nicht verwendet, sind gesperrt: **Größter Abstand untereinander** bei Ecken des Formblocks, **Abstand von der Blockkante** bei Um den Flügel, **Abstand außerhalb der Blutrinne** bei den beiden anderen Mustern.
 - **Formen des linken Flügels** schreibt das Spiegelbild an y = 0. Linke und rechte Form sind zwei Dateien.
-- Die Werte werden im Browser unter `wingdesigner.mold` gespeichert, nicht im Projekt. Ohne Browserspeicher beginnt der Dialog mit den Vorgaben.
+- Die Werte werden im Browser unter `wingdesigner.mold` gespeichert, nicht im Projekt. Ohne Browserspeicher beginnt der Dialog mit den Vorgaben. Ein gespeicherter Wert eines Felds, das der Dialog nicht hat, wird nicht beachtet.
 
 | Muster | Lage der Bohrungen |
 | --- | --- |
 | **Ecken des Formblocks** (Block corners) | 4 Bohrungen, eine je Ecke, mit **Abstand von der Blockkante** zu beiden Kanten |
 | **Entlang der Blockkanten** (Along the block edges) | Entlang der vorderen Kante, der Seite am Flügelende und der hinteren Kante (nicht an der Wurzelfläche), von Ecke zu Ecke, in gleichen Schritten von höchstens **Größter Abstand untereinander**; die Ecken eingeschlossen |
-| **Um den Flügel** (Around the wing) | Entlang eines Wegs um den Flügel mit **Abstand außerhalb der Blutrinne** vom äußeren Rand der Blutrinne (ohne Blutrinne: von der Rampe), in gleichen Schritten von etwa **Größter Abstand untereinander**, mindestens 1 Bohrung |
+| **Um den Flügel** (Around the wing) | Entlang eines Wegs um den Flügel mit **Abstand außerhalb der Blutrinne** vom äußeren Rand der Blutrinne (ohne Blutrinne: vom Flügelumriss), in gleichen Schritten von etwa **Größter Abstand untereinander**, mindestens 1 Bohrung |
 
+- Lage und Abstände der Bohrungen werden in der Draufsicht gemessen.
 - An der Wurzelseite halten die Bohrungen ihren Kantenabstand zur geneigten Wurzelfläche über die Höhe beider Hälften.
-- Eine Bohrung näher als 1 mm an der Sperrzone um das Formnest (die Rampe, oder die Blutrinne, wenn sie eingeschaltet ist), an einer Blockkante oder an einer anderen Bohrung wird weggelassen, mit einer Warnung, die die weggelassenen Bohrungen zählt. Eine Bohrung, deren Mittelpunkt innerhalb des Flügelumrisses liegt, wird ebenfalls weggelassen und zählt in derselben Warnung. Eine Stelle, die schon eine Bohrung der anderen Art belegt, wird ohne Warnung weggelassen.
+- Eine Bohrung näher als 1 mm an der Sperrzone um das Formnest (der äußere Rand der Blutrinne, wenn sie eingeschaltet ist, sonst der Flügelumriss), an einer Blockkante oder an einer anderen Bohrung wird weggelassen, mit einer Warnung, die die weggelassenen Bohrungen zählt. Eine Bohrung, deren Mittelpunkt innerhalb des Flügelumrisses liegt, wird ebenfalls weggelassen, ebenso eine Bohrung auf der Naht der Trennfläche jenseits eines Flügelendes, das sich in einem Punkt schließt; beide zählen in derselben Warnung. Eine Stelle, die schon eine Bohrung der anderen Art belegt, wird ohne Warnung weggelassen.
 - Vorgaben: Zentrierbohrungen an den 4 Ecken, Bohrungen für Spannschrauben entlang der Kanten dazwischen. Entwurfstyp **Segelflugmodell** mit Randbogen (**Randbogen …**, **Ellipse des Flügels fortsetzen**): 4 Zentrierbohrungen, 20 Bohrungen für Spannschrauben.
 
 ### Vorschau und Zusammenfassung
 
-Die Vorschau zeigt die Trennebene von oben, y nach rechts und x nach hinten unten, wie die anderen Vorschauen: den Umriss des Formblocks, die Blutrinne in ihrer Breite in der Akzentfarbe, den äußeren Rand der Rampe in Grau, den Flügelumriss gefüllt, Zentrierbohrungen als gefüllte Kreise und Bohrungen für Spannschrauben als offene Kreise. Verschieben und Zoomen wie in Abschnitt [Bedienung](#bedienung).
+Die Vorschau zeigt die Trennfläche von oben, y nach rechts und x nach hinten unten, wie die anderen Vorschauen: den Umriss des Formblocks, die Blutrinne in ihrer Breite in der Akzentfarbe, den Flügelumriss gefüllt, Zentrierbohrungen als gefüllte Kreise und Bohrungen für Spannschrauben als offene Kreise. Verschieben und Zoomen wie in Abschnitt [Bedienung](#bedienung).
 
 Zusammenfassung unter der Vorschau, z. B. Entwurfstyp **Sport** mit dem Randbogen der Vorgaben und den Vorgaben der Form (der Screenshot oben):
 
-`Formblock 320,0 × 784,2 mm; Unterform 17,7 mm dick, Oberform 27,6 mm. Trennebene mit dem Flügel um 1,54° gerollt; Nasenleiste und Endleiste liegen bis zu 1,36 mm daneben. Blutrinne 1.586 mm lang. 4 Zentrierbohrungen, 14 Bohrungen für Spannschrauben.`
+`Formblock 320,0 × 784,2 mm; Unterform bis −17,7 mm, Oberform bis +27,6 mm. Trennfläche auf der Höhe von Nasenleiste und Endleiste, in Flugrichtung eben: von -1,2 bis 1,4 mm; Formrahmen mit dem Flügel um 1,54° gerollt. Blutrinne 1.586 mm lang. 4 Zentrierbohrungen, 14 Bohrungen für Spannschrauben.`
+
+- Formblock: Länge und Breite; die Außenfläche der Unterform liegt bei −Unterform, die der Oberform bei +Oberform, beide bezogen auf z = 0.
+- Trennfläche: ihre tiefste und höchste Höhe bezogen auf z = 0, und der Rollwinkel des Bezugssystems der Form.
 
 | Meldung | Art | Bedingung |
 | --- | --- | --- |
-| `Form: Nasenleiste und Endleiste liegen bis zu … mm neben der Trennebene (Schränkung, eine Änderung der V-Form oder das Profil), daher steigt die Rampe bis zu …° an. …` | Warnung | Die Rampe steigt steiler als 45° an |
 | `Form: … Zentrierbohrung(en) weggelassen: …`, `Form: … Schraubenbohrung(en) weggelassen: …` | Warnung | Bohrungen weggelassen (oben) |
 | `Form: … muss zwischen … und … mm liegen.` | Fehler | Ein Wert außerhalb seiner Grenze |
-| `Form: Der Abstand der Blutrinne muss mindestens … mm betragen, die Breite der Rampe plus 0,5 mm.` | Fehler | Abstand der Blutrinne kleiner als Breite der Rampe + 0,5 mm |
-| `Form: Der Rand des Formblocks muss für die Blutrinne mindestens … mm betragen (…)` | Fehler | Rand kleiner als Abstand + Durchmesser + 1 mm (ohne Blutrinne: Breite der Rampe + 1 mm) |
+| `Form: Der Rand des Formblocks muss für die Blutrinne mindestens … mm betragen (…)` | Fehler | Mit eingeschalteter Blutrinne: Rand kleiner als Abstand + Durchmesser + 1 mm |
 | `Form: Die Blutrinne verlässt den Formblock; …` | Fehler | Der Verlauf der Blutrinne kommt einer Blockkante näher als 1 mm |
-| `Form: Die Zentrierbohrungen sind … mm tief, die dünnere Hälfte ist aber nur … mm dick; …` | Fehler | Tiefe der Zentrierbohrungen größer als die Dicke der dünneren Hälfte − 1 mm |
+| `Form: Der Verlauf der Blutrinne um den Flügel ließ sich nicht bauen; ihren Abstand ändern.` | Fehler | Der Versatz des Umrisses ergibt keinen Verlauf |
+| `Form: Die Ränder der Blutrinne verfehlen die Trennfläche um … mm, mehr als 0,01 mm; den Durchmesser der Blutrinne verringern oder ihren Abstand ändern.` | Fehler | Die angepasste Rille verlässt die Trennfläche um mehr als 0,01 mm (gemessen: Entwurfstyp **Hochleistungssegler** mit einer 20-mm-Blutrinne 10 mm vom Flügel, 0,113 mm) |
+| `Form: Die Zentrierbohrungen sind … mm tief und reichen bis auf 1 mm an die Außenfläche einer Hälfte; die Tiefe verringern oder die Bodendicke vergrößern.` | Fehler | Der Grund einer Zentrierbohrung liegt weniger als 1 mm über der Außenfläche ihrer Hälfte |
 | `Form: Von oben gesehen reicht das Profil … mm über die Linie der Nasenleiste oder der Endleiste hinaus (geschränkte Schnitte), mehr als 0,1 mm: Eine Formhälfte hätte einen Hinterschnitt. Die Schränkung verringern.` | Fehler | Von oben gesehen reicht ein geschränkter Schnitt mehr als 0,1 mm über die Linie der Nasenleiste oder der Endleiste hinaus |
-| `Form: Die Wurzelfläche neigt sich mit der V-Form um …° und erreicht innerhalb der … mm der dickeren Hälfte das Flügelende; die Bodendicke verringern.` | Die Wurzelfläche neigt sich um den Rollwinkel des Formrahmens. Über die Dicke der dickeren Hälfte erreicht sie die Spannweitenposition des Flügelendes. |
-| `Form: Die Rampe faltet sich am Flügelumriss über sich selbst; die Breite der Rampe verringern.` | Fehler | Die Rampe faltet sich in der Draufsicht, z. B. an einer engen Krümmung des Umrisses |
-| `Form: Die Rampe entlang des Flügelumrisses ließ sich nicht anpassen; …` | Fehler | Sehr dicht beieinander liegende Schnitte |
+| `Form: Von oben gesehen faltet sich die Trennfläche neben dem Flügel über sich selbst (stark gepfeiltes Flügelende, das sich in einem Punkt schließt); die Pfeilung des Flügelendes verringern oder ein flaches Flügelende verwenden.` | Fehler | Um ein Flügelende, das sich in einem Punkt schließt, drehen sich die ebenen Linien der Trennfläche mit dem Flügelende; an einem stark gepfeilten Flügelende kreuzen sie sich von oben gesehen (Beispiel: ein Randbogen, 800 mm nach vorn gepfeilt über 500 mm Halbspannweite). Geprüft an einem Gitter von 40 × 400 Zellen je Fläche. |
+| `Form: Die Wurzelfläche neigt sich mit der V-Form um …° und erreicht innerhalb der … mm der dickeren Hälfte das Flügelende; die Bodendicke verringern.` | Fehler | Die Wurzelfläche neigt sich um den Rollwinkel des Formrahmens. Über die Dicke der dickeren Hälfte erreicht sie die Spannweitenposition des Flügelendes. |
 | `Der Flügel hat Fehler; sie vor dem Bau einer Form beheben.` | Fehler | Der Flügel baut nicht |
 
 Ein Fehler sperrt **STEP herunterladen** (Download STEP). **Schließen** (Close) schließt den Dialog.
 
 ### Profile mit hohler Unterseite
 
-Die Hälften trennen sich an Nasenleiste und Endleiste. Ein Profil mit hohler Unterseite hat seine Unterseite über dieser Linie: Die Unterform steigt dann innerhalb des Umrisses des Formnests über z = 0, und die Oberform ist dort vertieft. Beispiel: ein Profil mit 9 % Wölbung und 5 % Dicke bei 200 mm Profiltiefe, ohne Schränkung und ohne V-Form: Die Unterform reicht 13,2 mm über die Trennebene. Das untere Formnest ist 0,6 mm tief, weniger als der Rillenradius von 2 mm der Blutrinne der Vorgaben (4 mm); die Unterform ist daher 2 mm + 12 mm = 14,0 mm dick, die Oberform 34,9 mm.
+Die Hälften trennen sich an Nasenleiste und Endleiste. Ein Profil mit hohler Unterseite hat seine Unterseite über der Profilsehne zwischen ihnen: Die Unterform steigt dann innerhalb des Umrisses des Formnests über z = 0, und die Oberform ist dort vertieft. Beispiel: ein Profil mit 9 % Wölbung und 5 % Dicke bei 200 mm Profiltiefe, ohne Schränkung, ohne V-Form, flaches Flügelende: Die Unterform reicht 13,2 mm über z = 0. Das untere Formnest ist 0,6 mm tief, weniger als der Rillenradius von 2 mm der Blutrinne der Vorgaben (4 mm); die Unterform reicht daher bis −14,0 mm (12 mm Boden + 2 mm Rille), die Oberform bis +34,9 mm.
 
 ### Einschränkungen und Tests
 
 - Die Form beachtet **Einstellwinkel des Teils** und **Rollwinkel des Teils** nicht.
-- Eine Trennebene je Flügelhälfte. Ein Flügel mit mehreren V-Form-Winkeln erhält hohe Rampen: Entwurfstyp **Hochleistungssegler** 85,8 mm, Rampe bis 88°, mit der Warnung.
+- Die Trennfläche folgt Schränkung und V-Form entlang der Spannweite. Ein Flügel mit mehreren V-Form-Winkeln oder starker Schränkung erhält eine Trennfläche mit großem Höhenbereich und hohe Formblöcke: Entwurfstyp **Hochleistungssegler** (V-Form 2°, 6° und 10°, Vorgaben der Form) Trennfläche von −45,9 bis +85,8 mm, Formrahmen um 9,99° gerollt, Unterform bis −60,9 mm, Oberform bis +111,3 mm. Entwurfstyp **Pfeilnurflügel**: Trennfläche von −3,7 bis +5,1 mm, Unterform bis −23,4 mm, Oberform bis +29,1 mm. Gemessen am 11.11.2026.
+- Um ein Flügelende, das sich in einem Punkt schließt, drehen sich die ebenen Linien der Trennfläche mit dem Flügelende: Dort ist die Fläche entlang dieser Linien eben, nicht entlang x.
+- Abstände der Blutrinne und der Bohrungen werden in der Draufsicht gemessen, nicht entlang der Trennfläche.
+- Nasenleiste und Endleiste sind Linien der Trennfläche. Die Ränder der Blutrinne und die Mündungen der Bohrungen sind durch Punkte der Trennfläche angepasst und liegen in einem kleinen Abstand auf ihr, nicht exakt. Ränder der Blutrinne: höchstens 5,6e-5 mm an den 18 Testdateien (Sport mit Randbogen), höchstens 2,1e-6 mm an denen mit flachem Flügelende (Batwing). Mündungen der Bohrungen: höchstens 1,7e-10 mm an den Dateien mit flachem Flügelende und am Entwurfstyp **Hochleistungssegler**; mit einem Flügelende, das sich in einem Punkt schließt, nicht gemessen. Gemessen am 11.11.2026.
 - Die Nase wird am Nasenpunkt des Profils geteilt. Von oben gesehen reicht ein geschränkter Schnitt über die Linie der Nasenleiste oder der Endleiste hinaus, seine Nase dreht sich vor den Nasenpunkt. Bis 0,1 mm hat das Formnest dort einen Hinterschnitt von etwa r · (1 − cos Schränkung), r der Nasenradius: 0,004 mm bei 3 mm und 3°. Über 0,1 mm lehnt der Dialog die Form ab (Tabelle der Meldungen).
 - Keine Entformungsschräge.
 - Linke und rechte Form sind getrennte Dateien; keine einteilige Form des ganzen Flügels.
-- Die Blutrinne ist eine B-Spline-Fläche, durch Stationen entlang ihres Verlaufs angepasst, kein exakter Torus oder Zylinder. Ihr Querschnitt liegt an den gemessenen Entwurfstypen innerhalb von 0,02 mm an einem Halbkreis (Sport 0,018 mm, flacher Testflügel 0,0073 mm, Delta-Jet 0,0031 mm); nicht gegen ein CAD-Modell gemessen.
+- Die Blutrinne ist eine B-Spline-Fläche, durch Stationen entlang ihres Verlaufs angepasst, kein exakter Torus oder Zylinder. Die Abweichung ihres Querschnitts von einem Halbkreis ist nicht gemessen.
 - Bohrungen sind Zylinder aus je 2 Halbzylinderflächen.
-- Geprüft: 16 Formdateien, mit OpenCascade gelesen (gültige, geschlossene Körper; die Volumen beider Hälften ergeben Formblock − Flügelhälfte − Blutrinne − Bohrungen innerhalb von 2e-4). Nicht geprüft: die Datei in einem CAD-Programm (computer-aided design) oder CAM-Programm (computer-aided manufacturing) außer OpenCascade; eine gefräste Form.
+- Geprüft: 18 Formdateien, mit OpenCascade gelesen (gültige, geschlossene Körper; die Volumen beider Hälften ergeben Formblock − Flügelhälfte − Blutrinne − Bohrungen innerhalb von 5e-5). Nicht geprüft: die Datei in einem CAD-Programm (computer-aided design) oder CAM-Programm (computer-aided manufacturing) außer OpenCascade; eine gefräste Form.
 
 ## Schaumschnitt
 

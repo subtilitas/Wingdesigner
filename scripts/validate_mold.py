@@ -1,15 +1,17 @@
 """Validate the STEP files of mold halves with OpenCascade (package cadquery-ocp).
 
 Usage: python scripts/validate_mold.py cases.json
-cases.json: [{"file": "a.step", "solids": 2, "total": v, "tolerance": 2e-4, "up": "z",
+cases.json: [{"file": "a.step", "solids": 2, "total": v, "tolerance": 5e-5, "up": "z",
               "lower": true, "upper": true, "holes": n,
               "range": {"lower": [lo, hi], "upper": [lo, hi]}}, ...]
 Checks per file: the reader transfers all roots; the solid count; every solid passes
 BRepCheck_Analyzer, has a closed, consistently oriented shell and a positive volume; the volumes of
-both halves add up to `total` (the blocks less the half wing, the resin channel and the holes)
-within the tolerance; each half spans its `range` along the up axis, the parting plane at 0, within
-RANGE_TOLERANCE; every solid has 2 cylindrical faces per hole; the edges of every planar face lie in its
-plane within PLANE_TOLERANCE.
+both halves add up to `total` (the slab of the two blocks less the half wing, the resin channel and
+the holes) within the tolerance, by the adaptive Gauss-Kronrod surface integral of OpenCascade
+(VOLUME_EPS, split at the spans of the surfaces); each half spans its `range` along the up axis,
+z = 0 at the mean height of leading edge and trailing edge, within RANGE_TOLERANCE; every solid has
+2 cylindrical faces per hole; the edges of every planar face lie in its plane within
+PLANE_TOLERANCE.
 Exit code 1 on any failure.
 """
 import json
@@ -32,6 +34,8 @@ from OCP.TopoDS import TopoDS
 # Largest distance (mm) of an edge of a planar face from its plane, and the samples per edge.
 PLANE_TOLERANCE = 1e-6
 PLANE_SAMPLES = 20
+# Linear deflection (mm) and angular deflection (rad) of the tessellation the volumes are measured on.
+VOLUME_EPS = 1e-7
 # Tolerance (mm) of the extent of a half along the up axis: the bounding box of a B-spline face follows
 # its control points, which lie up to 0.05 mm outside the face at a leading edge.
 RANGE_TOLERANCE = 0.1
@@ -90,7 +94,7 @@ def check(case):
     total = 0.0
     for i, solid in enumerate(solids):
         props = GProp_GProps()
-        BRepGProp.VolumeProperties_s(solid, props, 1e-9)
+        BRepGProp.VolumePropertiesGK_s(solid, props, VOLUME_EPS, False, True)
         volume = props.Mass()
         total += volume
         valid = BRepCheck_Analyzer(solid).IsValid()
