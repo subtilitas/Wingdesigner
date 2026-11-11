@@ -488,7 +488,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-216 tests in 17 spec files, 432 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+217 tests in 17 spec files, 434 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
 32 tests run in one project only (`test.skip` in the other project):
 
