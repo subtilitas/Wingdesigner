@@ -3,24 +3,25 @@
 // Each half is one MANIFOLD_SOLID_BREP, built in the frame of the lower half (material below the
 // parting surface); the upper half is the mirror image at the plane z = zp, the molds of the left wing
 // the mirror image at y = 0. Faces of one half:
-//   block      bottom, tip side: planes; front (leading-edge side) and back: planes whose top edge is
-//              the edge of the parting surface; the root face: a plane with the root section and the
-//              ends of the resin channel in its outline
-//   parting    the ruled parting surface over the whole block, split by the resin channel into two
-//              faces; at a flat tip a ruled strip from the mean line of the tip section to it
+//   block      bottom: a plane; front (leading-edge side), back and tip side: planes whose top edge
+//              is the edge of the parting surface; the root face: a plane with the root section and
+//              the ends of the resin channel in its outline
+//   parting    the parting surface over the whole block, level along x at the height of the leading
+//              edge ahead of the wing and of the trailing edge behind it, split by the resin channel
+//              into two faces; at a flat tip a ruled strip from the mean line of the tip section to it
 //   cavity     the wing surface of the side (the B-spline surface of the wing export), the half of a
 //              blunt trailing edge, at a flat tip the half of the tip face up to its mean line
 //   channel    one B-spline surface of half-round cross-section
 //   holes      two half cylinders each; a pin hole ends in a planar bottom, a screw hole in the
 //              bottom face of the block
-// The edges of the wing, the rims of the channel and the mouths of the holes lie on the fitted parting
-// surface within the fit of the geometry (summary.fit, below 1e-6 mm).
+// Leading edge and trailing edge are lines of the parting surface. The rims of the channel and the
+// mouths of the holes are fitted through points of it and lie on it within summary.fit.
 // A loop is listed counter-clockwise seen from outside the solid; a reflection keeps the lists and
 // flips the bound flag and the sense of the B-spline faces, as the left half of the wing export does.
 
 import { stepFile, stepString } from './step.js';
 import { upAxisMap } from './axes.js';
-import { surfaceBoundaryV } from '../geom/nurbs.js';
+import { splitCurve, surfaceBoundaryV } from '../geom/nurbs.js';
 import { tr } from '../i18n/index.js';
 
 const line = (a, b) => ({ degree: 1, knots: [0, 0, 1, 1], points: [a, b] });
@@ -122,27 +123,44 @@ export class Brep {
 /** One mold half (geometry.halves.lower or .upper with geometry.common) into `b`. */
 function writeHalf(b, common, half) {
   const { zp, block, pole, closed } = common;
-  const { channel, slope, parting: S, holes } = half;
+  const { channel, slope, parting, holes } = half;
   const { x0, x1, y1 } = block;
   const zb = zp - half.thickness;
   const C = half.cavity;
   const X = [1, 0, 0];
   const Z = [0, 0, 1];
   const last = (c) => c.points[c.points.length - 1];
-  // Edges of the parting surface in the front face (x = x0) and the back face (x = x1) of the block.
-  const front = { degree: S.degreeV, knots: S.knotsV, points: S.points[0] };
-  const back = { degree: S.degreeV, knots: S.knotsV, points: S.points[1] };
+  // Edges of the parting surface in the block faces. With a flat tip it is one surface: its first and
+  // last row lie in the front face (x = x0) and the back face (x = x1), its end in the tip-side face.
+  // Around a tip that closes in a point it is two surfaces, whose outer edges run along the front or
+  // back face and, from the corner of the block on, along the tip-side face to the seam.
+  const flat = parting.kind === 'flat';
+  const along = (S, row) => ({ degree: S.degreeV, knots: S.knotsV, points: S.points[row] });
+  let frontEdge;
+  let backEdge;
+  let tipEdges;
+  if (flat) {
+    const S = parting.surface;
+    frontEdge = along(S, 0);
+    backEdge = along(S, S.points.length - 1);
+    tipEdges = [{ degree: S.degreeU, knots: S.knotsU, points: S.points.map((row) => row[row.length - 1]) }];
+  } else {
+    const [f1, f2] = splitCurve(along(parting.front, 0), parting.frontCorner);
+    const [b1, b2] = splitCurve(along(parting.back, 1), parting.backCorner);
+    frontEdge = f1;
+    backEdge = b1;
+    tipEdges = [f2, b2];
+  }
   // The root face leans by the roll of the mold frame: y = yR + slope · (z − zp), through the root
-  // ruling of the parting surface.
-  const yb = front.points[0][1] + slope * (zb - front.points[0][2]);
+  // line of the parting surface.
+  const yb = frontEdge.points[0][1] + slope * (zb - frontEdge.points[0][2]);
 
   // Block: the top corners are the corners of the parting surface.
-  const T = { fr: b.vertex(front.points[0]), ft: b.vertex(last(front)), bt: b.vertex(last(back)), br: b.vertex(back.points[0]) };
+  const T = { fr: b.vertex(frontEdge.points[0]), ft: b.vertex(last(frontEdge)), bt: b.vertex(last(backEdge)), br: b.vertex(backEdge.points[0]) };
   const B = { fr: b.vertex([x0, yb, zb]), ft: b.vertex([x0, y1, zb]), bt: b.vertex([x1, y1, zb]), br: b.vertex([x1, yb, zb]) };
   const E = {
-    frontTop: b.curve(T.fr, T.ft, front),
-    tipTop: b.line(T.ft, T.bt),
-    backTop: b.curve(T.br, T.bt, back),
+    frontTop: b.curve(T.fr, T.ft, frontEdge),
+    backTop: b.curve(T.br, T.bt, backEdge),
     frontBot: b.line(B.fr, B.ft),
     tipBot: b.line(B.ft, B.bt),
     backBot: b.line(B.bt, B.br),
@@ -152,9 +170,26 @@ function writeHalf(b, common, half) {
     vBt: b.line(B.bt, T.bt),
     vBr: b.line(B.br, T.br),
   };
+  // Top edge of the tip-side face, from the front corner to the back corner: one edge, or two that
+  // meet in the end of the seam.
+  const V = {};
+  let tipTop;
+  if (flat) {
+    E.tipTop = b.curve(T.ft, T.bt, tipEdges[0]);
+    tipTop = [[E.tipTop, true]];
+  } else {
+    V.seamEnd = b.vertex(last(tipEdges[0]));
+    E.tipTopF = b.curve(T.ft, V.seamEnd, tipEdges[0]);
+    E.tipTopB = b.curve(T.bt, V.seamEnd, tipEdges[1]);
+    tipTop = [
+      [E.tipTopF, true],
+      [E.tipTopB, false],
+    ];
+  }
+  const tipTopBack = tipTop.map(([e, f]) => [e, !f]).reverse();
 
   // Wing edges.
-  const V = { le0: b.vertex(half.le.points[0]), teL0: b.vertex(half.te.points[0]), le1: b.vertex(last(half.le)) };
+  Object.assign(V, { le0: b.vertex(half.le.points[0]), teL0: b.vertex(half.te.points[0]), le1: b.vertex(last(half.le)) });
   V.tm0 = closed ? V.teL0 : b.vertex(half.mid.points[0]);
   V.teL1 = pole ? V.le1 : b.vertex(last(half.te));
   V.tm1 = pole ? V.le1 : closed ? V.teL1 : b.vertex(last(half.mid));
@@ -188,14 +223,41 @@ function writeHalf(b, common, half) {
     ];
   }
 
-  // Resin channel and the root line of the parting surface.
+  // Resin channel and the root line of the parting surface. Around a tip that closes in a point the
+  // rims are split where the channel crosses the seam.
+  let rimI = null;
+  let rimO = null;
   if (channel) {
     V.c1i = b.vertex(channel.rimInner.points[0]);
     V.c1o = b.vertex(channel.rimOuter.points[0]);
     V.c2i = b.vertex(last(channel.rimInner));
     V.c2o = b.vertex(last(channel.rimOuter));
-    E.rimI = b.curve(V.c1i, V.c2i, channel.rimInner);
-    E.rimO = b.curve(V.c1o, V.c2o, channel.rimOuter);
+    if (flat) {
+      E.rimI = b.curve(V.c1i, V.c2i, channel.rimInner);
+      E.rimO = b.curve(V.c1o, V.c2o, channel.rimOuter);
+      rimI = [[E.rimI, true]];
+      rimO = [[E.rimO, true]];
+    } else {
+      const [i1, i2] = splitCurve(channel.rimInner, channel.seam);
+      const [o1, o2] = splitCurve(channel.rimOuter, channel.seam);
+      V.si = b.vertex(last(i1));
+      V.so = b.vertex(last(o1));
+      E.rimIf = b.curve(V.c1i, V.si, i1);
+      E.rimIb = b.curve(V.si, V.c2i, i2);
+      E.rimOf = b.curve(V.c1o, V.so, o1);
+      E.rimOb = b.curve(V.so, V.c2o, o2);
+      rimI = [
+        [E.rimIf, true],
+        [E.rimIb, true],
+      ];
+      rimO = [
+        [E.rimOf, true],
+        [E.rimOb, true],
+      ];
+      // The seam: from the point of the tip to the channel, and from the channel to the tip-side face.
+      E.seamIn = b.line(V.le1, V.si);
+      E.seamOut = b.line(V.so, V.seamEnd);
+    }
     E.end1 = b.curve(V.c1i, V.c1o, channel.endStart);
     E.end2 = b.curve(V.c2i, V.c2o, channel.endEnd);
     E.s1 = b.line(T.fr, V.c1o);
@@ -205,10 +267,13 @@ function writeHalf(b, common, half) {
   } else {
     E.s1 = b.line(T.fr, V.le0);
     E.s4 = b.line(V.tm0, T.br);
+    if (!flat) E.seam = b.line(V.le1, V.seamEnd);
   }
+  const reversed = (loop) => loop.map(([e, f]) => [e, !f]).reverse();
 
   // Holes: the mouth on the parting surface, the wall, and the bottom or the loop in the block face.
-  const topHoles = [];
+  // Mouth loops per surface of the parting surface (0: the only one, or the one ahead of the leading edge).
+  const topHoles = [[], []];
   const bottomHoles = [];
   for (const h of holes) {
     const [hx, hy] = h.centre;
@@ -225,7 +290,7 @@ function writeHalf(b, common, half) {
     const bArc2 = b.arc(bB, bA, bot, Z, X, rh);
     const lA = b.line(bA, tA);
     const lB = b.line(bB, tB);
-    topHoles.push([
+    topHoles[h.patch].push([
       [tArc2, false],
       [tArc1, false],
     ]);
@@ -271,14 +336,7 @@ function writeHalf(b, common, half) {
       [E.frontBot, false],
     ],
   ]);
-  b.planeFace([x0, y1, zb], [0, 1, 0], X, [
-    [
-      [E.vFt, true],
-      [E.tipTop, true],
-      [E.vBt, false],
-      [E.tipBot, false],
-    ],
-  ]);
+  b.planeFace([x0, y1, zb], [0, 1, 0], X, [[[E.vFt, true], ...tipTop, [E.vBt, false], [E.tipBot, false]]]);
   b.planeFace([x1, yb, zb], X, [0, 1, 0], [
     [
       [E.backBot, false],
@@ -302,25 +360,26 @@ function writeHalf(b, common, half) {
   b.planeFace([x0, yb, zb], norm([0, -1, slope]), X, [rootLoop]);
 
   // Parting surface: u along x, v along the span, the normal up.
-  const frame = [
-    [E.backTop, true],
-    [E.tipTop, false],
-    [E.frontTop, false],
-  ];
-  if (channel) {
-    b.surfaceFace(S, true, [[[E.s1, true], [E.rimO, true], [E.s4, true], ...frame], ...topHoles]);
-    b.surfaceFace(S, true, [[[E.s2, true], ...opening, [E.s3, true], [E.rimI, false]]]);
-    b.surfaceFace(channel.surface, false, [
-      [
-        [E.rimI, true],
-        [E.end2, true],
-        [E.rimO, false],
-        [E.end1, false],
-      ],
-    ]);
+  if (flat) {
+    const S = parting.surface;
+    const frame = [[E.backTop, true], ...tipTopBack, [E.frontTop, false]];
+    if (channel) {
+      b.surfaceFace(S, true, [[[E.s1, true], ...rimO, [E.s4, true], ...frame], ...topHoles[0]]);
+      b.surfaceFace(S, true, [[[E.s2, true], ...opening, [E.s3, true], ...reversed(rimI)]]);
+    } else {
+      b.surfaceFace(S, true, [[[E.s1, true], ...opening, [E.s4, true], ...frame], ...topHoles[0]]);
+    }
+  } else if (channel) {
+    // Ahead of the leading edge: outside and inside the channel; then behind the trailing edge.
+    b.surfaceFace(parting.front, true, [[[E.s1, true], [E.rimOf, true], [E.seamOut, true], [E.tipTopF, false], [E.frontTop, false]], ...topHoles[0]]);
+    b.surfaceFace(parting.front, true, [[[E.s2, true], [E.le, true], [E.seamIn, true], [E.rimIf, false]]]);
+    b.surfaceFace(parting.back, true, [[[E.s4, true], [E.backTop, true], [E.tipTopB, true], [E.seamOut, false], [E.rimOb, true]], ...topHoles[1]]);
+    b.surfaceFace(parting.back, true, [[[E.s3, true], [E.rimIb, false], [E.seamIn, false], [E.mid, false]]]);
   } else {
-    b.surfaceFace(S, true, [[[E.s1, true], ...opening, [E.s4, true], ...frame], ...topHoles]);
+    b.surfaceFace(parting.front, true, [[[E.s1, true], [E.le, true], [E.seam, true], [E.tipTopF, false], [E.frontTop, false]], ...topHoles[0]]);
+    b.surfaceFace(parting.back, true, [[[E.s4, true], [E.backTop, true], [E.tipTopB, true], [E.seam, false], [E.mid, false]], ...topHoles[1]]);
   }
+  if (channel) b.surfaceFace(channel.surface, false, [[...rimI, [E.end2, true], ...reversed(rimO), [E.end1, false]]]);
 
   const ruled = (inner, outer) => ({ degreeU: 1, degreeV: inner.degree, knotsU: [0, 0, 1, 1], knotsV: inner.knots.slice(), points: [inner.points, outer.points] });
   if (!pole) {

@@ -164,7 +164,7 @@ export function moldDialog(store, getBuild, notify = () => {}) {
         summary.className = 'small';
         summary.textContent = [
           tr('Block {length} × {width} mm; lower half down to −{lower} mm, upper half up to +{upper} mm.', { length: fixed(s.length, 1), width: fixed(s.width, 1), lower: fixed(s.lower, 1), upper: fixed(s.upper, 1) }),
-          tr('Parting surface along the chord lines, from {low} to {high} mm at the block faces; frame rolled {roll}° with the wing.', { low: fixed(s.partingRange[0], 1), high: fixed(s.partingRange[1], 1), roll: fixed(s.roll, 2) }),
+          tr('Parting surface at the height of leading edge and trailing edge, level in flight direction: from {low} to {high} mm; frame rolled {roll}° with the wing.', { low: fixed(s.partingRange[0], 1), high: fixed(s.partingRange[1], 1), roll: fixed(s.roll, 2) }),
           params.channel.on ? tr('Resin channel {length} mm long.', { length: whole(Math.round(s.channelLength)) }) : '',
           tr('{pins} pin holes, {screws} screw holes.', { pins: s.pins, screws: s.screws }),
         ]
@@ -295,7 +295,7 @@ export function moldDialog(store, getBuild, notify = () => {}) {
         h(
           'p',
           { class: 'small muted' },
-          tr('The halves part on one surface over the whole block: at every span station the chord line through leading edge and trailing edge, extended to the front and the back face, so that the parting surface twists with the wing. z = 0 in the file is the mean height of leading edge and trailing edge. The cavity is open at the root face of the block. The resin channel is half-round in each half; pin holes are blind, screw holes go through. The axes follow the last export (Export > Fusion 360 fix).'),
+          tr('The halves part on a surface that holds leading edge and trailing edge and is level in flight direction: ahead of the wing it lies at the height of the leading edge of that span station, behind the wing at the height of the trailing edge, so that it follows twist and dihedral along the span. Around a tip that closes in a point the level lines turn with the tip. z = 0 in the file is the mean height of leading edge and trailing edge. The cavity is open at the root face of the block. The resin channel is half-round in each half; pin holes are blind, screw holes go through. The axes follow the last export (Export > Fusion 360 fix).'),
         ),
       ];
 

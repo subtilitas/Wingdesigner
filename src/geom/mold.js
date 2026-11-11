@@ -7,13 +7,13 @@
 // section stays in its plane, which leans by the roll: y = yR + tan(roll) · (z − zp), zp the mean
 // height of leading edge and trailing edge.
 //
-// Parting surface: one surface over the whole block, ruled along x. At every span station its ruling
-// is the chord line through the leading edge and the middle of the trailing edge, extended to the
-// front and the back face of the block; beyond the tip it is the last chord line, moved along y. The
-// surface twists with the wing and follows its dihedral, and the halves part along leading edge and
-// trailing edge without a step. A flat tip face is parted along the mean line of the tip section; a
-// strip of TIP_STRIP mm joins the mean line to the parting surface beyond the tip. The cavity is open
-// at the root: the root section lies in the root face of the block.
+// Parting surface: one surface over the whole block that holds the real parting lines, the leading
+// edge and the middle of the trailing edge, and is level along x, the flight direction: ahead of the
+// wing it lies at the height of the leading edge of that span station, behind the wing at the height
+// of the trailing edge; beyond the tip it keeps the heights of the tip. It follows twist and dihedral
+// along the span and never tilts along x outside the wing. A flat tip face is parted along the mean
+// line of the tip section; a strip of TIP_STRIP mm joins the mean line to the parting surface beyond
+// the tip. The cavity is open at the root: the root section lies in the root face of the block.
 //
 // On the parting surface, laid out as seen from above:
 //   channel    the resin channel (German: Blutrinne): a groove of half-round cross-section in each
@@ -29,7 +29,8 @@
 // described as its mirror image at the plane z = zp, so that one construction writes both
 // (src/export/moldstep.js). The file has the plane z = zp at z = 0.
 
-import { averagingKnots, curvePoint, interpolateCurve, interpolateSurface, splitSurfaceU, surfaceBoundaryU, surfaceBoundaryV, surfacePoint } from './nurbs.js';
+import { averagingKnots, curvePoint, insertKnotCurve, interpolateCurve, interpolateSurface, splitSurfaceU, surfaceBoundaryU, surfaceBoundaryV, surfacePoint } from './nurbs.js';
+import { roundTipStart } from './tipblend.js';
 import { joinCurves } from './wing.js';
 import { fixed, plain, tr } from '../i18n/index.js';
 
@@ -79,12 +80,9 @@ const OFFSET_EPS = 0.02;
 /** Points across the half-round groove, and the largest step along it (mm). */
 const GROOVE_POINTS = 9;
 const GROOVE_STEP = 8;
-/** Largest height (mm) by which the edges of the wing may miss the fitted parting surface, and the rims of the groove. */
-const PARTING_FIT = 1e-6;
+/** Largest height (mm) by which the rims of the groove may miss the parting surface before the stations close up. */
 const GROOVE_FIT = 1e-6;
-/** Chord along x (mm) below which a station takes the chord direction of the station before it. */
-const CHORD_FLOOR = 0.05;
-/** Span distance (mm) from the root over which the path of the resin channel moves onto the root ruling. */
+/** Span distance (mm) from the root over which the path of the resin channel moves onto the root line of the parting surface. */
 const ROOT_BLEND = 20;
 /** Distance (mm) a skewed groove station may leave the tube where the path curves. */
 const GROOVE_SKEW_ERROR = 0.01;
@@ -550,12 +548,22 @@ export function moldGeometry(build, input) {
 
   // Parting surface: at every span station the chord line, extended to the front and the back face of
   // the block; beyond the tip the last chord line, moved along y.
-  const parting = partingSurface(le, mid, block);
+  // Around a tip that closes in a point the level lines turn with the tip: from x at the start of the
+  // rounded tip to y at the point, with the angle of the tip ellipse, which the span parameter follows.
+  const ys = build.sections.map((q) => q.y);
+  const tipStart = pole ? roundTipStart(build.sections, build.settings) : -1;
+  const vF = pole ? build.vAt(tipStart >= 0 ? ys[tipStart] : ys[ys.length - 2]) : 1;
+  const psi = (v) => {
+    if (v <= vF) return 0;
+    const th = (Math.min(1, (v - vF) / (1 - vF)) * Math.PI) / 2;
+    return th - Math.sin(2 * th) / 2;
+  };
+  const parting = pole ? fanParting(le, mid, block, psi) : partingSurface(le, mid, block, true);
   const height = (x, y) => parting.at(x, y)[2];
   const mz = mirrorZ(zp);
   // The same surface in the frame of the upper half, mirrored at z = zp.
-  const upperSide = { surface: mapSurface(parting.surface, mz), height: (x, y) => 2 * zp - height(x, y), root: (x) => mz(parting.root(x)), creases: parting.creases };
-  const lowerSide = { surface: parting.surface, height, root: parting.root, creases: parting.creases };
+  const upperSide = { surfaces: parting.surfaces.map((q) => mapSurface(q, mz)), height: (x, y) => 2 * zp - height(x, y), root: (x) => mz(parting.root(x)), creases: parting.creases };
+  const lowerSide = { surfaces: parting.surfaces, height, root: parting.root, creases: parting.creases };
 
   // Resin channel.
   const r = p.channel.diameter / 2;
@@ -617,10 +625,12 @@ export function moldGeometry(build, input) {
   const groove = p.channel.on ? r : 0;
   let sLo = Infinity;
   let sHi = -Infinity;
-  for (const row of parting.surface.points) {
-    for (const P of row) {
-      sLo = Math.min(sLo, P[2]);
-      sHi = Math.max(sHi, P[2]);
+  for (const surface of parting.surfaces) {
+    for (const row of surface.points) {
+      for (const P of row) {
+        sLo = Math.min(sLo, P[2]);
+        sHi = Math.max(sHi, P[2]);
+      }
     }
   }
   const thickness = { lower: Math.max(zp - zMinL, zp - sLo + groove) + p.floor, upper: Math.max(zMaxU - zp, sHi - zp + groove) + p.floor };
@@ -688,7 +698,9 @@ export function moldGeometry(build, input) {
       const apart = holes.every((o) => len(sub(o.centre, c)) >= o.radius + rh + MOLD_CLEARANCE);
       // A position that already holds a hole (pins and screws with the same pattern) is no loss.
       const taken = holes.some((o) => len(sub(o.centre, c)) < 1e-6);
-      if (inside && clear && apart) holes.push({ kind, centre: c, radius: rh, depth: kind === 'pins' ? h.depth : null });
+      // A hole lies on one of the two surfaces around a tip that closes in a point, not across their seam.
+      const onSeam = parting.seam && c[1] + edge > parting.seam.y && Math.abs(c[0] - parting.seam.x) < edge;
+      if (inside && clear && apart && !onSeam) holes.push({ kind, centre: c, radius: rh, depth: kind === 'pins' ? h.depth : null, patch: pole ? parting.at(c[0], c[1])[3] : 0 });
       else if (!taken) dropped[kind]++;
     }
   }
@@ -714,7 +726,7 @@ export function moldGeometry(build, input) {
     const a1 = arc(0);
     const a2 = arc(Math.PI);
     const low = Math.min(a1.low, a2.low);
-    return { kind: h.kind, centre: h.centre, radius: h.radius, arcs: [a1.curve, a2.curve], bottom: h.depth === null ? null : low - h.depth, centreZ: side.height(h.centre[0], h.centre[1]) };
+    return { kind: h.kind, patch: h.patch, centre: h.centre, radius: h.radius, arcs: [a1.curve, a2.curve], bottom: h.depth === null ? null : low - h.depth, centreZ: side.height(h.centre[0], h.centre[1]) };
   };
   const lowerHoles = holes.map((h) => holeOn(h, lowerSide));
   const upperHoles = holes.map((h) => holeOn(h, upperSide));
@@ -733,7 +745,7 @@ export function moldGeometry(build, input) {
   // The halves in the frame of the lower half: the upper one mirrored at the plane z = zp.
   // A flat tip face is parted along its mean line; a strip joins the mean line to the parting surface
   // beyond the tip.
-  const strip = pole ? null : tipStrip(parting, meanLine, Math.min(TIP_STRIP, (p.channel.on ? p.channel.distance : p.margin) / 2));
+  const strip = pole ? null : tipStrip(meanLine, Math.min(TIP_STRIP, (p.channel.on ? p.channel.distance : p.margin) / 2));
   const half3 = (cavity, edgeTE, upper) => ({
     upper,
     cavity,
@@ -745,7 +757,12 @@ export function moldGeometry(build, input) {
     thickness: upper ? thickness.upper : thickness.lower,
     // The root plane of the half: y = yR + slope · (z − zp).
     slope: upper ? -slope : slope,
-    parting: upper ? upperSide.surface : lowerSide.surface,
+    // The parting surface: one surface with a flat tip; with a tip that closes in a point the surface
+    // ahead of the leading edge and the one behind the trailing edge, with the parameters where their
+    // outer edges turn the corners of the block.
+    parting: pole
+      ? { kind: 'pole', front: (upper ? upperSide : lowerSide).surfaces[0], back: (upper ? upperSide : lowerSide).surfaces[1], frontCorner: parting.front.corner, backCorner: parting.back.corner }
+      : { kind: 'flat', surface: (upper ? upperSide : lowerSide).surfaces[0] },
     channel: channel ? (upper ? channel.upper : channel.lower) : null,
     holes: upper ? upperHoles : lowerHoles,
   });
@@ -784,9 +801,9 @@ export function moldGeometry(build, input) {
     partingRange: [sLo - zp, sHi - zp],
     edgeRange: [zLo - zp, zHi - zp],
     extent: { lower: [-thickness.lower, top - zp], upper: [bottom - zp, thickness.upper] },
-    // Largest height (mm) by which leading edge, trailing edge and the rims of the groove miss the
-    // fitted parting surface.
-    fit: Math.max(parting.fit, channel ? Math.max(channel.lower.fit, channel.upper.fit) : 0),
+    // Largest height (mm) by which the rims of the groove miss the parting surface (leading edge and
+    // trailing edge are lines of the surface).
+    fit: channel ? Math.max(channel.lower.fit, channel.upper.fit) : 0,
     pins: holes.filter((h) => h.kind === 'pins').length,
     screws: holes.filter((h) => h.kind === 'screws').length,
     channelLength: channel ? channel.length : 0,
@@ -802,174 +819,238 @@ export function moldGeometry(build, input) {
 }
 
 /**
- * The parting surface over the block: ruled along x between a curve in the front face (x = x0) and a
- * curve in the back face (x = x1). At every span station the ruling is the chord line through the
- * leading edge and the middle of the trailing edge; beyond the tip it is the last chord line, moved
- * along y to the tip-side face. The two curves are fitted through the stations, each span of the wing
- * on its own, so that the surface holds the edges of the wing within `fit` mm.
- * Returns the surface (u along x, v along the span), `at(x, y)` (the point of the surface above (x, y))
- * and `root(x)` (the point of the root ruling at x).
+ * The parting surface over the block. It holds the leading edge and the middle of the trailing edge
+ * and is level along x, the flight direction: ahead of the wing it lies at the height of the leading
+ * edge of that span station, behind the wing at the height of the trailing edge. Its 4 rows along x
+ * are the leading edge moved into the front face (x = x0), the leading edge, the trailing edge, and
+ * the trailing edge moved into the back face (x = x1), joined by straight lines (degree 1); along the
+ * span it has the knots of the wing. Beyond the tip every row runs straight along y to the tip-side
+ * face, at the height it has at the tip. The part between leading edge and trailing edge spans the
+ * chord lines and lies in the opening of the cavity.
+ * Returns the surface (u along x: 0, 1/3, 2/3, 1 at the 4 rows; v along the span, the tip at tipV),
+ * `at(x, y)` (the point of the surface above (x, y)), `root(x)` (the point of the root line at x) and
+ * the creases: the lines where the surface may bend.
  */
-export function partingSurface(le, mid, block) {
+export function partingSurface(le, mid, block, flatTip = false) {
   const { x0, x1, y1 } = block;
-  // Pieces of the span between the knots where the wing may have a crease (sections: multiplicity of
-  // the degree), each with the number of knot spans in it.
-  const pieces = [];
-  {
-    const K = le.knots;
-    let start = K[0];
-    let inner = 0;
-    for (let i = le.degree + 1; i < K.length; i++) {
-      if (K[i] === K[i - 1]) continue;
-      inner++;
-      let mult = 1;
-      while (i + mult < K.length && K[i + mult] === K[i]) mult++;
-      if (mult >= le.degree || K[i] === K[K.length - 1]) {
-        pieces.push({ a: start, b: K[i], inner });
-        start = K[i];
-        inner = 0;
+  const p = le.degree;
+  const last = le.points.length - 1;
+  // A row beyond the tip: from its tip point straight along y, as a piece of the degree of the wing.
+  const extended = (c, shift) => {
+    const tip = shift(c.points[last]);
+    const piece = { degree: p, knots: [...Array(p + 1).fill(1), ...Array(p + 1).fill(2)], points: Array.from({ length: p + 1 }, (_, j) => [tip[0], tip[1] + ((y1 - tip[1]) * j) / p, tip[2]]) };
+    const joined = joinCurves([{ degree: p, knots: c.knots.slice(), points: c.points.map(shift) }, piece]);
+    return { degree: p, knots: joined.knots.map((t) => t / 2), points: joined.points };
+  };
+  const same = (P) => P.slice();
+  const rows = [extended(le, (P) => [x0, P[1], P[2]]), extended(le, same), extended(mid, same), extended(mid, (P) => [x1, P[1], P[2]])];
+  const surface = { degreeU: 1, degreeV: p, knotsU: [0, 0, 1 / 3, 2 / 3, 1, 1], knotsV: rows[0].knots, points: rows.map((c) => c.points) };
+  const [front, back] = [rows[1], rows[2]];
+  // The point above x on the line of the station v: level ahead of the leading edge L and behind the
+  // trailing edge T, on the chord line between them.
+  const onStation = (L, T, x) => {
+    if (x <= L[0]) return [x, L[1], L[2], (x - x0) / (3 * (L[0] - x0) || 1)];
+    if (x >= T[0]) return [x, T[1], T[2], 2 / 3 + (x - T[0]) / (3 * (x1 - T[0]) || 1)];
+    const t = (x - L[0]) / (T[0] - L[0]);
+    return [x, L[1] + t * (T[1] - L[1]), L[2] + t * (T[2] - L[2]), (1 + t) / 3];
+  };
+  // v from a table of the two edges, then secant steps inside the bracket (y grows with v along every
+  // line x = const).
+  const N = 1024;
+  const table = Array.from({ length: N + 1 }, (_, k) => [curvePoint(front, k / N), curvePoint(back, k / N)]);
+  const at = (x, y) => {
+    const point = (v) => [...onStation(curvePoint(front, v), curvePoint(back, v), x), v];
+    const yAt = (k) => onStation(table[k][0], table[k][1], x)[1];
+    if (y <= yAt(0)) return point(0);
+    if (y >= yAt(N)) return point(1);
+    let i = 0;
+    let j = N;
+    while (j - i > 1) {
+      const m = (i + j) >> 1;
+      if (yAt(m) < y) i = m;
+      else j = m;
+    }
+    let lo = i / N;
+    let hi = j / N;
+    let ylo = yAt(i);
+    let yhi = yAt(j);
+    let P = null;
+    for (let it = 0; it < 40; it++) {
+      // Secant inside the bracket, a bisection every third step.
+      const v = it % 3 === 2 || !(yhi > ylo) ? (lo + hi) / 2 : lo + ((hi - lo) * (y - ylo)) / (yhi - ylo);
+      P = point(v);
+      if (Math.abs(P[1] - y) < 1e-11 || hi - lo < 1e-15) break;
+      if (P[1] < y) {
+        lo = v;
+        ylo = P[1];
+      } else {
+        hi = v;
+        yhi = P[1];
       }
+    }
+    return P;
+  };
+  const root = (x) => onStation(front.points[0], back.points[0], x).slice(0, 3);
+  // Creases across the span: the stations where the wing may bend (sections: knots of the multiplicity
+  // of the degree) and the tip. Seen from above each is the line of its station.
+  const creases = [];
+  const K = le.knots;
+  for (let i = p + 1; i < K.length; i++) {
+    if (K[i] === K[i - 1]) continue;
+    let mult = 1;
+    while (i + mult < K.length && K[i + mult] === K[i]) mult++;
+    if (mult < p && K[i] !== K[K.length - 1]) continue;
+    const L = curvePoint(le, K[i]);
+    const T = curvePoint(mid, K[i]);
+    creases.push({ side: (P) => P[1] - onStation(L, T, P[0])[1], along: [1, 0] });
+  }
+  // Creases along the span beyond a flat tip: the lines through its leading edge and its trailing edge,
+  // between which the surface runs from the height of the one to the height of the other.
+  if (flatTip) {
+    for (const E of [le.points[last], mid.points[last]]) creases.push({ side: (P) => (P[1] > E[1] ? P[0] - E[0] : null), along: [0, 1] });
+  }
+  return { kind: 'flat', surface, surfaces: [surface], at, root, creases, seam: null };
+}
+
+/** Greville abscissae of a knot vector: one per control point. */
+function greville(knots, p, count) {
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    let sum = 0;
+    for (let k = 1; k <= p; k++) sum += knots[i + k];
+    out.push(sum / p);
+  }
+  return out;
+}
+
+/**
+ * The parting surface around a tip that closes in a point: two surfaces, one ahead of the leading edge
+ * and one behind the trailing edge, each ruled from its edge to the block faces along level lines (z of
+ * the edge point). Inboard of the tip the lines run along x, the flight direction; around the tip they
+ * turn with it (`psi(v)`: 0 inboard, π/2 at the point), so that both surfaces meet in the line from the
+ * point straight along y to the tip-side face (the seam). Level lines along x up to the point would
+ * drop with an unbounded slope ahead of a twisted tip, where the edge runs square to them.
+ * Each surface has the knots of the wing along the span, with a knot of full multiplicity where its
+ * outer edge turns the corner of the block (`corner`).
+ */
+function fanParting(le, mid, block, psi) {
+  const { x0, x1, y1 } = block;
+  const p = le.degree;
+  const patch = (edge, sign) => {
+    const xf = sign < 0 ? x0 : x1;
+    // End of the level line of the station v on the block: in the front or back face, or the tip-side face.
+    const end = (v) => {
+      const O = curvePoint(edge, v);
+      const a = psi(v);
+      const d = [sign * Math.cos(a), Math.sin(a)];
+      const lx = Math.abs(d[0]) > 1e-12 ? (xf - O[0]) / d[0] : Infinity;
+      const ly = d[1] > 1e-12 ? (y1 - O[1]) / d[1] : Infinity;
+      return lx <= ly ? { P: [xf, O[1] + lx * d[1], O[2]], tipSide: false } : { P: [O[0] + ly * d[0], y1, O[2]], tipSide: true };
+    };
+    let lo = 0;
+    let hi = 1;
+    for (let it = 0; it < 60; it++) {
+      const m = (lo + hi) / 2;
+      if (end(m).tipSide) hi = m;
+      else lo = m;
+    }
+    const corner = hi;
+    const inner = insertKnotCurve(edge, corner, p);
+    const sites = greville(inner.knots, p, inner.points.length);
+    const k = sites.findIndex((v) => Math.abs(v - corner) < 1e-12);
+    const fitted = interpolateCurve(sites.map((v, i) => (i === k ? [xf, y1, 0] : end(v).P)), p, { params: sites, knots: inner.knots });
+    // The outer edge lies in the block faces and has the heights of the edge: every ruling is level.
+    const outer = {
+      degree: p,
+      knots: inner.knots,
+      points: fitted.points.map((P, i) => [i <= k ? xf : P[0], i >= k ? y1 : P[1], inner.points[i][2]]),
+    };
+    // Inboard of the tip (psi = 0 over the whole support of a control point) the rulings run along x.
+    for (let i = 0; i < k; i++) if (psi(inner.knots[i + p + 1]) === 0) outer.points[i][1] = inner.points[i][1];
+    // u along x: from the front face to the leading edge, and from the trailing edge to the back face.
+    const rows = sign < 0 ? [outer.points, inner.points] : [inner.points, outer.points];
+    const N = 512;
+    const table = Array.from({ length: N + 1 }, (_, i) => [curvePoint(inner, i / N), curvePoint(outer, i / N)]);
+    const cross = (O, R, x, y) => (R[0] - O[0]) * (y - O[1]) - (R[1] - O[1]) * (x - O[0]);
+    const ahead = (O, R, x, y) => (R[0] - O[0]) * (x - O[0]) + (R[1] - O[1]) * (y - O[1]);
+    // The station whose level line passes through (x, y), or null when the point lies on the other surface.
+    const locate = (x, y) => {
+      let prev = cross(table[0][0], table[0][1], x, y);
+      for (let i = 1; i <= N; i++) {
+        const cur = cross(table[i][0], table[i][1], x, y);
+        if (prev * cur <= 0 && ahead(table[i][0], table[i][1], x, y) >= -1e-9) {
+          let a = (i - 1) / N;
+          let b = i / N;
+          let fa = prev;
+          let fb = cur;
+          let v = fb === fa ? a : a + ((b - a) * fa) / (fa - fb);
+          for (let it = 0; it < 40 && fb !== fa; it++) {
+            v = it % 3 === 2 ? (a + b) / 2 : a + ((b - a) * fa) / (fa - fb);
+            const f = cross(curvePoint(inner, v), curvePoint(outer, v), x, y);
+            if (Math.abs(f) < 1e-11 || b - a < 1e-15) break;
+            if (f < 0 === fa < 0) {
+              a = v;
+              fa = f;
+            } else {
+              b = v;
+              fb = f;
+            }
+          }
+          return v;
+        }
+        prev = cur;
+      }
+      return null;
+    };
+    return { surface: { degreeU: 1, degreeV: p, knotsU: [0, 0, 1, 1], knotsV: inner.knots, points: rows }, inner, outer, corner, locate, dir: (v) => [sign * Math.cos(psi(v)), Math.sin(psi(v))] };
+  };
+  const front = patch(le, -1);
+  const back = patch(mid, 1);
+  const L0 = le.points[0];
+  const T0 = mid.points[0];
+  const tip = le.points[le.points.length - 1];
+  const at = (x, y) => {
+    let v = front.locate(x, y);
+    if (v !== null) return [x, y, curvePoint(front.inner, v)[2], 0, v];
+    v = back.locate(x, y);
+    if (v !== null) return [x, y, curvePoint(back.inner, v)[2], 1, v];
+    // Outside both (round-off at the root line or the seam): the nearer end station.
+    return y <= tip[1] ? [x, y, (x <= L0[0] ? L0 : T0)[2], x <= L0[0] ? 0 : 1, 0] : [x, y, tip[2], x <= tip[0] ? 0 : 1, 1];
+  };
+  const root = (x) => {
+    if (x <= L0[0]) return [x, L0[1], L0[2]];
+    if (x >= T0[0]) return [x, T0[1], T0[2]];
+    const t = (x - L0[0]) / (T0[0] - L0[0]);
+    return [x, L0[1] + t * (T0[1] - L0[1]), L0[2] + t * (T0[2] - L0[2])];
+  };
+  // Creases: the level lines of the sections on both surfaces, and the seam.
+  const creases = [];
+  const K = le.knots;
+  for (let i = p + 1; i < K.length; i++) {
+    if (K[i] === K[i - 1] || K[i] === K[K.length - 1]) continue;
+    let mult = 1;
+    while (i + mult < K.length && K[i + mult] === K[i]) mult++;
+    if (mult < p) continue;
+    for (const [side, edge] of [[front, le], [back, mid]]) {
+      const O = curvePoint(edge, K[i]);
+      const d = side.dir(K[i]);
+      creases.push({ side: (P) => (d[0] * (P[0] - O[0]) + d[1] * (P[1] - O[1]) > 0 ? d[0] * (P[1] - O[1]) - d[1] * (P[0] - O[0]) : null), along: d });
     }
   }
-  const build = (density) => {
-    let dir = null;
-    const ruling = (v) => {
-      const L = curvePoint(le, v);
-      const T = curvePoint(mid, v);
-      // Where the chord has closed (the point of a round tip) the last chord direction holds.
-      if (T[0] - L[0] > CHORD_FLOOR || !dir) dir = [1, (T[1] - L[1]) / (T[0] - L[0]), (T[2] - L[2]) / (T[0] - L[0])];
-      const on = (x) => [x, L[1] + (x - L[0]) * dir[1], L[2] + (x - L[0]) * dir[2]];
-      return [on(x0), on(x1)];
-    };
-    const F = [];
-    const G = [];
-    let tip = null;
-    for (const { a, b, inner } of pieces) {
-      const n = Math.max(4, inner * density);
-      const params = Array.from({ length: n + 1 }, (_, k) => k / n);
-      const rows = params.map((t) => ruling(a + (b - a) * t));
-      tip = rows[n];
-      for (const [list, k] of [[F, 0], [G, 1]]) {
-        const c = interpolateCurve(rows.map((q) => q[k]), 3, { params });
-        list.push({ degree: c.degree, knots: c.knots.map((t) => a + (b - a) * t), points: c.points });
-      }
-    }
-    // Beyond the tip: the last ruling moved along y into the tip-side face, as a straight cubic piece.
-    for (const [list, k] of [[F, 0], [G, 1]]) {
-      const P = tip[k];
-      list.push({ degree: 3, knots: [1, 1, 1, 1, 2, 2, 2, 2], points: [0, 1, 2, 3].map((j) => [P[0], P[1] + ((y1 - P[1]) * j) / 3, P[2]]) });
-    }
-    const join = (list, x) => {
-      const c = joinCurves(list);
-      return { degree: 3, knots: c.knots.map((t) => t / 2), points: c.points.map((P) => [x, P[1], P[2]]) };
-    };
-    const f = join(F, x0);
-    const g = join(G, x1);
-    return { degreeU: 1, degreeV: 3, knotsU: [0, 0, 1, 1], knotsV: f.knots, points: [f.points, g.points] };
-  };
-  // The point of the surface above (x, y): v from a table of the two edge curves, then secant steps
-  // inside the bracket (y grows with v along every line x = const).
-  const locate = (S) => {
-    const f = { degree: 3, knots: S.knotsV, points: S.points[0] };
-    const g = { degree: 3, knots: S.knotsV, points: S.points[1] };
-    const N = 1024;
-    const fy = new Float64Array(N + 1);
-    const gy = new Float64Array(N + 1);
-    for (let k = 0; k <= N; k++) {
-      fy[k] = curvePoint(f, k / N)[1];
-      gy[k] = curvePoint(g, k / N)[1];
-    }
-    return (x, y) => {
-      const a = (x - x0) / (x1 - x0);
-      const point = (v) => {
-        const A = curvePoint(f, v);
-        const B = curvePoint(g, v);
-        return [x, A[1] + a * (B[1] - A[1]), A[2] + a * (B[2] - A[2])];
-      };
-      const yAt = (k) => fy[k] + a * (gy[k] - fy[k]);
-      if (y <= yAt(0)) return point(0);
-      if (y >= yAt(N)) return point(1);
-      let i = 0;
-      let j = N;
-      while (j - i > 1) {
-        const m = (i + j) >> 1;
-        if (yAt(m) < y) i = m;
-        else j = m;
-      }
-      let lo = i / N;
-      let hi = j / N;
-      let ylo = yAt(i);
-      let yhi = yAt(j);
-      let P = null;
-      for (let it = 0; it < 40; it++) {
-        // Secant inside the bracket, a bisection every third step.
-        const v = it % 3 === 2 || !(yhi > ylo) ? (lo + hi) / 2 : lo + ((hi - lo) * (y - ylo)) / (yhi - ylo);
-        P = point(v);
-        if (Math.abs(P[1] - y) < 1e-11 || hi - lo < 1e-15) break;
-        if (P[1] < y) {
-          lo = v;
-          ylo = P[1];
-        } else {
-          hi = v;
-          yhi = P[1];
-        }
-      }
-      return P;
-    };
-  };
-  // More stations per knot span until the edges of the wing lie on the fitted surface.
-  // Refining stops at PARTING_FIT, or where twice the stations no longer halve the miss.
-  let surface = null;
-  let at = null;
-  let fit = Infinity;
-  for (let density = 2; density <= 32; density *= 2) {
-    const S = build(density);
-    const find = locate(S);
-    let miss = 0;
-    for (const { a, b, inner } of pieces) {
-      const n = 2 * Math.max(4, inner * density);
-      for (let k = 0; k < n; k++) {
-        const v = a + ((b - a) * (k + 0.5)) / n;
-        for (const c of [le, mid]) {
-          const P = curvePoint(c, v);
-          miss = Math.max(miss, Math.abs(find(P[0], P[1])[2] - P[2]));
-        }
-      }
-    }
-    const gain = fit / miss;
-    if (miss < fit) [surface, at, fit] = [S, find, miss];
-    if (fit <= PARTING_FIT || gain < 2) break;
-  }
-  // The rulings of the surface along x at v: straight lines from the front face to the back face.
-  const front = { degree: 3, knots: surface.knotsV, points: surface.points[0] };
-  const back = { degree: 3, knots: surface.knotsV, points: surface.points[1] };
-  const rulingAt = (v) => {
-    const A = curvePoint(front, v);
-    const B = curvePoint(back, v);
-    return (x) => {
-      const a = (x - x0) / (x1 - x0);
-      return [x, A[1] + a * (B[1] - A[1]), A[2] + a * (B[2] - A[2])];
-    };
-  };
-  // Creases: the rulings at the sections and at the tip, where the surface may bend. A curve fitted on
-  // the surface breaks where it crosses one.
-  const creases = [...pieces.map((q) => q.b / 2)].map(rulingAt);
-  return { surface, at, root: rulingAt(0), creases, fit, tipV: 0.5 };
+  creases.push({ side: (P) => (P[1] > tip[1] ? tip[0] - P[0] : null), along: [0, 1], seam: true });
+  return { kind: 'pole', front, back, surfaces: [front.surface, back.surface], at, root, creases, seam: { x: tip[0], y: tip[1] } };
 }
 
 /** Parameters in (t0, t1) where the top-view point q(t) crosses a crease, from `samples` steps, in order. */
 function creaseCrossings(creases, q, t0, t1, samples) {
   const out = [];
-  for (const line of creases) {
-    const side = (t) => {
-      const P = q(t);
-      return P[1] - line(P[0])[1];
-    };
+  for (const crease of creases) {
+    const side = (t) => crease.side(q(t));
     let prev = side(t0);
     for (let k = 1; k <= samples; k++) {
       const t = t0 + ((t1 - t0) * k) / samples;
       const cur = side(t);
-      if (prev < 0 !== cur < 0 && prev !== 0) {
+      if (prev !== null && cur !== null && prev < 0 !== cur < 0 && prev !== 0) {
         let lo = t - (t1 - t0) / samples;
         let hi = t;
         const up = cur > 0;
@@ -1011,23 +1092,14 @@ function fitInPieces(p, t0, t1, cuts, count) {
 
 /**
  * The outer edge of the strip beyond a flat tip face: the points of the parting surface `width` beyond
- * the tip that lie at the x of the control points of the mean line, so that the strip is ruled between
- * the mean line and a straight line of the parting surface.
+ * the tip at the x of the control points of the mean line. Beyond the tip the surface runs straight
+ * from the height of the leading edge to the height of the trailing edge between their lines, so the
+ * strip is ruled between the mean line and a straight line of the parting surface.
  */
-function tipStrip(parting, meanLine, width) {
-  const S = parting.surface;
-  const x0 = S.points[0][0][0];
-  const x1 = S.points[1][0][0];
-  const last = S.points[0].length - 1;
-  // Beyond the tip the surface is straight along v: from the tip ruling (v = tipV) to the tip-side face.
-  const yTip = meanLine.points[0][1];
-  const v = parting.tipV + ((1 - parting.tipV) * width) / (S.points[0][last][1] - yTip);
-  const A = surfacePoint(S, 0, v);
-  const B = surfacePoint(S, 1, v);
-  return { ...meanLine, points: meanLine.points.map((P) => {
-    const a = (P[0] - x0) / (x1 - x0);
-    return [P[0], A[1] + a * (B[1] - A[1]), A[2] + a * (B[2] - A[2])];
-  }) };
+function tipStrip(meanLine, width) {
+  const L = meanLine.points[0];
+  const T = meanLine.points[meanLine.points.length - 1];
+  return { ...meanLine, points: meanLine.points.map((P) => [P[0], L[1] + width, L[2] + ((P[0] - L[0]) / (T[0] - L[0])) * (T[2] - L[2])]) };
 }
 
 /**
@@ -1044,13 +1116,13 @@ export function grooveSurface(path, r, side, maxStep = GROOVE_STEP) {
   // The path in pieces between the creases of the parting surface it crosses: the groove bends with
   // the surface there. Each piece is sampled every 0.5 mm, with at least 6 steps.
   const cuts = [];
-  for (const line of side.creases ?? []) {
+  for (const crease of side.creases ?? []) {
     for (let i = 0; i + 1 < path.length; i++) {
-      const f0 = path[i][1] - line(path[i][0])[1];
-      const f1 = path[i + 1][1] - line(path[i + 1][0])[1];
-      if (f0 < 0 === f1 < 0 || f0 === 0) continue;
+      const f0 = crease.side(path[i]);
+      const f1 = crease.side(path[i + 1]);
+      if (f0 === null || f1 === null || f0 < 0 === f1 < 0 || f0 === 0) continue;
       const t = f0 / (f0 - f1);
-      if (i + t > 1e-6 && i + t < path.length - 1 - 1e-6) cuts.push({ q: i + t, line });
+      if (i + t > 1e-6 && i + t < path.length - 1 - 1e-6) cuts.push({ q: i + t, along: crease.along, seam: Boolean(crease.seam) });
     }
   }
   cuts.sort((a, b) => a.q - b.q);
@@ -1134,9 +1206,7 @@ export function grooveSurface(path, r, side, maxStep = GROOVE_STEP) {
   const skewed = new Float64Array(idx.length);
   for (let j = 1; j + 1 < joints.length; j++) {
     const k0 = joints[j];
-    const { line } = kept[j - 1];
-    const x = fine[idx[k0]][0];
-    const along = unit(sub(line(x + 1), line(x)));
+    const { along } = kept[j - 1];
     for (let k = 1; k + 1 < idx.length; k++) {
       const d = Math.abs(s[idx[k]] - s[idx[k0]]) / (6 * r);
       if (d >= 1) continue;
@@ -1190,8 +1260,11 @@ export function grooveSurface(path, r, side, maxStep = GROOVE_STEP) {
   for (let i = 0; i <= nu; i++) {
     for (const P of [surface.points[i][0], surface.points[i][nv]]) P[1] = yR + slope * (P[2] - zp);
   }
+  // Parameter along the groove where it crosses the seam of the parting surface (null without one).
+  const seamAt = kept.findIndex((c) => c.seam);
   return {
     surface,
+    seam: seamAt < 0 ? null : params[joints[seamAt + 1]],
     length: total,
     stations: centres.length,
     rimInner: surfaceBoundaryU(surface, false),
