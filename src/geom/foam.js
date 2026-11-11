@@ -29,6 +29,7 @@
 // core end can hold: the outermost core ends at the last section before the point (foamEnd), and no
 // cut lies beyond it. The tip beyond that section is not part of a core (segment.beyond).
 
+import { fixed, plain, tr } from '../i18n/index.js';
 import { basisFuns, findSpan, solveMonotonic } from './nurbs.js';
 
 /** Limits of the foam-cutting wizard (lengths in mm). */
@@ -179,6 +180,20 @@ export function foamEnd(build) {
   if (!build.tipPole) return build.tipY;
   const inner = build.sections.filter((s) => s.y < build.tipY - 1e-9);
   return inner.length ? inner[inner.length - 1].y : build.tipY;
+}
+
+/**
+ * Why the wing has no foam core, or null: a tip that closes in a point ends the cores at the last
+ * section before the point; when that leaves less than FOAM_LIMITS.minSegment from the root (only the
+ * root lies before the point), there is nothing to cut.
+ */
+export function foamProblem(build) {
+  const span = foamEnd(build) - build.rootY;
+  if (span >= FOAM_LIMITS.minSegment) return null;
+  return tr('Foam cores end at the last section before the point of a round wing tip (Settings > Wing tip Round), {span} mm from the root; a core needs at least {min} mm. Add a section before the point.', {
+    span: fixed(span, 1),
+    min: plain(FOAM_LIMITS.minSegment),
+  });
 }
 
 /** Span positions of the sections strictly between root and the end of the cores, closer ones merged (minSegment). */

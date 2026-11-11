@@ -922,4 +922,25 @@ describe('mold checks against crossing faces', () => {
     // 3° of twist on a NACA 2412 stays far below the limit and builds.
     expect(moldGeometry(built(wing(200, 150, -3, '2412')), {}).errors).toEqual([]);
   });
+
+  it('refuses a block whose leaning root face reaches the wing tip within the thickness of a half', () => {
+    // 45° dihedral: the root face leans 45°. With a 1000 mm floor it runs 1000 mm along the span
+    // within the thicker half, beyond the tip 849 mm out.
+    const steep = createProject({
+      name: 'Steep',
+      airfoils: [naca('0010')],
+      sections: [
+        { airfoil: '0010', x: 0, y: 0, z: 0, chord: 200, twist: 0 },
+        { airfoil: '0010', x: 0, y: 600, z: 600, chord: 110, twist: 0 },
+      ],
+    });
+    const off = { channel: { on: false }, pins: { on: false }, screws: { on: false } };
+    const g = moldGeometry(built(steep), { floor: 1000, ...off });
+    expect(g.errors).toHaveLength(1);
+    expect(g.errors[0]).toMatch(/^Mold: the root face leans 45\.0° with the dihedral and reaches the wing tip within the \d+\.\d mm of the thicker half; reduce the floor thickness\.$/);
+    // The default floor leaves the root face 21 mm along the span: the mold builds.
+    const ok = moldGeometry(built(steep), off);
+    expect(ok.errors).toEqual([]);
+    expect(() => moldToStep(ok)).not.toThrow();
+  });
 });

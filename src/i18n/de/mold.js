@@ -87,4 +87,6 @@ export default {
     'Form: Die Zentrierbohrungen sind {depth} mm tief, die dünnere Hälfte ist aber nur {thickness} mm dick; die Tiefe verringern oder die Bodendicke vergrößern.',
   'Mold: seen from above, the airfoil reaches {reach} mm beyond the leading-edge or trailing-edge line (twisted sections), more than {limit} mm: one mold half would be undercut. Reduce the twist.':
     'Form: Von oben gesehen reicht das Profil {reach} mm über die Linie der Nasenleiste oder der Endleiste hinaus (geschränkte Schnitte), mehr als {limit} mm: Eine Formhälfte hätte einen Hinterschnitt. Die Schränkung verringern.',
+  'Mold: the root face leans {roll}° with the dihedral and reaches the wing tip within the {thickness} mm of the thicker half; reduce the floor thickness.':
+    'Form: Die Wurzelfläche neigt sich mit der V-Form um {roll}° und erreicht innerhalb der {thickness} mm der dickeren Hälfte das Flügelende; die Bodendicke verringern.',
 };

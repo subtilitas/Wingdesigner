@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync, unzlibSync } from 'fflate';
 import { buildWing } from '../src/geom/wing.js';
 import { solveMonotonic, surfacePoint } from '../src/geom/nurbs.js';
-import { DEVIATION_PLANES, FOAM_LIMITS, foamEnd, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../src/geom/foam.js';
+import { DEVIATION_PLANES, FOAM_LIMITS, foamEnd, foamProblem, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../src/geom/foam.js';
 import {
   FRAME,
   MARKS,
@@ -669,5 +669,23 @@ describe('settings', () => {
     } finally {
       delete globalThis.localStorage;
     }
+  });
+});
+
+describe('foam cores of a wing with only the root before the point', () => {
+  it('reports that no core fits and why, and nothing for a wing with sections before the point', () => {
+    const p = wizardProject(PRESETS.sport.params);
+    addRoundTip(p, defaultRoundTip(p));
+    expect(foamProblem(buildWing(p))).toBeNull();
+    // Only the root and the point stay: the cores would end at the root.
+    const sorted = p.sections.slice().sort((a, b) => a.y - b.y);
+    p.sections = [sorted[0], sorted[sorted.length - 1]];
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(foamEnd(b)).toBe(b.rootY);
+    expect(foamProblem(b)).toBe('Foam cores end at the last section before the point of a round wing tip (Settings > Wing tip Round), 0.0 mm from the root; a core needs at least 5 mm. Add a section before the point.');
+    setLanguage('de');
+    expect(foamProblem(b)).toMatch(/^Schaumkerne enden am letzten Schnitt vor dem Punkt eines runden Flügelendes .* 0,0 mm von der Wurzel; ein Kern braucht mindestens 5 mm\./);
+    setLanguage('en');
   });
 });

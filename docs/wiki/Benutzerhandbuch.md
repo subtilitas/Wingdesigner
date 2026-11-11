@@ -1261,6 +1261,7 @@ Zusammenfassung unter der Vorschau, z. B. Entwurfstyp **Sport** mit dem Randboge
 | `Form: Die Blutrinne verlässt den Formblock; …` | Fehler | Der Verlauf der Blutrinne kommt einer Blockkante näher als 1 mm |
 | `Form: Die Zentrierbohrungen sind … mm tief, die dünnere Hälfte ist aber nur … mm dick; …` | Fehler | Tiefe der Zentrierbohrungen größer als die Dicke der dünneren Hälfte − 1 mm |
 | `Form: Von oben gesehen reicht das Profil … mm über die Linie der Nasenleiste oder der Endleiste hinaus (geschränkte Schnitte), mehr als 0,1 mm: Eine Formhälfte hätte einen Hinterschnitt. Die Schränkung verringern.` | Fehler | Von oben gesehen reicht ein geschränkter Schnitt mehr als 0,1 mm über die Linie der Nasenleiste oder der Endleiste hinaus |
+| `Form: Die Wurzelfläche neigt sich mit der V-Form um …° und erreicht innerhalb der … mm der dickeren Hälfte das Flügelende; die Bodendicke verringern.` | Die Wurzelfläche neigt sich um den Rollwinkel des Formrahmens. Über die Dicke der dickeren Hälfte erreicht sie die Spannweitenposition des Flügelendes. |
 | `Form: Die Rampe faltet sich am Flügelumriss über sich selbst; die Breite der Rampe verringern.` | Fehler | Die Rampe faltet sich in der Draufsicht, z. B. an einer engen Krümmung des Umrisses |
 | `Form: Die Rampe entlang des Flügelumrisses ließ sich nicht anpassen; …` | Fehler | Sehr dicht beieinander liegende Schnitte |
 | `Der Flügel hat Fehler; sie vor dem Bau einer Form beheben.` | Fehler | Der Flügel baut nicht |
@@ -1301,7 +1302,7 @@ Die Hälften trennen sich an Nasenleiste und Endleiste. Ein Profil mit hohler Un
 
 Geometrie, Formeln und Beispiele: [[Geometrie|Geometrie]], Abschnitt 8 „Schaumkerne“.
 
-Mit **Einstellungen** > **Flügelende** = **Rund** schließt sich das Flügelende in einem Punkt der Profiltiefe 0, den kein Kernende aufnehmen kann. Der äußerste Kern endet am letzten Schnitt vor dem Punkt (Profiltiefe mindestens 1 mm), und kein Schnitt liegt außerhalb davon; ein Schnitt näher als 5 mm an diesem Ende entfällt. **Sport** mit dem Randbogen der Vorgaben: Die Kerne enden bei y = 739,05 mm, das Flügelende bis 743,95 mm liegt in keinem Kern. `README.txt` und der Kopf der Schablonen sagen: `Das Flügelende jenseits von y = … mm gehört zu keinem Kern: Es schließt sich bei y = … mm in einem Punkt (Einstellungen > Flügelende Rund) und wird separat geformt.`
+Mit **Einstellungen** > **Flügelende** = **Rund** schließt sich das Flügelende in einem Punkt der Profiltiefe 0, den kein Kernende aufnehmen kann. Der äußerste Kern endet am letzten Schnitt vor dem Punkt (Profiltiefe mindestens 1 mm), und kein Schnitt liegt außerhalb davon; ein Schnitt näher als 5 mm an diesem Ende entfällt. **Sport** mit dem Randbogen der Vorgaben: Die Kerne enden bei y = 739,05 mm, das Flügelende bis 743,95 mm liegt in keinem Kern. `README.txt` und der Kopf der Schablonen sagen: `Das Flügelende jenseits von y = … mm gehört zu keinem Kern: Es schließt sich bei y = … mm in einem Punkt (Einstellungen > Flügelende Rund) und wird separat geformt.` Liegt nur die Wurzel vor dem Punkt, würden die Kerne an der Wurzel enden: Der Assistent zeigt `Schaumkerne enden am letzten Schnitt vor dem Punkt eines runden Flügelendes (Einstellungen > Flügelende Rund), … mm von der Wurzel; ein Kern braucht mindestens 5 mm. Einen Schnitt vor dem Punkt hinzufügen.` und bietet keine Dateien an.
 
 ### Einstellungen
 

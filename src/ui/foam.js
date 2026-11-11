@@ -2,7 +2,7 @@
 // writes their end profiles and 1:1 templates (src/export/foam.js). The cuts live in the dialog only;
 // the settings (longest core, deviation limit, kerf, paper) are kept in browser storage.
 
-import { FOAM_LIMITS, foamEnd, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../geom/foam.js';
+import { FOAM_LIMITS, foamEnd, foamProblem, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../geom/foam.js';
 import { FRAME, PAPERS, layoutDxf, layoutPdf, layoutSvg, pagePlan, profileZip, templateLayout } from '../export/foam.js';
 import { cloneProject } from '../model/project.js';
 import { drawPlanform } from './wizard.js';
@@ -47,7 +47,9 @@ export function foamDialog(store, getBuild, notify = () => {}) {
   const project = cloneProject(store.project);
   const build = getBuild();
   const name = project.name || 'wing';
-  const blocked = !build?.surface;
+  // No surface, or no span for a core before the point of a round tip.
+  const noCore = build?.surface ? foamProblem(build) : null;
+  const blocked = !build?.surface || noCore !== null;
   const settings = storedFoamSettings();
   let cuts = blocked ? [] : proposeCuts(build, settings.coreLength);
   let segments = [];
@@ -253,7 +255,7 @@ export function foamDialog(store, getBuild, notify = () => {}) {
   );
 
   const body = blocked
-    ? [h('p', { class: 'sev-error' }, tr('The wing has errors; fix them before planning foam cores.'))]
+    ? [h('p', { class: 'sev-error' }, noCore ?? tr('The wing has errors; fix them before planning foam cores.'))]
     : [
         h(
           'div',

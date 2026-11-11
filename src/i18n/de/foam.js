@@ -86,4 +86,6 @@ export default {
   '{label}: part {part} of {parts} (row {row}, column {col})': '{label}: Teil {part} von {parts} (Zeile {row}, Spalte {col})',
   'The tip beyond y = {y} mm is not part of a core: it closes in a point at y = {tip} mm (Settings > Wing tip Round) and is shaped separately.':
     'Das Flügelende jenseits von y = {y} mm gehört zu keinem Kern: Es schließt sich bei y = {tip} mm in einem Punkt (Einstellungen > Flügelende Rund) und wird separat geformt.',
+  'Foam cores end at the last section before the point of a round wing tip (Settings > Wing tip Round), {span} mm from the root; a core needs at least {min} mm. Add a section before the point.':
+    'Schaumkerne enden am letzten Schnitt vor dem Punkt eines runden Flügelendes (Einstellungen > Flügelende Rund), {span} mm von der Wurzel; ein Kern braucht mindestens {min} mm. Einen Schnitt vor dem Punkt hinzufügen.',
 };

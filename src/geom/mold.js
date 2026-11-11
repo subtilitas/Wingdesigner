@@ -662,6 +662,15 @@ export function moldGeometry(build, input) {
   const thickness = { lower: Math.max(zp - zMinL, groove) + p.floor, upper: Math.max(zMaxU - zp, groove) + p.floor };
   // The root face leans by the roll: holes keep clear of it over the whole height of both halves.
   const holeY0 = yR + Math.abs(slope) * Math.max(thickness.lower, thickness.upper);
+  // The leaning root face must stay inboard of the tip-side face over the whole height of both halves.
+  if (holeY0 > block.y1 - p.margin) {
+    return fail(
+      tr('Mold: the root face leans {roll}° with the dihedral and reaches the wing tip within the {thickness} mm of the thicker half; reduce the floor thickness.', {
+        roll: fixed(Math.abs(roll), 1),
+        thickness: fixed(Math.max(thickness.lower, thickness.upper), 1),
+      }),
+    );
+  }
 
   // Holes.
   const keepOut = (p.channel.on ? p.channel.distance + 2 * r : w) + MOLD_CLEARANCE;

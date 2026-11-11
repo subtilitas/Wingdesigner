@@ -1254,6 +1254,7 @@ Summary below the preview, e.g. **Sport** preset with the default rounded tip an
 | `Mold: the resin channel leaves the block; …` | error | The channel path comes closer than 1 mm to a block edge |
 | `Mold: the pin holes are … mm deep, but the thinner half is … mm thick; …` | error | Pin depth above the thickness of the thinner half − 1 mm |
 | `Mold: seen from above, the airfoil reaches … mm beyond the leading-edge or trailing-edge line (twisted sections), more than 0.1 mm: one mold half would be undercut. Reduce the twist.` | error | Seen from above, a twisted section reaches more than 0.1 mm beyond the leading-edge or trailing-edge line |
+| `Mold: the root face leans …° with the dihedral and reaches the wing tip within the … mm of the thicker half; reduce the floor thickness.` | The root face leans by the roll of the frame. Over the thickness of the thicker half it reaches the span position of the wing tip. |
 | `Mold: the ramp folds over itself at the wing outline; reduce the ramp width.` | error | The ramp folds in the top view, e.g. at a tight curve of the outline |
 | `Mold: the ramp along the wing outline could not be fitted; …` | error | Sections very close together |
 | `The wing has errors; fix them before building a mold.` | error | The wing does not build |
@@ -1294,7 +1295,7 @@ The halves part at the leading edge and the trailing edge. An under-cambered air
 
 Geometry, formulas and examples: [[Geometry|Geometry]], section 8 "Foam cores".
 
-With **Settings** > **Wing tip** = Round the tip closes in a point of chord 0, which no core end can hold. The outermost core ends at the last section before the point (chord at least 1 mm), and no cut lies beyond it; a cut closer than 5 mm to that end is dropped. **Sport** with the default rounded tip: the cores end at y = 739.05 mm, the tip to 743.95 mm is in no core. `README.txt` and the templates name the span position where the cores end and the point: `The tip beyond y = … mm is not part of a core: it closes in a point at y = … mm (Settings > Wing tip Round) and is shaped separately.`
+With **Settings** > **Wing tip** = Round the tip closes in a point of chord 0, which no core end can hold. The outermost core ends at the last section before the point (chord at least 1 mm), and no cut lies beyond it; a cut closer than 5 mm to that end is dropped. **Sport** with the default rounded tip: the cores end at y = 739.05 mm, the tip to 743.95 mm is in no core. `README.txt` and the templates name the span position where the cores end and the point: `The tip beyond y = … mm is not part of a core: it closes in a point at y = … mm (Settings > Wing tip Round) and is shaped separately.` When only the root lies before the point, the cores would end at the root: the wizard shows `Foam cores end at the last section before the point of a round wing tip (Settings > Wing tip Round), … mm from the root; a core needs at least 5 mm. Add a section before the point.` and offers no files.
 
 ### Settings
 
