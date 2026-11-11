@@ -51,7 +51,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/geom/stats.js` | Planform statistics; for a tilted or rolled part the MAC position, 25 % MAC and span in the plane axes |
 | `src/geom/part.js` | Rigid placement of the part (**Part tilt**, **Part roll**): `partPivot` (stored pivot, else the leading edge of the root section), `partTransform` (roll about x, then tilt about y, through the pivot: `point`, `vector`, `matrix`), `transformPositions` (mesh vertices) |
 | `src/geom/foam.js` | Foam cores: proposed cuts (`proposeCuts`), cut list rules (`normalizeCuts`), segments with end profiles, wedges and deviation (`foamSegments`), splitting above a deviation limit (`splitOverTolerance`); limits `FOAM_LIMITS` |
-| `src/geom/mold.js` | Mold halves: `moldGeometry` (frame rolled with the dihedral, parting plane, ramps, outline, resin channel, block, holes, preview and summary), `moldProblems` (range and combination checks), `offsetOutline` (offset with rounded inward corners), `grooveSurface` (half-round groove as one B-spline surface), `resolveMold`, `MOLD_DEFAULTS`, `MOLD_RANGES`, `HOLE_PATTERNS`, `MOLD_CLEARANCE` (1 mm) |
+| `src/geom/mold.js` | Mold halves: `moldGeometry` (frame rolled with the dihedral, parting surface level in flight direction, outline, resin channel, block, holes, preview and summary), `partingSurface` (the parting surface of a flat tip: 4 rows, degree 1 along x; the surfaces around a tip that closes in a point are built inside the module), `moldProblems` (range and combination checks), `offsetOutline` (offset with rounded inward corners), `grooveSurface` (half-round groove as one B-spline surface), `resolveMold`, `MOLD_DEFAULTS`, `MOLD_RANGES`, `HOLE_PATTERNS`, `MOLD_CLEARANCE` (1 mm), `MOLD_OVERHANG` (0.1 mm) |
 | `src/geom/sampling.js` | Span samples for drawing, shared by the 3D view and the planform: `refine`, `thinParams`, `edgeParams`, `MAX_EDGE_SAMPLES` (20,000) |
 | `src/airfoil/parse.js` | Airfoil file parser; `cleanPoints` cleans a point list from another format (the airfoils of an XFLR5 project) by the rules of a parsed file |
 | `src/airfoil/geometry.js` | Polyline geometry |
@@ -59,7 +59,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/airfoil/naca.js` | NACA 4- and 5-digit generator; `leadingNacaCode` finds the code that starts a name (`NACA0014_Flap`) |
 | `src/airfoil/library.js` | 17 NACA presets, bundled library, external sources; `librarySource` (source record of a bundled entry) |
 | `src/export/step.js` | STEP writer; file format International Organization for Standardization (ISO) 10303-21 |
-| `src/export/moldstep.js` | STEP writer of the mold halves: `moldToStep` (one `MANIFOLD_SOLID_BREP` per half, parting plane at z = 0), `Brep` (vertices, edges, B-spline, plane and cylinder faces, closed-shell check) |
+| `src/export/moldstep.js` | STEP writer of the mold halves: `moldToStep` (one `MANIFOLD_SOLID_BREP` per half, z = 0 at the mean height of leading edge and trailing edge; the parting surface as B-spline faces), `Brep` (vertices, edges, B-spline, plane and cylinder faces, closed-shell check) |
 | `src/export/axes.js` | Up axis of the exported files (the Fusion 360 fix of the export dialog): `UP_AXES`, `upAxisMap` (identity for Z up, (x, z, −y) for Y up), `meshToUpAxis` |
 | `src/export/stl.js` | Binary stereolithography (STL) writer |
 | `src/export/threemf.js` | 3MF writer |
@@ -90,7 +90,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/ui/wizard.js` | Wizard dialog with the panel table; `drawPlanform` (also draws the planform in the import dialog) |
 | `src/ui/xflr5.js` | Import dialog for XFLR5 files: `openXflr5Dialog` |
 | `src/ui/exportui.js` | **Export** dialog; `storedUpAxis` (the up axis of the last export, also used by the mold dialog); the **Mold halves…** button |
-| `src/ui/mold.js` | Mold dialog: `moldDialog` (fields, top-view preview of the parting plane, summary, **Download STEP**); stored values (`storedMoldSettings`, key `wingdesigner.mold`) |
+| `src/ui/mold.js` | Mold dialog: `moldDialog` (fields, top-view preview of the parting surface, summary, **Download STEP**); stored values (`storedMoldSettings`, key `wingdesigner.mold`) |
 | `src/ui/foam.js` | Foam-cutting wizard: `foamDialog`; stored settings (`storedFoamSettings`, key `wingdesigner.foam`) |
 | `src/ui/winglet.js` | Winglet dialog of the **Sections** tab: `wingletDialog` |
 | `src/ui/roundtip.js` | Rounded-tip dialog of the **Sections** tab: `roundTipDialog` |
@@ -448,7 +448,7 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 18 STEP files, 18 3MF files and `cases.json` in `step-check/` |
-| `npm run mold:cases` | `node scripts/export-mold-cases.mjs mold-check` | 16 mold STEP files and `cases.json` in `mold-check/` |
+| `npm run mold:cases` | `node scripts/export-mold-cases.mjs mold-check` | 18 mold STEP files and `cases.json` in `mold-check/` |
 | `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 16 test wings and `cases.json` in `foam-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 30 Portable Network Graphics (PNG) files: 15 in `docs/wiki/images/` (English) and 15 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
@@ -578,7 +578,7 @@ npm run mold:cases
 python scripts/validate_mold.py mold-check/cases.json
 ```
 
-`scripts/export-mold-cases.mjs` builds the wings and mold parameters of `moldCases()` in `test/mold-cases.js` and writes one STEP file per case to `mold-check/`. `cases.json` holds per file: the expected solid count, the expected total volume (blocks less half wing, resin channel and holes; the half wing from its mesh at u × 4 and v × 8), the tolerance `2e-4`, the up axis, the halves, the hole count and the extent of each half along the up axis (from its block face to the highest point of the parting plane, of leading and trailing edge and of the cavity surface, sampled 400 × 200).
+`scripts/export-mold-cases.mjs` builds the wings and mold parameters of `moldCases()` in `test/mold-cases.js` and writes one STEP file per case to `mold-check/`. `cases.json` holds per file: the expected solid count, the expected total volume (blocks less half wing, resin channel and holes; the half wing from its mesh at u × 4 and v × 8), the tolerance `5e-5`, the up axis, the halves, the hole count, the extent of each half along the up axis (`summary.extent`: from its outer face to the highest point (lower half) or the lowest point (upper half) of the parting surface and of its cavity) and `summary.fit` (the largest miss of the rims of the resin channel from the parting surface).
 
 | Check per file (`validate_mold.py`) | Pass condition |
 | --- | --- |
@@ -586,16 +586,16 @@ python scripts/validate_mold.py mold-check/cases.json
 | Solid count | Equals the expected count: 2, or 1 with **Halves** Lower only or Upper only |
 | Validity | Every solid passes `BRepCheck_Analyzer` |
 | Shell | Closed and consistently oriented (`ShapeAnalysis_Shell`), volume > 0 |
-| Volume | The volumes of both halves add up to the expected total within `2e-4` (relative) |
-| Extent | Each half spans its expected range along the up axis, the parting plane at 0, within 0.1 mm |
+| Volume | The volumes of both halves add up to the expected total within `5e-5` (relative): by the surface integral of OpenCascade (`BRepGProp`) or, where that misses the tolerance (trimmed faces of a twisted parting surface), on a tessellation with 0.004 mm linear and 0.05 rad angular deflection |
+| Extent | Each half spans its expected range along the up axis about z = 0, within 0.1 mm |
 | Holes | Every solid has 2 cylindrical faces per hole |
 | Planar faces | Every edge of a planar face lies in its plane within `1e-6` mm, 20 samples per edge |
 
-Exit code 1 when a check fails. On 2026-11-11 (local, `cadquery-ocp` 8.0.1): the 16 files passed, largest volume deviation 8.9e-6; 36 further files (9 presets with a round and with the preset tip, open and closed trailing edge) passed the same checks in a local run, not in the repository.
+Exit code 1 when a check fails. The 18 files: result not recorded here. On 2026-11-11 (local, `cadquery-ocp` 8.0.1) 36 further files (9 presets with a round and with the preset tip, open and closed trailing edge) were valid and closed in OpenCascade in a local run, not in the repository.
 
-Cases (`test/mold-cases.js`): a flat untwisted wing with open and closed trailing edge and with a round tip; the sample wing with twist and dihedral; **Sport**, **Glider** (both hole sets **Around the wing**) and **Delta jet** with a round tip; **Swept flying wing** with a closed trailing edge at a flat tip (the mean line parts the tip face of a reflexed airfoil); an under-cambered wing with a flat and with a round tip (the lower half rises above the parting plane); **Batwing**; **Tail surface** without resin channel and without holes; **Sport** with one half only (lower, upper) and the molds of the left wing with Y up.
+Cases (`test/mold-cases.js`): a flat untwisted wing with open and closed trailing edge and with a round tip; the sample wing with twist and dihedral; **Sport**, **Glider** (both hole sets **Around the wing**) and **Delta jet** with a round tip; **Swept flying wing** with a closed trailing edge at a flat tip (the mean line parts the tip face of a reflexed airfoil); an under-cambered wing with a flat and with a round tip (the lower half rises above z = 0 inside the cavity outline); a swept wing (leading edge of the tip 125 mm aft over 500 mm span) with 8° washout, with a flat tip (`swept-twist-flat-tip`) and with a round tip (`swept-twist-round-tip`): leading edge and trailing edge of the tip differ in height, the parting surface changes height along the span; **Batwing**; **Tail surface** without resin channel and without holes; **Sport** with one half only (lower, upper) and the molds of the left wing with Y up.
 
-Unit tests: `test/mold.test.js` (geometry, checks, hole placement, STEP topology of the halves, German messages). Browser test: `e2e/mold.spec.js` (the dialog opened from **Export** with the defaults and the summary of the **Sport** wing; **Mold halves…** disabled for a wing with errors; fields enabled by group and pattern; a value out of range, a margin error and the warning for left-out holes; the values kept across a reload; **Download STEP** with both halves and with one; Y up after an export with the **Fusion 360 fix**; the German dialog; the phone layout).
+Unit tests: `test/mold.test.js` (geometry, checks, hole placement, STEP topology of the halves, German messages). Browser test: `e2e/mold.spec.js` (the dialog opened from **Export** with the defaults and the summary of the **Sport** wing; **Mold halves…** disabled for a wing with errors; fields enabled by group and pattern; a value out of range, a margin error and the warning for left-out holes; the values kept across a reload; **Download STEP** with both halves and with one, the parting faces as B-spline surfaces; the parting range of a wing with tip twist; Y up after an export with the **Fusion 360 fix**; the German dialog; the phone layout).
 
 ### Foam-cutting file validation
 
@@ -672,7 +672,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `mobile-planform.png` | Phone, **Planform**, **Sport**, end line on | 1082 x 2202 | 1082 x 2202 |
 | `foam-dialog.png` | Foam-cutting wizard, **Glider**, after **Split segments over the limit**, window 1280 x 1400 CSS px | 960 x 1344 | 960 x 1384 |
 | `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 966 | 960 x 1062 |
-| `mold-dialog.png` | Mold dialog (**Export** > **Mold halves…**), **Sport** with the default rounded tip, default mold values, window 1280 x 1400 CSS px | 960 x 1260 | 960 x 1260 |
+| `mold-dialog.png` | Mold dialog (**Export** > **Mold halves…**), **Sport** with the default rounded tip, default mold values, window 1280 x 1400 CSS px | 960 x 1216 | 960 x 1234 |
 
 ### Documentation check
 

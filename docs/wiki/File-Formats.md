@@ -1147,26 +1147,26 @@ Written by **Export** > **Mold halves…** ([[User Guide|User-Guide]], section M
 | `FILE_DESCRIPTION` | `(('Wingdesigner mold'),'2;1')` |
 | `FILE_NAME` name, `PRODUCT`, shape representation | `<project name> mold` |
 | Solids | **Halves** Lower and upper: 2 `MANIFOLD_SOLID_BREP`, `<project name> mold lower` and `<project name> mold upper`; Lower only or Upper only: 1 |
-| Position | closed mold: parting plane at z = 0, lower half at z ≤ 0, upper half at z ≥ 0 (with **Fusion 360 fix** at the last export: parting plane at Y = 0, the upper half at Y ≥ 0) |
+| Position | closed mold: z = 0 at the mean height of leading edge and trailing edge, the lower half below the parting surface, the upper half above it (with **Fusion 360 fix** at the last export: Y = 0 at that height, the upper half towards +Y) |
 | Axes | x chordwise towards the TE, y spanwise towards the right tip (left tip with **Molds of the left wing**), z up, in the mold frame: the build frame rolled about x by the dihedral, without **Part tilt** and **Part roll** ([[Geometry]], section 11.1). With **Fusion 360 fix** at the last export: (x, z, −y) |
 | Units | millimetre |
-| Surfaces | `B_SPLINE_SURFACE_WITH_KNOTS` (cavity, ramps, resin channel), `PLANE` (block faces, parting plane, ramp triangles, half of a flat tip face, pin hole bottoms), `CYLINDRICAL_SURFACE` (holes) |
-| Edge curves | `B_SPLINE_CURVE_WITH_KNOTS`, `CIRCLE` (hole rims) |
+| Surfaces | `B_SPLINE_SURFACE_WITH_KNOTS` (parting surface, cavity, blunt trailing edge, strip beyond a flat tip, resin channel), `PLANE` (bottom, front, back, tip-side and root face of the block, half of a flat tip face, pin hole bottoms), `CYLINDRICAL_SURFACE` (holes) |
+| Edge curves | `B_SPLINE_CURVE_WITH_KNOTS` (straight edges as degree 1), `CIRCLE` (rims of the holes in a pin hole bottom and in the bottom face) |
 | Browser storage | the dialog values under `wingdesigner.mold`, JSON; not in the project file |
 
-Faces of one half (the upper half is the mirror image at the parting plane; the molds of the left wing the mirror image at y = 0, with the bound flags and the sense of the B-spline faces reversed):
+Faces of one half (the upper half is the mirror image at z = 0; the molds of the left wing the mirror image at y = 0, with the bound flags and the sense of the B-spline faces reversed):
 
 | Face group | Faces |
 | --- | --- |
-| Block | bottom, front (leading-edge side), back, tip side: planes; the root face: a plane, leaning by the roll of the mold frame, with the root section and the ends of the resin channel in its outline |
-| Parting | the plane z = 0 outside the ramp, split by the resin channel into two faces (one face without channel); the hole rims are inner loops of the outer face |
-| Ramp | two ruled B-spline surfaces (degree 1 across) from leading edge and trailing edge to the plane; at a flat tip also a ruled surface from the mean line of the tip section and a planar triangle at each corner |
+| Block | bottom: a plane; front (leading-edge side), back and tip side: planes whose top edge is the edge of the parting surface; the root face: a plane, leaning by the roll of the mold frame, with the root line of the parting surface, the root section and the ends of the resin channel in its outline |
+| Parting surface | the surface over the whole block, level along x at the height of the leading edge ahead of the wing and of the trailing edge behind it. Flat tip: 2 faces on one surface (outside and inside the resin channel), 1 without channel; a ruled B-spline strip from the mean line of the tip section to it. Tip that closes in a point: 4 faces on two surfaces (ahead of the leading edge and behind the trailing edge, each outside and inside the channel), 2 without channel; the two surfaces meet in the seam from the tip point to the tip-side face. The mouths of the holes are inner loops of the outer faces. |
 | Cavity | the wing surface of the side (the B-spline surface of the wing export), the half of a blunt trailing edge, at a flat tip the half of the tip face up to its mean line |
 | Resin channel | one B-spline surface of half-round cross-section |
-| Holes | two half cylinders each; a pin hole ends in a planar bottom, a screw hole in the bottom face of the block |
+| Holes | 2 half cylinders each; the mouth: 2 B-spline edges on the parting surface; a pin hole ends in a planar bottom, a screw hole in the bottom face of the block |
 
 - A loop is listed counter-clockwise seen from outside the solid. Every edge is used once in each direction (closed shell); the writer refuses a half otherwise.
-- With a round tip the cavity and both ramps end in one vertex.
+- Leading edge and trailing edge are edges of the parting surface and of the cavity. The rims of the channel and the mouths of the holes are fitted through points of the parting surface and lie on it within a small distance ([[Geometry]], sections 11.3 and 11.5).
+- With a round tip the cavity ends in one vertex, the tip point; the seam of the parting surface starts there.
 - Validation: `scripts/validate_mold.py` with OpenCascade ([[Development]], section Mold validation).
 
 ## STL

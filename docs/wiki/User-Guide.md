@@ -1181,22 +1181,22 @@ For STEP, the note gives the surface control points in the file and the file siz
 
 ## Mold halves
 
-![Mold dialog for the Sport preset with a rounded tip: groups Block, Resin channel, Alignment pin holes, Clamping screw holes and File; top view of the parting plane with block outline, resin channel around the wing, 4 pin holes at the corners and 14 screw holes along the edges; summary below the view](images/mold-dialog.png)
+![Mold dialog for the Sport preset with a rounded tip: groups Block, Resin channel, Alignment pin holes, Clamping screw holes and File; top view of the parting surface with block outline, resin channel around the wing, 4 pin holes at the corners and 14 screw holes along the edges; summary below the view](images/mold-dialog.png)
 
-**Export** > **Mold halves…** opens the dialog **Mold**. It builds a lower and an upper mold half of the right half wing as exact STEP solids (AP214) and writes them to one file: `<project name>_mold.step`, with the file name rule of section [Export](#export). The halves stand in the closed position, the parting plane at z = 0, the lower half below it, the upper half above it. Solid names: `<project name> mold lower` and `<project name> mold upper`. Units: mm. The axes follow the last export: with **Fusion 360 fix: Y up** on at the last STEP, STL or 3MF export, the file has Y as the up axis.
+**Export** > **Mold halves…** opens the dialog **Mold**. It builds a lower and an upper mold half of the right half wing as exact STEP solids (AP214) and writes them to one file: `<project name>_mold.step`, with the file name rule of section [Export](#export). The halves stand in the closed position, the lower half below the parting surface, the upper half above it. z = 0 in the file is the mean height of leading edge and trailing edge. Solid names: `<project name> mold lower` and `<project name> mold upper`. Units: mm. The axes follow the last export: with **Fusion 360 fix: Y up** on at the last STEP, STL or 3MF export, the file has Y as the up axis.
 
 | Part | Built as |
 | --- | --- |
-| Block | One box per half. Length: wing from leading to trailing edge plus **Margin around the wing** at front and back. Width: root face to the tip plus the margin. Thickness of a half: the deepest point of the half below the parting plane plus **Floor below the cavity**. The deepest point is the cavity or, with the resin channel on and a cavity shallower than the channel radius (half the **Diameter**), the groove. |
+| Block | One block per half. Length: wing from leading to trailing edge plus **Margin around the wing** at front and back. Width: root face to the tip plus the margin. Bottom face: a plane. Front, back and tip-side faces: planes whose top edge is the edge of the parting surface. Depth of a half below or above z = 0: **Floor below the cavity** plus the deepest of the cavity and the lowest point of the parting surface plus the groove radius (half the **Diameter** of the resin channel). |
 | Root face | The face of the block at the root. The root section lies in it; the cavity is open there. With dihedral the face leans by the roll of the mold frame (below). |
 | Cavity | The wing surface of the half: lower surface in the lower half, upper surface in the upper half; the half of a blunt trailing edge; at a flat tip the half of the tip face. |
 | Parting line | Leading edge and trailing edge of the wing; the middle of a blunt trailing edge. |
-| Ramp | A ruled surface, **Ramp width** wide, from leading edge and trailing edge down or up to the parting plane. Leading edge and trailing edge lie off the plane with twist, a change of dihedral or an airfoil whose leading edge lies off its chord line; the ramp joins them to it. Inboard its rulings run along x; around a tip that closes in a point they turn with the tip; a flat tip face is parted along the mean line of the tip section. |
-| Resin channel | A half-round groove in each half, so that the closed mold has a round channel of **Diameter**. It runs around leading edge, tip and trailing edge, at **Distance from the wing** from the wing outline to its near rim, and ends in the root face. Inward corners of its path are rounded with a radius of diameter + 2 mm. |
-| Alignment pin holes | Blind holes from the parting plane, **Depth in each half** deep, in both halves at the same positions. |
-| Clamping screw holes | Through holes in both halves, from the parting plane to the bottom face, at the same positions. |
+| Parting surface | One surface over the whole block that holds the parting line and is level in flight direction (along x): ahead of the wing it lies at the height of the leading edge of that span station, behind the wing at the height of the trailing edge. Between leading edge and trailing edge it spans the chord lines, inside the opening of the cavity. Along the span it follows twist and dihedral; beyond a flat tip it keeps the heights of the tip. Around a tip that closes in a point (**Wing tip** Round) the level lines turn with the tip, from x at the start of the rounded tip to y at the point. A flat tip face is parted along the mean line of the tip section. |
+| Resin channel | A half-round groove in each half, so that the closed mold has a round channel of **Diameter**. It runs around leading edge, tip and trailing edge, at **Distance from the wing** from the wing outline to its near rim, and ends in the root face. Its path is laid out in the top view; inward corners are rounded with a radius of diameter + 2 mm. Each cross-section is a half circle below the parting surface. |
+| Alignment pin holes | Blind holes from the parting surface, in both halves at the same positions. The bottom lies **Depth in each half** below the lowest point of the mouth. |
+| Clamping screw holes | Through holes in both halves, from the parting surface to the bottom face, at the same positions. |
 
-Mold frame: the frame the half wing is built in, before **Part tilt** and **Part roll** (the mold ignores both), rolled about x by the dihedral of the wing: the roll of a flat tip section, else the slope of the line fitted to leading edge and trailing edge. The parting plane lies at the mean height of leading edge and trailing edge in that frame. Construction: [[Geometry|Geometry]], section 11.
+Mold frame: the frame the half wing is built in, before **Part tilt** and **Part roll** (the mold ignores both), rolled about x by the dihedral of the wing: the roll of a flat tip section, else the slope of the line fitted to leading edge and trailing edge. z = 0 lies at the mean height of leading edge and trailing edge in that frame. Construction: [[Geometry|Geometry]], section 11.
 
 ### Fields
 
@@ -1204,9 +1204,8 @@ Mold frame: the frame the half wing is built in, before **Part tilt** and **Part
 | --- | --- | --- | --- | --- | --- |
 | Block | **Margin around the wing** | mm | 5 | 5 to 1000 | 40 |
 | Block | **Floor below the cavity** | mm | 1 | 1 to 1000 | 12 |
-| Block | **Ramp width** | mm | 0.5 | 0.5 to 100 | 3 |
 | **Resin channel** (checkbox, on) | **Diameter** | mm | 0.5 | 1 to 20 | 4 |
-| Resin channel | **Distance from the wing** | mm | 1 | 1 to 500, at least ramp width + 0.5 | 6 |
+| Resin channel | **Distance from the wing** | mm | 1 | 1 to 500 | 6 |
 | **Alignment pin holes** (checkbox, on) | **Diameter** | mm | 0.5 | 1 to 50 | 6 |
 | Alignment pin holes | **Depth in each half** | mm | 1 | 1 to 500 | 10 |
 | Alignment pin holes | **Pattern** | – | – | see below | Block corners |
@@ -1224,57 +1223,61 @@ Mold frame: the frame the half wing is built in, before **Part tilt** and **Part
 - A value outside its limit is not taken: the field returns to the last valid value.
 - Fields that the chosen pattern or a switched-off group does not use are disabled: **Largest spacing** with Block corners, **Distance from the block edge** with Around the wing, **Distance beyond the resin channel** with the two other patterns.
 - **Molds of the left wing** writes the mirror image at y = 0. A left and a right mold are two files.
-- The values are stored in the browser under `wingdesigner.mold`, not in the project. Without browser storage the dialog starts with the defaults.
+- The values are stored in the browser under `wingdesigner.mold`, not in the project. Without browser storage the dialog starts with the defaults. A stored value of a field the dialog does not have is ignored.
 
 | Pattern | Hole positions |
 | --- | --- |
 | **Block corners** | 4 holes, one per corner, at **Distance from the block edge** from both edges |
 | **Along the block edges** | Along the front edge, the tip side and the back edge (not the root face), from corner to corner, in equal steps of at most **Largest spacing**; the corners included |
-| **Around the wing** | Along a path around the wing at **Distance beyond the resin channel** from the outer rim of the channel (without a channel: from the ramp), in equal steps of about **Largest spacing**, at least 1 hole |
+| **Around the wing** | Along a path around the wing at **Distance beyond the resin channel** from the outer rim of the channel (without a channel: from the wing outline), in equal steps of about **Largest spacing**, at least 1 hole |
 
+- Hole positions and distances are measured in the top view.
 - On the root side the holes keep their edge distance from the leaning root face over the height of both halves.
-- A hole closer than 1 mm to the keep-out around the cavity (the ramp, or the resin channel when it is on), to a block edge or to another hole is left out, with a warning that counts the left-out holes. A hole whose centre lies inside the wing outline is left out too and counts in the same warning. A position that a hole of the other set already holds is left out without a warning.
+- A hole closer than 1 mm to the keep-out around the cavity (the outer rim of the resin channel when it is on, else the wing outline), to a block edge or to another hole is left out, with a warning that counts the left-out holes. A hole whose centre lies inside the wing outline is left out too, and so is a hole on the seam of the parting surface beyond a tip that closes in a point; both count in the same warning. A position that a hole of the other set already holds is left out without a warning.
 - Defaults: pins at the 4 corners, screws along the edges between them. Glider preset with a rounded tip (**Rounded tip…**, **Continue the ellipse of the wing**): 4 pin holes, 20 screw holes.
 
 ### Preview and summary
 
-The preview draws the parting plane from above, y to the right and x aft downward, as the other previews: the block outline, the resin channel at its width in the accent colour, the outer edge of the ramp in grey, the wing outline filled, pin holes as filled circles and screw holes as open circles. Pan and zoom as in section [Controls](#controls).
+The preview draws the parting surface from above, y to the right and x aft downward, as the other previews: the block outline, the resin channel at its width in the accent colour, the wing outline filled, pin holes as filled circles and screw holes as open circles. Pan and zoom as in section [Controls](#controls).
 
 Summary below the preview, e.g. **Sport** preset with the default rounded tip and the default mold values (the screenshot above):
 
-`Block 320.0 × 784.2 mm; lower half 17.7 mm thick, upper half 27.6 mm. Parting plane rolled 1.54° with the wing; leading and trailing edge up to 1.36 mm off it. Resin channel 1586 mm long. 4 pin holes, 14 screw holes.`
+`Block 320.0 × 784.2 mm; lower half down to −17.7 mm, upper half up to +27.6 mm. Parting surface at the height of leading edge and trailing edge, level in flight direction: from -1.2 to 1.4 mm; frame rolled 1.54° with the wing. Resin channel 1586 mm long. 4 pin holes, 14 screw holes.`
+
+- Block: length and width; the outer face of the lower half lies at −lower, that of the upper half at +upper, both about z = 0.
+- Parting surface: its lowest and highest height about z = 0, and the roll of the mold frame.
 
 | Message | Kind | Condition |
 | --- | --- | --- |
-| `Mold: leading edge and trailing edge lie up to … mm off the parting plane (twist, a change of dihedral or the airfoil), so the ramp rises up to …°. …` | warning | The ramp rises more than 45° |
 | `Mold: … pin hole(s) left out: …`, `Mold: … screw hole(s) left out: …` | warning | Holes left out (above) |
 | `Mold: … must be between … and … mm.` | error | A value outside its limit |
-| `Mold: the distance of the resin channel must be at least … mm, the ramp width plus 0.5 mm.` | error | Channel distance below ramp width + 0.5 mm |
-| `Mold: the block margin must be at least … mm for the resin channel (…)` | error | Margin below distance + diameter + 1 mm (without channel: ramp width + 1 mm) |
+| `Mold: the block margin must be at least … mm for the resin channel (…)` | error | With the resin channel on: margin below distance + diameter + 1 mm |
 | `Mold: the resin channel leaves the block; …` | error | The channel path comes closer than 1 mm to a block edge |
-| `Mold: the pin holes are … mm deep, but the thinner half is … mm thick; …` | error | Pin depth above the thickness of the thinner half − 1 mm |
+| `Mold: the path of the resin channel around the wing could not be built; change its distance.` | error | The offset of the outline gives no path |
+| `Mold: the pin holes are … mm deep and reach within 1 mm of the outer face of a half; reduce the depth or increase the floor thickness.` | error | The bottom of a pin hole lies less than 1 mm above the outer face of its half |
 | `Mold: seen from above, the airfoil reaches … mm beyond the leading-edge or trailing-edge line (twisted sections), more than 0.1 mm: one mold half would be undercut. Reduce the twist.` | error | Seen from above, a twisted section reaches more than 0.1 mm beyond the leading-edge or trailing-edge line |
-| `Mold: the root face leans …° with the dihedral and reaches the wing tip within the … mm of the thicker half; reduce the floor thickness.` | The root face leans by the roll of the frame. Over the thickness of the thicker half it reaches the span position of the wing tip. |
-| `Mold: the ramp folds over itself at the wing outline; reduce the ramp width.` | error | The ramp folds in the top view, e.g. at a tight curve of the outline |
-| `Mold: the ramp along the wing outline could not be fitted; …` | error | Sections very close together |
+| `Mold: the root face leans …° with the dihedral and reaches the wing tip within the … mm of the thicker half; reduce the floor thickness.` | error | The root face leans by the roll of the frame. Over the thickness of the thicker half it reaches the span position of the wing tip. |
 | `The wing has errors; fix them before building a mold.` | error | The wing does not build |
 
 An error disables **Download STEP**. **Close** closes the dialog.
 
 ### Under-cambered airfoils
 
-The halves part at the leading edge and the trailing edge. An under-cambered airfoil has its lower surface above that line: the lower half then rises above z = 0 inside the cavity outline, and the upper half is recessed there. Example: an airfoil of 9 % camber and 5 % thickness at 200 mm chord, untwisted, without dihedral: the lower half reaches 13.2 mm above the parting plane. The lower cavity is 0.6 mm deep, less than the 2 mm groove radius of the default channel (4 mm), so the lower half is 2 mm + 12 mm = 14.0 mm thick; the upper half is 34.9 mm thick.
+The halves part at the leading edge and the trailing edge. An under-cambered airfoil has its lower surface above the chord line between them: the lower half then rises above z = 0 inside the cavity outline, and the upper half is recessed there. Example: an airfoil of 9 % camber and 5 % thickness at 200 mm chord, untwisted, without dihedral, flat tip: the lower half reaches 13.2 mm above z = 0. The lower cavity is 0.6 mm deep, less than the 2 mm groove radius of the default channel (4 mm), so the lower half reaches down to −14.0 mm (12 mm floor + 2 mm groove); the upper half reaches up to +34.9 mm.
 
 ### Limitations and tests
 
 - The mold ignores **Part tilt** and **Part roll**.
-- One parting plane per half wing. A wing with several dihedral angles gets high ramps: **Sailplane** preset 85.8 mm, ramp up to 88°, with the warning.
+- The parting surface follows twist and dihedral along the span. A wing with several dihedral angles or strong twist gets a parting surface with a large height range and tall blocks: **Sailplane** preset (dihedral 2°, 6° and 10°, default mold values) parting surface from −45.9 to +85.8 mm, frame rolled 9.99°, lower half down to −60.9 mm, upper half up to +111.3 mm. **Swept flying wing** preset: parting surface from −3.7 to +5.1 mm, lower half down to −23.4 mm, upper half up to +29.1 mm. Measured 2026-11-11.
+- Around a tip that closes in a point the level lines of the parting surface turn with the tip: there the surface is level along these lines, not along x.
+- Channel and hole distances are measured in the top view, not along the parting surface.
+- Leading edge and trailing edge are lines of the parting surface. The rims of the resin channel and the mouths of the holes are fitted through points of it and lie on it within a small distance, not exactly. Rims of the channel: at most 5.6e-5 mm on the 18 test files (Sport with a rounded tip), at most 2.1e-6 mm on those with a flat tip (Batwing). Mouths of the holes: at most 1.7e-10 mm on the files with a flat tip and on the **Sailplane** preset; with a tip that closes in a point not measured. Measured 2026-11-11.
 - The nose is parted at the leading-edge point of the airfoil. Seen from above, a twisted section reaches beyond the leading-edge or trailing-edge line, its nose turning ahead of the leading-edge point. Up to 0.1 mm the cavity overhangs there by about r · (1 − cos twist), r the nose radius: 0.004 mm for 3 mm and 3°. Above 0.1 mm the dialog refuses the mold (error table).
 - No draft angle.
 - Left and right molds are separate files; no one-piece mold of the full wing.
-- The resin channel is one B-spline surface fitted through stations along the path, not an exact torus or cylinder. Its cross-section lies within 0.02 mm of a half circle on the presets measured (Sport 0.018 mm, flat test wing 0.0073 mm, Delta jet 0.0031 mm); not measured against a CAD model.
+- The resin channel is one B-spline surface fitted through stations along the path, not an exact torus or cylinder. The deviation of its cross-section from a half circle is not measured.
 - Holes are cylinders, 2 half-cylinder faces each.
-- Tested: 16 mold files read with OpenCascade (valid, closed solids; the volumes of both halves add up to block − half wing − channel − holes within 2e-4). Not tested: the file in a CAD (computer-aided design) or CAM (computer-aided manufacturing) program other than OpenCascade; a milled mold.
+- Tested: 18 mold files read with OpenCascade (valid, closed solids; the volumes of both halves add up to block − half wing − channel − holes within 5e-5). Not tested: the file in a CAD (computer-aided design) or CAM (computer-aided manufacturing) program other than OpenCascade; a milled mold.
 
 ## Foam cutting
 

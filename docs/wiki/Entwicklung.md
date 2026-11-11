@@ -51,7 +51,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/geom/stats.js` | Grundrisskennwerte; bei einem gedrehten Teil Lage der MAC, 25 % MAC und Spannweite in den Achsen des Flugzeugs |
 | `src/geom/part.js` | Starre Lage des Teils (**Einstellwinkel des Teils**, **Rollwinkel des Teils**): `partPivot` (gespeicherter Drehpunkt, sonst die Nasenleiste des Wurzelschnitts), `partTransform` (Rollwinkel um x, dann Einstellwinkel um y, durch den Drehpunkt: `point`, `vector`, `matrix`), `transformPositions` (Eckpunkte der Dreiecksnetze) |
 | `src/geom/foam.js` | Schaumkerne: vorgeschlagene Schnitte (`proposeCuts`), Regeln der Schnittliste (`normalizeCuts`), Segmente mit Endprofilen, Keilen und Abweichung (`foamSegments`), Teilen über einer Grenze der Abweichung (`splitOverTolerance`); Grenzen `FOAM_LIMITS` |
-| `src/geom/mold.js` | Formhälften: `moldGeometry` (Bezugssystem mit der V-Form gerollt, Trennebene, Rampen, Umriss, Blutrinne, Formblock, Bohrungen, Vorschau und Zusammenfassung), `moldProblems` (Prüfung der Wertebereiche und Kombinationen), `offsetOutline` (Versatz mit gerundeten Innenecken), `grooveSurface` (halbrunde Rille als eine B-Spline-Fläche), `resolveMold`, `MOLD_DEFAULTS`, `MOLD_RANGES`, `HOLE_PATTERNS`, `MOLD_CLEARANCE` (1 mm) |
+| `src/geom/mold.js` | Formhälften: `moldGeometry` (Bezugssystem mit der V-Form gerollt, Trennfläche in Flugrichtung eben, Umriss, Blutrinne, Formblock, Bohrungen, Vorschau und Zusammenfassung), `partingSurface` (die Trennfläche eines flachen Flügelendes: 4 Zeilen, Grad 1 entlang x; die Flächen um ein Flügelende, das sich in einem Punkt schließt, entstehen innerhalb des Moduls), `moldProblems` (Prüfung der Wertebereiche und Kombinationen), `offsetOutline` (Versatz mit gerundeten Innenecken), `grooveSurface` (halbrunde Rille als eine B-Spline-Fläche), `resolveMold`, `MOLD_DEFAULTS`, `MOLD_RANGES`, `HOLE_PATTERNS`, `MOLD_CLEARANCE` (1 mm), `MOLD_OVERHANG` (0,1 mm) |
 | `src/geom/sampling.js` | Stützstellen in Spannweitenrichtung zum Zeichnen, gemeinsam für die 3D-Ansicht und den Grundriss: `refine`, `thinParams`, `edgeParams`, `MAX_EDGE_SAMPLES` (20.000) |
 | `src/airfoil/parse.js` | Parser für Profildateien; `cleanPoints` bereinigt eine Punktliste aus einem anderen Format (die Profile eines XFLR5-Projekts) nach den Regeln einer eingelesenen Datei |
 | `src/airfoil/geometry.js` | Polyliniengeometrie |
@@ -59,7 +59,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/airfoil/naca.js` | Generator für 4- und 5-stellige NACA-Profile; `leadingNacaCode` findet den Code, mit dem ein Name beginnt (`NACA0014_Flap`) |
 | `src/airfoil/library.js` | 17 NACA-Vorlagen, mitgelieferte Bibliothek, externe Quellen; `librarySource` (Quellenangabe eines mitgelieferten Eintrags) |
 | `src/export/step.js` | STEP-Export; Dateiformat nach International Organization for Standardization (ISO) 10303-21 |
-| `src/export/moldstep.js` | STEP-Schreiber der Formhälften: `moldToStep` (ein `MANIFOLD_SOLID_BREP` je Hälfte, Trennebene bei z = 0), `Brep` (Knoten, Kanten, B-Spline-, Ebenen- und Zylinderflächen, Prüfung der geschlossenen Hülle) |
+| `src/export/moldstep.js` | STEP-Schreiber der Formhälften: `moldToStep` (ein `MANIFOLD_SOLID_BREP` je Hälfte, z = 0 in der mittleren Höhe von Nasenleiste und Endleiste; die Trennfläche als B-Spline-Flächen), `Brep` (Knoten, Kanten, B-Spline-, Ebenen- und Zylinderflächen, Prüfung der geschlossenen Hülle) |
 | `src/export/axes.js` | Hochachse der exportierten Dateien (die Fusion-360-Korrektur des Exportdialogs): `UP_AXES`, `upAxisMap` (unverändert für Z nach oben, (x, z, −y) für Y nach oben), `meshToUpAxis` |
 | `src/export/stl.js` | Export als binäres STL (Stereolithografie) |
 | `src/export/threemf.js` | 3MF-Export |
@@ -90,7 +90,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/wizard.js` | Dialog des Assistenten mit der Feldtabelle; `drawPlanform` (zeichnet den Grundriss auch im Importdialog) |
 | `src/ui/xflr5.js` | Importdialog für XFLR5-Dateien: `openXflr5Dialog` |
 | `src/ui/exportui.js` | Dialog **Exportieren** (Export); `storedUpAxis` (die Hochachse des letzten Exports, auch vom Dialog der Form verwendet); die Schaltfläche **Formhälften …** |
-| `src/ui/mold.js` | Dialog der Form: `moldDialog` (Felder, Draufsicht auf die Trennebene, Zusammenfassung, **STEP herunterladen**); gespeicherte Werte (`storedMoldSettings`, Schlüssel `wingdesigner.mold`) |
+| `src/ui/mold.js` | Dialog der Form: `moldDialog` (Felder, Draufsicht auf die Trennfläche, Zusammenfassung, **STEP herunterladen**); gespeicherte Werte (`storedMoldSettings`, Schlüssel `wingdesigner.mold`) |
 | `src/ui/foam.js` | Schaumschnitt-Assistent: `foamDialog`; gespeicherte Einstellungen (`storedFoamSettings`, Schlüssel `wingdesigner.foam`) |
 | `src/ui/winglet.js` | Winglet-Dialog der Registerkarte **Schnitte**: `wingletDialog` |
 | `src/ui/roundtip.js` | Randbogen-Dialog der Registerkarte **Schnitte**: `roundTipDialog` |
@@ -448,7 +448,7 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Prüfungen unter [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek); Exit-Code 1 bei einem Problem |
 | `npm run e2e` | `npm run build && playwright test` | Browsertests in `e2e/` gegen `vite preview` auf Port 4173 |
 | `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 18 STEP-Dateien, 18 3MF-Dateien und `cases.json` in `step-check/` |
-| `npm run mold:cases` | `node scripts/export-mold-cases.mjs mold-check` | 16 STEP-Dateien der Form und `cases.json` in `mold-check/` |
+| `npm run mold:cases` | `node scripts/export-mold-cases.mjs mold-check` | 18 STEP-Dateien der Form und `cases.json` in `mold-check/` |
 | `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profil-ZIP, SVG, DXF und PDF von 16 Testflügeln und `cases.json` in `foam-check/` |
 | `npm run screenshots` | `node scripts/screenshots.mjs` | 30 Dateien im Format Portable Network Graphics (PNG): 15 in `docs/wiki/images/` (Englisch) und 15 in `docs/wiki/images/de/` (Deutsch) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
@@ -578,7 +578,7 @@ npm run mold:cases
 python scripts/validate_mold.py mold-check/cases.json
 ```
 
-`scripts/export-mold-cases.mjs` baut die Flügel und Parameter der Form aus `moldCases()` in `test/mold-cases.js` und schreibt je Testfall eine STEP-Datei nach `mold-check/`. `cases.json` enthält je Datei: die erwartete Anzahl der Volumenkörper, das erwartete Gesamtvolumen (Formblöcke abzüglich Flügelhälfte, Blutrinne und Bohrungen; die Flügelhälfte aus ihrem Dreiecksnetz bei u × 4 und v × 8), die Toleranz `2e-4`, die Hochachse, die Hälften, die Anzahl der Bohrungen und die Ausdehnung jeder Hälfte entlang der Hochachse (von ihrer Blockfläche bis zum höchsten Punkt der Trennebene, von Nasenleiste und Endleiste und der Formnestfläche, abgetastet 400 × 200).
+`scripts/export-mold-cases.mjs` baut die Flügel und Parameter der Form aus `moldCases()` in `test/mold-cases.js` und schreibt je Testfall eine STEP-Datei nach `mold-check/`. `cases.json` enthält je Datei: die erwartete Anzahl der Volumenkörper, das erwartete Gesamtvolumen (Formblöcke abzüglich Flügelhälfte, Blutrinne und Bohrungen; die Flügelhälfte aus ihrem Dreiecksnetz bei u × 4 und v × 8), die Toleranz `5e-5`, die Hochachse, die Hälften, die Anzahl der Bohrungen, die Ausdehnung jeder Hälfte entlang der Hochachse (`summary.extent`: von ihrer Außenfläche bis zum höchsten (Unterform) oder tiefsten (Oberform) Punkt der Trennfläche und ihres Formnests) und `summary.fit` (die größte Abweichung der Ränder der Blutrinne von der Trennfläche).
 
 | Prüfung je Datei (`validate_mold.py`) | Bestanden, wenn |
 | --- | --- |
@@ -586,16 +586,16 @@ python scripts/validate_mold.py mold-check/cases.json
 | Anzahl Volumenkörper | Gleich der erwarteten Anzahl: 2, oder 1 mit **Hälften** Nur Unterform oder Nur Oberform |
 | Gültigkeit | Jeder Volumenkörper besteht `BRepCheck_Analyzer` |
 | Hülle | Geschlossen und einheitlich orientiert (`ShapeAnalysis_Shell`), Volumen > 0 |
-| Volumen | Die Volumen beider Hälften ergeben das erwartete Gesamtvolumen innerhalb von `2e-4` (relativ) |
-| Ausdehnung | Jede Hälfte reicht entlang der Hochachse über ihren erwarteten Bereich, die Trennebene bei 0, innerhalb von 0,1 mm |
+| Volumen | Die Volumen beider Hälften ergeben das erwartete Gesamtvolumen innerhalb von `5e-5` (relativ): mit dem Flächenintegral von OpenCascade (`BRepGProp`) oder, wo dieses die Toleranz verfehlt (beschnittene Flächen einer geschränkten Trennfläche), an einer Triangulierung mit 0,004 mm linearer und 0,05 rad Winkelabweichung |
+| Ausdehnung | Jede Hälfte reicht entlang der Hochachse über ihren erwarteten Bereich, bezogen auf z = 0, innerhalb von 0,1 mm |
 | Bohrungen | Jeder Volumenkörper hat 2 Zylinderflächen je Bohrung |
 | Ebene Flächen | Jede Kante einer ebenen Fläche liegt innerhalb von `1e-6` mm in ihrer Ebene, 20 Abtastungen je Kante |
 
-Exit-Code 1, wenn eine Prüfung fehlschlägt. Am 11.11.2026 (lokal, `cadquery-ocp` 8.0.1): Die 16 Dateien bestanden, größte Volumenabweichung 8,9e-6; 36 weitere Dateien (9 Entwurfstypen mit rundem und mit dem Flügelende des Entwurfstyps, offene und geschlossene Endleiste) bestanden dieselben Prüfungen in einem lokalen Lauf, nicht im Repository.
+Exit-Code 1, wenn eine Prüfung fehlschlägt. Die 18 Dateien: Ergebnis hier nicht festgehalten. Am 11.11.2026 (lokal, `cadquery-ocp` 8.0.1) waren 36 weitere Dateien (9 Entwurfstypen mit rundem und mit dem Flügelende des Entwurfstyps, offene und geschlossene Endleiste) in einem lokalen Lauf in OpenCascade gültig und geschlossen, nicht im Repository.
 
-Testfälle (`test/mold-cases.js`): ein flacher ungeschränkter Flügel mit offener und geschlossener Endleiste und mit rundem Flügelende; der Beispielflügel mit Schränkung und V-Form; **Sport**, **Segelflugmodell** (beide Bohrungsarten **Um den Flügel**) und **Delta-Jet** mit rundem Flügelende; **Pfeilnurflügel** mit geschlossener Endleiste bei flachem Flügelende (die Skelettlinie teilt die Endfläche eines S-Schlag-Profils); ein Flügel mit hohler Unterseite mit flachem und mit rundem Flügelende (die Unterform steigt über die Trennebene); **Batwing**; **Leitwerk** ohne Blutrinne und ohne Bohrungen; **Sport** mit nur einer Hälfte (Unterform, Oberform) und die Formen des linken Flügels mit Y nach oben.
+Testfälle (`test/mold-cases.js`): ein flacher ungeschränkter Flügel mit offener und geschlossener Endleiste und mit rundem Flügelende; der Beispielflügel mit Schränkung und V-Form; **Sport**, **Segelflugmodell** (beide Bohrungsarten **Um den Flügel**) und **Delta-Jet** mit rundem Flügelende; **Pfeilnurflügel** mit geschlossener Endleiste bei flachem Flügelende (die Skelettlinie teilt die Endfläche eines S-Schlag-Profils); ein Flügel mit hohler Unterseite mit flachem und mit rundem Flügelende (die Unterform steigt innerhalb des Umrisses des Formnests über z = 0); ein gepfeilter Flügel (Nasenleiste des Flügelendes 125 mm weiter hinten auf 500 mm Spannweite) mit 8° Schränkung, mit flachem (`swept-twist-flat-tip`) und mit rundem Flügelende (`swept-twist-round-tip`): Nasenleiste und Endleiste des Flügelendes liegen auf verschiedener Höhe, die Trennfläche ändert ihre Höhe entlang der Spannweite; **Batwing**; **Leitwerk** ohne Blutrinne und ohne Bohrungen; **Sport** mit nur einer Hälfte (Unterform, Oberform) und die Formen des linken Flügels mit Y nach oben.
 
-Unit-Tests: `test/mold.test.js` (Geometrie, Prüfungen, Lage der Bohrungen, STEP-Topologie der Hälften, deutsche Meldungen). Browsertest: `e2e/mold.spec.js` (der Dialog aus **Exportieren** mit den Vorgaben und der Zusammenfassung des Flügels **Sport**; **Formhälften …** gesperrt bei einem Flügel mit Fehlern; Felder je nach Gruppe und Muster freigegeben; ein Wert außerhalb der Grenze, ein Fehler des Rands und die Warnung für weggelassene Bohrungen; die Werte nach einem Neuladen erhalten; **STEP herunterladen** mit beiden Hälften und mit einer; Y nach oben nach einem Export mit **Fusion-360-Korrektur**; der deutsche Dialog; die Darstellung auf dem Telefon).
+Unit-Tests: `test/mold.test.js` (Geometrie, Prüfungen, Lage der Bohrungen, STEP-Topologie der Hälften, deutsche Meldungen). Browsertest: `e2e/mold.spec.js` (der Dialog aus **Exportieren** mit den Vorgaben und der Zusammenfassung des Flügels **Sport**; **Formhälften …** gesperrt bei einem Flügel mit Fehlern; Felder je nach Gruppe und Muster freigegeben; ein Wert außerhalb der Grenze, ein Fehler des Rands und die Warnung für weggelassene Bohrungen; die Werte nach einem Neuladen erhalten; **STEP herunterladen** mit beiden Hälften und mit einer, die Flächen der Trennfläche als B-Spline-Flächen; der Höhenbereich der Trennfläche eines Flügels mit Schränkung am Flügelende; Y nach oben nach einem Export mit **Fusion-360-Korrektur**; der deutsche Dialog; die Darstellung auf dem Telefon).
 
 ### Validierung der Schaumschnitt-Dateien
 
@@ -672,7 +672,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | `mobile-planform.png` | Smartphone, **Grundriss**, **Sportmodell**, Endlinie eingeschaltet | 1082 x 2202 | 1082 x 2202 |
 | `foam-dialog.png` | Schaumschnitt-Assistent, **Segelflugmodell**, nach **Segmente über der Grenze teilen** (Split segments over the limit), Fenster 1280 x 1400 CSS-Pixel | 960 x 1344 | 960 x 1384 |
 | `xflr5-import.png` | Dialog **Aus XFLR5 importieren** (Import from XFLR5) für `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** geöffnet, Fenster 1280 x 1200 CSS-Pixel | 960 x 966 | 960 x 1062 |
-| `mold-dialog.png` | Dialog der Form (**Exportieren** > **Formhälften …**), **Sport** mit dem Randbogen der Vorgaben, Vorgaben der Form, Fenster 1280 x 1400 CSS-px | 960 x 1260 | 960 x 1260 |
+| `mold-dialog.png` | Dialog der Form (**Exportieren** > **Formhälften …**), **Sport** mit dem Randbogen der Vorgaben, Vorgaben der Form, Fenster 1280 x 1400 CSS-px | 960 x 1216 | 960 x 1234 |
 
 ### Dokumentationsprüfung
 
