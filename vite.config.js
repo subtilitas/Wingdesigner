@@ -110,9 +110,12 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['test/**/*.test.js'],
-    // Timing limits live in the tests that measure them; the timeout only catches hangs. Under
-    // coverage on a 2-core runner, the heaviest tests take 4 to 12 s; longer ones set their own.
-    testTimeout: 20000,
+    // Timing limits live in the tests that measure them; the timeouts only catch hangs. Under
+    // coverage on a 2-core runner, the heaviest tests take 4 to 12 s when the runner is not loaded and
+    // have exceeded 20 s when it is; longer ones set their own. The hooks of test/mold.test.js build
+    // several molds each.
+    testTimeout: 60000,
+    hookTimeout: 120000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.js'],

@@ -10,7 +10,7 @@ English: [[Development|Development]]
 | Build-Werkzeug | Vite `^8.3.1`. Relative Basis `./`, Source Maps. `build.chunkSizeWarningLimit: 900`: Vite warnt, wenn ein Chunk 900 kB überschreitet (Vite-Einheit: 1 kB = 1000 Byte). Ausgabe: ein klassisches Skript im Format IIFE (Immediately Invoked Function Expression) mit den Stilen darin, geladen mit `defer` und ohne `crossorigin` (Plugin `classicScript` in `vite.config.js`), weil Chromium Modulskripte und Stylesheets im CORS-Modus (Cross-Origin Resource Sharing) aus Datei-URLs ablehnt; `build.modulePreload: false`. `dist/index.html` läuft daher auch als Datei geöffnet. |
 | Laufzeitabhängigkeiten | three.js `^0.186.1`: 3D-Ansicht, nur in `src/ui/viewer3d.js` importiert. fflate `^0.8.3`: ZIP-Container der Dateien im 3D Manufacturing Format (3MF), nur in `src/export/threemf.js` importiert. Der Build bündelt beide in den Versionen aus `package-lock.json` (`npm ci`). Das Plugin `licenses` in `vite.config.js` schreibt `dist/LICENSES.txt`: `LICENSE` dieser App, dann die Lizenzdatei jedes npm-Pakets mit Code im Bundle (ermittelt aus den gebündelten Modulen, nicht aus einer Liste); ein gebündeltes Paket ohne Lizenzdatei bricht den Build ab. |
 | Node.js | 24 oder neuer (`.nvmrc`: 24; `engines.node`: `>=24`) |
-| Unit-Tests | Vitest `^5.0.2` in Node.js; Zeitlimit 20000 ms je Test (`test.testTimeout` in `vite.config.js`); Testabdeckung (Coverage) mit `@vitest/coverage-v8` |
+| Unit-Tests | Vitest `^5.0.2` in Node.js; Zeitlimit 60000 ms je Test und 120000 ms je Hook (`test.testTimeout`, `test.hookTimeout` in `vite.config.js`); Testabdeckung (Coverage) mit `@vitest/coverage-v8` |
 | Browsertests | Playwright `^1.63.0` |
 | App-Version | `version` aus `package.json`, von `vite.config.js` als `__APP_VERSION__` einkompiliert. Erscheint im Dialog **Hilfe** (Help). Steht in `generator.version` der Projektdatei (JavaScript Object Notation, JSON). |
 
@@ -757,7 +757,7 @@ Das Klonen in `docs.yml` setzt ein vorhandenes Repository-Wiki voraus; GitHub le
 
 ## Release
 
-`<version>`: die zu veröffentlichende Version, z. B. `0.11.0`. `package.json` enthält `0.10.0`.
+`<version>`: die zu veröffentlichende Version, z. B. `0.12.0`. `package.json` enthält `0.11.0`.
 
 1. Version setzen: `npm version <version> --no-git-tag-version` (ändert `package.json` und `package-lock.json`).
 2. In `CHANGELOG.md` die Einträge unter `## [Unreleased]` unter eine Überschrift `## [<version>] - YYYY-MM-DD` verschieben. Der Abschnitt wird zu den Release-Notes: Er beschreibt die App, ihre Dateien und ihre Benutzerdokumentation (README, Benutzerhandbuch, Geometrie, Dateiformate, Profilquellen) und lässt die Übergabe (`docs/Handover.md`), `RECORD.md`, die Absprachen, Continuous Integration, Tests, Skripte, diese Seite und die Namen des Quellcodes weg. `npm run docs:check` meldet die Begriffe, die es kennt (Dokumentationsprüfung).
