@@ -1,6 +1,8 @@
 // German text for src/geom/, src/export/: English key -> German text with the same {placeholders},
 // or a function of the params. See src/i18n/index.js.
 export default {
+  'Settings > Wing tip Round closes the tip in a point and needs a rounded tip: add one with Sections > Rounded tip…, or set the wing tip to Flat or Pointed.':
+    'Einstellungen > Flügelende Rund schließt das Flügelende in einem Punkt und braucht einen Randbogen: mit Schnitte > Randbogen … einen anfügen oder das Flügelende auf Flach oder Spitz setzen.',
   'The tilted or rolled part reaches x = {x} mm, y = {y} mm, z = {z} mm, beyond ±{limit} mm; reduce the part tilt or roll, or move the part towards its pivot.':
     'Das gedrehte Teil reicht bis x = {x} mm, y = {y} mm, z = {z} mm, außerhalb von ±{limit} mm; Einstellwinkel oder Rollwinkel des Teils verkleinern oder das Teil näher an seinen Drehpunkt legen.',
   // Guide curve checks (guide.js)

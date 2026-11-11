@@ -2,7 +2,7 @@
 // writes their end profiles and 1:1 templates (src/export/foam.js). The cuts live in the dialog only;
 // the settings (longest core, deviation limit, kerf, paper) are kept in browser storage.
 
-import { FOAM_LIMITS, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../geom/foam.js';
+import { FOAM_LIMITS, foamEnd, foamProblem, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../geom/foam.js';
 import { FRAME, PAPERS, layoutDxf, layoutPdf, layoutSvg, pagePlan, profileZip, templateLayout } from '../export/foam.js';
 import { cloneProject } from '../model/project.js';
 import { drawPlanform } from './wizard.js';
@@ -47,7 +47,9 @@ export function foamDialog(store, getBuild, notify = () => {}) {
   const project = cloneProject(store.project);
   const build = getBuild();
   const name = project.name || 'wing';
-  const blocked = !build?.surface;
+  // No surface, or no span for a core before the point of a round tip.
+  const noCore = build?.surface ? foamProblem(build) : null;
+  const blocked = !build?.surface || noCore !== null;
   const settings = storedFoamSettings();
   let cuts = blocked ? [] : proposeCuts(build, settings.coreLength);
   let segments = [];
@@ -93,7 +95,7 @@ export function foamDialog(store, getBuild, notify = () => {}) {
 
   const renderCuts = () => {
     const rows = cuts.map((y, i) => {
-      const input = numberField({ value: Number(y.toFixed(3)), step: 1, min: build.rootY, max: build.tipY });
+      const input = numberField({ value: Number(y.toFixed(3)), step: 1, min: build.rootY, max: foamEnd(build) });
       input.setAttribute('aria-label', tr('Cut {i}, y in mm', { i: i + 1 }));
       input.addEventListener('change', () => {
         const v = readNumber(input.value);
@@ -214,7 +216,8 @@ export function foamDialog(store, getBuild, notify = () => {}) {
       if (blocked) return;
       ctx.strokeStyle = cssVar('--accent', '#2f6fdf');
       ctx.lineWidth = 1.5;
-      for (const y of [build.rootY, ...cuts, build.tipY]) {
+      // The cores end at foamEnd: before the point of a round tip.
+      for (const y of [build.rootY, ...cuts, foamEnd(build)]) {
         const { xLE, chord } = build.planformAt(y);
         for (const sign of [1, -1]) {
           const [x0, y0] = view.toScreen(sign * y, -xLE);
@@ -252,7 +255,7 @@ export function foamDialog(store, getBuild, notify = () => {}) {
   );
 
   const body = blocked
-    ? [h('p', { class: 'sev-error' }, tr('The wing has errors; fix them before planning foam cores.'))]
+    ? [h('p', { class: 'sev-error' }, noCore ?? tr('The wing has errors; fix them before planning foam cores.'))]
     : [
         h(
           'div',

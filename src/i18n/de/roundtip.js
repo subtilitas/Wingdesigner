@@ -10,16 +10,16 @@ export default {
   'Straight line (% of the chord from the leading edge)': 'Gerade Linie (% der Profiltiefe ab der Nasenleiste)',
   'Top view of the wing with the rounded tip': 'Draufsicht des Flügels mit dem Randbogen',
   'Add rounded tip': 'Randbogen anfügen',
-  'Adds {n} sections and sets Settings > Wing tip to Pointed. Point at y = {y} mm, {out} mm beyond the tip section, chord {chord} mm.':
-    'Fügt {n} Schnitte an und setzt Einstellungen > Flügelende auf Spitz. Spitze bei y = {y} mm, {out} mm außerhalb des Randschnitts, Profiltiefe {chord} mm.',
-  'Rounded tip added: {n} sections, wing tip set to Pointed. Undo removes it.': 'Randbogen angefügt: {n} Schnitte, Flügelende auf Spitz gesetzt. Rückgängig entfernt ihn.',
+  'Adds {n} sections and sets Settings > Wing tip to Round: the tip closes in a point. Point at y = {y} mm, {out} mm beyond the tip section.':
+    'Fügt {n} Schnitte an und setzt Einstellungen > Flügelende auf Rund: Das Flügelende schließt sich in einem Punkt. Punkt bei y = {y} mm, {out} mm außerhalb des Randschnitts.',
+  'Rounded tip added: {n} sections, wing tip set to Round. Undo removes it.': 'Randbogen angefügt: {n} Schnitte, Flügelende auf Rund gesetzt. Rückgängig entfernt ihn.',
   length: 'Länge',
   'straight line': 'gerade Linie',
   'number of sections': 'Anzahl der Schnitte',
   'Rounded tip: {param} must be between {min} and {max}.': 'Randbogen: {param} muss zwischen {min} und {max} liegen.',
   'Rounded tip: the number of sections must be a whole number.': 'Randbogen: Die Anzahl der Schnitte muss eine ganze Zahl sein.',
-  'The wing already ends in a point (Settings > Wing tip = Pointed): a rounded tip needs a flat tip.':
-    'Der Flügel endet schon spitz (Einstellungen > Flügelende = Spitz): Ein Randbogen braucht ein flaches Flügelende.',
+  'The wing already ends in a point (Settings > Wing tip = Pointed or Round): a rounded tip needs a flat tip.':
+    'Der Flügel endet schon in einer Spitze (Einstellungen > Flügelende = Spitz oder Rund): Ein Randbogen braucht ein flaches Flügelende.',
   'Rounded tip: with {n} sections the tip chord must be at least {min} mm; use fewer sections.':
     'Randbogen: Mit {n} Schnitten muss die Randtiefe mindestens {min} mm betragen; weniger Schnitte wählen.',
   'Rounded-tip panel {n} spans {dy} mm in y, less than {min} mm; increase the length or use fewer sections.':

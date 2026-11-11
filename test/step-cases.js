@@ -1,6 +1,6 @@
 // Wing configurations covering the STEP topology variants (open/closed trailing edge,
 // linear/smooth spanwise interpolation, guide curves, root off the symmetry plane, mirroring,
-// mitred section planes, a rigid placement of the part).
+// mitred section planes, a rigid placement of the part, a tip closed in a point).
 import { createProject } from '../src/model/project.js';
 import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
 import { cuspedAirfoil, naca, sampleProject } from './helpers.js';
@@ -93,9 +93,20 @@ export function stepCases() {
   turned.settings = { ...turned.settings, partTilt: 8, partRoll: 12, partPivot: { x: 50, y: 0, z: -20 } };
   cases.push({ name: 'part-tilt-roll', project: turned, mirror: true });
   // A rounded tip (src/model/roundtip.js) on the mitred gull, Smooth: 6 sections on a quarter ellipse
-  // of chords to the 1 mm point, the panels of the quarter ellipse 37 to 4 mm wide in y.
+  // of chords that closes in a point of chord 0 (Wing tip Round), the panels of the quarter ellipse
+  // 37 to 4 mm wide in y. The trailing edge as in the file: the open NACA edge, its gap scaled with
+  // the chord down to the point. Each half: 4 faces, no tip cap.
   const rounded = structuredClone(smoothGull);
   addRoundTip(rounded, defaultRoundTip(rounded));
   cases.push({ name: 'rounded-tip-smooth', project: rounded, mirror: true });
+  // The same closed tip on the vertical, Linear test wing with a fixed trailing-edge thickness of
+  // 0.4 mm, limited to 5 % of the chord in the quarter ellipse (4 faces per half), and with a closed
+  // trailing edge and mitred planes (3 faces per half: upper, lower, root cap).
+  const roundOpen = sampleProject({ settings: { trailingEdge: { mode: 'thickness', thickness: 0.4 } } });
+  addRoundTip(roundOpen, defaultRoundTip(roundOpen));
+  cases.push({ name: 'rounded-tip-open-te', project: roundOpen, mirror: true });
+  const roundClosed = sampleProject({ settings: { trailingEdge: { mode: 'closed', thickness: 0 }, sectionPlanes: 'mitred' } });
+  addRoundTip(roundClosed, defaultRoundTip(roundClosed));
+  cases.push({ name: 'rounded-tip-closed-te', project: roundClosed, mirror: true });
   return cases;
 }

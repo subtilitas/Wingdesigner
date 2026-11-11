@@ -91,13 +91,73 @@ describe('rounded-tip blend', () => {
   });
 });
 
+describe('end of the rounded-tip blend at the point', () => {
+  // Sport with the default rounded tip and the straight line at 50 %, Linear: T at y = 600 mm, point
+  // at y = 743.95 mm, L = 143.95 mm. The build blends leading-edge x and chord with chord 0 at the
+  // point (Wing tip Round).
+  const p = roundedSport('linear', { line: 50 });
+  const s = sortedSections(p);
+  const ys = s.map((q) => q.y);
+  const lists = s.map((q, i) => [[q.x, i === s.length - 1 ? 0 : q.chord]]);
+  const make = (closed) => roundTipBlender(ys, 'linear', lists, 1, s.map((q) => q.roundTip), [0, 1], null, { closed });
+  const yT = ys[1];
+  const L = ys.at(-1) - yT;
+  /** Leading edge and trailing edge (mm) at the tip angle θ (y = y_T + L sin θ). */
+  const edges = (blend, th) => {
+    const [[x, c]] = blend(yT + L * Math.sin(th));
+    return [x, x + c];
+  };
+  /**
+   * Second derivative in θ of both edges at the point: one-sided differences D(h) at θ = π/2 − h,
+   * extrapolated to h = 0 as 2 D(h) − D(2 h) (h = 1e-3 rad).
+   */
+  const curvature = (blend) => {
+    const D = (h) => {
+      const [a, b, c] = [Math.PI / 2, Math.PI / 2 - h, Math.PI / 2 - 2 * h].map((th) => edges(blend, th));
+      return [0, 1].map((k) => (a[k] - 2 * b[k] + c[k]) / (h * h));
+    };
+    const [d1, d2] = [D(1e-3), D(2e-3)];
+    return [0, 1].map((k) => 2 * d1[k] - d2[k]);
+  };
+  // Slopes of the last panel (Linear: its secant): leading edge and trailing edge.
+  const sLE = (s[1].x - s[0].x) / (s[1].y - s[0].y);
+  const sTE = (s[1].x + s[1].chord - s[0].x - s[0].chord) / (s[1].y - s[0].y);
+
+  it('gives both edges the second derivative −σ L in θ at the point when the tip closes, σ the slope of the straight line at 50 %', () => {
+    const closed = make(true);
+    const [le, te] = curvature(closed);
+    // Leading edge 0.04, trailing edge −0.12: σ = 0.04 + 0.5 · (−0.16) = −0.04, −σ L = 5.758 mm.
+    expect([sLE, sTE].map((v) => Math.round(v * 1e6) / 1e6)).toEqual([0.04, -0.12]);
+    const sigma = sLE + 0.5 * (sTE - sLE);
+    expect(-sigma * L).toBeCloseTo(5.758, 6);
+    expect(Math.abs(le - te)).toBeLessThan(0.05);
+    expect(Math.abs(le + sigma * L)).toBeLessThan(0.05);
+    // Both edges end at the point, on the straight line.
+    const [x, xt] = edges(closed, Math.PI / 2);
+    expect(Math.abs(xt - x)).toBeLessThan(1e-9);
+  });
+
+  it('keeps each edge at its own slope with the natural end (Wing tip Pointed), which leaves the closing chord thinner before the point', () => {
+    const natural = make(false);
+    const [le, te] = curvature(natural);
+    // r″ = 0: the second derivative of f_T + s L sin θ, −s L, for each edge: −5.758 and 17.274 mm.
+    // The closing chord is 0.08, 0.06 and 0.04 mm thinner 0.8, 1.8 and 2.8 mm before the point.
+    expect(Math.abs(le + sLE * L)).toBeLessThan(0.05);
+    expect(Math.abs(te + sTE * L)).toBeLessThan(0.05);
+    const chord = (blend, y) => blend(y)[0][1];
+    for (const d of [0.8, 1.8, 2.8]) expect(chord(natural, ys.at(-1) - d), `${d} mm`).toBeLessThan(chord(make(true), ys.at(-1) - d));
+  });
+});
+
 describe('rounded-tip marker in the project', () => {
-  it('is set by the dialog, saved as project format version 5, kept on Open, validated, and taken by a section inserted in the tip', () => {
+  it('is set by the dialog, saved as project format version 5 (version 6 with Wing tip Round), kept on Open, validated, and taken by a section inserted in the tip', () => {
     const p = roundedSport('linear');
     expect(sortedSections(p).map((q) => q.roundTip ?? null)).toEqual([null, null, 'tangent', 'tangent', 'tangent', 'tangent', 'tangent', 'tangent']);
     expect(sortedSections(roundedSport('linear', { tangent: false })).at(-1).roundTip).toBe('corner');
-    expect(fileVersion(p.settings, p.sections)).toBe(5);
-    expect(fileVersion(p.settings, [])).toBe(3);
+    // The dialog sets Wing tip Round, which is version 6; the marker alone is version 5.
+    expect(fileVersion(p.settings, p.sections)).toBe(6);
+    expect(fileVersion({ ...p.settings, tip: { ...p.settings.tip, mode: 'pointed' } }, p.sections)).toBe(5);
+    expect(fileVersion({ ...p.settings, tip: { ...p.settings.tip, mode: 'flat' } }, [])).toBe(3);
     const back = projectFromJsonText(projectToJsonText(p, null));
     expect(back.ok).toBe(true);
     expect(sortedSections(back.project).map((q) => q.roundTip ?? null)).toEqual(sortedSections(p).map((q) => q.roundTip ?? null));
@@ -121,8 +181,10 @@ describe('fairness of the built rounded tip', () => {
   it('shows the bulge of the blend in y, which the blend along the tip ellipse removes', () => {
     const p = roundedSport('smooth');
     p.settings.trailingEdge = { mode: 'closed', thickness: 0 };
+    // Without the marker the tip is an ordinary pointed tip (Wing tip Round needs the marker).
     const plain = structuredClone(p);
     for (const q of plain.sections) delete q.roundTip;
+    plain.settings.tip.mode = 'pointed';
     const before = buildWing(plain);
     const after = buildWing(p);
     const bump = edgeInflections(before, 600.5, before.tipY - 0.3);

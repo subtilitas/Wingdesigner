@@ -124,7 +124,7 @@ export function wingletProblems(project, params) {
   }
   if (!project.airfoils.some((a) => a.id === params.airfoil)) out.push(tr('Winglet: choose an airfoil of the project.'));
   if (project.guides?.nose?.enabled || project.guides?.end?.enabled) out.push(tr('Switch the guide curves off first: they hold x as a function of y and would stretch over the winglet.'));
-  if (project.settings.tip?.mode === 'pointed') out.push(tr('The wing ends in a point (Settings > Wing tip = Pointed): a winglet needs a flat tip.'));
+  if (project.settings.tip?.mode !== 'flat') out.push(tr('The wing ends in a point (Settings > Wing tip = Pointed or Round): a winglet needs a flat tip.'));
   if (project.settings.sectionPlanes !== 'mitred') {
     out.push(tr('A winglet needs Settings > Section planes = Mitred: vertical section planes make it cos(cant) as thick, 0.26 times at 75°.'));
   }

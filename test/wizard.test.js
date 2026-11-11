@@ -766,8 +766,8 @@ describe('project validation in German', () => {
     expect(validateProject(null).errors).toEqual(['Das Projekt ist kein Objekt.']);
     const inches = sampleProject();
     inches.units = 'in';
-    inches.version = 6;
-    expect(validateProject(inches).errors).toEqual(['units muss "mm" sein (gefunden: "in").', 'Nicht unterstützte Projektversion 6.']);
+    inches.version = 7;
+    expect(validateProject(inches).errors).toEqual(['units muss "mm" sein (gefunden: "in").', 'Nicht unterstützte Projektversion 7.']);
     const few = sampleProject();
     few.sections.pop();
     few.sections.pop();

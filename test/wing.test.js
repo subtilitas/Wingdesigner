@@ -16,6 +16,8 @@ import { LIMITS, createProject, resolveSettings, validateProject } from '../src/
 import { loftGrid } from '../src/model/budget.js';
 import { projectFromJsonText, projectToJsonText } from '../src/model/io.js';
 import { cuspedAirfoil, naca, sampleProject } from './helpers.js';
+import { PRESETS, wizardProject } from '../src/model/wizard.js';
+import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
 import { setLanguage, tr } from '../src/i18n/index.js';
 
 describe('profile curves', () => {
@@ -453,6 +455,64 @@ describe('mesh', () => {
     expect(edgeCheck(full).closed).toBe(true);
     expect(meshVolume(full)).toBeCloseTo(2 * meshVolume(halfWingMesh(half)), 3);
   });
+});
+
+describe('mesh of a tip closed in a point', () => {
+  /** The Sport preset with the default rounded tip (Wing tip Round) and the given trailing edge. */
+  const rounded = (trailingEdge, mode = 'round') => {
+    const p = wizardProject(PRESETS.sport.params);
+    p.settings.trailingEdge = trailingEdge;
+    addRoundTip(p, defaultRoundTip(p));
+    p.settings.tip.mode = mode;
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    return b;
+  };
+  /** Area (mm²) of triangle t of a mesh. */
+  const triArea = ({ positions: P, indices: I }, t) => {
+    const [a, b, c] = [I[t], I[t + 1], I[t + 2]].map((i) => [P[3 * i], P[3 * i + 1], P[3 * i + 2]]);
+    const u = [0, 1, 2].map((k) => b[k] - a[k]);
+    const v = [0, 1, 2].map((k) => c[k] - a[k]);
+    return Math.hypot(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]) / 2;
+  };
+
+  for (const [name, te] of [['closed', { mode: 'closed', thickness: 0 }], ['open', { mode: 'thickness', thickness: 0.5 }]]) {
+    it(`ends in one vertex without a tip cap and stays closed in every export mode (${name} trailing edge)`, () => {
+      const b = rounded(te);
+      expect(b.tipPole).toBe(true);
+      const half = tessellateHalf(b, { uRefine: 2, vRefine: 4 });
+      const { rows, cols } = half;
+      // One vertex per surface parameter u in every row but the last, which is the point.
+      expect(half.positions.length / 3).toBe(cols * (rows - 1) + 1);
+      expect(half.tipLoop).toEqual([cols * (rows - 1)]);
+      expect(half.tipCap).toEqual([]);
+      const hm = halfWingMesh(half);
+      let smallest = Infinity;
+      let repeated = 0;
+      for (let t = 0; t < hm.indices.length; t += 3) {
+        const [i, j, k] = [hm.indices[t], hm.indices[t + 1], hm.indices[t + 2]];
+        if (i === j || j === k || i === k) repeated++;
+        smallest = Math.min(smallest, triArea(hm, t));
+      }
+      expect(repeated).toBe(0);
+      expect(smallest).toBeGreaterThan(1e-12);
+      expect(edgeCheck(hm).closed).toBe(true);
+      const volume = meshVolume(hm);
+      expect(volume).toBeGreaterThan(0);
+      const full = fullWingMesh(half, b.rootY);
+      expect(full.shells).toBe(1);
+      expect(edgeCheck(full).closed).toBe(true);
+      expect(meshVolume(full)).toBeCloseTo(2 * volume, 3);
+      for (const mode of ['halves', 'merged', 'right', 'left']) {
+        for (const m of exportMeshes(b, mode)) expect(edgeCheck(m.mesh).closed, `${mode} ${m.name}`).toBe(true);
+      }
+      // Wing tip Pointed ends the same sections in the 1 mm chord of a version 5 project: the volume
+      // differs by less than 1e-3 of the whole.
+      const pointed = halfWingMesh(tessellateHalf(rounded(te, 'pointed'), { uRefine: 2, vRefine: 4 }));
+      expect(edgeCheck(pointed).closed).toBe(true);
+      expect(Math.abs(volume / meshVolume(pointed) - 1)).toBeLessThan(1e-3);
+    });
+  }
 });
 
 describe('strip triangulation', () => {

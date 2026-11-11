@@ -132,6 +132,28 @@ async function run(lang) {
     await ctx.close();
   }
 
+  // Mold dialog for the Sport wing with the default rounded tip (Sections > Rounded tip…), so the resin
+  // channel turns around the tip that closes in a point; a window tall enough for the whole dialog.
+  {
+    const { ctx, page } = await newPage({ viewport: { width: 1280, height: 1400 }, deviceScaleFactor: 1 });
+    const wizard = await createDesign(page, 'Sport');
+    await wizard.getByRole('button', { name: t('Create design') }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: t('Rounded tip…'), exact: true }).click();
+    await page.locator('dialog[open]').getByRole('button', { name: t('Add rounded tip'), exact: true }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole('button', { name: t('Export'), exact: true }).click();
+    await page.locator('dialog[open]').getByRole('button', { name: t('Mold halves…'), exact: true }).click();
+    const dialog = page.locator('dialog.mold[open]');
+    await dialog.getByRole('button', { name: t('Download STEP'), exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('dialog.mold[open] button.primary')?.disabled);
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.waitForTimeout(400);
+    await shoot(dialog, 'mold-dialog');
+    await dialog.getByRole('button', { name: t('Close') }).click();
+    await ctx.close();
+  }
+
   // Import dialog for an XFLR5 project: the test file with two planes, opened through Open. The window
   // is tall enough for the whole dialog (airfoil table, planform, report and buttons).
   {

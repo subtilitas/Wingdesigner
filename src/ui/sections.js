@@ -187,11 +187,14 @@ export class SectionsPanel {
         columns.map((f) => {
           const eff = overridden(f.key) && st ? (f.key === 'x' ? st.xLE : st.chord) : null;
           const tipChord = f.key === 'chord' && i === sections.length - 1 && build?.tipChord ? build.tipChord : null;
+          const roundTip = f.key === 'chord' && i === sections.length - 1 && build?.tipPole;
           return h(
             'td',
             { dataset: { label: `${f.label} (${f.unit})` } },
             numberInput({ value: s[f.key], step: f.step, min: f.min, max: f.max, title: f.title, onCommit: commit(f.key), focusKey: `sec:${s.id}:${f.key}` }),
-            tipChord !== null
+            roundTip
+              ? h('div', { class: 'muted small', title: tr('Round tip: the wing closes in a point here; the chord of this section is not used') }, tr('tip: 0 (round)'))
+              : tipChord !== null
               ? h(
                   'div',
                   { class: 'muted small', title: tr('Pointed tip: chord scaled from the previous section, at least {min} mm', { min: plain(LIMITS.minChord) }) },

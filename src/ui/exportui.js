@@ -19,7 +19,7 @@ const vRefine = (build, dens) => (build?.surface?.degreeV === 1 ? 1 : 3) * dens;
 export const UP_AXIS_KEY = 'wingdesigner.upAxis';
 
 /** The stored up axis, 'z' when there is none or storage is unavailable. */
-function storedUpAxis() {
+export function storedUpAxis() {
   try {
     const up = localStorage.getItem(UP_AXIS_KEY);
     return UP_AXES.includes(up) ? up : 'z';
@@ -73,7 +73,7 @@ export function exportSizeNote(build, { fmt, half, dens }) {
   return null;
 }
 
-export function exportDialog(store, getBuild, version, notify = () => {}) {
+export function exportDialog(store, getBuild, version, notify = () => {}, openMold = null) {
   // Project and build are captured together when the dialog opens; every format writes that state.
   const project = cloneProject(store.project);
   const build = getBuild();
@@ -128,6 +128,31 @@ export function exportDialog(store, getBuild, version, notify = () => {}) {
       h('label', { class: 'check' }, h('input', { type: 'checkbox', name: 'fusion', checked: up === 'y' }), tr('Fusion 360 fix: Y up (also SolidWorks)')),
       sizeNote,
       axesNote,
+      // The mold dialog (src/ui/mold.js) writes its own STEP file.
+      openMold
+        ? h(
+            'fieldset',
+            {},
+            h('legend', {}, tr('Mold')),
+            h(
+              'div',
+              { class: 'row wrap' },
+              h(
+                'button',
+                {
+                  type: 'button',
+                  disabled: blocked,
+                  onclick: () => {
+                    dialog.close('cancel');
+                    openMold();
+                  },
+                },
+                tr('Mold halves…'),
+              ),
+              h('span', { class: 'small muted' }, tr('Lower and upper mold half as STEP solids, with resin channel and holes.')),
+            ),
+          )
+        : null,
       h('div', { class: 'row end' }, h('button', { type: 'button', onclick: () => dialog.close('cancel') }, tr('Cancel')), downloadBtn),
     ),
   );

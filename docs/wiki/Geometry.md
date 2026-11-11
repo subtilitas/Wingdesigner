@@ -47,6 +47,7 @@ Derivatives are written dx/du and d²x/du². Subscripts are point indices (Q_k, 
 | 6. STEP (Standard for the Exchange of Product model data) topology | `src/export/step.js` | A5.1 |
 | 7. Planform statistics | `src/geom/stats.js`, `src/geom/wing.js` (`planformAt`) | – |
 | 8. Foam cores | `src/geom/foam.js` | A3.5 (per column curve) |
+| 11. Mold halves | `src/geom/mold.js`, `src/export/moldstep.js` | A9.1 (ramp edges, groove), A5.1 (split at the leading edge) |
 
 The rigid placement of the part (section 3.9, `src/geom/part.js`) turns the result of steps 3 and 4 for steps 5 to 7.
 
@@ -434,6 +435,7 @@ z and twist are always blended.
 | --- | --- |
 | **Flat (cut at the tip section)** | the wing ends at the tip section with a planar cap |
 | **Pointed (tip profile scaled down)** | the tip section gets the chord c_tip (default 1/200 of c(y_prev), at least 1 mm); the wing ends in a planar cap with chord c_tip; with both guide curves the tip chord is the guide gap at y_tip, at least c_tip |
+| **Round (closes in a point, needs a rounded tip)** | the tip section gets the chord 0; every surface point of the tip row is one point (the pole), and the wing has no tip cap; needs a rounded tip (section 10), else a build error |
 
 Pointed tip:
 
@@ -453,6 +455,17 @@ c_tip = max(r · c(y_prev), 1 mm)
 Example: **Glider** preset (guide curves end 90 mm apart) with **Wing tip** = **Pointed**: c_tip =
 1 mm, tip chord 90 mm, warning "nose line and end line end 90.0 mm apart, so the tip chord is 90.0 mm
 instead of 1.00 mm".
+
+Round tip:
+
+| Item | Value |
+| --- | --- |
+| Chord of the last station | 0, whatever the section stores (the **Rounded tip…** point stores 1 mm, `LIMITS.minChord`) |
+| Last panel | a chord below 0 and above −0.01 mm next to the point is set to 0 |
+| Tip row of the surface | all control points of the last row equal: one point; `build.tipPole` true, `build.stations.at(-1).chord` 0 |
+| Chord check | the point is exempt from the 1 mm minimum; the stations before it keep a chord above 0. Where the chord lies below 1 mm, the fitted chord counts by its share of the intended one, and the deviation tolerance stays at 0.01 mm |
+| Chordwise parameters | the row of the point (no length) takes no part in the average of section 4 |
+| Condition | the last section carries the marker `roundTip`; else the build error `Settings > Wing tip Round closes the tip in a point and needs a rounded tip: …` |
 
 ### 3.6 Build checks
 
@@ -753,6 +766,7 @@ Counts per half (n_u = 2N · d, V = number of v samples):
 Example: **Sport** preset, N = 60, d = 1, open TE: **Mitred** section planes (9 stations, degree 3 along v, V = 25): 3,025 vertices, 6,046 triangles per half; **Vertical** (2 stations, degree 1, V = 2): 242 vertices, 480 triangles.
 
 - Orientation: every triangle faces outward (normal S_v × S_u).
+- Round tip (`build.tipPole`): the last v sample is one vertex, the pole. The quads next to it are triangles, and there is no tip cap. Per half: 2 n_u (V − 1) − n_u surface triangles, 2 (V − 1) − 1 TE strip triangles (open TE), 1 cap.
 - Caps: the root and tip outlines are triangulated in the plane of their section (x and the up
   direction of its roll φ; the x-z plane for φ = 0). Upper point k pairs with lower point k (same chord
   station): 2 triangles per station interval, linear time.
@@ -813,6 +827,10 @@ Faces of the right half; (+) = edge used in its own direction, (−) = reversed:
 | --- | --- | --- | --- |
 | Closed | 4 | 6 | 4 |
 | Open | 5 | 9 | 6 |
+| Closed, round tip | 3 | 4 | 3 |
+| Open, round tip | 4 | 6 | 4 |
+
+- Round tip (**Wing tip** = Round): the faces end in one vertex, the pole, with 3 edges each: upper (upper TE, leading edge, root upper), lower (leading edge, lower TE, root lower), TE (lower TE, upper TE, root line). There are no tip edges and no tip cap. The pole is a degenerate side of each B-spline surface: its last control row is one point.
 
 - Closed TE: upper TE and lower TE are one edge with 2 shared vertices.
 - Edges of a B-spline face: the exact boundary iso-curve of that surface (first or last control row
@@ -833,7 +851,7 @@ S ∘ T or T ∘ S (**Left half**, section 3.9). The flags stay as in the table:
 orientation, the turn keeps it.
 
 Validation: `scripts/validate_step.py` reads the files written by `scripts/export-step-cases.mjs`
-with OpenCascade. Cases: the 16 cases of `test/step-cases.js`, 1 of them with a rounded tip (`rounded-tip-smooth`, section 10), 1 of them with a closed, cusped trailing
+with OpenCascade. Cases: the 18 cases of `test/step-cases.js`, 1 of them with a rounded tip (`rounded-tip-smooth`, section 10), 1 of them with a closed, cusped trailing
 edge (`cusped-closed`, section 4), 6 of them with **Mitred** section
 planes (a 35° V-tail with **Straight panels**, written once without and once with the **Fusion 360
 fix** (Y up), a 15°/−5° gull with **Linear** and with **Smooth**, an airfoil switch with **Straight panels**: two
@@ -1087,7 +1105,7 @@ at length s:   x = x_T + s · tan Λ,   chord = c_T + (k · c_T − c_T) · s / 
 
 ## 10. Rounded tip
 
-`src/model/roundtip.js` appends the rounded tip as sections marked `roundTip` and sets the tip mode to Pointed (section 3.5); the loft blends the marked sections along the tip ellipse (section 10.1). Input: the tip section T (y_T, z_T, x_T, chord c_T, twist t_T), the section P before it, the angle a0 of the last panel (its stored **Panel angle**, else atan2(z_T − z_P, y_T − y_P)), the tip ratio ρ of **Settings** > **Wing tip**, and the parameters length L, straight line f (share of the chord, 0 … 1), section count m, fullness n (2 … 3) and tangent (on or off).
+`src/model/roundtip.js` appends the rounded tip as sections marked `roundTip` and sets the tip mode to Round (section 3.5): the build closes the tip in one point, chord 0; the loft blends the marked sections along the tip ellipse (section 10.1). Input: the tip section T (y_T, z_T, x_T, chord c_T, twist t_T), the section P before it, the angle a0 of the last panel (its stored **Panel angle**, else atan2(z_T − z_P, y_T − y_P)), and the parameters length L, straight line f (share of the chord, 0 … 1), section count m, fullness n (2 … 3) and tangent (on or off).
 
 ```
 slope = dx/dy + f · c'  at T                              dx/dy of the straight line along the wing
@@ -1100,8 +1118,9 @@ section k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
   y_k     = y_T + t_k · L · cos a0
   z_k     = z_T + t_k · L · sin a0
   c_k     = c_T · (1 − t_k^n)^(1/n) · (1 + κ t_k)           k < m   (n = 2: c_T · sqrt(1 − t_k²) · …)
-  c_m     = max(ρ · c_(m−1), 1 mm)
-  x_k     = x_T + f · c_T + (y_k − y_T) · slope − f · c_k
+  c_m     = 1 mm stored (LIMITS.minChord); the build uses chord 0 (Wing tip Round)
+  x_k     = x_T + f · c_T + (y_k − y_T) · slope − f · c_k        k < m
+  x_m     = x_T + f · c_T + (y_m − y_T) · slope                  on the straight line
   airfoil and twist = those of T
 ```
 
@@ -1113,7 +1132,7 @@ section k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
 - c_(m−1) must reach the 1 mm minimum chord: c_T ≥ 1 mm / ((1 − sin^n θ)^(1/n) · (1 + κ sin θ)), θ = π (m − 1) / (2m); 3.87 mm at m = 6 and n = 2 without tangent.
 - Values are rounded to 0.01 mm. A stored **Panel angle** of the last panel is copied to T and to the added sections but the point, so that the rounding does not tilt their **Mitred** planes; without one, the planes follow the reference points.
 - The thickness follows the chord (the airfoil keeps its thickness ratio), so the front view of the tip has the shape of c(s).
-- Guide curves stay on: they end at the tip section T (section 10.1), and the rounded tip starts from their leading edge, chord and slopes there. A wing with a pointed tip already ends in a point and is refused.
+- Guide curves stay on: they end at the tip section T (section 10.1), and the rounded tip starts from their leading edge, chord and slopes there. A wing with **Wing tip** Pointed or Round already ends in a point and is refused.
 - Tested (`test/roundtip.test.js`): every preset with a flat tip and the guide curves off but **Batwing** (chord below 1 mm with a flat tip) builds a closed wing with the default rounded tip, with **Linear** and **Smooth**, with **Mitred** and **Vertical** planes and with tangent on and off, without errors. Warnings, with the default fullness 2.5: none, except with tangent on **Delta jet** (fixed trailing edge 1.6 mm), where the trailing-edge thickness exceeds 5 % of the chord at 1 station before the last panel and is limited there. The **Sport** wing builds with the straight line at 0, 25, 50, 75 and 100 % and 2, 4 and 8 sections. The STEP case `rounded-tip-smooth` (section 6) passes the OpenCascade check.
 
 ### 10.1 Blend along the tip ellipse
@@ -1125,10 +1144,22 @@ The loft therefore blends the outline of a rounded tip in the angle θ of the ti
 ```
 θ(y)  = asin((y − y_T) / L)                                0 at T, π/2 at the point
 r_k   = f_k − f_T − s_f · (y_k − y_T)                      residual of each tip section
-r(θ)  = cubic spline in θ through (θ_k, r_k)                natural at the point;
+r(θ)  = cubic spline in θ through (θ_k, r_k)
         at T: r′(0) = 0 for "tangent", natural for "corner"
+        at the point: r″(π/2) = (s_f − σ) · L
 f(y)  = f_T + s_f · (y − y_T) + r(θ(y))                     y > y_T
 ```
+
+End condition at the point. Leading and trailing edge meet on a straight line x = x_P − σ · (y_P − y), about which the chord closes like an ellipse. There both edges have the second derivative −σ L in θ, so r″ = (s_f − σ) · L. σ follows from the point and the slopes at T, with the line at the share a of the chord:
+
+```
+σ     = s_LE + a · (s_TE − s_LE)
+σ · L = x_P − x_LE,T − a · c_T                              (pointEnd)
+```
+
+- A natural end (r″ = 0) holds for σ = s_f only; it leaves the outline of the **Glider** 0.1 mm thin 1 mm before the point.
+- With **Wing tip** Pointed (a rounded tip of a version 5 project, 1 mm chord at the point) the end stays natural, and so it does where the data give no σ (a chord that would not close, a line outside the wing: a outside −0.5 to 1.5).
+- Measured (**Glider**, **Rounded tip…** with **Continue the ellipse of the wing**, dialog defaults, 56 cuts y = const 1 mm apart over the outer 5 % of the half span; `docs/analysis/rounded-tip-cuts/`): point at y = 1119.830 mm, ellipse end 1119.825 mm; chord − ellipse −0.05 to +0.02 mm over all cuts, −0.01, 0.00 and +0.02 mm at 2.8, 1.8 and 0.8 mm before the point; leading edge within 0.01 mm, trailing edge −0.04 to +0.02 mm. With **Wing tip** Pointed (1 mm chord at the point) the same cuts give +0.04, +0.14 and +0.34 mm.
 
 - Residuals that all lie within 0.01 mm, the rounding of the section values, count as zero: a straight edge (straight line at 0 % or 100 %) stays straight instead of rippling by ±0.005 mm.
 - The leading and trailing edge are blended, not x and chord, so that one of them is exactly straight at 0 % and 100 %. The chord is their difference.
@@ -1181,3 +1212,88 @@ c_k   = c(y_T + t_k · (end − y_T))              k < m, t_k as in section 10
 
 The gap of a fixed trailing-edge thickness is limited to 5 % of the chord (section 3.7): below a chord of thickness / 0.05 (8.4 mm at 0.42 mm) the gap follows the chord instead of staying constant. Without the smooth transition, that corner of the gap function moves the trailing-edge corner of the surface and shows as a wave close to the point, on every pointed tip. The smooth transition joins both with equal value and slope.
 
+
+## 11. Mold halves
+
+`src/geom/mold.js` builds the geometry of a lower and an upper mold half of the right half wing, `src/export/moldstep.js` writes them as STEP solids ([[File Formats|File-Formats]], section Mold STEP file). Input: a build without errors and the mold parameters (User Guide, section Mold halves). Lengths in mm.
+
+### 11.1 Frame and roll
+
+The half wing in its build frame (x aft, y span, z up), before the rigid placement of section 3.9: the mold ignores **Part tilt** and **Part roll**. The frame is rolled about x by the roll angle ω, so that the wing lies flat:
+
+| Tip | ω |
+| --- | --- |
+| Flat or Pointed | the roll of the tip section plane (`build.tipRoll`), so that the tip face stands square to the parting plane |
+| Round (pole) | atan of the slope of the least-squares line z(y) through leading edge, lower and upper trailing edge, 201 points each |
+
+```
+P_mold = (x, y_0 + (y − y_0) · cos ω + z · sin ω, −(y − y_0) · sin ω + z · cos ω)       y_0: root y
+```
+
+- Parting plane: z = z_p, the mean height of the leading edge and of the trailing-edge middle (mean of lower and upper trailing edge; the trailing edge itself when closed), 401 points each. The file puts it at z = 0.
+- Root plane: y = y_R + tan ω · (z − z_p), y_R = y_0 + tan ω · z_p. The root row of the surface is set into it, the cavity is open there, and the root face of the block leans by ω.
+- Leading edge and trailing edge lie in one plane only for an untwisted wing of one airfoil with one dihedral angle. Measured: flat untwisted wing 0.007 mm off the plane, **Glider** with a rounded tip 1.67 mm (ω = 4.03°), **Sport** with a rounded tip 1.36 mm (ω = 1.54°), **Sailplane** (dihedral 2°, 6° and 10°) 85.76 mm.
+
+### 11.2 Ramp
+
+A ruled surface joins each edge (leading edge, trailing-edge middle) to a curve in the parting plane at the ramp width w:
+
+```
+Q(v) = (x_E + side · w · cos ψ(v),  y_E + w · sin ψ(v) + cos ψ(v) · tan ω · (z_p − z_E),  z_p)
+side = −1 leading edge, +1 trailing edge
+ψ(v) = 0                                   flat tip, or v ≤ v_F
+ψ(v) = θ − sin(2θ) / 2,  θ = (v − v_F) / (1 − v_F) · π/2       round tip, v > v_F
+```
+
+- Inboard the rulings run along x, in planes parallel to the root plane. Around a round tip they turn from x at the start of the rounded tip (v_F: section T of section 10) to y at the point, where both curves meet in one point.
+- The outer curve is interpolated at the Greville abscissae of the edge curve with its knots, so that ruling k joins control point k of both curves.
+- Flat tip face: parted along the mean line of the tip section. 49 points from the leading edge to the trailing-edge middle at cosine-spaced x, z the mean of lower and upper surface at that x, interpolated with degree 3. Beyond it a ruled strip of width w along y and a planar triangle at each corner. The chord line is not used: it leaves the profile of a reflexed airfoil with a closed trailing edge.
+- Fold test: neighbouring rulings sampled at 401 v must advance on the same side; else the error `Mold: the ramp folds over itself …`.
+- Slope: atan(h / w⊥), h the height of the edge above or below z_p, w⊥ the width of the ramp square to the outline. Above 45° a warning names the largest h and slope.
+
+### 11.3 Outline and resin channel
+
+- Outline: leading edge and trailing-edge middle in the top view, 4,000 samples each, resampled at 0.25 mm; at a flat tip the edge of the tip face. The outline is mirrored at the root line y = y_R into a closed polygon, clockwise seen from +z.
+- Offset with rounded inward corners (`offsetOutline`): the polygon is offset outward by d + ρ (one normal per point, a fan of normals at an outward corner, steps of 0.04 rad); offset points closer than d + ρ − 0.02 mm to the polygon are dropped; the rest is moved back by ρ, with an arc of radius ρ about the corner where each dropped run ends.
+- Channel centre line: d = distance + r, ρ = 2r + 2 mm (r = diameter / 2), the half on the side y ≥ y_R. Mirrored at the root, the path crosses the root line square to it.
+- Groove surface (`grooveSurface`): one bicubic B-spline surface, interpolated through 9 points of a half circle of radius r below z_p (u, from the rim next to the wing over the bottom to the outer rim) at stations along the path (v). Station spacing min(8 mm, sqrt(8 · 0.002 mm · R)), at least 0.5 mm, R the local radius of the path: a chord error of 0.002 mm on the centre line. The spacing grows by at most 0.25 mm per mm of path away from a bend, so that the stations close up before it (long steps next to a bend let the interpolating spline overshoot the half circle). The rims (u = 0 and u = 1) are iso-curves with every control point at z = z_p, so that they lie in the parting plane; the end rows lie in the root plane. Cross-section within 0.02 mm of a half circle on the presets measured: Sport 0.018 mm, flat test wing 0.0073 mm, Delta jet 0.0031 mm (not measured against a CAD model).
+- The upper half takes the groove mirrored at z_p, with its end rows in its own root plane (the lean of the root face is mirrored).
+
+### 11.4 Block
+
+```
+x_0 = x_min − margin          x_1 = x_max + margin          x of the outline
+y from y_R to y_max + margin
+t_lower = max(z_p − z_min(lower cavity), r_c) + floor
+t_upper = max(z_max(upper cavity) − z_p, r_c) + floor
+```
+
+z_min and z_max are taken over the control points of the cavity surface. r_c = diameter / 2 of the resin channel, 0 without channel: a cavity shallower than the groove leaves the groove as the deepest point. An under-cambered airfoil (9 % camber, 5 % thick, 200 mm chord, untwisted, default floor 12 mm and channel 4 mm) puts the lower surface up to 13.2 mm above z_p: the lower half rises inside the cavity outline. The lower cavity is 0.6 mm deep, less than r_c = 2 mm, so t_lower = 2 + 12 = 14.0 mm; t_upper = 34.9 mm.
+
+| Check | Condition for an error |
+| --- | --- |
+| Channel distance | distance < w + 0.5 mm |
+| Margin | margin < distance + diameter + 1 mm (without channel: w + 1 mm) |
+| Channel in the block | a path point within r + 1 mm of the front, back or tip-side edge |
+| Pin depth | depth > min(t_lower, t_upper) − 1 mm |
+| Reach beyond the edge lines | seen from above, a point of a cavity surface lies more than 0.1 mm (`MOLD_OVERHANG`) in front of the leading-edge line or behind the trailing-edge line (twisted sections); up to 0.1 mm it stays a limitation, the cavity overhangs by about r · (1 − cos twist), r the nose radius |
+
+### 11.5 Holes
+
+| Pattern | Centres |
+| --- | --- |
+| Block corners | (x_0 + e, y_h + e), (x_0 + e, y_1 − e), (x_1 − e, y_1 − e), (x_1 − e, y_h + e); e = distance from the block edge |
+| Along the block edges | the polyline through these 4 points along front, tip side and back, each side divided into ceil(length / spacing) equal parts |
+| Around the wing | `offsetOutline` at keep-out − 1 mm + offset with ρ = 2 r_h + 2 mm, the half y ≥ y_R; round(length / spacing) holes, at least 1, at (k + 0.5) / count of its length |
+
+- y_h = y_R + |tan ω| · max(t_lower, t_upper): the leaning root face over the height of both halves.
+- Keep-out around the cavity: distance + diameter of the channel (its outer rim), without channel the ramp width w, plus the clearance of 1 mm.
+- A hole of radius r_h is kept when its centre lies outside the outline polygon, its distance from the outline is at least keep-out + r_h, its circle with 1 mm clearance lies within x_0 … x_1 and y_h … y_1, and it lies at least r_h + r_other + 1 mm from every hole kept before. Pins are placed first, then screws. A screw at the centre of a pin is left out without a warning; every other hole left out counts in the warning.
+- Pin holes are blind, depth p in each half, with a planar bottom. Screw holes run through both halves.
+- Each hole is a cylinder written as 2 half-cylinder faces (`CYLINDRICAL_SURFACE`), joined by 2 seam lines; its rims are 2 half circles (`CIRCLE`) each.
+
+### 11.6 Both halves
+
+The geometry of both halves is built in the frame of the lower half: the upper half is the mirror image at z = z_p (cavity: the upper surface with u reversed, mirrored), so that one construction writes both. The file maps a point to (x, ±y, ±(z − z_p)): + for the lower half and the right wing, − for the upper half and for the molds of the left wing.
+
+Validation: `scripts/validate_mold.py` reads the 16 files of `test/mold-cases.js` with OpenCascade ([[Development|Development]], section Mold validation).

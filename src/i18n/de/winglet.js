@@ -26,8 +26,8 @@ export default {
   'Winglet: choose an airfoil of the project.': 'Winglet: ein Profil des Projekts wählen.',
   'Switch the guide curves off first: they hold x as a function of y and would stretch over the winglet.':
     'Zuerst die Leitkurven ausschalten: Sie halten x als Funktion von y und würden sich über das Winglet dehnen.',
-  'The wing ends in a point (Settings > Wing tip = Pointed): a winglet needs a flat tip.':
-    'Der Flügel endet spitz (Einstellungen > Flügelende = Spitz): Ein Winglet braucht ein flaches Flügelende.',
+  'The wing ends in a point (Settings > Wing tip = Pointed or Round): a winglet needs a flat tip.':
+    'Der Flügel endet in einer Spitze (Einstellungen > Flügelende = Spitz oder Rund): Ein Winglet braucht ein flaches Flügelende.',
   'A winglet needs Settings > Section planes = Mitred: vertical section planes make it cos(cant) as thick, 0.26 times at 75°.':
     'Ein Winglet braucht Einstellungen > Schnittebenen = Auf Gehrung: Senkrechte Schnittebenen machen es cos(Neigung) so dick, 0,26-mal bei 75°.',
   'Winglet: the blend arc is {arc} mm long, not shorter than the height; reduce the blend radius or increase the height.':

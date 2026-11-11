@@ -23,6 +23,8 @@ export default {
   'Airfoil of section {n}': 'Profil des Schnitts {n}',
   'Pointed tip: chord scaled from the previous section, at least {min} mm': 'Spitzes Flügelende: Profiltiefe aus dem vorherigen Schnitt skaliert, mindestens {min} mm',
   'tip: {chord}': 'Randtiefe: {chord}',
+  'tip: 0 (round)': 'Randtiefe: 0 (rund)',
+  'Round tip: the wing closes in a point here; the chord of this section is not used': 'Rundes Flügelende: Der Flügel schließt sich hier in einem Punkt; die Profiltiefe dieses Schnitts wird nicht verwendet',
   'tip: {chord} (min.)': 'Randtiefe: {chord} (min.)',
   'Value set by the guide curve': 'Wert von der Leitkurve vorgegeben',
   'guide: {value}': 'Leitkurve: {value}',

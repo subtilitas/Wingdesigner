@@ -7,6 +7,8 @@ import { addWinglet, defaultWinglet } from '../src/model/winglet.js';
 import { PRESETS, wizardProject } from '../src/model/wizard.js';
 import { buildWing } from '../src/geom/wing.js';
 import { edgeCheck, exportMeshes } from '../src/geom/mesh.js';
+import { surfacePoint } from '../src/geom/nurbs.js';
+import { wingStats } from '../src/geom/stats.js';
 import { sortedSections } from '../src/model/edit.js';
 import { setLanguage } from '../src/i18n/index.js';
 
@@ -31,13 +33,12 @@ describe('rounded-tip sections', () => {
       const t = k === 6 ? 1 : Math.sin((Math.PI * k) / 12);
       expect(q.y).toBeCloseTo(tip.y + t * dy, 1);
       expect(q.z).toBeCloseTo(tip.z + t * 150 * Math.sin(1.5 * DEG), 1);
-      // The quarter-chord point stays on the line of the last panel.
-      expect(q.x + 0.25 * q.chord).toBeCloseTo(tip.x + 0.25 * tip.chord + (q.y - tip.y) * slope, 1);
+      // The quarter-chord point stays on the line of the last panel; the point itself lies on it.
+      expect(q.x + (k < 6 ? 0.25 * q.chord : 0)).toBeCloseTo(tip.x + 0.25 * tip.chord + (q.y - tip.y) * slope, 1);
       if (k < 6) expect(q.chord).toBeCloseTo(tip.chord * Math.sqrt(1 - t * t), 1);
       expect([q.airfoil, q.twist]).toEqual([tip.airfoil, tip.twist]);
     });
-    // The point takes the chord of a pointed tip: 1/200 of the section before, at least 1 mm.
-    expect(out[5].chord).toBe(Math.max(1, Math.round(out[4].chord * 0.5) / 100));
+    // The point stores the smallest chord of a section; the build closes it with chord 0 (Wing tip Round).
     expect(out[5].chord).toBe(1);
   });
 
@@ -47,7 +48,8 @@ describe('rounded-tip sections', () => {
     const le = (tip.x - prev.x) / (tip.y - prev.y);
     for (const q of roundTipSections(p, { length: 144, line: 0, sections: 4, tangent: true, fullness: 2.5 })) expect(q.x).toBeCloseTo(tip.x + (q.y - tip.y) * le, 1);
     const te = (tip.x + tip.chord - prev.x - prev.chord) / (tip.y - prev.y);
-    for (const q of roundTipSections(p, { length: 144, line: 100, sections: 4, tangent: true, fullness: 2.5 })) expect(q.x + q.chord).toBeCloseTo(tip.x + tip.chord + (q.y - tip.y) * te, 1);
+    // The point lies on the line: its x is the trailing edge.
+    roundTipSections(p, { length: 144, line: 100, sections: 4, tangent: true, fullness: 2.5 }).forEach((q, i) => expect(q.x + (i < 3 ? q.chord : 0)).toBeCloseTo(tip.x + tip.chord + (q.y - tip.y) * te, 1));
   });
 });
 
@@ -179,10 +181,11 @@ describe('rounded tip on the presets', () => {
           expect(roundTipProblems(p, r), key).toEqual([]);
           const added = addRoundTip(p, r);
           expect(p.sections).toHaveLength(before + added.length);
-          expect(p.settings.tip.mode).toBe('pointed');
+          expect(p.settings.tip.mode).toBe('round');
           const b = buildWing(p);
           const label = `${key} ${spanwise} ${planes} tangent ${r.tangent}`;
           expect(b.errors, label).toEqual([]);
+          expect([b.tipPole, b.stations.at(-1).chord], label).toEqual([true, 0]);
           // A tangent tip falls faster in chord than the superellipse before the last panel: a fixed
           // trailing-edge thickness (Delta jet 1.6 mm) can exceed 5 % of the chord at a station
           // there, which the build limits and reports.
@@ -203,8 +206,11 @@ describe('rounded tip on the presets', () => {
         addRoundTip(p, { ...defaultRoundTip(p), line, sections, tangent: sections !== 4 });
         const b = buildWing(p);
         expect(b.errors, `${line} % ${sections}`).toEqual([]);
-        // A straight edge is blended without its 0.01 mm rounding (src/geom/tipblend.js): within 0.01 mm.
-        expect(Math.abs(b.tipChord - 1), `${line} % ${sections}`).toBeLessThanOrEqual(0.01);
+        // The tip closes in a point: leading edge, trailing edge and every point between coincide.
+        expect(b.tipPole, `${line} % ${sections}`).toBe(true);
+        const P = surfacePoint(b.surface, b.uLE, 1);
+        for (const u of [0, 0.3, 1]) expect(Math.hypot(...surfacePoint(b.surface, u, 1).map((v, k) => v - P[k])), `${line} % ${sections}`).toBeLessThan(1e-9);
+        expect(b.stations.at(-1).chord).toBe(0);
       }
     }
   });
@@ -243,7 +249,7 @@ describe('rounded-tip checks', () => {
     expect(roundTipProblems(widening, { ...r, ellipse: true })).toEqual(['Continue the ellipse: the wing does not narrow towards the tip section, so it has no ellipse to continue.']);
     const pointed = sport();
     pointed.settings.tip.mode = 'pointed';
-    expect(roundTipProblems(pointed, r)).toEqual(['The wing already ends in a point (Settings > Wing tip = Pointed): a rounded tip needs a flat tip.']);
+    expect(roundTipProblems(pointed, r)).toEqual(['The wing already ends in a point (Settings > Wing tip = Pointed or Round): a rounded tip needs a flat tip.']);
     // 24 sections keep cos(23π/48) = 0.0654 of the tip chord at the last section before the point.
     const small = sport();
     sortedSections(small).at(-1).chord = 10;
@@ -254,5 +260,190 @@ describe('rounded-tip checks', () => {
     expect(p.settings.tip.mode).toBe('flat');
     setLanguage('de');
     expect(roundTipProblems(p, { ...r, length: 1 })).toEqual(['Randbogen: Länge muss zwischen 5 und 100000 liegen.']);
+  });
+});
+
+describe('Wing tip Round', () => {
+  /** Largest distance (mm) of the surface points at v = 1 from the point at the leading edge, at 101 u. */
+  const poleSpread = (b) => {
+    const P = surfacePoint(b.surface, b.uLE, 1);
+    let max = 0;
+    for (let i = 0; i <= 100; i++) max = Math.max(max, Math.hypot(...surfacePoint(b.surface, i / 100, 1).map((v, k) => v - P[k])));
+    return max;
+  };
+
+  it('closes the Sport wing in one point: tipPole, chord 0 at the last station, and no trailing-edge warning from the closing chord', () => {
+    const p = sport();
+    // The wizard sets a fixed trailing-edge thickness (0.48 mm at 240 mm root chord): every station
+    // of the closing panel is narrower than 0.48 / 0.05 = 9.6 mm near the point.
+    expect(p.settings.trailingEdge.mode).toBe('thickness');
+    addRoundTip(p, defaultRoundTip(p));
+    expect(p.settings.tip.mode).toBe('round');
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.warnings).toEqual([]);
+    expect(b.tipPole).toBe(true);
+    expect(b.tipChord).toBeNull();
+    expect(b.stations.at(-1).chord).toBe(0);
+    expect(b.stations.slice(0, -1).every((st) => st.chord > 0)).toBe(true);
+    expect(b.stations.filter((st) => st.chord > 0 && st.chord < 9.6).length).toBeGreaterThan(0);
+    expect(poleSpread(b)).toBeLessThan(1e-9);
+    // The point lies at the y of the last section, on the straight line of the dialog.
+    expect(b.tipY).toBe(sortedSections(p).at(-1).y);
+  });
+
+  it('is a build error on a wing whose last section carries no rounded-tip marker, in English and German', () => {
+    const p = sport();
+    p.settings.tip.mode = 'round';
+    const en = 'Settings > Wing tip Round closes the tip in a point and needs a rounded tip: add one with Sections > Rounded tip…, or set the wing tip to Flat or Pointed.';
+    const b = buildWing(p);
+    expect(b.errors).toEqual([en]);
+    expect(b.surface).toBeFalsy();
+    // A marker on an inner section only does not count: the last section has to carry it.
+    const inner = sport();
+    addRoundTip(inner, defaultRoundTip(inner));
+    delete sortedSections(inner).at(-1).roundTip;
+    expect(buildWing(inner).errors).toEqual([en]);
+    setLanguage('de');
+    expect(buildWing(p).errors).toEqual([
+      'Einstellungen > Flügelende Rund schließt das Flügelende in einem Punkt und braucht einen Randbogen: mit Schnitte > Randbogen … einen anfügen oder das Flügelende auf Flach oder Spitz setzen.',
+    ]);
+  });
+
+  it('builds a polygon outline to the point with Straight panels', () => {
+    const p = sport();
+    addRoundTip(p, defaultRoundTip(p));
+    p.settings.spanwise = 'straight';
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.tipPole).toBe(true);
+    expect(b.stations.at(-1).chord).toBe(0);
+    expect(poleSpread(b)).toBeLessThan(1e-9);
+    // Straight panels: the chord runs linearly between the sections (the stored 1 mm at the point
+    // counts as 0), so the outline is a polygon. Middle of the last panel: half the chord before it.
+    const s = sortedSections(p);
+    const [a, c] = s.slice(-2);
+    for (const [q, r] of s.slice(1, -1).map((q, i) => [q, s[i + 2]])) {
+      const chordR = r === c ? 0 : r.chord;
+      expect(b.planformAt((q.y + r.y) / 2).chord).toBeCloseTo((q.chord + chordR) / 2, 6);
+    }
+    expect(b.planformAt((a.y + c.y) / 2).chord).toBeCloseTo(a.chord / 2, 6);
+  });
+
+  it('closes in a point with every trailing-edge setting and with mitred and vertical planes', () => {
+    for (const te of ['asis', 'closed', 'thickness']) {
+      for (const planes of ['mitred', 'vertical']) {
+        const p = sport();
+        p.settings.trailingEdge = { mode: te, thickness: 0.5 };
+        p.settings.sectionPlanes = planes;
+        addRoundTip(p, defaultRoundTip(p));
+        const b = buildWing(p);
+        const label = `${te} ${planes}`;
+        expect(b.errors, label).toEqual([]);
+        expect(b.warnings, label).toEqual([]);
+        expect([b.tipPole, b.stations.at(-1).chord], label).toEqual([true, 0]);
+        // As in the file: the MH 32 of the Sport preset ends closed.
+        expect(b.closedTE, label).toBe(te !== 'thickness');
+        expect(poleSpread(b), label).toBeLessThan(1e-9);
+        for (const m of exportMeshes(b, 'halves')) expect(edgeCheck(m.mesh).closed, label).toBe(true);
+      }
+    }
+  });
+});
+
+describe('outline of the closed tip against the wing ellipse', () => {
+  /**
+   * Chord (mm) of the cut y = const of the built surface: largest minus smallest x over `nu` + 1
+   * surface parameters u, each point found by bisection on v (y grows with v for every u), as in
+   * docs/analysis/rounded-tip-cuts/extract-cuts.mjs.
+   */
+  const cutChord = (b, y, nu = 600) => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let i = 0; i <= nu; i++) {
+      const u = i / nu;
+      if (surfacePoint(b.surface, u, 1)[1] < y) continue;
+      let a = b.vAt(y - 10);
+      let c = 1;
+      for (let k = 0; k < 50; k++) {
+        const m = (a + c) / 2;
+        if (surfacePoint(b.surface, u, m)[1] < y) a = m;
+        else c = m;
+      }
+      const x = surfacePoint(b.surface, u, (a + c) / 2)[0];
+      lo = Math.min(lo, x);
+      hi = Math.max(hi, x);
+    }
+    return hi - lo;
+  };
+  const glider = (spanwise, params = {}) => {
+    const p = wizardProject(PRESETS.glider.params);
+    p.settings.spanwise = spanwise;
+    const e = wingEllipse(p);
+    addRoundTip(p, { ...defaultRoundTip(p), ...params });
+    return { p, e, b: buildWing(p) };
+  };
+
+  it('follows the ellipse of the Glider within 0.03 mm at 2.8, 1.8 and 0.8 mm before the point (Continue the ellipse, defaults)', () => {
+    const { b, e } = glider('linear');
+    expect(b.errors).toEqual([]);
+    // Point at y = 1119.83 mm; the ellipse closes at 1119.825 mm. Cuts at y = 1117, 1118 and 1119 mm:
+    // −0.01, 0.00 and +0.02 mm. With the 1 mm chord of Wing tip Pointed at the point: +0.04, +0.14
+    // and +0.34 mm.
+    expect(b.tipY).toBe(1119.83);
+    expect(e.y0 + 1 / Math.sqrt(e.m)).toBeCloseTo(1119.825, 3);
+    const d = [1117, 1118, 1119].map((y) => cutChord(b, y) - e.chordAt(y));
+    d.forEach((v) => expect(Math.abs(v)).toBeLessThan(0.03));
+    expect(d.map((v) => Math.round(v * 100) / 100)).toEqual([-0.01, 0, 0.02]);
+  });
+
+  it('stays within 0.03 mm of the ellipse 0.8 mm before the point with the straight line at 25 % and 50 %, Linear and Smooth', () => {
+    for (const spanwise of ['linear', 'smooth']) {
+      for (const line of [25, 50]) {
+        const { b, e } = glider(spanwise, { line });
+        expect(b.errors, `${spanwise} ${line}`).toEqual([]);
+        // 25 %: +0.023 mm, 50 %: +0.025 mm (the guide curves set the outline inboard, the same for Linear and Smooth).
+        expect(Math.abs(cutChord(b, 1119, 300) - e.chordAt(1119)), `${spanwise} ${line}`).toBeLessThan(0.03);
+      }
+    }
+  });
+
+  it('keeps a version 5 project (Wing tip Pointed with marked sections) at the 1 mm chord of the point, with the outline of the natural end and no new waves', () => {
+    const { p, e } = glider('linear');
+    p.settings.tip.mode = 'pointed';
+    expect(sortedSections(p).at(-1).chord).toBe(1);
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(b.warnings).toEqual([]);
+    expect(b.tipPole).toBe(false);
+    // tip.ratio 1/200 of 17.06 mm is 0.09 mm: the tip chord stays at the smallest chord, 1 mm.
+    expect(b.tipChord).toBeCloseTo(1, 2);
+    expect(b.stations.at(-1).chord).toBeCloseTo(1, 2);
+    // The natural end of the tip blend (src/geom/tipblend.js): +0.045, +0.14 and +0.34 mm against the
+    // ellipse at the three cuts, as the build before Wing tip Round.
+    const d = [1117, 1118, 1119].map((y) => cutChord(b, y) - e.chordAt(y));
+    [0.045, 0.14, 0.337].forEach((v, k) => expect(Math.abs(d[k] - v), `cut ${k}`).toBeLessThan(0.005));
+    const f = edgeInflections(b, 1000.5, b.tipY - 0.3);
+    expect([f.le.count, f.te.count]).toEqual([0, 0]);
+  });
+});
+
+describe('statistics of a tip closed in a point', () => {
+  it('gives finite span, area and mean aerodynamic chord, tip chord 0, and the area of Wing tip Pointed within 0.1 %', () => {
+    for (const key of ['sport', 'glider']) {
+      const p = wizardProject(PRESETS[key].params);
+      addRoundTip(p, defaultRoundTip(p));
+      const round = wingStats(buildWing(p));
+      for (const k of ['span', 'area', 'aspectRatio', 'mac', 'macY', 'macXLE', 'x25']) expect(Number.isFinite(round[k]), `${key} ${k}`).toBe(true);
+      expect(round.tipChord, key).toBe(0);
+      // Span: twice the y of the point (Sport 743.95 mm, Glider 1119.83 mm).
+      expect(round.span, key).toBeCloseTo(2 * sortedSections(p).at(-1).y, 9);
+      // The 1 mm chord of Wing tip Pointed at the point adds area: 1.4 mm² of 351,797 mm² on the Glider.
+      p.settings.tip.mode = 'pointed';
+      const pointed = wingStats(buildWing(p));
+      expect(pointed.tipChord, key).toBeCloseTo(1, 2);
+      expect(Math.abs(round.area / pointed.area - 1), key).toBeLessThan(1e-3);
+      expect(round.area, key).toBeLessThan(pointed.area);
+    }
   });
 });

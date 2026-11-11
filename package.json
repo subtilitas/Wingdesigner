@@ -1,6 +1,6 @@
 {
   "name": "wingdesigner",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Browser-based RC wing designer: NURBS loft through airfoil sections, guide curves, STEP/STL/3MF export",
   "license": "MIT",
   "private": true,
@@ -22,6 +22,7 @@
     "e2e": "npm run build && playwright test",
     "step:cases": "node scripts/export-step-cases.mjs step-check",
     "foam:cases": "node scripts/export-foam-cases.mjs foam-check",
+    "mold:cases": "node scripts/export-mold-cases.mjs mold-check",
     "screenshots": "node scripts/screenshots.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "counts:check": "node scripts/check-test-counts.mjs",

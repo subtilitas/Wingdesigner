@@ -9,6 +9,7 @@ English: [[File Formats|File-Formats]]
 | Import | Ein Flügel oder Höhenleitwerk aus XFLR5 | XFLR5-Projekt, XFLR5-Flugzeug oder -Flügel als XML | `.xfl` `.xml` | **Öffnen** |
 | Export | Projekt | JSON | `.json` | **Speichern** (Save), **Exportieren** (Export) |
 | Export | Flügel, exakte NURBS-Flächen | STEP, AP214 | `.step` | **Exportieren** |
+| Export | Formhälften der rechten Flügelhälfte, exakte Körper | STEP, AP214 | `.step` | **Exportieren** > **Formhälften …** |
 | Export | Flügel, Dreiecksnetz | binäres STL | `.stl` | **Exportieren** |
 | Export | Flügel, Dreiecksnetz | 3MF | `.3mf` | **Exportieren** |
 | Export | ein Profil | Selig | `.dat` | **Profile** > **.dat** |
@@ -65,7 +66,7 @@ Name in STEP-, STL- und 3MF-Dateien, unten `<name>` geschrieben: Projektname; le
 | STL | Kopf `Wingdesigner <name>` |
 | 3MF | Metadaten `Title`. Die Objektnamen sind fest: Tabelle „Körper je Datei“. |
 
-Der Schaumschnitt-Assistent wendet dieselbe Regel auf den Projektnamen an und hängt einen Zusatz an: `<name>_foam_profiles.zip`, `<name>_foam_templates.svg`, `<name>_foam_templates.pdf`, `<name>_foam_templates.dxf` (Abschnitt „Schaumschnitt-Dateien“). Leeres Ergebnis: `wing_foam_profiles.zip`.
+Der Schaumschnitt-Assistent wendet dieselbe Regel auf den Projektnamen an und hängt einen Zusatz an: `<name>_foam_profiles.zip`, `<name>_foam_templates.svg`, `<name>_foam_templates.pdf`, `<name>_foam_templates.dxf` (Abschnitt „Schaumschnitt-Dateien“). Leeres Ergebnis: `wing_foam_profiles.zip`. Der Dialog der Form wendet sie auf `<name> mold` an: `<name>_mold.step`, bei leerem Namen `wing_mold.step` (Abschnitt „STEP-Datei der Form“).
 
 ## Profildateien (Import)
 
@@ -267,7 +268,7 @@ Die Prüfungen laufen:
 | Schlüssel | Typ | Geschrieben | Bei **Öffnen** |
 | --- | --- | --- | --- |
 | `format` | `"wingdesigner-project"` | immer | Pflicht, muss übereinstimmen |
-| `version` | ganze Zahl `3`; `4`, wenn `settings.leftHalf` `"turned"` ist; `5`, wenn ein Schnitt `roundTip` hat | immer | Pflicht, 1 bis 5. Eine Datei der Version 1 öffnet mit `settings.sectionPlanes` `"vertical"`, den Schnittebenen, mit denen sie entworfen wurde. Eine Datei der Version 2 mit `foldedTilt` wird aktualisiert (Abschnitt „Aktualisierung von Dateien der Version 2“). Eine Datei der Version 1 oder 2 öffnet mit `partTilt` und `partRoll` 0 und `partPivot` null, außer die Aktualisierung ihres `foldedTilt` setzt sie: `partTilt`, `partRoll` und `partPivot` in ihren Einstellungen sind unbekannte Schlüssel dieser Version und entfallen, wie die Apps dieser Version sie verwerfen. Eine App, die nur Version 1 liest, lehnt eine Datei der Version 2 ab (`Nicht unterstützte Projektversion 2.`), statt `sectionPlanes` und `foldedTilt` zu verwerfen; Wingdesigner 0.3.0 und älter lehnen eine Datei der Version 3 ab (`Nicht unterstützte Projektversion 3.`), statt `partTilt`, `partRoll` und `partPivot` zu verwerfen. Eine Datei der Version 1 bis 3 öffnet mit `settings.leftHalf` `"mirror"`; ein Schlüssel `leftHalf` darin entfällt. Wingdesigner 0.4.0 und älter lehnen eine Datei der Version 4 ab (`Nicht unterstützte Projektversion 4.`), Wingdesigner 0.8.0 und älter eine Datei der Version 5 (`Nicht unterstützte Projektversion 5.`), statt `roundTip` zu verwerfen. |
+| `version` | ganze Zahl `3`; `4`, wenn `settings.leftHalf` `"turned"` ist; `5`, wenn ein Schnitt `roundTip` hat; `6`, wenn `settings.tip.mode` `"round"` ist | immer | Pflicht, 1 bis 6. Eine Datei der Version 1 öffnet mit `settings.sectionPlanes` `"vertical"`, den Schnittebenen, mit denen sie entworfen wurde. Eine Datei der Version 2 mit `foldedTilt` wird aktualisiert (Abschnitt „Aktualisierung von Dateien der Version 2“). Eine Datei der Version 1 oder 2 öffnet mit `partTilt` und `partRoll` 0 und `partPivot` null, außer die Aktualisierung ihres `foldedTilt` setzt sie: `partTilt`, `partRoll` und `partPivot` in ihren Einstellungen sind unbekannte Schlüssel dieser Version und entfallen, wie die Apps dieser Version sie verwerfen. Eine App, die nur Version 1 liest, lehnt eine Datei der Version 2 ab (`Nicht unterstützte Projektversion 2.`), statt `sectionPlanes` und `foldedTilt` zu verwerfen; Wingdesigner 0.3.0 und älter lehnen eine Datei der Version 3 ab (`Nicht unterstützte Projektversion 3.`), statt `partTilt`, `partRoll` und `partPivot` zu verwerfen. Eine Datei der Version 1 bis 3 öffnet mit `settings.leftHalf` `"mirror"`; ein Schlüssel `leftHalf` darin entfällt. Wingdesigner 0.4.0 und älter lehnen eine Datei der Version 4 ab (`Nicht unterstützte Projektversion 4.`), Wingdesigner 0.8.0 und älter eine Datei der Version 5 (`Nicht unterstützte Projektversion 5.`), statt `roundTip` zu verwerfen, Wingdesigner 0.9.0 und älter eine Datei der Version 6 (`Nicht unterstützte Projektversion 6.`). |
 | `generator` | `{ "name": "Wingdesigner", "version": "<App-Version>" }` | immer | ignoriert |
 | `exportedAt` | Zeitpunkt nach ISO 8601, UTC | immer | ignoriert |
 | `name` | Zeichenkette | immer | keine Zeichenkette: „Importierter Flügel“ (englische Oberfläche: `Imported wing`); höchstens 10 000 Zeichen |
@@ -356,7 +357,7 @@ Von der App erzeugte IDs:
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Endleiste** (Trailing edge) |
 | `trailingEdge.thickness` | ≥ 0 mm; wirkt bei `"thickness"`; begrenzt auf 5 % der örtlichen Profiltiefe | `0.4` | **Endleistendicke (mm)** (Trailing-edge thickness (mm)) |
 | `trailingEdge.smooth` | `true`, `false`; wirkt bei `"thickness"` | `true` | **Weicher Übergang zur 5-%-Grenze** (Smooth transition to the 5 % limit): `true` führt die Dicke ohne Knick in die 5-%-Grenze über ([[Geometrie]], Abschnitt 3.7). Eine Projektdatei ohne den Schlüssel, auch eine früherer Versionen, baut mit `true`; Wingdesigner 0.8.0 und älter verwerfen den Schlüssel und bauen mit dem Knick. |
-| `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Flügelende** (Wing tip) |
+| `tip.mode` | `"flat"`, `"pointed"`, `"round"` | `"flat"`; **Randbogen …** setzt `"round"` | **Flügelende** (Wing tip). `"round"`: **Rund (schließt in einem Punkt, braucht einen Randbogen)**, die Profiltiefe des letzten Schnitts ist 0 und das Flügelende ein Punkt ([[Geometrie]], Abschnitt 3.5); braucht `roundTip` am letzten Schnitt, sonst ein Baufehler. Ein Projekt mit `"round"` wird im Format Version 6 gespeichert. Andere Werte: `settings.tip.mode muss "flat", "pointed" oder "round" sein.` |
 | `tip.ratio` | `0.001`–`0.01` (Randprofil 1/1000 bis 1/100 der Profiltiefe des vorherigen Schnitts); Randtiefe mindestens 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Maßstab des Randprofils 1 : N der Tiefe des vorherigen Schnitts** (Tip profile scale 1 : N of the previous section chord) |
 | `chordSamples` | ganze Zahl `16`–`200` | `60` | **Stationen je Profilseite** (Chordwise stations per surface) |
 | `panelStations` | ganze Zahl `3`–`40`; der Flügelaufbau verwendet nur dann weniger, wenn das Flächengitter 5 000 000 Punkte überschreiten würde ([[Geometrie]], Abschnitt 3.2) | `8` | **Stationen je Feld mit Leitkurve, glatter Interpolation oder linearen Feldern auf Gehrung** (Spanwise stations per panel with guides, smooth mode or mitred linear panels) |
@@ -475,7 +476,7 @@ Beispielflügel „Sportflügel 1500“ (englische Oberfläche: „Sport wing 15
 {
  "format": "wingdesigner-project",
  "version": 3,
- "generator": { "name": "Wingdesigner", "version": "0.9.0" },
+ "generator": { "name": "Wingdesigner", "version": "0.10.0" },
  "exportedAt": "2026-09-30T12:00:00.000Z",
  "name": "Sportflügel 1500",
  "units": "mm",
@@ -535,7 +536,7 @@ englische Texte; die Sprache ändert sie nicht.
 | Eigenschaft | Wert |
 | --- | --- |
 | Schlüssel | `wingdesigner.project.v1` |
-| Gespeicherte Schlüssel | wie im Projekt-JSON, ohne `generator`, `exportedAt`, `coordinateSystem` und `derived`; `version` wie in einer gespeicherten Datei (3, oder 4 mit `settings.leftHalf` `"turned"`) |
+| Gespeicherte Schlüssel | wie im Projekt-JSON, ohne `generator`, `exportedAt`, `coordinateSystem` und `derived`; `version` wie in einer gespeicherten Datei (3; 4 mit `settings.leftHalf` `"turned"`; 5 mit `roundTip`; 6 mit `settings.tip.mode` `"round"`) |
 
 | Ereignis | Verhalten |
 | --- | --- |
@@ -1110,7 +1111,7 @@ Mit **Linke Hälfte** auf Spiegelbild liegt die linke Hälfte von „Vee“ bis 
 - **Netzdichte (STL, 3MF)** (Mesh density (STL, 3MF)): **Normal** oder **Fein (4-fache Dreiecksanzahl)** (Fine (4x triangles)). **Fein** (Fine) teilt jedes u-Intervall (Profiltiefenrichtung) und jedes v-Intervall (Spannweitenrichtung) des **Normal**-Netzes in 2. Gemessene Dreieckszahl: 3,0- bis 3,9-fach gegenüber **Normal** (Tabelle „Dateigrößen“).
 - Aufbau der Dreiecksnetze und Dreieckszahlen: [[Geometrie|Geometrie]], Abschnitt 5 „Dreiecksnetze“.
 
-![Exportdialog: Format, Flügelhälften, Netzdichte, Fusion-360-Korrektur](images/de/export-dialog.png)
+![Exportdialog: Format, Flügelhälften, Netzdichte, Fusion-360-Korrektur, Gruppe Form mit der Schaltfläche Formhälften …](images/de/export-dialog.png)
 
 ## STEP
 
@@ -1131,13 +1132,46 @@ Mit **Linke Hälfte** auf Spiegelbild liegt die linke Hälfte von „Vee“ bis 
 | Namen der Volumenkörper | `<name> right` (y ≥ 0; mit **Fusion-360-Korrektur**: Z ≤ 0), `<name> left` (gespiegelt, y ≤ 0; mit **Fusion-360-Korrektur**: Z ≥ 0) |
 | Achsen | wie in der App, das Teil um **Einstellwinkel des Teils** und **Rollwinkel des Teils** gedreht; mit **Fusion-360-Korrektur**: (x, z, −y) (Abschnitt „Körper je Datei“) |
 | Formdarstellung | 1 `ADVANCED_BREP_SHAPE_REPRESENTATION` mit dem Namen `<name>` enthält alle Volumenkörper |
-| Flächen | `B_SPLINE_SURFACE_WITH_KNOTS`, nicht-rational: Oberseite, Unterseite, offene Endleiste. `PLANE`: Wurzel und Rand. |
+| Flächen | `B_SPLINE_SURFACE_WITH_KNOTS`, nicht-rational: Oberseite, Unterseite, offene Endleiste. `PLANE`: Wurzel und Rand; mit **Flügelende** Rund nur Wurzel. |
+| Flächen je Hälfte | geschlossene Endleiste 4, offene Endleiste 5; mit **Flügelende** Rund (das Flügelende schließt in einem Knoten, keine Abschlussfläche am Rand) 3 und 4 |
 | Kantenkurven | `B_SPLINE_CURVE_WITH_KNOTS` |
 | Zahlen | kürzeste Dezimaldarstellung, die den 64-Bit-Gleitkommawert exakt wiedergibt, immer mit Dezimalpunkt, Exponent `E` |
 | Zeichenketten | `'` und `\` verdoppelt. Zeichen außerhalb U+0020–U+007E als `\X2\hhhh\X0\` oder `\X4\hhhhhhhh\X0\`. Ein einzelnes UTF-16-Ersatzzeichen (Surrogat, U+D800–U+DFFF) wird als U+FFFD (Ersetzungszeichen) geschrieben. |
 
 Flächen, Kanten, Orientierungsflags und die Prüfung mit OpenCascade: [[Geometrie|Geometrie]],
 Abschnitt 6 „STEP-Topologie“.
+
+## STEP-Datei der Form
+
+Geschrieben von **Exportieren** > **Formhälften …** ([[Benutzerhandbuch|Benutzerhandbuch]], Abschnitt Formhälften). Kopf, Einheiten, Zahlen und Zeichenketten wie in Abschnitt „STEP“; die Unterschiede:
+
+| Eigenschaft | Wert |
+| --- | --- |
+| Dateiname | `<Projektname>_mold.step` (Regel aus Abschnitt „Dateinamen beim Export“, angewandt auf `<Projektname> mold`) |
+| `FILE_DESCRIPTION` | `(('Wingdesigner mold'),'2;1')` |
+| `FILE_NAME` Name, `PRODUCT`, Formdarstellung | `<Projektname> mold` |
+| Volumenkörper | **Hälften** Unter- und Oberform: 2 `MANIFOLD_SOLID_BREP`, `<Projektname> mold lower` und `<Projektname> mold upper`; Nur Unterform oder Nur Oberform: 1 |
+| Lage | geschlossene Form: Trennebene bei z = 0, Unterform bei z ≤ 0, Oberform bei z ≥ 0 (mit **Fusion-360-Korrektur** beim letzten Export: Trennebene bei Y = 0, Oberform bei Y ≥ 0) |
+| Achsen | x in Profiltiefenrichtung zur Endleiste, y in Spannweitenrichtung zum rechten Flügelende (zum linken mit **Formen des linken Flügels**), z nach oben, im Bezugssystem der Form: das Aufbausystem um x um die V-Form gerollt, ohne **Einstellwinkel des Teils** und **Rollwinkel des Teils** ([[Geometrie]], Abschnitt 11.1). Mit **Fusion-360-Korrektur** beim letzten Export: (x, z, −y) |
+| Einheit | Millimeter |
+| Flächen | `B_SPLINE_SURFACE_WITH_KNOTS` (Formnest, Rampen, Blutrinne), `PLANE` (Flächen des Formblocks, Trennebene, Rampendreiecke, Hälfte einer flachen Endfläche, Grund der Zentrierbohrungen), `CYLINDRICAL_SURFACE` (Bohrungen) |
+| Kantenkurven | `B_SPLINE_CURVE_WITH_KNOTS`, `CIRCLE` (Ränder der Bohrungen) |
+| Browserspeicher | die Werte des Dialogs unter `wingdesigner.mold`, JSON; nicht in der Projektdatei |
+
+Flächen einer Hälfte (die Oberform ist das Spiegelbild an der Trennebene; die Formen des linken Flügels das Spiegelbild an y = 0, mit umgekehrten Bound-Flags und umgekehrtem Sinn der B-Spline-Flächen):
+
+| Flächengruppe | Flächen |
+| --- | --- |
+| Formblock | Boden, vorn (Seite der Nasenleiste), hinten, Seite am Flügelende: Ebenen; die Wurzelfläche: eine Ebene, um den Rollwinkel des Bezugssystems geneigt, mit dem Wurzelschnitt und den Enden der Blutrinne in ihrem Umriss |
+| Trennebene | die Ebene z = 0 außerhalb der Rampe, von der Blutrinne in zwei Flächen geteilt (ohne Blutrinne eine Fläche); die Ränder der Bohrungen sind innere Schleifen der äußeren Fläche |
+| Rampe | zwei Regelflächen als B-Spline (Grad 1 quer) von Nasenleiste und Endleiste zur Ebene; bei flachem Flügelende zusätzlich eine Regelfläche von der Skelettlinie des Randschnitts und an jeder Ecke ein ebenes Dreieck |
+| Formnest | die Flügelfläche der Seite (die B-Spline-Fläche des Flügelexports), die Hälfte einer stumpfen Endleiste, bei flachem Flügelende die Hälfte der Endfläche bis zu ihrer Skelettlinie |
+| Blutrinne | eine B-Spline-Fläche mit halbrundem Querschnitt |
+| Bohrungen | je zwei Halbzylinder; eine Zentrierbohrung endet in einem ebenen Grund, eine Schraubenbohrung in der Bodenfläche des Formblocks |
+
+- Eine Schleife ist von außerhalb des Körpers gesehen gegen den Uhrzeigersinn aufgeführt. Jede Kante wird einmal in jeder Richtung verwendet (geschlossene Hülle); sonst verweigert der Schreiber die Hälfte.
+- Mit rundem Flügelende enden Formnest und beide Rampen in einem Knoten.
+- Prüfung: `scripts/validate_mold.py` mit OpenCascade ([[Entwicklung]], Abschnitt Validierung der Form).
 
 ## STL
 

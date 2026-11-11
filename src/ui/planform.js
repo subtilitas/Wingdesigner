@@ -105,12 +105,12 @@ function guideSamples(gd) {
 
 /**
  * Which edge handles of a section move something: none on an edge a guide curve sets; on a pointed
- * tip the chord is the scaled previous chord, so its trailing edge never moves and, with the end
- * line on, its leading edge neither (xLE = end line x - chord).
+ * tip the chord is the scaled previous chord (on a round tip 0), so its trailing edge never moves and,
+ * with the end line on, its leading edge neither (xLE = end line x - chord).
  */
 export function edgeHandles(p, s, tipId) {
   const g = p.guides ?? {};
-  const pointedTip = p.settings?.tip?.mode === 'pointed' && s.id === tipId;
+  const pointedTip = ['pointed', 'round'].includes(p.settings?.tip?.mode) && s.id === tipId;
   return { le: !g.nose?.enabled && !(pointedTip && g.end?.enabled), te: !g.end?.enabled && !pointedTip };
 }
 

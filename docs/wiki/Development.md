@@ -42,7 +42,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/geom/linalg.js` | Band lower-upper (LU) factorization without pivoting (B-spline interpolation, used by `src/geom/nurbs.js`); dense LU factorization with partial pivoting (unit tests only) |
 | `src/geom/profile.js` | Airfoil as NURBS curve; chordwise resampling; `fitProfile` (curve fit and shape check of an airfoil, used by the airfoil preview and the XFLR5 import) |
 | `src/geom/spanwise.js` | Spanwise blending of section values (`linear`, `smooth`) |
-| `src/geom/tipblend.js` | Rounded tip in the loft: `roundTipStart` (the marked run), `guideEndIndex` (where guide curves end), `roundTipBlender` (outline along the tip ellipse, optionally anchored to guide curves), `spanParameter` (span parameter v along the ellipse arc) |
+| `src/geom/tipblend.js` | Rounded tip in the loft: `roundTipStart` (the marked run), `guideEndIndex` (where guide curves end), `roundTipBlender` (outline along the tip ellipse, optionally anchored to guide curves), `spanParameter` (span parameter v along the ellipse arc); with **Wing tip** Round (`closed`) the edges end with the curvature of the straight line through the point |
 | `src/geom/guide.js` | Guide curves (nose line, end line) |
 | `src/geom/planes.js` | Section planes: roll and stretch of each section (`sectionPlanes`), stretch limit, extent of a placed airfoil (`upExtent`) and fold test of two neighbouring planes (`planeFold`, `firstFold`) |
 | `src/geom/wing.js` | Wing loft: `buildWing`; `mitredPlaneProblem` (stretch and fold checks without the loft, for the XFLR5 import); profile cache |
@@ -51,6 +51,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/geom/stats.js` | Planform statistics; for a tilted or rolled part the MAC position, 25 % MAC and span in the plane axes |
 | `src/geom/part.js` | Rigid placement of the part (**Part tilt**, **Part roll**): `partPivot` (stored pivot, else the leading edge of the root section), `partTransform` (roll about x, then tilt about y, through the pivot: `point`, `vector`, `matrix`), `transformPositions` (mesh vertices) |
 | `src/geom/foam.js` | Foam cores: proposed cuts (`proposeCuts`), cut list rules (`normalizeCuts`), segments with end profiles, wedges and deviation (`foamSegments`), splitting above a deviation limit (`splitOverTolerance`); limits `FOAM_LIMITS` |
+| `src/geom/mold.js` | Mold halves: `moldGeometry` (frame rolled with the dihedral, parting plane, ramps, outline, resin channel, block, holes, preview and summary), `moldProblems` (range and combination checks), `offsetOutline` (offset with rounded inward corners), `grooveSurface` (half-round groove as one B-spline surface), `resolveMold`, `MOLD_DEFAULTS`, `MOLD_RANGES`, `HOLE_PATTERNS`, `MOLD_CLEARANCE` (1 mm) |
 | `src/geom/sampling.js` | Span samples for drawing, shared by the 3D view and the planform: `refine`, `thinParams`, `edgeParams`, `MAX_EDGE_SAMPLES` (20,000) |
 | `src/airfoil/parse.js` | Airfoil file parser; `cleanPoints` cleans a point list from another format (the airfoils of an XFLR5 project) by the rules of a parsed file |
 | `src/airfoil/geometry.js` | Polyline geometry |
@@ -58,6 +59,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/airfoil/naca.js` | NACA 4- and 5-digit generator; `leadingNacaCode` finds the code that starts a name (`NACA0014_Flap`) |
 | `src/airfoil/library.js` | 17 NACA presets, bundled library, external sources; `librarySource` (source record of a bundled entry) |
 | `src/export/step.js` | STEP writer; file format International Organization for Standardization (ISO) 10303-21 |
+| `src/export/moldstep.js` | STEP writer of the mold halves: `moldToStep` (one `MANIFOLD_SOLID_BREP` per half, parting plane at z = 0), `Brep` (vertices, edges, B-spline, plane and cylinder faces, closed-shell check) |
 | `src/export/axes.js` | Up axis of the exported files (the Fusion 360 fix of the export dialog): `UP_AXES`, `upAxisMap` (identity for Z up, (x, z, −y) for Y up), `meshToUpAxis` |
 | `src/export/stl.js` | Binary stereolithography (STL) writer |
 | `src/export/threemf.js` | 3MF writer |
@@ -76,7 +78,7 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/model/edit.js` | Edit operations |
 | `src/model/wizard.js` | Wizard presets, parameter ranges (`RANGES`) and panel ranges (`PANEL_RANGES`, at most `MAX_PANELS` = 24 panels); `wizardProject` builds the sections of the straight, elliptic and panel planforms and the elliptic tip (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` turns the straight planform into 1 panel |
 | `src/model/winglet.js` | Integral winglet: `wingletSections` (blend arc in steps of at most `WINGLET_STEP` = 15°, then the straight part), `wingletProblems`, `addWinglet`, `defaultWinglet`, ranges `WINGLET_RANGES` |
-| `src/model/roundtip.js` | Rounded tip: `roundTipSections` (quarter ellipse of chords at t = sin(π k / (2m)), times 1 + κ t), `roundTipKappa` (κ of **Tangent to the last panel**), `roundTipProblems`, `addRoundTip` (also sets the tip mode to Pointed), `defaultRoundTip`, `wingEllipse` and `roundTipLength` (Continue the ellipse), ranges `ROUND_TIP_RANGES` |
+| `src/model/roundtip.js` | Rounded tip: `roundTipSections` (quarter ellipse of chords at t = sin(π k / (2m)), times 1 + κ t), `roundTipKappa` (κ of **Tangent to the last panel**), `roundTipProblems`, `addRoundTip` (also sets the tip mode to Round), `defaultRoundTip`, `wingEllipse` and `roundTipLength` (Continue the ellipse), ranges `ROUND_TIP_RANGES` |
 | `src/model/defaults.js` | Project on first load |
 | `src/ui/store.js` | Store with undo and redo |
 | `src/ui/viewer3d.js` | 3D view |
@@ -87,14 +89,15 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `src/ui/settings.js` | **Settings** tab |
 | `src/ui/wizard.js` | Wizard dialog with the panel table; `drawPlanform` (also draws the planform in the import dialog) |
 | `src/ui/xflr5.js` | Import dialog for XFLR5 files: `openXflr5Dialog` |
-| `src/ui/exportui.js` | **Export** dialog |
+| `src/ui/exportui.js` | **Export** dialog; `storedUpAxis` (the up axis of the last export, also used by the mold dialog); the **Mold halves…** button |
+| `src/ui/mold.js` | Mold dialog: `moldDialog` (fields, top-view preview of the parting plane, summary, **Download STEP**); stored values (`storedMoldSettings`, key `wingdesigner.mold`) |
 | `src/ui/foam.js` | Foam-cutting wizard: `foamDialog`; stored settings (`storedFoamSettings`, key `wingdesigner.foam`) |
 | `src/ui/winglet.js` | Winglet dialog of the **Sections** tab: `wingletDialog` |
 | `src/ui/roundtip.js` | Rounded-tip dialog of the **Sections** tab: `roundTipDialog` |
 | `src/ui/dom.js` | DOM helpers |
 | `src/ui/styles.css` | Styles |
 | `src/i18n/index.js` | Language (`language`, `setLanguage`, `initialLanguage`), `tr()` and the number formats `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `roundtip`, `flow5`; `index.js` merges them |
+| `src/i18n/de/*.js` | German texts, one file per area: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `roundtip`, `flow5`, `mold`; `index.js` merges them |
 
 ### Scripts
 
@@ -107,6 +110,8 @@ Generated and not committed (`.gitignore`): `dist/`, `coverage/`, `step-check/`,
 | `scripts/validate_3mf.py` | 3MF validation (lib3mf) |
 | `scripts/export-foam-cases.mjs` | Foam-cutting file export of the test wings |
 | `scripts/validate_foam.py` | Foam-cutting file validation (ezdxf, pypdf) |
+| `scripts/export-mold-cases.mjs` | Mold STEP case export |
+| `scripts/validate_mold.py` | Mold STEP validation (OpenCascade) |
 | `scripts/screenshots.mjs` | Wiki screenshots, English and German |
 | `scripts/check-docs.mjs` | Documentation check |
 | `scripts/check-test-counts.mjs` | Test count check |
@@ -301,8 +306,9 @@ To add a text:
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` and the label and title of **Foam** in `src/main.js` |
 | `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` and the **Winglet…** button in `src/ui/sections.js` |
 | `roundtip.js` | `src/ui/roundtip.js`, `src/model/roundtip.js` and the **Rounded tip…** button in `src/ui/sections.js` |
+| `mold.js` | `src/ui/mold.js`, `src/geom/mold.js`, `src/export/moldstep.js` and the **Mold halves…** button with its group in `src/ui/exportui.js` |
 
-`src/i18n/de/index.js` merges the thirteen files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 34 and 146 texts, the file of the flow5 import 44.
+`src/i18n/de/index.js` merges the fourteen files into `DE` and exports them by name as `AREAS`. The three files of the XFLR5 import hold 25, 34 and 146 texts, the file of the flow5 import 44.
 
 To add a language:
 
@@ -434,16 +440,17 @@ Browser tests and screenshots also need Chromium: `npx playwright install chromi
 | `npm run build` | `vite build` | Static site in `dist/` |
 | `npm run preview` | `vite preview` | Serves `dist/` at `http://localhost:4173` (next free port when 4173 is in use) |
 | `npm run lint` | `eslint .` | Lint errors; exit code 1 on error |
-| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 690 tests in 27 files |
+| `npm test` | `vitest run` | Unit tests `test/**/*.test.js` in Node.js: 753 tests in 28 files |
 | `npm run test:watch` | `vitest` | Unit tests, re-run on file change |
 | `npm run coverage` | `vitest run --coverage` | Table on the terminal, `coverage/coverage-summary.json`, HyperText Markup Language (HTML) report in `coverage/`. Covers `src/**/*.js` without `src/ui/` and `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Writes the coverage table into `README.md` and `README.de.md` between `<!-- coverage:start -->` and `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit code 1 when a README table differs from `coverage/coverage-summary.json`; exit code 2 when that file or a marker is missing |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Checks in [Airfoil library check](#airfoil-library-check); exit code 1 on a problem |
 | `npm run e2e` | `npm run build && playwright test` | Browser tests in `e2e/` against `vite preview` on port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 16 STEP files, 16 3MF files and `cases.json` in `step-check/` |
-| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 14 test wings and `cases.json` in `foam-check/` |
-| `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Portable Network Graphics (PNG) files: 14 in `docs/wiki/images/` (English) and 14 in `docs/wiki/images/de/` (German) |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 18 STEP files, 18 3MF files and `cases.json` in `step-check/` |
+| `npm run mold:cases` | `node scripts/export-mold-cases.mjs mold-check` | 16 mold STEP files and `cases.json` in `mold-check/` |
+| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profile ZIP, SVG, DXF and PDF of 16 test wings and `cases.json` in `foam-check/` |
+| `npm run screenshots` | `node scripts/screenshots.mjs` | 30 Portable Network Graphics (PNG) files: 15 in `docs/wiki/images/` (English) and 15 in `docs/wiki/images/de/` (German) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Documentation check; exit code 1 on a problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Checks in [Test count check](#test-count-check); exit code 1 on a difference |
 | `npm run i18n:check` | `node scripts/check-i18n.mjs` | Checks in [Translations](#translations); exit code 1 on a problem |
@@ -481,9 +488,9 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | Locale | `en-US` for all specs (the app starts in German on a German browser, and the specs assert English texts); `e2e/language.spec.js` and `e2e/xflr5.spec.js` set `de-DE` in their blocks `German browser` and `XFLR5 import in German` |
 | Reporters | `list` on the terminal; `json` to `playwright-report/results.json`, input of the [Test count check](#test-count-check) |
 
-205 tests in 16 spec files, 410 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
+216 tests in 17 spec files, 432 runs (both projects). The `test` object of `e2e/helpers.js` fails a test on any uncaught page error or console error.
 
-31 tests run in one project only (`test.skip` in the other project):
+32 tests run in one project only (`test.skip` in the other project):
 
 | Spec file | `desktop` only | `mobile` only |
 | --- | --- | --- |
@@ -492,6 +499,7 @@ It prints each problem and exits with code 1 when at least 1 check fails.
 | `e2e/planform.spec.js` | 1: zoom buttons, mouse wheel, double-click fit | 2: one-finger drag of a guide point, two-finger pinch zoom |
 | `e2e/sections.spec.js` | 2: Ctrl+Z and Ctrl+Shift+Z, Ctrl+Y | 0 |
 | `e2e/xflr5.spec.js` | 0 | 1: the import dialog fits a 360 px wide phone |
+| `e2e/mold.spec.js` | 0 | 1: phone: the mold dialog fits the screen, scrolls, and Download STEP works |
 
 No test is marked `test.fail`.
 `npm run e2e` rebuilds `dist/` first; before a direct `npx playwright test`, run `npm run build`.
@@ -557,7 +565,37 @@ x and z: position of the leading edge.
 | `mitred-gull-smooth` | As `mitred-gull-15-5`, with smooth blending: rolls blended by the cubic, stretch from the slope of the blended reference line | 2 |
 | `mitred-switch-short-panel` | Not the base wing: NACA 2412 at y 0 and 299.5 mm (chords 200 and 180 mm), NACA 0012 at y 300 and 600 mm (chords 180 and 120 mm, tip z 52.8981 mm, twist −2°); **Straight panels**, **Mitred** section planes: the 0.5 mm panel counts as none, both switch sections roll 5.25°; the outer panel stores a panel angle of 10.5° (tip roll 10.5°) | 2 |
 | `part-tilt-roll` | As `mitred-gull-15-5`, with **Part tilt** 8° and **Part roll** 12° about the pivot (50, 0, −20) mm: turned surfaces, edge curves, cap planes and the mirror of a placed part | 2 |
-| `rounded-tip-smooth` | As `mitred-gull-smooth`, with the default rounded tip (`src/model/roundtip.js`): 6 sections beyond the tip on a quarter ellipse of chords to a 1 mm point, straight line at 25 %; tip mode Pointed | 2 |
+| `rounded-tip-smooth` | As `mitred-gull-smooth`, with the default rounded tip (`src/model/roundtip.js`): 6 sections beyond the tip on a quarter ellipse of chords to a point of chord 0, straight line at 25 %; **Wing tip** Round; open trailing edge as in the airfoil, 4 faces per half, no tip cap | 2 |
+| `rounded-tip-open-te` | The base wing with a fixed trailing-edge thickness of 0.4 mm and the default rounded tip, **Wing tip** Round: 4 faces per half | 2 |
+| `rounded-tip-closed-te` | The base wing with a closed trailing edge, **Mitred** section planes and the default rounded tip, **Wing tip** Round: 3 faces per half (upper, lower, root cap) | 2 |
+
+### Mold validation
+
+Python and packages as in [STEP and 3MF validation](#step-and-3mf-validation) (`cadquery-ocp` only).
+
+```bash
+npm run mold:cases
+python scripts/validate_mold.py mold-check/cases.json
+```
+
+`scripts/export-mold-cases.mjs` builds the wings and mold parameters of `moldCases()` in `test/mold-cases.js` and writes one STEP file per case to `mold-check/`. `cases.json` holds per file: the expected solid count, the expected total volume (blocks less half wing, resin channel and holes; the half wing from its mesh at u × 4 and v × 8), the tolerance `2e-4`, the up axis, the halves, the hole count and the extent of each half along the up axis (from its block face to the highest point of the parting plane, of leading and trailing edge and of the cavity surface, sampled 400 × 200).
+
+| Check per file (`validate_mold.py`) | Pass condition |
+| --- | --- |
+| Read | The reader transfers all roots (`IFSelect_RetDone`) |
+| Solid count | Equals the expected count: 2, or 1 with **Halves** Lower only or Upper only |
+| Validity | Every solid passes `BRepCheck_Analyzer` |
+| Shell | Closed and consistently oriented (`ShapeAnalysis_Shell`), volume > 0 |
+| Volume | The volumes of both halves add up to the expected total within `2e-4` (relative) |
+| Extent | Each half spans its expected range along the up axis, the parting plane at 0, within 0.1 mm |
+| Holes | Every solid has 2 cylindrical faces per hole |
+| Planar faces | Every edge of a planar face lies in its plane within `1e-6` mm, 20 samples per edge |
+
+Exit code 1 when a check fails. On 2026-11-11 (local, `cadquery-ocp` 8.0.1): the 16 files passed, largest volume deviation 8.9e-6; 36 further files (9 presets with a round and with the preset tip, open and closed trailing edge) passed the same checks in a local run, not in the repository.
+
+Cases (`test/mold-cases.js`): a flat untwisted wing with open and closed trailing edge and with a round tip; the sample wing with twist and dihedral; **Sport**, **Glider** (both hole sets **Around the wing**) and **Delta jet** with a round tip; **Swept flying wing** with a closed trailing edge at a flat tip (the mean line parts the tip face of a reflexed airfoil); an under-cambered wing with a flat and with a round tip (the lower half rises above the parting plane); **Batwing**; **Tail surface** without resin channel and without holes; **Sport** with one half only (lower, upper) and the molds of the left wing with Y up.
+
+Unit tests: `test/mold.test.js` (geometry, checks, hole placement, STEP topology of the halves, German messages). Browser test: `e2e/mold.spec.js` (the dialog opened from **Export** with the defaults and the summary of the **Sport** wing; **Mold halves…** disabled for a wing with errors; fields enabled by group and pattern; a value out of range, a margin error and the warning for left-out holes; the values kept across a reload; **Download STEP** with both halves and with one; Y up after an export with the **Fusion 360 fix**; the German dialog; the phone layout).
 
 ### Foam-cutting file validation
 
@@ -569,7 +607,7 @@ npm run foam:cases
 python scripts/validate_foam.py foam-check/cases.json
 ```
 
-`scripts/export-foam-cases.mjs` takes the wings of `test/step-cases.js` without `mitred-vtail-35-y-up` and `part-tilt-roll` (14 cases): the first differs from its case in the STEP axes only, the cores of the second lie in the frame of the part, as those of `mitred-gull-15-5`. Cuts: the proposal for a longest core of 300 mm. Kerf 1 mm for `guided-elliptic`, paper A3 for `pointed-tip` and Letter for `mitred-gull-15-5`, else no kerf and A4. `cases.json` holds per case the name, the 4 files, the segment count, the points per profile, the kerf, the vertex count of each profile polyline, the page count, the page size and the paper size.
+`scripts/export-foam-cases.mjs` takes the wings of `test/step-cases.js` without `mitred-vtail-35-y-up` and `part-tilt-roll` (16 cases): the first differs from its case in the STEP axes only, the cores of the second lie in the frame of the part, as those of `mitred-gull-15-5`. Cuts: the proposal for a longest core of 300 mm. Kerf 1 mm for `guided-elliptic`, paper A3 for `pointed-tip` and Letter for `mitred-gull-15-5`, else no kerf and A4. `cases.json` holds per case the name, the 4 files, the segment count, the points per profile, the kerf, the vertex count of each profile polyline, the page count, the page size and the paper size.
 
 | Check per case (`validate_foam.py`) | Pass condition |
 | --- | --- |
@@ -612,7 +650,7 @@ On the next run, pages edited in the wiki web interface are overwritten, and pag
 | `docs/wiki/images/` | English | `en-US` |
 | `docs/wiki/images/de/` | German | `de-DE` |
 
-Both folders hold 14 files with the same names and the same states. The English wiki pages embed `images/<name>.png`, the German pages `images/de/<name>.png`.
+Both folders hold 15 files with the same names and the same states. The English wiki pages embed `images/<name>.png`, the German pages `images/de/<name>.png`.
 
 The two languages run the same steps. The steps name every control by its English label. The German run maps that label to its German entry in `DE` (`src/i18n/de/index.js`) and stops when there is no text entry. Both runs stop when the app starts in another language than the locale asks for (`lang` attribute of the `html` element). The text `Sample 4412 table` in `upload-preview.png` is the first line of the generated file and reads the same in both languages.
 
@@ -626,7 +664,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `planform.png` | **Planform** tab, **Glider**, nose line and end line on | 600 x 730 | 600 x 730 |
 | `airfoils.png` | **Airfoils** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `upload-preview.png` | Upload preview of a synthetic X/Yo/Yu percent table with decimal commas, opened over the **Glider** | 640 x 646 | 640 x 710 |
-| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 548 | 640 x 594 |
+| `export-dialog.png` | **Export** dialog, **Glider** | 640 x 678 | 640 x 694 |
 | `settings.png` | **Settings** tab, **Glider** | 650 x 730 | 650 x 730 |
 | `checks.png` | **Checks** tab, **Glider** | 600 x 730 | 600 x 730 |
 | `flying-wing-control-net.png` | 3D view, **Swept flying wing**, **Show NURBS control net** on | 680 x 730 | 680 x 730 |
@@ -634,6 +672,7 @@ Desktop: 1280 x 800 CSS px, device scale 1. Phone: Pixel 7, device scale 2.625. 
 | `mobile-planform.png` | Phone, **Planform**, **Sport**, end line on | 1082 x 2202 | 1082 x 2202 |
 | `foam-dialog.png` | Foam-cutting wizard, **Glider**, after **Split segments over the limit**, window 1280 x 1400 CSS px | 960 x 1344 | 960 x 1384 |
 | `xflr5-import.png` | Dialog **Import from XFLR5** for `test/fixtures/xflr5/fixtures_v662.xfl`, opened with **Open** over the **Sport** preset, window 1280 x 1200 CSS px | 960 x 966 | 960 x 1062 |
+| `mold-dialog.png` | Mold dialog (**Export** > **Mold halves…**), **Sport** with the default rounded tip, default mold values, window 1280 x 1400 CSS px | 960 x 1260 | 960 x 1260 |
 
 ### Documentation check
 
@@ -689,7 +728,7 @@ The `docs.yml` job `wiki` only checks out.
 | `ci.yml` job | Name | Steps | Permissions | Runs on |
 | --- | --- | --- | --- | --- |
 | `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`, `i18n:check`; uploads artifact `coverage` | `contents: read` | Every trigger |
-| `step` | STEP and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`; uploads artifact `step-files` (STEP, 3MF, `cases.json`) | `contents: read` | Every trigger |
+| `step` | STEP, mold and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`, `mold:cases`, `validate_mold.py`; uploads artifact `step-files` (`step-check/` and `mold-check/`: STEP, 3MF, `cases.json`) | `contents: read` | Every trigger |
 | `foam` | Foam-cutting files (ezdxf, pypdf) | Python 3.12, `pip install ezdxf==1.4.4 pypdf==6.19.0`, `foam:cases`, `validate_foam.py`; uploads artifact `foam-files` (ZIP, SVG, DXF, PDF, `cases.json`) | `contents: read` | Every trigger |
 | `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (build, then all specs in `e2e/`, both projects), `counts:check -- --e2e-report playwright-report/results.json`; on failure uploads artifact `playwright-results` (`test-results/`) | `contents: read` | Every trigger |
 | `build` | Build site | `build`; on push to `main` also `configure-pages` and `upload-pages-artifact` with `dist/` | `contents: read`, `pages: read` | Every trigger |
@@ -718,7 +757,7 @@ The wiki clone in `docs.yml` requires the repository wiki to exist; GitHub creat
 
 ## Release
 
-`<version>`: the version to release, e.g. `0.10.0`. `package.json` holds `0.9.0`.
+`<version>`: the version to release, e.g. `0.11.0`. `package.json` holds `0.10.0`.
 
 1. Set the version: `npm version <version> --no-git-tag-version` (updates `package.json` and `package-lock.json`).
 2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a heading `## [<version>] - YYYY-MM-DD`. The section becomes the release notes: it describes the app, its files and its user documentation (README, User Guide, Geometry, File Formats, Airfoil Sources) and leaves out the handover, `RECORD.md`, the working agreements, continuous integration, tests, scripts, this page and the names of the source code. `npm run docs:check` reports the terms it knows (Documentation check).

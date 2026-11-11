@@ -10,6 +10,8 @@ import { MAX_PROJECT_BYTES, formatJson, projectFileText, projectFromJsonText, pr
 import { LIMITS, createProject, validateProject } from '../src/model/project.js';
 import { setGuideEnabled } from '../src/model/edit.js';
 import { sampleProject } from './helpers.js';
+import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
+import { surfacePoint } from '../src/geom/nurbs.js';
 import { nacaAirfoil } from '../src/airfoil/naca.js';
 import { defaultProject } from '../src/model/defaults.js';
 import { stepCases } from './step-cases.js';
@@ -91,7 +93,8 @@ describe('STL', () => {
     expect(() => meshesTo3mf([{ name: 'w', mesh: small }])).not.toThrow();
   });
 
-  it('counts export triangles before meshing, for the Fine density limit', () => {
+  // Meshes at Fine density of 3 wings: 18 s with coverage in a cloud container, above the 20 s default on the CI runner.
+  it('counts export triangles before meshing, for the Fine density limit', { timeout: 90000 }, () => {
     const build = buildWing(sampleProject());
     for (const mode of ['right', 'halves']) {
       for (const [uRefine, vRefine] of [[1, 3], [2, 6]]) {
@@ -101,6 +104,23 @@ describe('STL', () => {
         expect(estimate).toBeGreaterThanOrEqual(actual);
         expect(estimate).toBeLessThan(1.02 * actual);
       }
+    }
+    // A round tip: one triangle per quad next to the point, no tip cap; open and closed trailing edge.
+    for (const te of ['thickness', 'closed']) {
+      const p = sampleProject({ settings: { trailingEdge: { mode: te, thickness: 0.4 } } });
+      addRoundTip(p, defaultRoundTip(p));
+      const round = buildWing(p);
+      expect(round.tipPole).toBe(true);
+      for (const [uRefine, vRefine] of [[1, 3], [2, 6]]) {
+        const actual = exportMeshes(round, 'right', { uRefine, vRefine })[0].mesh.indices.length / 3;
+        const estimate = exportTriangles(round, 'right', { uRefine, vRefine });
+        expect(estimate, te).toBeGreaterThanOrEqual(actual);
+        expect(estimate, te).toBeLessThan(1.02 * actual);
+      }
+      // The triangles next to the point keep their shape in the 32-bit coordinates of STL and 3MF.
+      const fine = concatMeshes(exportMeshes(round, 'halves', { uRefine: 2, vRefine: 6 }).map((m) => m.mesh));
+      expect(() => meshToStl(fine), te).not.toThrow();
+      expect(() => meshesTo3mf([{ name: 'w', mesh: fine }]), te).not.toThrow();
     }
   });
 
@@ -330,13 +350,56 @@ describe('STEP', () => {
     expect([near(both, [0, 1, 0]), near(both, [0, -c, s])]).toEqual([true, true]);
   });
 
+  it('closes a round tip in one vertex: 3 faces per half with a closed trailing edge, 4 with an open one, 3 edges per wing face, no tip plane', () => {
+    /** Entities of a STEP text by id: { type, args }. */
+    const entities = (txt) => new Map([...txt.matchAll(/^#(\d+)=([A-Z_0-9]+)\((.*)\);$/gm)].map((m) => [`#${m[1]}`, { type: m[2], args: m[3] }]));
+    const refs = (args) => args.match(/#\d+/g) ?? [];
+    for (const [te, faces, vertices] of [['closed', 3, 3], ['thickness', 4, 4]]) {
+      const p = sampleProject({ settings: { trailingEdge: { mode: te, thickness: 0.4 } } });
+      addRoundTip(p, defaultRoundTip(p));
+      const b = buildWing(p);
+      expect([b.errors, b.tipPole, b.closedTE], te).toEqual([[], true, te === 'closed']);
+      const E = entities(wingToStep(b, { mirror: false, name: 'R' }));
+      const of = (type) => [...E].filter(([, e]) => e.type === type);
+      const adv = of('ADVANCED_FACE');
+      expect(adv, te).toHaveLength(faces);
+      // Vertices: upper trailing edge and leading edge at the root, the point, and the lower trailing
+      // edge at the root when it is open (a flat tip has 4 and 6).
+      expect(of('VERTEX_POINT'), te).toHaveLength(vertices);
+      const surfaceType = ([, e]) => E.get(refs(e.args).at(-1)).type;
+      const loopSize = ([, e]) => refs(E.get(refs(E.get(refs(e.args)[0]).args)[0]).args).length;
+      // The root cap is the only plane: 2 edges with a closed trailing edge, 3 with an open one.
+      const planes = adv.filter((f) => surfaceType(f) === 'PLANE');
+      expect(planes.map(loopSize), te).toEqual([te === 'closed' ? 2 : 3]);
+      // Upper, lower and trailing-edge face: trailing edge, leading edge (or the other trailing edge)
+      // and root edge, all three ending in the point.
+      const wing = adv.filter((f) => surfaceType(f) === 'B_SPLINE_SURFACE_WITH_KNOTS');
+      expect(wing.map(loopSize), te).toEqual(Array(faces - 1).fill(3));
+      // The point: the vertex at the tip, shared by the edges that end there (trailing edge and leading
+      // edge, and the lower trailing edge when it is open).
+      const point = surfacePoint(b.surface, b.uLE, 1);
+      const pole = of('VERTEX_POINT').filter(([, e]) => {
+        const xyz = E.get(refs(e.args)[0]).args.match(/\(([^()]*)\)\)?$/)[1].split(',').map(Number);
+        return Math.hypot(...xyz.map((v, k) => v - point[k])) < 1e-6;
+      });
+      expect(pole, te).toHaveLength(1);
+      const ending = of('EDGE_CURVE').filter(([, e]) => refs(e.args).slice(0, 2).includes(pole[0][0]));
+      expect(ending, te).toHaveLength(te === 'closed' ? 2 : 3);
+      // Mirror: twice the faces and vertices.
+      const both = entities(wingToStep(b, { mirror: true, name: 'R' }));
+      expect([...both.values()].filter((e) => e.type === 'ADVANCED_FACE')).toHaveLength(2 * faces);
+      expect([...both.values()].filter((e) => e.type === 'VERTEX_POINT')).toHaveLength(2 * vertices);
+    }
+  });
+
   it('handles every validation case and closed trailing edges', () => {
     for (const c of stepCases()) {
       const b = buildWing(c.project);
       expect(b.errors).toEqual([]);
       const txt = wingToStep(b, { mirror: c.mirror, name: c.name });
       const faces = txt.match(/ADVANCED_FACE/g).length;
-      expect(faces).toBe((b.closedTE ? 4 : 5) * (c.mirror ? 2 : 1));
+      // A round tip closes in a point: no tip cap.
+      expect(faces).toBe((b.closedTE ? 4 : 5) * (c.mirror ? 2 : 1) - (b.tipPole ? (c.mirror ? 2 : 1) : 0));
     }
     expect(() => wingToStep({ surface: null })).toThrow();
   });
@@ -519,7 +582,7 @@ describe('project JSON', () => {
       (p) => (p.guides.nose.points = [[0, 0]]),
       (p) => (p.guides.end.points = [['a', 0], [1, 1]]),
       (p) => (p.guides.end.degree = 9),
-      (p) => (p.settings.tip = { mode: 'round', ratio: 0.005 }),
+      (p) => (p.settings.tip = { mode: 'elliptic', ratio: 0.005 }),
       (p) => (p.settings.tip = { mode: 'pointed', ratio: 0.5 }),
       (p) => (p.settings.mirror = 'false'),
       (p) => (p.version = 0),
@@ -580,7 +643,7 @@ describe('project JSON', () => {
     v1.version = 1;
     delete v1.settings.sectionPlanes;
     const old = projectFromJsonText(JSON.stringify(v1));
-    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 5, 'vertical']);
+    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 6, 'vertical']);
     expect(buildWing(old.project).surface).toEqual(buildWing(sampleProject()).surface);
     // A version 2 file without the setting takes the default, and one with it keeps it.
     const bare = structuredClone(v2);
@@ -588,7 +651,7 @@ describe('project JSON', () => {
     expect(projectFromJsonText(JSON.stringify(bare)).project.settings.sectionPlanes).toBe('mitred');
     expect(projectFromJsonText(JSON.stringify({ ...v2, settings: { ...v2.settings, sectionPlanes: 'vertical' } })).project.settings.sectionPlanes).toBe('vertical');
     // A later format is refused rather than opened without its values.
-    expect(projectFromJsonText(JSON.stringify({ ...v3, version: 6 })).errors).toEqual(['Unsupported project version 6.']);
+    expect(projectFromJsonText(JSON.stringify({ ...v3, version: 7 })).errors).toEqual(['Unsupported project version 7.']);
     // A version 3 file keeps a folded tilt with its three numbers only (an upgrade that kept the fold).
     const tilted = projectFromJsonText(JSON.stringify({ ...v3, foldedTilt: { angle: 2, x: 10, z: -5, note: 'x' } }));
     expect([tilted.project.foldedTilt, tilted.notes]).toEqual([{ angle: 2, x: 10, z: -5 }, []]);
@@ -598,6 +661,55 @@ describe('project JSON', () => {
     expect(upgraded.project.foldedTilt).toBeUndefined();
     expect(upgraded.project.settings).toMatchObject({ partTilt: 2, partRoll: 0, partPivot: { x: 10, y: 0, z: -5 } });
     expect(upgraded.notes).toHaveLength(2);
+  });
+
+  it('saves Wing tip Round as version 6 and the rounded-tip marker with Pointed as version 5, opens both as saved, and refuses version 7', () => {
+    const p = sampleProject();
+    addRoundTip(p, defaultRoundTip(p));
+    expect(p.settings.tip.mode).toBe('round');
+    const v6 = projectToJson(p, null);
+    expect([v6.version, v6.settings.tip.mode]).toEqual([6, 'round']);
+    const back = projectFromJsonText(projectToJsonText(p, buildWing(p)));
+    expect(back.ok).toBe(true);
+    expect(back.project.settings.tip).toEqual(p.settings.tip);
+    expect(back.project.sections).toEqual(p.sections);
+    const b = buildWing(back.project);
+    expect([b.errors, b.tipPole]).toEqual([[], true]);
+    expect(b.surface.points).toEqual(buildWing(p).surface.points);
+    // The marker with Wing tip Pointed: version 5, the 1 mm chord at the point.
+    const pointed = structuredClone(p);
+    pointed.settings.tip.mode = 'pointed';
+    const v5 = projectToJson(pointed, null);
+    expect([v5.version, v5.settings.tip.mode]).toEqual([5, 'pointed']);
+    const five = projectFromJsonText(JSON.stringify(v5));
+    expect([five.ok, five.project.settings.tip.mode]).toEqual([true, 'pointed']);
+    expect(buildWing(five.project).tipPole).toBe(false);
+    // Wingdesigner of format version 5 does not know the mode: a version 7 file is refused, and the
+    // mode is validated in the interface language.
+    expect(projectFromJsonText(JSON.stringify({ ...v6, version: 7 })).errors).toEqual(['Unsupported project version 7.']);
+    const wrong = { ...structuredClone(v6), settings: { ...v6.settings, tip: { mode: 'elliptic', ratio: 0.005 } } };
+    expect(projectFromJsonText(JSON.stringify(wrong)).errors).toEqual(['settings.tip.mode must be "flat", "pointed" or "round".']);
+    setLanguage('de');
+    expect(projectFromJsonText(JSON.stringify(wrong)).errors).toEqual(['settings.tip.mode muss "flat", "pointed" oder "round" sein.']);
+    setLanguage('en');
+  });
+
+  it('turns the point of a round tip about the pivot of a folded tilt with chord 0', () => {
+    // A version 2 file with a folded tilt of 2° about (x, z) = (10, −5) mm and the twist pivot at
+    // 25 %: the twist pivot point of the point section is its x, the chord there being 0.
+    const p = sampleProject();
+    addRoundTip(p, defaultRoundTip(p));
+    // Without guides in the file: guide curves with edited points would keep the fold.
+    const v2 = { ...projectToJson(p, null), version: 2, foldedTilt: { angle: 2, x: 10, z: -5 } };
+    delete v2.guides;
+    const r = projectFromJsonText(JSON.stringify(v2));
+    expect(r.ok).toBe(true);
+    expect(r.project.settings.partTilt).toBe(2);
+    const tip = p.sections.at(-1);
+    const [c, s] = [Math.cos((2 * Math.PI) / 180), Math.sin((2 * Math.PI) / 180)];
+    const out = r.project.sections.find((q) => q.id === tip.id);
+    expect(out.x).toBeCloseTo((tip.x - 10) * c - (tip.z + 5) * s + 10, 9);
+    expect(out.z).toBeCloseTo((tip.x - 10) * s + (tip.z + 5) * c - 5, 9);
   });
 
   it('creates projects with defaults', () => {

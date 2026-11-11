@@ -1,21 +1,21 @@
 # Handover
 
-State of Wingdesigner on 2026-11-09, for the next person or session that works on it. Read
+State of Wingdesigner on 2026-11-11, for the next person or session that works on it. Read
 `RECORD.md` first: it holds the verified state, the decisions with their reasons, the measurements and
 the open items, each as a claim to re-check. This page adds where the work stands, what comes next,
 how the owner works with contributors, and what the repository does not hold.
 
 ## Where the work stands
 
-| Item | State on 2026-11-09 |
+| Item | State on 2026-11-11 |
 | --- | --- |
-| Version | `package.json` holds 0.9.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), `v0.7.0` on 1347f03 (2026-10-03), `v0.8.0` on 1618c89 (2026-11-06), `v0.9.0` on a14c830 (2026-11-09), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | Not planned; the version number is unknown. `CHANGELOG.md`, section Unreleased, is empty. The owner pushes the tag on the merge commit of the release pull request (section Working with the owner). |
+| Version | `package.json` holds 0.10.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), `v0.7.0` on 1347f03 (2026-10-03), `v0.8.0` on 1618c89 (2026-11-06), `v0.9.0` on a14c830 (2026-11-09), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
+| Next release | 0.10.0: `CHANGELOG.md` section 0.10.0 (**Mold halves…**, **Wing tip** Round, the closed rounded tip, project format version 6). The tag `v0.10.0` goes on the merge commit of its release pull request (section Working with the owner). |
 | Release texts | The notes of `v0.2.0`, `v0.3.0`, `v0.5.0`, `v0.6.0`, `v0.7.0`, `v0.8.0` and `v0.9.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
-| `main` | Release 0.9.0 (a14c830, pull request #36). |
+| `main` | Release 0.9.0 (a14c830, pull request #36); the mold halves export, **Wing tip** Round and version 0.10.0 (release pull request of 0.10.0). |
 | Unit tests | `RECORD.md`, row Unit tests. |
 | Browser tests | Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); counts in `RECORD.md`, row UI. |
-| Export validation | 15 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0. Foam-cutting files of 13 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
+| Export validation | 18 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0; 3 of them with **Wing tip** Round. 16 mold STEP files, checked with OpenCascade (`scripts/validate_mold.py`; all passed on 2026-11-11, largest volume deviation 8.85e-6, about 26 s). Foam-cutting files of 16 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
 | Documentation | `README.md`, `README.de.md`, wiki pages in English and German in `docs/wiki/` (mirrored to the GitHub wiki by `docs.yml`), `RECORD.md`, `CHANGELOG.md`, `docs/Flow5upgrade.md`, this page. |
 
 `npm run counts:check` keeps the counts of the READMEs, `RECORD.md` and the wiki pages equal to the
@@ -45,7 +45,11 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
    wings, the file choosers of Android and iOS, the import dialog with a screen reader, build time and
    memory on phones. The app is tested in Chromium only; Firefox and Safari are not tested (README,
    Limitations).
-4. Known failures (`RECORD.md`, Open items):
+4. Mold halves and **Wing tip** Round, not tested (`RECORD.md`, Open items): the mold STEP file and the
+   3-edge faces of a round tip in a CAD or CAM (computer-aided manufacturing) program other than OpenCascade,
+   Fusion 360 included; a milled mold. Current limitations of the mold: no **Part tilt** and **Part roll**,
+   one parting plane per half wing, no draft angle, separate files for the left and the right mold.
+5. Known failures (`RECORD.md`, Open items):
    - Projects of the XFLR5 import in project format version 1, set to **Mitred**, carry the error of
      the folded tilt; the angle is not stored, **Open** shows a note and **Checks** a warning without a distance.
 
@@ -112,6 +116,8 @@ node scripts/check-test-counts.mjs --e2e-report playwright-report/results.json
 npm run step:cases
 python scripts/validate_step.py step-check/cases.json
 python scripts/validate_3mf.py step-check/cases.json
+npm run mold:cases
+python scripts/validate_mold.py mold-check/cases.json
 npm run foam:cases
 python scripts/validate_foam.py foam-check/cases.json
 npm run screenshots
@@ -125,11 +131,18 @@ npm run screenshots
   `CHANGELOG.md` name no contributor material from its list of terms (Development, section
   Documentation check). It does not compare the contents of the two languages and does not read this
   page, `docs/Flow5upgrade.md` or `RECORD.md`.
-- `npm run i18n:check` checks that every interface text has a German translation (999 texts on 2026-11-09).
+- `npm run i18n:check` checks that every interface text has a German translation (1085 texts on 2026-11-11).
+- `npm run mold:cases` writes the mold STEP files of `test/mold-cases.js` and `cases.json` to `mold-check/`;
+  `python scripts/validate_mold.py mold-check/cases.json` reads them with OpenCascade: solids valid and closed,
+  both halves add up to block − half wing − resin channel − holes within 2e-4, 2 cylinder faces per hole,
+  planar-face edges within 1e-6 mm, the extent of each half (Development, section Mold validation).
 - `npm run e2e` took 6.5 min for 368 runs in the cloud container.
-- `npm run screenshots` regenerates 28 images. An image that differs only by rendering noise is
+- `npm run screenshots` regenerates 30 images. In the cloud container fontconfig prefers Inter
+  (`/etc/fonts/conf.d/56-prefer-inter.conf`); the committed images use DejaVu Sans, taken with
+  `FONTCONFIG_FILE` pointing to a fontconfig setup without that file. Rendering noise between runs
+  reached 226 of 255 in single pixels on 2026-11-11. An image that differs only by rendering noise is
   restored on its own: `git checkout -- docs/wiki/images/<name>.png` (German:
-  `docs/wiki/images/de/<name>.png`). `git checkout -- docs/wiki/images` restores all 28, changed ones
+  `docs/wiki/images/de/<name>.png`). `git checkout -- docs/wiki/images` restores all 30, changed ones
   included. On 2026-09-30 the largest pixel difference of the noise was 23 of 255, with no text or
   layout change.
 
@@ -193,4 +206,6 @@ Development, section Architecture, describes the modules. Entry points by topic:
 | XFLR5 import | `src/import/xfl.js` (`.xfl` reader), `src/import/xflxml.js` (XML reader), `src/import/xflr5.js` (mapping, `airfoilFrame`, `placeAirfoil`, report), `src/ui/xflr5.js` (dialog) |
 | Wizard | `src/model/wizard.js` (presets, `RANGES`, `wizardProject`), `src/ui/wizard.js` (dialog; a build error disables **Create design**) |
 | Foam-cutting wizard | `src/geom/foam.js` (`proposeCuts`, `foamSegments`, `splitOverTolerance`), `src/export/foam.js` (`.dat`, CSV, ZIP, template layout, SVG, DXF, PDF paging), `src/ui/foam.js` (dialog) |
+| Rounded tip, Wing tip Round | `src/model/roundtip.js` (`roundTipSections`, `addRoundTip`), `src/geom/tipblend.js` (`roundTipBlender`, end condition at the point), `src/geom/wing.js` (`tipPole`), `src/export/step.js` and `src/geom/mesh.js` (the pole) |
+| Mold halves | `src/geom/mold.js` (`moldGeometry`, `moldProblems`, `offsetOutline`, `grooveSurface`), `src/export/moldstep.js` (`moldToStep`, `Brep`), `src/ui/mold.js` (dialog, `wingdesigner.mold`), `src/i18n/de/mold.js`; cases `test/mold-cases.js`, check `scripts/validate_mold.py` |
 | Interface texts | `src/i18n/de/*.js` (German); `npm run i18n:check` |

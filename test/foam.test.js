@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync, unzlibSync } from 'fflate';
 import { buildWing } from '../src/geom/wing.js';
 import { solveMonotonic, surfacePoint } from '../src/geom/nurbs.js';
-import { DEVIATION_PLANES, FOAM_LIMITS, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../src/geom/foam.js';
+import { DEVIATION_PLANES, FOAM_LIMITS, foamEnd, foamProblem, foamSegments, normalizeCuts, proposeCuts, splitOverTolerance } from '../src/geom/foam.js';
 import {
   FRAME,
   MARKS,
@@ -26,8 +26,12 @@ import {
   segmentsCsv,
   templateBlocks,
   templateLayout,
+  tipRestText,
   wrapText,
 } from '../src/export/foam.js';
+import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
+import { sortedSections } from '../src/model/edit.js';
+import { LIMITS } from '../src/model/project.js';
 import { FOAM_DEFAULTS, FOAM_SETTINGS_KEY, storedFoamSettings } from '../src/ui/foam.js';
 import { PRESETS, wizardProject } from '../src/model/wizard.js';
 import { createProject } from '../src/model/project.js';
@@ -268,6 +272,84 @@ describe('end profiles', () => {
     const last = foamSegments(pointed, proposeCuts(pointed, 300)).at(-1);
     expect(last.ends[1].chord).toBeLessThan(2);
     expect(last.ends[1].points.every((p) => p.every(Number.isFinite))).toBe(true);
+  });
+});
+
+describe('cores of a tip closed in a point', () => {
+  /** The Sport preset with the default rounded tip (Wing tip Round): sections up to y = 739.05 mm (chord 44.99 mm), point at 743.95 mm. */
+  const rounded = (mode = 'round') => {
+    const p = wizardProject(PRESETS.sport.params);
+    addRoundTip(p, defaultRoundTip(p));
+    p.settings.tip.mode = mode;
+    return { p, b: built(p) };
+  };
+
+  it('end the outermost core at the last section before the point and place no cut beyond it', () => {
+    const { p, b } = rounded();
+    expect(b.tipPole).toBe(true);
+    const last = sortedSections(p).at(-2);
+    expect([last.y, last.chord]).toEqual([739.05, 44.99]);
+    expect(foamEnd(b)).toBe(739.05);
+    const cuts = proposeCuts(b, 300);
+    // Root to T at 600 mm in two cores of 300 mm, then a cut at every rounded-tip section but the last,
+    // which ends the cores.
+    expect(cuts).toEqual([200, 400.00000000000006, 600, 637.26, 671.98, 701.79, 724.66]);
+    // Cuts at, beyond or within FOAM_LIMITS.minSegment of the end are dropped, as at the tip of a flat wing.
+    expect(normalizeCuts(b, [...cuts, 735, 739.05, 741, 743.9])).toEqual({ cuts, dropped: 4, capped: 0 });
+    const segs = foamSegments(b, cuts);
+    expect(segs).toHaveLength(8);
+    const end = segs.at(-1);
+    expect(end.yb).toBe(739.05);
+    expect(end.beyond).toEqual({ y: 743.95 });
+    expect(segs.slice(0, -1).every((s) => s.beyond === null)).toBe(true);
+    // The outboard profile is the section before the point: 44.99 mm chord, at least LIMITS.minChord.
+    expect(end.ends[1].chord).toBeCloseTo(44.99, 0);
+    expect(end.ends[1].chord).toBeGreaterThan(LIMITS.minChord);
+    for (const s of segs) {
+      for (const e of s.ends) {
+        expect(e.points.every((q) => q.every(Number.isFinite))).toBe(true);
+        expect(e.chord).toBeGreaterThan(LIMITS.minChord);
+      }
+      expect(Number.isFinite(s.deviation.max)).toBe(true);
+    }
+    // splitOverTolerance stays within the end too.
+    const split = splitOverTolerance(b, cuts, 0.05);
+    expect(split.cuts.every((y) => y <= 739.05 - FOAM_LIMITS.minSegment + 1e-6)).toBe(true);
+    expect(split.segments.at(-1).yb).toBe(739.05);
+  });
+
+  it('keep the cores of Wing tip Pointed to the 1 mm chord of the point and of a flat tip to the tip section', () => {
+    const { b } = rounded('pointed');
+    expect(foamEnd(b)).toBe(b.tipY);
+    const segs = foamSegments(b, proposeCuts(b, 300));
+    expect([segs.at(-1).yb, segs.at(-1).beyond]).toEqual([743.95, null]);
+    // The end face square to the core axis covers the joint plane at the 1 mm point: its profile is
+    // 3.6 mm long.
+    expect(segs.at(-1).ends[1].chord).toBeLessThan(5);
+    expect(segs.at(-1).ends[1].points.every((q) => q.every(Number.isFinite))).toBe(true);
+    const flat = built(wizardProject(PRESETS.sport.params));
+    expect(foamEnd(flat)).toBe(600);
+  });
+
+  it('write normalized profiles of finite numbers and name the tip that no core holds in README.txt and on the template sheet', () => {
+    const { b } = rounded();
+    const segs = foamSegments(b, proposeCuts(b, 300));
+    const text = 'The tip beyond y = 739.05 mm is not part of a core: it closes in a point at y = 743.95 mm (Settings > Wing tip Round) and is shaped separately.';
+    expect(tipRestText(segs)).toBe(text);
+    const dat = profileDat('Sport', segs.at(-1), 1, true);
+    expect(dat.split('\n')[0]).toBe('Sport segment 8 outboard y=739.0 mm chord=44.990 mm');
+    expect(dat.split('\n').slice(1, -1).every((line) => line.split(' ').every((v) => Number.isFinite(Number(v))))).toBe(true);
+    const files = unzipSync(profileZip('Sport', segs));
+    expect(strFromU8(files['README.txt']).split('\r\n')).toContain(text);
+    const header = templateBlocks('Sport', segs)[0].items.filter((it) => it.kind === 'text').map((it) => it.text).join(' ');
+    expect(header).toContain('The tip beyond y = 739.05 mm is not part of a core');
+    // The outboard template of the last core holds the 44.99 mm profile, not a point.
+    const profile = templateBlocks('Sport', segs).at(-1).items.find((it) => it.kind === 'profile');
+    const xs = profile.points.map((q) => q[0]);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(40);
+    // No note without a round tip.
+    const flat = built(wizardProject(PRESETS.sport.params));
+    expect(tipRestText(foamSegments(flat, []))).toBeNull();
   });
 });
 
@@ -587,5 +669,23 @@ describe('settings', () => {
     } finally {
       delete globalThis.localStorage;
     }
+  });
+});
+
+describe('foam cores of a wing with only the root before the point', () => {
+  it('reports that no core fits and why, and nothing for a wing with sections before the point', () => {
+    const p = wizardProject(PRESETS.sport.params);
+    addRoundTip(p, defaultRoundTip(p));
+    expect(foamProblem(buildWing(p))).toBeNull();
+    // Only the root and the point stay: the cores would end at the root.
+    const sorted = p.sections.slice().sort((a, b) => a.y - b.y);
+    p.sections = [sorted[0], sorted[sorted.length - 1]];
+    const b = buildWing(p);
+    expect(b.errors).toEqual([]);
+    expect(foamEnd(b)).toBe(b.rootY);
+    expect(foamProblem(b)).toBe('Foam cores end at the last section before the point of a round wing tip (Settings > Wing tip Round), 0.0 mm from the root; a core needs at least 5 mm. Add a section before the point.');
+    setLanguage('de');
+    expect(foamProblem(b)).toMatch(/^Schaumkerne enden am letzten Schnitt vor dem Punkt eines runden Flügelendes .* 0,0 mm von der Wurzel; ein Kern braucht mindestens 5 mm\./);
+    setLanguage('en');
   });
 });
