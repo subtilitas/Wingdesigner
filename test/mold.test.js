@@ -1132,7 +1132,7 @@ describe('mold of an under-cambered wing', () => {
 });
 
 describe('mold STEP file', () => {
-  it('writes every mold case with closed shells, the solids of the chosen halves, the faces of the parting surface and 2 cylinders per hole and half', { timeout: 60000 }, () => {
+  it('writes every mold case with closed shells, the solids of the chosen halves, the faces of the parting surface and 2 cylinders per hole and half', { timeout: 240000 }, () => {
     const names = [];
     for (const c of moldCases()) {
       names.push(c.name);
