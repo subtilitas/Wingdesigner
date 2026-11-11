@@ -5,13 +5,15 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { buildWing } from '../src/geom/wing.js';
 import { curvePoint, surfacePoint } from '../src/geom/nurbs.js';
-import { HOLE_PATTERNS, MOLD_CLEARANCE, MOLD_DEFAULTS, MOLD_HALVES, MOLD_RANGES, grooveSurface, moldGeometry, moldProblems, offsetOutline, resolveMold } from '../src/geom/mold.js';
+import { HOLE_PATTERNS, MOLD_CLEARANCE, MOLD_OVERHANG, MOLD_DEFAULTS, MOLD_HALVES, MOLD_RANGES, grooveSurface, moldGeometry, moldProblems, offsetOutline, resolveMold } from '../src/geom/mold.js';
 import { Brep, moldToStep } from '../src/export/moldstep.js';
 import { StepWriter } from '../src/export/step.js';
 import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
 import { PRESETS, wizardProject } from '../src/model/wizard.js';
 import { setLanguage } from '../src/i18n/index.js';
+import { createProject } from '../src/model/project.js';
 import { flatWing, moldCases, undercamberedWing } from './mold-cases.js';
+import { naca } from './helpers.js';
 
 const DEG = Math.PI / 180;
 
@@ -719,17 +721,16 @@ describe('mold of an under-cambered wing', () => {
     }
   });
 
-  it('makes the lower half floor + depth below the plane thick: the hump adds no thickness', () => {
+  it('makes the lower half floor + deepest point below the plane thick: the hump adds no thickness', () => {
     for (const g of [flat, round]) {
       const { zp } = g.common;
       const S = g.halves.lower.cavity;
       let deepest = 0;
       for (let i = 0; i <= 800; i++) for (let j = 0; j <= 20; j++) deepest = Math.max(deepest, zp - surfacePoint(S, i / 800, j / 20)[2]);
-      // The lower surface dips 0.6 mm below the chord line behind the nose: 12.6 mm with the 12 mm floor.
+      // The lower surface dips 0.6 mm below the chord line behind the nose, less than the 2 mm groove of
+      // the resin channel: the groove is the deepest point, and the half is 2 + 12 mm thick.
       expect(deepest).toBeCloseTo(0.6, 1);
-      expect(g.summary.lower - 12 - deepest).toBeGreaterThanOrEqual(0);
-      expect(g.summary.lower - 12 - deepest).toBeLessThan(0.05);
-      expect(g.summary.lower).toBeCloseTo(12.6, 1);
+      expect(g.summary.lower).toBeCloseTo(14, 9);
       // The upper half: 22.8 mm from the plane to the top of the upper surface, plus the floor.
       expect(g.summary.upper).toBeCloseTo(34.86, 1);
     }
@@ -871,5 +872,54 @@ describe('B-rep of a mold solid', () => {
     b.triangleFace(o, z, y, [[[oz, true], [yz, false], [oy, false]]]);
     b.triangleFace(x, y, z, [[[xy, true], [yz, true], [zx, true]]]);
     expect(b.solid('tetrahedron')).toMatch(/^#\d+$/);
+  });
+});
+
+describe('mold checks against crossing faces', () => {
+  const wing = (rootChord, tipChord, twist = 0, airfoil = '0010') =>
+    createProject({
+      name: 'Check wing',
+      airfoils: [naca(airfoil)],
+      sections: [
+        { airfoil, x: 0, y: 0, z: 0, chord: rootChord, twist },
+        { airfoil, x: 0, y: 500, z: 0, chord: tipChord, twist },
+      ],
+    });
+
+  it('keeps the floor below the groove where the resin channel is deeper than the cavity', () => {
+    // NACA 0010 at 100 mm chord: the cavity is 5.0 mm deep. A 20 mm channel reaches 10 mm below the
+    // parting plane, so each half is 10 + 1 mm thick, not 5 + 1 mm.
+    const off = { pins: { on: false }, screws: { on: false } };
+    const g = moldGeometry(built(wing(100, 60)), { floor: 1, channel: { diameter: 20, distance: 6 }, ...off });
+    expect(g.errors).toEqual([]);
+    expect(g.summary.lower).toBeCloseTo(11, 9);
+    expect(g.summary.upper).toBeCloseTo(11, 9);
+    // Without the channel, and with a channel shallower than the cavity, the cavity sets the thickness.
+    const none = moldGeometry(built(wing(100, 60)), { floor: 1, channel: { on: false }, ...off });
+    expect(none.summary.lower).toBeGreaterThan(5.9);
+    expect(none.summary.lower).toBeLessThan(6.1);
+    expect(moldGeometry(built(wing(100, 60)), { floor: 1, ...off }).summary.lower).toBeCloseTo(none.summary.lower, 9);
+    expect(() => moldToStep(g)).not.toThrow();
+  });
+
+  it('leaves out holes whose centres lie inside the wing outline, however far from its edge', () => {
+    // Block corners 100 mm in from the edges of a 280 mm × 540 mm block: all 4 centres lie in the cavity.
+    const g = moldGeometry(built(flatWing()), { pins: { pattern: 'corners', edge: 100 }, screws: { on: false } });
+    expect(g.errors).toEqual([]);
+    expect(g.summary.pins).toBe(0);
+    expect(g.warnings).toEqual(['Mold: 4 pin hole(s) left out: too close to the cavity, the resin channel, a block edge or another hole.']);
+  });
+
+  it('refuses a wing whose twisted airfoil reaches more than 0.1 mm beyond the leading-edge line seen from above', () => {
+    // NACA 0030 at 200 mm chord twisted 45°: the nose turns ahead of the leading-edge point.
+    const g = moldGeometry(built(wing(200, 200, 45, '0030')), { margin: 5, channel: { on: false }, pins: { on: false }, screws: { on: false } });
+    expect(g.errors).toHaveLength(1);
+    expect(g.errors[0]).toMatch(/^Mold: seen from above, the airfoil reaches \d+\.\d\d mm beyond the leading-edge or trailing-edge line \(twisted sections\), more than 0\.1 mm: one mold half would be undercut\. Reduce the twist\.$/);
+    expect(MOLD_OVERHANG).toBe(0.1);
+    setLanguage('de');
+    expect(moldGeometry(built(wing(200, 200, 45, '0030')), { margin: 5 }).errors[0]).toMatch(/^Form: Von oben gesehen reicht das Profil \d+,\d\d mm über die Linie der Nasenleiste oder der Endleiste hinaus/);
+    setLanguage('en');
+    // 3° of twist on a NACA 2412 stays far below the limit and builds.
+    expect(moldGeometry(built(wing(200, 150, -3, '2412')), {}).errors).toEqual([]);
   });
 });

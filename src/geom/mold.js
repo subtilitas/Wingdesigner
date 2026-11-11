@@ -69,6 +69,11 @@ export const MOLD_RANGES = Object.freeze({
 
 /** Material kept between two features, and between a feature and a block edge (mm). */
 export const MOLD_CLEARANCE = 1;
+/**
+ * Largest reach (mm) of a cavity beyond the leading-edge or trailing-edge line seen from above: a
+ * twisted section turns its nose ahead of the leading-edge point, which undercuts one half.
+ */
+export const MOLD_OVERHANG = 0.1;
 /** Smallest distance of the resin channel from the outer edge of the ramp (mm). */
 const RAMP_CLEARANCE = 0.5;
 /** Spacing of the outline samples (mm) and the tolerance of the offset test. */
@@ -209,6 +214,17 @@ const unit = (a) => {
   const l = len(a) || 1;
   return [a[0] / l, a[1] / l];
 };
+
+/** Whether the point lies inside the closed polygon (even-odd rule). */
+function insidePolygon(poly, q) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i];
+    const b = poly[j];
+    if (a[1] > q[1] !== b[1] > q[1] && q[0] < a[0] + ((q[1] - a[1]) * (b[0] - a[0])) / (b[1] - a[1])) inside = !inside;
+  }
+  return inside;
+}
 
 /** Points of a polyline at equal arc steps of at most `step`, ends kept. */
 function resample(points, step) {
@@ -581,7 +597,31 @@ export function moldGeometry(build, input) {
     .map((P) => [P[0], 2 * yR - P[1]]);
   // A root with zero chord would repeat a point; a wing has a root chord.
   const poly = [...half, ...mirrored];
+  // Seen from above, each cavity lies between the leading-edge and the trailing-edge line. A twisted
+  // section reaches beyond them (its nose turns ahead of the leading-edge point): up to MOLD_OVERHANG
+  // that is a current limitation, beyond it one half would be undercut and the faces would cross.
+  let overhang = 0;
+  for (let k = 0; k <= 60; k++) {
+    const v = k / 60;
+    const xL = curvePoint(le, v)[0];
+    const xT = Math.max(curvePoint(teL, v)[0], curvePoint(teU, v)[0]);
+    for (const S of [SL, SU]) {
+      for (let j = 0; j <= 120; j++) {
+        const x = surfacePoint(S, j / 120, v)[0];
+        overhang = Math.max(overhang, xL - x, x - xT);
+      }
+    }
+  }
+  if (overhang > MOLD_OVERHANG) {
+    return fail(
+      tr('Mold: seen from above, the airfoil reaches {reach} mm beyond the leading-edge or trailing-edge line (twisted sections), more than {limit} mm: one mold half would be undercut. Reduce the twist.', {
+        reach: fixed(overhang, 2),
+        limit: plain(MOLD_OVERHANG),
+      }),
+    );
+  }
   const xs = half.map((P) => P[0]);
+  // The margin (at least 5 mm) holds the reach of at most MOLD_OVERHANG.
   const xMin = Math.min(...xs);
   const xMax = Math.max(...xs);
   const block = { x0: xMin - p.margin, x1: xMax + p.margin, y0: yR, y1: Math.max(...half.map((P) => P[1])) + p.margin };
@@ -617,7 +657,9 @@ export function moldGeometry(build, input) {
   // Block heights: the floor below the deepest point of each cavity.
   const zMinL = Math.min(zp, ...SL.points.flat().map((P) => P[2]));
   const zMaxU = Math.max(zp, ...SU.points.flat().map((P) => P[2]));
-  const thickness = { lower: zp - zMinL + p.floor, upper: zMaxU - zp + p.floor };
+  // The floor lies below the deepest point of the half: its cavity or, where that is shallower, the groove.
+  const groove = p.channel.on ? r : 0;
+  const thickness = { lower: Math.max(zp - zMinL, groove) + p.floor, upper: Math.max(zMaxU - zp, groove) + p.floor };
   // The root face leans by the roll: holes keep clear of it over the whole height of both halves.
   const holeY0 = yR + Math.abs(slope) * Math.max(thickness.lower, thickness.upper);
 
@@ -668,7 +710,8 @@ export function moldGeometry(build, input) {
       const edge = rh + MOLD_CLEARANCE;
       const inside = c[0] - edge >= block.x0 && c[0] + edge <= block.x1 && c[1] - edge >= holeY0 && c[1] + edge <= block.y1;
       const need = keepOut + rh;
-      const clear = grid.distance(c, need) >= need - 1e-9;
+      // Outside the wing outline, and far enough from it: the distance alone also holds deep inside the cavity.
+      const clear = !insidePolygon(poly, c) && grid.distance(c, need) >= need - 1e-9;
       const apart = holes.every((o) => len(sub(o.centre, c)) >= o.radius + rh + MOLD_CLEARANCE);
       // A position that already holds a hole (pins and screws with the same pattern) is no loss.
       const taken = holes.some((o) => len(sub(o.centre, c)) < 1e-6);

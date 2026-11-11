@@ -1187,7 +1187,7 @@ For STEP, the note gives the surface control points in the file and the file siz
 
 | Part | Built as |
 | --- | --- |
-| Block | One box per half. Length: wing from leading to trailing edge plus **Margin around the wing** at front and back. Width: root face to the tip plus the margin. Thickness of a half: depth of its cavity below the parting plane plus **Floor below the cavity**. |
+| Block | One box per half. Length: wing from leading to trailing edge plus **Margin around the wing** at front and back. Width: root face to the tip plus the margin. Thickness of a half: the deepest point of the half below the parting plane plus **Floor below the cavity**. The deepest point is the cavity or, with the resin channel on and a cavity shallower than the channel radius (half the **Diameter**), the groove. |
 | Root face | The face of the block at the root. The root section lies in it; the cavity is open there. With dihedral the face leans by the roll of the mold frame (below). |
 | Cavity | The wing surface of the half: lower surface in the lower half, upper surface in the upper half; the half of a blunt trailing edge; at a flat tip the half of the tip face. |
 | Parting line | Leading edge and trailing edge of the wing; the middle of a blunt trailing edge. |
@@ -1233,7 +1233,7 @@ Mold frame: the frame the half wing is built in, before **Part tilt** and **Part
 | **Around the wing** | Along a path around the wing at **Distance beyond the resin channel** from the outer rim of the channel (without a channel: from the ramp), in equal steps of about **Largest spacing**, at least 1 hole |
 
 - On the root side the holes keep their edge distance from the leaning root face over the height of both halves.
-- A hole closer than 1 mm to the keep-out around the cavity (the ramp, or the resin channel when it is on), to a block edge or to another hole is left out, with a warning that counts the left-out holes. A position that a hole of the other set already holds is left out without a warning.
+- A hole closer than 1 mm to the keep-out around the cavity (the ramp, or the resin channel when it is on), to a block edge or to another hole is left out, with a warning that counts the left-out holes. A hole whose centre lies inside the wing outline is left out too and counts in the same warning. A position that a hole of the other set already holds is left out without a warning.
 - Defaults: pins at the 4 corners, screws along the edges between them. Glider preset with a rounded tip (**Rounded tip…**, **Continue the ellipse of the wing**): 4 pin holes, 20 screw holes.
 
 ### Preview and summary
@@ -1253,6 +1253,7 @@ Summary below the preview, e.g. **Sport** preset with the default rounded tip an
 | `Mold: the block margin must be at least … mm for the resin channel (…)` | error | Margin below distance + diameter + 1 mm (without channel: ramp width + 1 mm) |
 | `Mold: the resin channel leaves the block; …` | error | The channel path comes closer than 1 mm to a block edge |
 | `Mold: the pin holes are … mm deep, but the thinner half is … mm thick; …` | error | Pin depth above the thickness of the thinner half − 1 mm |
+| `Mold: seen from above, the airfoil reaches … mm beyond the leading-edge or trailing-edge line (twisted sections), more than 0.1 mm: one mold half would be undercut. Reduce the twist.` | error | Seen from above, a twisted section reaches more than 0.1 mm beyond the leading-edge or trailing-edge line |
 | `Mold: the ramp folds over itself at the wing outline; reduce the ramp width.` | error | The ramp folds in the top view, e.g. at a tight curve of the outline |
 | `Mold: the ramp along the wing outline could not be fitted; …` | error | Sections very close together |
 | `The wing has errors; fix them before building a mold.` | error | The wing does not build |
@@ -1261,13 +1262,13 @@ An error disables **Download STEP**. **Close** closes the dialog.
 
 ### Under-cambered airfoils
 
-The halves part at the leading edge and the trailing edge. An under-cambered airfoil has its lower surface above that line: the lower half then rises above z = 0 inside the cavity outline, and the upper half is recessed there. Example: an airfoil of 9 % camber and 5 % thickness at 200 mm chord, untwisted, without dihedral: the lower half reaches 13.2 mm above the parting plane; lower half 12.6 mm thick, upper half 34.9 mm.
+The halves part at the leading edge and the trailing edge. An under-cambered airfoil has its lower surface above that line: the lower half then rises above z = 0 inside the cavity outline, and the upper half is recessed there. Example: an airfoil of 9 % camber and 5 % thickness at 200 mm chord, untwisted, without dihedral: the lower half reaches 13.2 mm above the parting plane. The lower cavity is 0.6 mm deep, less than the 2 mm groove radius of the default channel (4 mm), so the lower half is 2 mm + 12 mm = 14.0 mm thick; the upper half is 34.9 mm thick.
 
 ### Limitations and tests
 
 - The mold ignores **Part tilt** and **Part roll**.
 - One parting plane per half wing. A wing with several dihedral angles gets high ramps: **Sailplane** preset 85.8 mm, ramp up to 88°, with the warning.
-- The nose is parted at the leading-edge point of the airfoil. At a twisted section the cavity overhangs there by r · (1 − cos twist), r the nose radius: 0.004 mm for 3 mm and 3°.
+- The nose is parted at the leading-edge point of the airfoil. Seen from above, a twisted section reaches beyond the leading-edge or trailing-edge line, its nose turning ahead of the leading-edge point. Up to 0.1 mm the cavity overhangs there by about r · (1 − cos twist), r the nose radius: 0.004 mm for 3 mm and 3°. Above 0.1 mm the dialog refuses the mold (error table).
 - No draft angle.
 - Left and right molds are separate files; no one-piece mold of the full wing.
 - The resin channel is one B-spline surface fitted through stations along the path, not an exact torus or cylinder. Its cross-section lies within 0.02 mm of a half circle on the presets measured (Sport 0.018 mm, flat test wing 0.0073 mm, Delta jet 0.0031 mm); not measured against a CAD model.

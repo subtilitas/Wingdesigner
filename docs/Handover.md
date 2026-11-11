@@ -131,7 +131,7 @@ npm run screenshots
   `CHANGELOG.md` name no contributor material from its list of terms (Development, section
   Documentation check). It does not compare the contents of the two languages and does not read this
   page, `docs/Flow5upgrade.md` or `RECORD.md`.
-- `npm run i18n:check` checks that every interface text has a German translation (1082 texts on 2026-11-11).
+- `npm run i18n:check` checks that every interface text has a German translation (1083 texts on 2026-11-11).
 - `npm run mold:cases` writes the mold STEP files of `test/mold-cases.js` and `cases.json` to `mold-check/`;
   `python scripts/validate_mold.py mold-check/cases.json` reads them with OpenCascade: solids valid and closed,
   both halves add up to block − half wing − resin channel − holes within 2e-4, 2 cylinder faces per hole,

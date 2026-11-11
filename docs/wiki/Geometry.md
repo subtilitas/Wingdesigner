@@ -1264,11 +1264,11 @@ side = −1 leading edge, +1 trailing edge
 ```
 x_0 = x_min − margin          x_1 = x_max + margin          x of the outline
 y from y_R to y_max + margin
-t_lower = z_p − z_min(lower cavity) + floor
-t_upper = z_max(upper cavity) − z_p + floor
+t_lower = max(z_p − z_min(lower cavity), r_c) + floor
+t_upper = max(z_max(upper cavity) − z_p, r_c) + floor
 ```
 
-z_min and z_max are taken over the control points of the cavity surface. An under-cambered airfoil (9 % camber, 5 % thick, 200 mm chord, untwisted) puts the lower surface up to 13.2 mm above z_p: the lower half rises inside the cavity outline, t_lower = 12.6 mm, t_upper = 34.9 mm.
+z_min and z_max are taken over the control points of the cavity surface. r_c = diameter / 2 of the resin channel, 0 without channel: a cavity shallower than the groove leaves the groove as the deepest point. An under-cambered airfoil (9 % camber, 5 % thick, 200 mm chord, untwisted, default floor 12 mm and channel 4 mm) puts the lower surface up to 13.2 mm above z_p: the lower half rises inside the cavity outline. The lower cavity is 0.6 mm deep, less than r_c = 2 mm, so t_lower = 2 + 12 = 14.0 mm; t_upper = 34.9 mm.
 
 | Check | Condition for an error |
 | --- | --- |
@@ -1276,6 +1276,7 @@ z_min and z_max are taken over the control points of the cavity surface. An unde
 | Margin | margin < distance + diameter + 1 mm (without channel: w + 1 mm) |
 | Channel in the block | a path point within r + 1 mm of the front, back or tip-side edge |
 | Pin depth | depth > min(t_lower, t_upper) − 1 mm |
+| Reach beyond the edge lines | seen from above, a point of a cavity surface lies more than 0.1 mm (`MOLD_OVERHANG`) in front of the leading-edge line or behind the trailing-edge line (twisted sections); up to 0.1 mm it stays a limitation, the cavity overhangs by about r · (1 − cos twist), r the nose radius |
 
 ### 11.5 Holes
 
@@ -1287,7 +1288,7 @@ z_min and z_max are taken over the control points of the cavity surface. An unde
 
 - y_h = y_R + |tan ω| · max(t_lower, t_upper): the leaning root face over the height of both halves.
 - Keep-out around the cavity: distance + diameter of the channel (its outer rim), without channel the ramp width w, plus the clearance of 1 mm.
-- A hole of radius r_h is kept when its distance from the outline is at least keep-out + r_h, its circle with 1 mm clearance lies within x_0 … x_1 and y_h … y_1, and it lies at least r_h + r_other + 1 mm from every hole kept before. Pins are placed first, then screws. A screw at the centre of a pin is left out without a warning; every other hole left out counts in the warning.
+- A hole of radius r_h is kept when its centre lies outside the outline polygon, its distance from the outline is at least keep-out + r_h, its circle with 1 mm clearance lies within x_0 … x_1 and y_h … y_1, and it lies at least r_h + r_other + 1 mm from every hole kept before. Pins are placed first, then screws. A screw at the centre of a pin is left out without a warning; every other hole left out counts in the warning.
 - Pin holes are blind, depth p in each half, with a planar bottom. Screw holes run through both halves.
 - Each hole is a cylinder written as 2 half-cylinder faces (`CYLINDRICAL_SURFACE`), joined by 2 seam lines; its rims are 2 half circles (`CIRCLE`) each.
 

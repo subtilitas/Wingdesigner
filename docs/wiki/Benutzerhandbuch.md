@@ -1194,7 +1194,7 @@ Für STEP nennt der Hinweis die Kontrollpunkte der Flächen in der Datei und die
 
 | Teil | Aufbau |
 | --- | --- |
-| Formblock | Ein Quader je Hälfte. Länge: Flügel von der Nasenleiste bis zur Endleiste plus **Rand um den Flügel** vorn und hinten. Breite: Wurzelfläche bis zum Flügelende plus Rand. Dicke einer Hälfte: Tiefe ihres Formnests unter der Trennebene plus **Boden unter dem Formnest**. |
+| Formblock | Ein Quader je Hälfte. Länge: Flügel von der Nasenleiste bis zur Endleiste plus **Rand um den Flügel** vorn und hinten. Breite: Wurzelfläche bis zum Flügelende plus Rand. Dicke einer Hälfte: tiefster Punkt der Hälfte unter der Trennebene plus **Boden unter dem Formnest**. Der tiefste Punkt ist das Formnest oder, bei eingeschalteter Blutrinne und einem Formnest, das flacher ist als der Radius der Blutrinne (halber **Durchmesser**), die Rille. |
 | Wurzelfläche | Die Fläche des Formblocks an der Wurzel. Der Wurzelschnitt liegt in ihr; das Formnest ist dort offen. Mit V-Form ist die Fläche um den Rollwinkel des Bezugssystems der Form geneigt (unten). |
 | Formnest | Die Flügelfläche der Hälfte: Unterseite in der Unterform, Oberseite in der Oberform; die Hälfte einer stumpfen Endleiste; bei flachem Flügelende die Hälfte der Endfläche. |
 | Trennlinie | Nasenleiste und Endleiste des Flügels; die Mitte einer stumpfen Endleiste. |
@@ -1240,7 +1240,7 @@ Bezugssystem der Form: das System, in dem die Flügelhälfte gebaut wird, vor **
 | **Um den Flügel** (Around the wing) | Entlang eines Wegs um den Flügel mit **Abstand außerhalb der Blutrinne** vom äußeren Rand der Blutrinne (ohne Blutrinne: von der Rampe), in gleichen Schritten von etwa **Größter Abstand untereinander**, mindestens 1 Bohrung |
 
 - An der Wurzelseite halten die Bohrungen ihren Kantenabstand zur geneigten Wurzelfläche über die Höhe beider Hälften.
-- Eine Bohrung näher als 1 mm an der Sperrzone um das Formnest (die Rampe, oder die Blutrinne, wenn sie eingeschaltet ist), an einer Blockkante oder an einer anderen Bohrung wird weggelassen, mit einer Warnung, die die weggelassenen Bohrungen zählt. Eine Stelle, die schon eine Bohrung der anderen Art belegt, wird ohne Warnung weggelassen.
+- Eine Bohrung näher als 1 mm an der Sperrzone um das Formnest (die Rampe, oder die Blutrinne, wenn sie eingeschaltet ist), an einer Blockkante oder an einer anderen Bohrung wird weggelassen, mit einer Warnung, die die weggelassenen Bohrungen zählt. Eine Bohrung, deren Mittelpunkt innerhalb des Flügelumrisses liegt, wird ebenfalls weggelassen und zählt in derselben Warnung. Eine Stelle, die schon eine Bohrung der anderen Art belegt, wird ohne Warnung weggelassen.
 - Vorgaben: Zentrierbohrungen an den 4 Ecken, Bohrungen für Spannschrauben entlang der Kanten dazwischen. Entwurfstyp **Segelflugmodell** mit Randbogen (**Randbogen …**, **Ellipse des Flügels fortsetzen**): 4 Zentrierbohrungen, 20 Bohrungen für Spannschrauben.
 
 ### Vorschau und Zusammenfassung
@@ -1260,6 +1260,7 @@ Zusammenfassung unter der Vorschau, z. B. Entwurfstyp **Sport** mit dem Randboge
 | `Form: Der Rand des Formblocks muss für die Blutrinne mindestens … mm betragen (…)` | Fehler | Rand kleiner als Abstand + Durchmesser + 1 mm (ohne Blutrinne: Breite der Rampe + 1 mm) |
 | `Form: Die Blutrinne verlässt den Formblock; …` | Fehler | Der Verlauf der Blutrinne kommt einer Blockkante näher als 1 mm |
 | `Form: Die Zentrierbohrungen sind … mm tief, die dünnere Hälfte ist aber nur … mm dick; …` | Fehler | Tiefe der Zentrierbohrungen größer als die Dicke der dünneren Hälfte − 1 mm |
+| `Form: Von oben gesehen reicht das Profil … mm über die Linie der Nasenleiste oder der Endleiste hinaus (geschränkte Schnitte), mehr als 0,1 mm: Eine Formhälfte hätte einen Hinterschnitt. Die Schränkung verringern.` | Fehler | Von oben gesehen reicht ein geschränkter Schnitt mehr als 0,1 mm über die Linie der Nasenleiste oder der Endleiste hinaus |
 | `Form: Die Rampe faltet sich am Flügelumriss über sich selbst; die Breite der Rampe verringern.` | Fehler | Die Rampe faltet sich in der Draufsicht, z. B. an einer engen Krümmung des Umrisses |
 | `Form: Die Rampe entlang des Flügelumrisses ließ sich nicht anpassen; …` | Fehler | Sehr dicht beieinander liegende Schnitte |
 | `Der Flügel hat Fehler; sie vor dem Bau einer Form beheben.` | Fehler | Der Flügel baut nicht |
@@ -1268,13 +1269,13 @@ Ein Fehler sperrt **STEP herunterladen** (Download STEP). **Schließen** (Close)
 
 ### Profile mit hohler Unterseite
 
-Die Hälften trennen sich an Nasenleiste und Endleiste. Ein Profil mit hohler Unterseite hat seine Unterseite über dieser Linie: Die Unterform steigt dann innerhalb des Umrisses des Formnests über z = 0, und die Oberform ist dort vertieft. Beispiel: ein Profil mit 9 % Wölbung und 5 % Dicke bei 200 mm Profiltiefe, ohne Schränkung und ohne V-Form: Die Unterform reicht 13,2 mm über die Trennebene; Unterform 12,6 mm dick, Oberform 34,9 mm.
+Die Hälften trennen sich an Nasenleiste und Endleiste. Ein Profil mit hohler Unterseite hat seine Unterseite über dieser Linie: Die Unterform steigt dann innerhalb des Umrisses des Formnests über z = 0, und die Oberform ist dort vertieft. Beispiel: ein Profil mit 9 % Wölbung und 5 % Dicke bei 200 mm Profiltiefe, ohne Schränkung und ohne V-Form: Die Unterform reicht 13,2 mm über die Trennebene. Das untere Formnest ist 0,6 mm tief, weniger als der Rillenradius von 2 mm der Blutrinne der Vorgaben (4 mm); die Unterform ist daher 2 mm + 12 mm = 14,0 mm dick, die Oberform 34,9 mm.
 
 ### Einschränkungen und Tests
 
 - Die Form beachtet **Einstellwinkel des Teils** und **Rollwinkel des Teils** nicht.
 - Eine Trennebene je Flügelhälfte. Ein Flügel mit mehreren V-Form-Winkeln erhält hohe Rampen: Entwurfstyp **Hochleistungssegler** 85,8 mm, Rampe bis 88°, mit der Warnung.
-- Die Nase wird am Nasenpunkt des Profils geteilt. An einem geschränkten Schnitt hat das Formnest dort einen Hinterschnitt von r · (1 − cos Schränkung), r der Nasenradius: 0,004 mm bei 3 mm und 3°.
+- Die Nase wird am Nasenpunkt des Profils geteilt. Von oben gesehen reicht ein geschränkter Schnitt über die Linie der Nasenleiste oder der Endleiste hinaus, seine Nase dreht sich vor den Nasenpunkt. Bis 0,1 mm hat das Formnest dort einen Hinterschnitt von etwa r · (1 − cos Schränkung), r der Nasenradius: 0,004 mm bei 3 mm und 3°. Über 0,1 mm lehnt der Dialog die Form ab (Tabelle der Meldungen).
 - Keine Entformungsschräge.
 - Linke und rechte Form sind getrennte Dateien; keine einteilige Form des ganzen Flügels.
 - Die Blutrinne ist eine B-Spline-Fläche, durch Stationen entlang ihres Verlaufs angepasst, kein exakter Torus oder Zylinder. Ihr Querschnitt liegt an den gemessenen Entwurfstypen innerhalb von 0,02 mm an einem Halbkreis (Sport 0,018 mm, flacher Testflügel 0,0073 mm, Delta-Jet 0,0031 mm); nicht gegen ein CAD-Modell gemessen.

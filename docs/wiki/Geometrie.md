@@ -1350,11 +1350,11 @@ Seite = −1 Nasenleiste, +1 Endleiste
 ```
 x_0 = x_min − Rand          x_1 = x_max + Rand          x des Umrisses
 y von y_R bis y_max + Rand
-t_unten = z_p − z_min(Formnest der Unterform) + Boden
-t_oben  = z_max(Formnest der Oberform) − z_p + Boden
+t_unten = max(z_p − z_min(Formnest der Unterform), r_R) + Boden
+t_oben  = max(z_max(Formnest der Oberform) − z_p, r_R) + Boden
 ```
 
-z_min und z_max gelten über die Kontrollpunkte der Formnestfläche. Ein Profil mit hohler Unterseite (9 % Wölbung, 5 % Dicke, 200 mm Profiltiefe, ungeschränkt) legt die Unterseite bis 13,2 mm über z_p: Die Unterform steigt innerhalb des Formnestumrisses an, t_unten = 12,6 mm, t_oben = 34,9 mm.
+z_min und z_max gelten über die Kontrollpunkte der Formnestfläche. r_R = Durchmesser / 2 der Blutrinne, 0 ohne Blutrinne: Ein Formnest, das flacher ist als die Rille, lässt die Rille als tiefsten Punkt. Ein Profil mit hohler Unterseite (9 % Wölbung, 5 % Dicke, 200 mm Profiltiefe, ungeschränkt, Boden 12 mm und Blutrinne 4 mm nach den Vorgaben) legt die Unterseite bis 13,2 mm über z_p: Die Unterform steigt innerhalb des Formnestumrisses an. Das untere Formnest ist 0,6 mm tief, weniger als r_R = 2 mm, daher t_unten = 2 + 12 = 14,0 mm; t_oben = 34,9 mm.
 
 | Prüfung | Bedingung für einen Fehler |
 | --- | --- |
@@ -1362,6 +1362,7 @@ z_min und z_max gelten über die Kontrollpunkte der Formnestfläche. Ein Profil 
 | Rand | Rand < Abstand + Durchmesser + 1 mm (ohne Blutrinne: w + 1 mm) |
 | Blutrinne im Formblock | ein Punkt des Verlaufs innerhalb von r + 1 mm an der vorderen, hinteren oder randseitigen Kante |
 | Tiefe der Zentrierbohrungen | Tiefe > min(t_unten, t_oben) − 1 mm |
+| Überstand über die Kantenlinien | von oben gesehen liegt ein Punkt einer Formnestfläche mehr als 0,1 mm (`MOLD_OVERHANG`) vor der Linie der Nasenleiste oder hinter der Linie der Endleiste (geschränkte Schnitte); bis 0,1 mm bleibt es eine Einschränkung, das Formnest hat einen Hinterschnitt von etwa r · (1 − cos Schränkung), r der Nasenradius |
 
 ### 11.5 Bohrungen
 
@@ -1373,7 +1374,7 @@ z_min und z_max gelten über die Kontrollpunkte der Formnestfläche. Ein Profil 
 
 - y_h = y_R + |tan ω| · max(t_unten, t_oben): die geneigte Wurzelfläche über die Höhe beider Hälften.
 - Sperrzone um das Formnest: Abstand + Durchmesser der Blutrinne (ihr äußerer Rand), ohne Blutrinne die Rampenbreite w, plus der Abstand von 1 mm.
-- Eine Bohrung vom Radius r_h bleibt, wenn ihr Abstand vom Umriss mindestens Sperrzone + r_h beträgt, ihr Kreis mit 1 mm Abstand innerhalb von x_0 … x_1 und y_h … y_1 liegt und sie von jeder vorher behaltenen Bohrung mindestens r_h + r_andere + 1 mm entfernt ist. Zuerst werden die Zentrierbohrungen gesetzt, dann die Bohrungen für Spannschrauben. Eine Schraubenbohrung im Mittelpunkt einer Zentrierbohrung entfällt ohne Warnung; jede andere weggelassene Bohrung zählt in der Warnung.
+- Eine Bohrung vom Radius r_h bleibt, wenn ihr Mittelpunkt außerhalb des Umrisspolygons liegt, ihr Abstand vom Umriss mindestens Sperrzone + r_h beträgt, ihr Kreis mit 1 mm Abstand innerhalb von x_0 … x_1 und y_h … y_1 liegt und sie von jeder vorher behaltenen Bohrung mindestens r_h + r_andere + 1 mm entfernt ist. Zuerst werden die Zentrierbohrungen gesetzt, dann die Bohrungen für Spannschrauben. Eine Schraubenbohrung im Mittelpunkt einer Zentrierbohrung entfällt ohne Warnung; jede andere weggelassene Bohrung zählt in der Warnung.
 - Zentrierbohrungen sind Sacklöcher, Tiefe p in jeder Hälfte, mit ebenem Grund. Bohrungen für Spannschrauben gehen durch beide Hälften.
 - Jede Bohrung ist ein Zylinder aus 2 Halbzylinderflächen (`CYLINDRICAL_SURFACE`), verbunden durch 2 Mantellinien; ihre Ränder sind je 2 Halbkreise (`CIRCLE`).
 

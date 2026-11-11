@@ -85,4 +85,6 @@ export default {
     'Form: {n} Schraubenbohrung(en) weggelassen: zu nah am Formnest, an der Blutrinne, an einer Blockkante oder an einer anderen Bohrung.',
   'Mold: the pin holes are {depth} mm deep, but the thinner half is {thickness} mm thick; reduce the depth or increase the floor thickness.':
     'Form: Die Zentrierbohrungen sind {depth} mm tief, die dünnere Hälfte ist aber nur {thickness} mm dick; die Tiefe verringern oder die Bodendicke vergrößern.',
+  'Mold: seen from above, the airfoil reaches {reach} mm beyond the leading-edge or trailing-edge line (twisted sections), more than {limit} mm: one mold half would be undercut. Reduce the twist.':
+    'Form: Von oben gesehen reicht das Profil {reach} mm über die Linie der Nasenleiste oder der Endleiste hinaus (geschränkte Schnitte), mehr als {limit} mm: Eine Formhälfte hätte einen Hinterschnitt. Die Schränkung verringern.',
 };
