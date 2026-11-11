@@ -139,6 +139,7 @@ export default {
   'Wing tip': 'Flügelende',
   'Flat (cut at the tip section)': 'Flach (am Randschnitt abgeschnitten)',
   'Pointed (tip profile scaled down)': 'Spitz (Randprofil verkleinert)',
+  'Round (closes in a point, needs a rounded tip)': 'Rund (schließt in einem Punkt, braucht einen Randbogen)',
   'Tip profile scale 1 : N of the previous section chord (N = {min} to {max}; tip chord at least {chord} mm)':
     'Maßstab des Randprofils 1 : N der Tiefe des vorherigen Schnitts (N = {min} bis {max}; Randtiefe mindestens {chord} mm)',
   'Tip profile scale denominator': 'Nenner des Maßstabs des Randprofils',

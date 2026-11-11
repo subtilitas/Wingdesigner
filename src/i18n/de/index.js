@@ -12,9 +12,10 @@ import foam from './foam.js';
 import winglet from './winglet.js';
 import roundtip from './roundtip.js';
 import flow5 from './flow5.js';
+import mold from './mold.js';
 
 /** Area files by name, for the i18n check. */
-export const AREAS = { shell, panels, editors, model, geom, airfoil, xfl, xflxml, xflr5, foam, winglet, roundtip, flow5 };
+export const AREAS = { shell, panels, editors, model, geom, airfoil, xfl, xflxml, xflr5, foam, winglet, roundtip, flow5, mold };
 
 /** All German entries; `npm run i18n:check` reports a key that two areas translate differently. */
 export const DE = Object.assign({}, ...Object.values(AREAS));

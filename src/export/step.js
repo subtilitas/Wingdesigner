@@ -39,7 +39,7 @@ export function stepString(text) {
   return `'${out}'`;
 }
 
-class StepWriter {
+export class StepWriter {
   constructor() {
     this.lines = [];
   }
@@ -90,10 +90,29 @@ class StepWriter {
   }
 
   face(loop, surface, sameSense, boundSense) {
-    const oes = loop.map(([e, o]) => this.add(`ORIENTED_EDGE('',*,*,${e},${o ? '.T.' : '.F.'})`)).join(',');
-    const el = this.add(`EDGE_LOOP('',(${oes}))`);
-    const fb = this.add(`FACE_OUTER_BOUND('',${el},${boundSense ? '.T.' : '.F.'})`);
-    return this.add(`ADVANCED_FACE('',(${fb}),${surface},${sameSense ? '.T.' : '.F.'})`);
+    return this.faceLoops([loop], surface, sameSense, boundSense);
+  }
+
+  /** A face with an outer loop and inner loops (holes). */
+  faceLoops(loops, surface, sameSense, boundSense) {
+    const bounds = loops.map((loop, i) => {
+      const oes = loop.map(([e, o]) => this.add(`ORIENTED_EDGE('',*,*,${e},${o ? '.T.' : '.F.'})`)).join(',');
+      const el = this.add(`EDGE_LOOP('',(${oes}))`);
+      return this.add(`${i === 0 ? 'FACE_OUTER_BOUND' : 'FACE_BOUND'}('',${el},${boundSense ? '.T.' : '.F.'})`);
+    });
+    return this.add(`ADVANCED_FACE('',(${bounds.join(',')}),${surface},${sameSense ? '.T.' : '.F.'})`);
+  }
+
+  axis(origin, axis, ref) {
+    return this.add(`AXIS2_PLACEMENT_3D('',${this.point(origin)},${this.direction(axis)},${this.direction(ref)})`);
+  }
+
+  circle(origin, axis, ref, radius) {
+    return this.add(`CIRCLE('',${this.axis(origin, axis, ref)},${stepReal(radius)})`);
+  }
+
+  cylinder(origin, axis, ref, radius) {
+    return this.add(`CYLINDRICAL_SURFACE('',${this.axis(origin, axis, ref)},${stepReal(radius)})`);
   }
 
   toString(header) {
@@ -128,6 +147,9 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
   const xv = mirrored ? (part ? (v) => turn(part.leftVector(v)) : (v) => turn(mirrorPoint(v))) : (v) => turn(placeDir(v));
   const [SU, SL] = splitSurfaceU(build.surface, build.uLE);
   const closed = build.closedTE;
+  // A round tip (build.tipPole) closes in one point: the faces end in that vertex with three edges
+  // each, and there is no tip cap.
+  const pole = Boolean(build.tipPole);
 
   const P = {
     teU0: surfacePoint(SU, 0, 0),
@@ -139,11 +161,11 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
   };
   const V = {};
   V.teU0 = w.vertex(xf(P.teU0));
-  V.teU1 = w.vertex(xf(P.teU1));
   V.le0 = w.vertex(xf(P.le0));
   V.le1 = w.vertex(xf(P.le1));
+  V.teU1 = pole ? V.le1 : w.vertex(xf(P.teU1));
   V.teL0 = closed ? V.teU0 : w.vertex(xf(P.teL0));
-  V.teL1 = closed ? V.teU1 : w.vertex(xf(P.teL1));
+  V.teL1 = closed || pole ? V.teU1 : w.vertex(xf(P.teL1));
 
   const C = (c) => w.curve(mapCurve(c, xf));
   const E = {};
@@ -151,9 +173,13 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
   E.le = w.edge(V.le0, V.le1, C(surfaceBoundaryU(SU, true)));
   E.teL = closed ? E.teU : w.edge(V.teL0, V.teL1, C(surfaceBoundaryU(SL, true)));
   E.rootU = w.edge(V.teU0, V.le0, C(surfaceBoundaryV(SU, false)));
-  E.tipU = w.edge(V.teU1, V.le1, C(surfaceBoundaryV(SU, true)));
   E.rootL = w.edge(V.le0, V.teL0, C(surfaceBoundaryV(SL, false)));
-  E.tipL = w.edge(V.le1, V.teL1, C(surfaceBoundaryV(SL, true)));
+  if (!pole) {
+    E.tipU = w.edge(V.teU1, V.le1, C(surfaceBoundaryV(SU, true)));
+    E.tipL = w.edge(V.le1, V.teL1, C(surfaceBoundaryV(SL, true)));
+  }
+  // Edges of a loop, without the ones a round tip does not have.
+  const loopOf = (list) => list.filter(([e]) => e !== undefined);
 
   // Loop direction flag: mirrored halves use every loop reversed.
   const bound = !mirrored;
@@ -162,12 +188,12 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
   const faces = [];
   faces.push(
     w.face(
-      [
+      loopOf([
         [E.teU, true],
         [E.tipU, true],
         [E.le, false],
         [E.rootU, false],
-      ],
+      ]),
       w.surface(mapSurface(SU, xf)),
       wingSense,
       bound,
@@ -175,12 +201,12 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
   );
   faces.push(
     w.face(
-      [
+      loopOf([
         [E.le, true],
         [E.tipL, true],
         [E.teL, false],
         [E.rootL, false],
-      ],
+      ]),
       w.surface(mapSurface(SL, xf)),
       wingSense,
       bound,
@@ -197,31 +223,31 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
   if (!closed) {
     const line = (a, b) => ({ degree: 1, knots: [0, 0, 1, 1], points: [a, b] });
     E.rootTE = w.edge(V.teL0, V.teU0, C(line(P.teL0, P.teU0)));
-    E.tipTE = w.edge(V.teL1, V.teU1, C(line(P.teL1, P.teU1)));
+    if (!pole) E.tipTE = w.edge(V.teL1, V.teU1, C(line(P.teL1, P.teU1)));
     const lowerTE = SL.points[SL.points.length - 1];
     const upperTE = SU.points[0];
     const ruled = { degreeU: 1, degreeV: SU.degreeV, knotsU: [0, 0, 1, 1], knotsV: SU.knotsV.slice(), points: [lowerTE, upperTE] };
     faces.push(
       w.face(
-        [
+        loopOf([
           [E.teL, true],
           [E.tipTE, true],
           [E.teU, false],
           [E.rootTE, false],
-        ],
+        ]),
         w.surface(mapSurface(ruled, xf)),
         wingSense,
         bound,
       ),
     );
     rootLoop.push([E.rootTE, true]);
-    tipLoop.push([E.tipTE, false]);
+    if (!pole) tipLoop.push([E.tipTE, false]);
   }
   // Caps: plane normals are geometric vectors, so mirroring the axis keeps them outward. A rolled end
   // section has the normal (0, cos φ, sin φ); the reference direction x lies in every such plane.
   const normal = (roll, sign) => (roll ? [0, sign * Math.cos((roll * Math.PI) / 180), sign * Math.sin((roll * Math.PI) / 180)] : [0, sign, 0]);
   faces.push(w.face(rootLoop, w.plane(xf(P.le0), xv(normal(build.rootRoll ?? 0, -1)), xv([1, 0, 0])), true, bound));
-  faces.push(w.face(tipLoop, w.plane(xf(P.le1), xv(normal(build.tipRoll ?? 0, 1)), xv([1, 0, 0])), true, bound));
+  if (!pole) faces.push(w.face(tipLoop, w.plane(xf(P.le1), xv(normal(build.tipRoll ?? 0, 1)), xv([1, 0, 0])), true, bound));
   const shell = w.add(`CLOSED_SHELL('',(${faces.join(',')}))`);
   return w.add(`MANIFOLD_SOLID_BREP(${stepString(name)},${shell})`);
 }
@@ -234,6 +260,19 @@ function writeHalfWing(w, build, name, mirrored, up = 'z') {
  */
 export function wingToStep(build, { mirror = true, right = true, name = 'Wing', timestamp, author = '', up = 'z' } = {}) {
   if (!build.surface) throw new Error(tr('The wing has no surface; fix the reported errors first.'));
+  // right: the right half; mirror: the left half (right false and mirror true: the left half alone).
+  return stepFile(name, { timestamp, author, description: 'Wingdesigner wing' }, (w) => {
+    const solids = right ? [writeHalfWing(w, build, `${name} right`, false, up)] : [];
+    if (mirror) solids.push(writeHalfWing(w, build, `${name} left`, true, up));
+    return solids;
+  });
+}
+
+/**
+ * STEP text of one product with the solids that `write(writer)` returns (MANIFOLD_SOLID_BREP ids), in
+ * millimetres.
+ */
+export function stepFile(name, { timestamp, author = '', description }, write) {
   const w = new StepWriter();
   const appCtx = w.add(`APPLICATION_CONTEXT('core data for automotive mechanical design processes')`);
   w.add(`APPLICATION_PROTOCOL_DEFINITION('international standard','automotive_design',2000,${appCtx})`);
@@ -252,15 +291,13 @@ export function wingToStep(build, { mirror = true, right = true, name = 'Wing', 
     `(GEOMETRIC_REPRESENTATION_CONTEXT(3)GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((${unc}))GLOBAL_UNIT_ASSIGNED_CONTEXT((${mm},${rad},${sr}))REPRESENTATION_CONTEXT('Context #1','3D Context with UNIT and UNCERTAINTY'))`,
   );
   const origin = w.add(`AXIS2_PLACEMENT_3D('',${w.point([0, 0, 0])},${w.direction([0, 0, 1])},${w.direction([1, 0, 0])})`);
-  // right: the right half; mirror: the left half (right false and mirror true: the left half alone).
-  const solids = right ? [writeHalfWing(w, build, `${name} right`, false, up)] : [];
-  if (mirror) solids.push(writeHalfWing(w, build, `${name} left`, true, up));
+  const solids = write(w);
   const rep = w.add(`ADVANCED_BREP_SHAPE_REPRESENTATION(${stepString(name)},(${[origin, ...solids].join(',')}),${ctx})`);
   w.add(`SHAPE_DEFINITION_REPRESENTATION(${pds},${rep})`);
 
   const ts = timestamp ?? new Date().toISOString().slice(0, 19);
   const header = [
-    `FILE_DESCRIPTION(('Wingdesigner wing'),'2;1');`,
+    `FILE_DESCRIPTION((${stepString(description)}),'2;1');`,
     `FILE_NAME(${stepString(name)},${stepString(ts)},(${stepString(author)}),(''),'Wingdesigner','Wingdesigner','');`,
     `FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));`,
   ].join('\n');

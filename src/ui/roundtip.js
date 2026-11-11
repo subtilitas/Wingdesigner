@@ -93,11 +93,10 @@ export function roundTipDialog(store, notify = () => {}) {
       const tip = sortedSections(project).at(-1);
       const end = added.at(-1);
       summary.className = 'small';
-      summary.textContent = tr('Adds {n} sections and sets Settings > Wing tip to Pointed. Point at y = {y} mm, {out} mm beyond the tip section, chord {chord} mm.', {
+      summary.textContent = tr('Adds {n} sections and sets Settings > Wing tip to Round: the tip closes in a point. Point at y = {y} mm, {out} mm beyond the tip section.', {
         n: added.length,
         y: fixed(end.y, 1),
         out: fixed(end.y - tip.y, 1),
-        chord: fixed(end.chord, 2),
       });
     }
     pz.fitted = false;
@@ -163,7 +162,7 @@ export function roundTipDialog(store, notify = () => {}) {
     if (!problems.length) {
       const n = added.length;
       store.update((q) => addRoundTip(q, params));
-      notify(tr('Rounded tip added: {n} sections, wing tip set to Pointed. Undo removes it.', { n }));
+      notify(tr('Rounded tip added: {n} sections, wing tip set to Round. Undo removes it.', { n }));
       dialog.close();
     }
   });

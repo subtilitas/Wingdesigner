@@ -336,7 +336,8 @@ describe('STEP', () => {
       expect(b.errors).toEqual([]);
       const txt = wingToStep(b, { mirror: c.mirror, name: c.name });
       const faces = txt.match(/ADVANCED_FACE/g).length;
-      expect(faces).toBe((b.closedTE ? 4 : 5) * (c.mirror ? 2 : 1));
+      // A round tip closes in a point: no tip cap.
+      expect(faces).toBe((b.closedTE ? 4 : 5) * (c.mirror ? 2 : 1) - (b.tipPole ? (c.mirror ? 2 : 1) : 0));
     }
     expect(() => wingToStep({ surface: null })).toThrow();
   });
@@ -519,7 +520,7 @@ describe('project JSON', () => {
       (p) => (p.guides.nose.points = [[0, 0]]),
       (p) => (p.guides.end.points = [['a', 0], [1, 1]]),
       (p) => (p.guides.end.degree = 9),
-      (p) => (p.settings.tip = { mode: 'round', ratio: 0.005 }),
+      (p) => (p.settings.tip = { mode: 'elliptic', ratio: 0.005 }),
       (p) => (p.settings.tip = { mode: 'pointed', ratio: 0.5 }),
       (p) => (p.settings.mirror = 'false'),
       (p) => (p.version = 0),
@@ -580,7 +581,7 @@ describe('project JSON', () => {
     v1.version = 1;
     delete v1.settings.sectionPlanes;
     const old = projectFromJsonText(JSON.stringify(v1));
-    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 5, 'vertical']);
+    expect([old.ok, old.project.version, old.project.settings.sectionPlanes]).toEqual([true, 6, 'vertical']);
     expect(buildWing(old.project).surface).toEqual(buildWing(sampleProject()).surface);
     // A version 2 file without the setting takes the default, and one with it keeps it.
     const bare = structuredClone(v2);
@@ -588,7 +589,7 @@ describe('project JSON', () => {
     expect(projectFromJsonText(JSON.stringify(bare)).project.settings.sectionPlanes).toBe('mitred');
     expect(projectFromJsonText(JSON.stringify({ ...v2, settings: { ...v2.settings, sectionPlanes: 'vertical' } })).project.settings.sectionPlanes).toBe('vertical');
     // A later format is refused rather than opened without its values.
-    expect(projectFromJsonText(JSON.stringify({ ...v3, version: 6 })).errors).toEqual(['Unsupported project version 6.']);
+    expect(projectFromJsonText(JSON.stringify({ ...v3, version: 7 })).errors).toEqual(['Unsupported project version 7.']);
     // A version 3 file keeps a folded tilt with its three numbers only (an upgrade that kept the fold).
     const tilted = projectFromJsonText(JSON.stringify({ ...v3, foldedTilt: { angle: 2, x: 10, z: -5, note: 'x' } }));
     expect([tilted.project.foldedTilt, tilted.notes]).toEqual([{ angle: 2, x: 10, z: -5 }, []]);

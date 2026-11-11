@@ -18,13 +18,18 @@ export const FORMAT = 'wingdesigner-project';
 // default 'mirror' is saved as version 3, which Wingdesigner 0.4.0 opens (fileVersion).
 // Version 5: the rounded-tip marker of a section (section.roundTip, src/geom/tipblend.js). A project
 // without it is saved as version 3 or 4, as before.
-export const VERSION = 5;
+// Version 6: settings.tip.mode 'round' (the tip closes in a point, chord 0). A project with another
+// tip mode is saved as version 3, 4 or 5, as before.
+export const VERSION = 6;
+
+/** Values of settings.tip.mode: cut at the tip section, a scaled-down tip profile, or closed in a point. */
+export const TIP_MODES = Object.freeze(['flat', 'pointed', 'round']);
 
 /** How the left half follows the rigid placement of the part (src/geom/part.js). */
 export const LEFT_HALVES = Object.freeze(['mirror', 'turned']);
 
 /** The version a project file of these settings and sections is saved as: the lowest that holds them. */
-export const fileVersion = (settings, sections = []) => (sections.some((s) => s.roundTip !== undefined) ? 5 : settings?.leftHalf === 'turned' ? 4 : 3);
+export const fileVersion = (settings, sections = []) => (settings?.tip?.mode === 'round' ? 6 : sections.some((s) => s.roundTip !== undefined) ? 5 : settings?.leftHalf === 'turned' ? 4 : 3);
 
 /** Values of section.roundTip: the end condition of the rounded-tip blend at the section before the tip. */
 export const ROUND_TIP_MARKERS = Object.freeze(['tangent', 'corner']);
@@ -303,7 +308,7 @@ export function validateProject(p) {
   if (!['asis', 'closed', 'thickness'].includes(st.trailingEdge.mode)) errors.push(tr('settings.trailingEdge.mode must be "asis", "closed" or "thickness".'));
   if (!isNum(st.trailingEdge.thickness) || st.trailingEdge.thickness < 0) errors.push(tr('settings.trailingEdge.thickness must be >= 0.'));
   if (typeof st.trailingEdge.smooth !== 'boolean') errors.push(tr('settings.trailingEdge.smooth must be true or false.'));
-  if (!['flat', 'pointed'].includes(st.tip.mode)) errors.push(tr('settings.tip.mode must be "flat" or "pointed".'));
+  if (!TIP_MODES.includes(st.tip.mode)) errors.push(tr('settings.tip.mode must be "flat", "pointed" or "round".'));
   if (!isNum(st.tip.ratio) || st.tip.ratio < LIMITS.tipRatio[0] || st.tip.ratio > LIMITS.tipRatio[1]) {
     errors.push(tr('settings.tip.ratio must be within {range} (1/1000 to 1/100).', { range: LIMITS.tipRatio.map(plain).join('..') }));
   }

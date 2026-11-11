@@ -45,7 +45,7 @@ jobs:
           retention-days: 14
 
   step:
-    name: STEP and 3MF validation (OpenCascade, lib3mf)
+    name: STEP, mold and 3MF validation (OpenCascade, lib3mf)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -65,11 +65,15 @@ jobs:
       - run: npm run step:cases
       - run: python scripts/validate_step.py step-check/cases.json
       - run: python scripts/validate_3mf.py step-check/cases.json
+      - run: npm run mold:cases
+      - run: python scripts/validate_mold.py mold-check/cases.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: step-files
-          path: step-check/
+          path: |
+            step-check/
+            mold-check/
           retention-days: 14
 
   foam:

@@ -15,6 +15,7 @@ import { AirfoilsPanel } from './ui/airfoils.js';
 import { SettingsPanel } from './ui/settings.js';
 import { exportDialog } from './ui/exportui.js';
 import { foamDialog } from './ui/foam.js';
+import { moldDialog } from './ui/mold.js';
 import { openWizard } from './ui/wizard.js';
 import { openXflr5Dialog } from './ui/xflr5.js';
 import { sniffXflr5 } from './import/xfl.js';
@@ -280,7 +281,7 @@ const header = h(
         }),
         { text: () => tr('Save'), title: () => tr('Save the project as JSON') },
       ),
-      localized(h('button', { type: 'button', class: 'primary', onclick: () => exportDialog(store, currentBuild, VERSION, message) }), { text: () => tr('Export') }),
+      localized(h('button', { type: 'button', class: 'primary', onclick: () => exportDialog(store, currentBuild, VERSION, message, () => moldDialog(store, currentBuild, message)) }), { text: () => tr('Export') }),
       localized(h('button', { type: 'button', onclick: () => foamDialog(store, currentBuild, message) }), {
         // A short label: the English top bar of eight buttons stays in one row on a phone from 356 px.
         text: () => tr('Foam'),

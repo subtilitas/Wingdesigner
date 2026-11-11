@@ -22,6 +22,7 @@
     "e2e": "npm run build && playwright test",
     "step:cases": "node scripts/export-step-cases.mjs step-check",
     "foam:cases": "node scripts/export-foam-cases.mjs foam-check",
+    "mold:cases": "node scripts/export-mold-cases.mjs mold-check",
     "screenshots": "node scripts/screenshots.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "counts:check": "node scripts/check-test-counts.mjs",

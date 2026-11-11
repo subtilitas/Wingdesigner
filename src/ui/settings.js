@@ -139,6 +139,7 @@ export class SettingsPanel {
             [
               ['flat', tr('Flat (cut at the tip section)')],
               ['pointed', tr('Pointed (tip profile scaled down)')],
+              ['round', tr('Round (closes in a point, needs a rounded tip)')],
             ],
             (v) => set((q) => (q.tip = { ...q.tip, mode: v })),
             tr('Wing tip'),

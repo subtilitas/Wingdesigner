@@ -109,7 +109,7 @@ describe('winglet checks', () => {
     expect(wingletProblems(guided, w)).toEqual(['Switch the guide curves off first: they hold x as a function of y and would stretch over the winglet.']);
     const pointed = sport();
     pointed.settings.tip.mode = 'pointed';
-    expect(wingletProblems(pointed, w)).toEqual(['The wing ends in a point (Settings > Wing tip = Pointed): a winglet needs a flat tip.']);
+    expect(wingletProblems(pointed, w)).toEqual(['The wing ends in a point (Settings > Wing tip = Pointed or Round): a winglet needs a flat tip.']);
     const vertical = sport();
     vertical.settings.sectionPlanes = 'vertical';
     expect(wingletProblems(vertical, w)[0]).toMatch(/^A winglet needs Settings > Section planes = Mitred/);

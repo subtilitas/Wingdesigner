@@ -92,12 +92,14 @@ describe('rounded-tip blend', () => {
 });
 
 describe('rounded-tip marker in the project', () => {
-  it('is set by the dialog, saved as project format version 5, kept on Open, validated, and taken by a section inserted in the tip', () => {
+  it('is set by the dialog, saved as project format version 5 (version 6 with Wing tip Round), kept on Open, validated, and taken by a section inserted in the tip', () => {
     const p = roundedSport('linear');
     expect(sortedSections(p).map((q) => q.roundTip ?? null)).toEqual([null, null, 'tangent', 'tangent', 'tangent', 'tangent', 'tangent', 'tangent']);
     expect(sortedSections(roundedSport('linear', { tangent: false })).at(-1).roundTip).toBe('corner');
-    expect(fileVersion(p.settings, p.sections)).toBe(5);
-    expect(fileVersion(p.settings, [])).toBe(3);
+    // The dialog sets Wing tip Round, which is version 6; the marker alone is version 5.
+    expect(fileVersion(p.settings, p.sections)).toBe(6);
+    expect(fileVersion({ ...p.settings, tip: { ...p.settings.tip, mode: 'pointed' } }, p.sections)).toBe(5);
+    expect(fileVersion({ ...p.settings, tip: { ...p.settings.tip, mode: 'flat' } }, [])).toBe(3);
     const back = projectFromJsonText(projectToJsonText(p, null));
     expect(back.ok).toBe(true);
     expect(sortedSections(back.project).map((q) => q.roundTip ?? null)).toEqual(sortedSections(p).map((q) => q.roundTip ?? null));
@@ -121,8 +123,10 @@ describe('fairness of the built rounded tip', () => {
   it('shows the bulge of the blend in y, which the blend along the tip ellipse removes', () => {
     const p = roundedSport('smooth');
     p.settings.trailingEdge = { mode: 'closed', thickness: 0 };
+    // Without the marker the tip is an ordinary pointed tip (Wing tip Round needs the marker).
     const plain = structuredClone(p);
     for (const q of plain.sections) delete q.roundTip;
+    plain.settings.tip.mode = 'pointed';
     const before = buildWing(plain);
     const after = buildWing(p);
     const bump = edgeInflections(before, 600.5, before.tipY - 0.3);

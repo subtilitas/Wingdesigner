@@ -16,7 +16,7 @@ import { spanwiseBlender } from './spanwise.js';
 import { guideEndIndex, roundTipBlender, roundTipStart, spanParameter } from './tipblend.js';
 import { guideCurve, guideProblems, guideXAt, isMonotonicInY } from './guide.js';
 import { MAX_STRETCH, SHORT_PANEL, firstFold, mitredPlanes, overStretched, sectionPlanes, stretchOf, upExtent } from './planes.js';
-import { LIMITS, limitErrors, resolveSettings } from '../model/project.js';
+import { LIMITS, ROUND_TIP_MARKERS, limitErrors, resolveSettings } from '../model/project.js';
 import { partTransform } from './part.js';
 import { WARN, displayName, loftGrid, sizeWarning } from '../model/budget.js';
 import { count, fixed, language, plain, tr, whole } from '../i18n/index.js';
@@ -26,7 +26,9 @@ import { count, fixed, language, plain, tr, whole } from '../i18n/index.js';
  * a warning is issued; small chords use 10 % of the local chord instead.
  */
 export const PLANFORM_TOLERANCE = 0.5;
-const deviationTolerance = (chord) => Math.min(PLANFORM_TOLERANCE, 0.1 * chord);
+// Towards the point of a round tip the chord falls to 0: the tolerance stays at the resolution of the
+// section values (0.01 mm).
+const deviationTolerance = (chord) => Math.min(PLANFORM_TOLERANCE, Math.max(0.1 * chord, 0.01));
 
 /** Span samples for the chord check (in addition to stations and guide breakpoints). */
 const CHORD_CHECK_SAMPLES = 256;
@@ -509,6 +511,11 @@ export function buildWing(project) {
     return result;
   }
 
+  // Wing tip Round closes the tip in a point (chord 0); the outline needs the sections of a rounded tip.
+  if (settings.tip.mode === 'round' && !ROUND_TIP_MARKERS.includes(sections[sections.length - 1].roundTip)) {
+    errors.push(tr('Settings > Wing tip Round closes the tip in a point and needs a rounded tip: add one with Sections > Rounded tip…, or set the wing tip to Flat or Pointed.'));
+    return result;
+  }
   const ys = sections.map((s) => s.y);
   const y0 = ys[0];
   const y1 = ys[ys.length - 1];
@@ -614,6 +621,8 @@ export function buildWing(project) {
   const pivot = settings.twistPivot;
   const te = settings.trailingEdge;
   const pointed = settings.tip.mode === 'pointed';
+  // Round tip: the chord of the last section is 0, and the surface closes in one point there.
+  const round = settings.tip.mode === 'round';
   // Trailing-edge gap as a fraction of the local chord: the thickness in mm, limited to
   // MAX_GAP_FRACTION of the chord (used by the 'thickness' mode only), with a smooth transition
   // unless settings.trailingEdge.smooth is false (trailingEdgeGap).
@@ -692,6 +701,8 @@ export function buildWing(project) {
     // Pointed tip: in the last panel the chord does not fall below the tip chord, so guide
     // curves that meet at the tip end in a scaled-down profile instead of a zero chord.
     if (pointed && y > yPrev && chord < tipChord && chord > -CROSS_TOLERANCE) chord = tipChord;
+    // Round tip: the chord ends at exactly 0; round-off below 0 next to the point does not count.
+    if (round && (y >= y1 || (y > yPrev && chord < 0 && chord > -CROSS_TOLERANCE))) chord = 0;
     if (guideOn.end && !guideOn.nose && inGuides) xLE = xTE - chord;
     const roll = raw[4];
     const stretch = planesOn ? stretchOf(roll, smooth ? slopes(y).square : planes.panels[panelOf(y)]) : 1;
@@ -711,6 +722,12 @@ export function buildWing(project) {
     blendScalars = scalarBlender();
     placed.clear();
   }
+  if (round) {
+    C[C.length - 1] = 0;
+    blendScalars = scalarBlender();
+    placed.clear();
+  }
+  result.tipPole = round;
   // Actual tip chord: with both guides on, the guides set it, and a gap wider than the scaled tip
   // chord leaves a blunt tip.
   result.tipChord = pointed ? placement(y1).chord : null;
@@ -827,7 +844,9 @@ export function buildWing(project) {
     if (!farPlacement && (Math.abs(xLE) > ext || Math.abs(xLE + chord) > ext || Math.abs(z) > ext || chord > LIMITS.maxChord * (1 + 1e-9))) {
       farPlacement = { y, xLE, z, chord };
     }
-    if (chord < minChord) {
+    // In the last panel of a round tip the chord falls to 0 at the point and stays above 0 before it.
+    const closing = round && y > yPrev;
+    if (chord < minChord && (!closing || (y < y1 && !(chord > 0)))) {
       minChord = chord;
       minChordY = y;
     }
@@ -1016,10 +1035,14 @@ export function buildWing(project) {
       let fitChord = 0;
       for (let k = 0; k < 3; k++) fitChord += ((fitted[1][k] + sTEl[k]) / 2 - fitted[0][k]) * dir[k];
       fitChord /= len;
+      // Where a round tip is narrower than the smallest chord, the fitted chord counts by its share of
+      // the intended one; at the point itself there is none.
+      if (pl.chord < MIN_CHORD) fitChord = pl.chord > 0 ? (fitChord / pl.chord) * LIMITS.minChord : Infinity;
       if (fitChord < minFit) {
         minFit = fitChord;
         minFitY = y;
       }
+      if (!(pl.chord > 0)) continue;
       // Local frame: undo translation, roll, chord scale, twist and stretch (inverse of placeSection).
       const a = (pl.twist * Math.PI) / 180;
       const c = Math.cos(a);
@@ -1057,7 +1080,7 @@ export function buildWing(project) {
     let limited = 0;
     for (const y of yList) {
       const { xLE, chord, z, twist, roll, stretch } = placement(y);
-      if (te.mode === 'thickness' && te.thickness / chord > MAX_GAP_FRACTION && !(pointed && y > yPrev)) limited++;
+      if (te.mode === 'thickness' && te.thickness / chord > MAX_GAP_FRACTION && !((pointed || round) && y > yPrev)) limited++;
       const shape = applyTrailingEdge(blendCompat(y), te.mode, teGap(chord), N);
       stations.push({ xLE, y, z, chord, twist, roll, stretch, v: vOf(y), shape });
     }
@@ -1075,9 +1098,11 @@ export function buildWing(project) {
     const rows = stations.map((st) => st.points);
     const M = rows[0].length;
     const paramsU = new Array(M).fill(0);
-    for (const row of rows) {
+    // The row of a round tip's point has no length: it takes no part in the average.
+    const live = stations.filter((st) => st.chord > 0).map((st) => st.points);
+    for (const row of live) {
       const t = parametrize(row, settings.parametrization);
-      for (let j = 0; j < M; j++) paramsU[j] += t[j] / rows.length;
+      for (let j = 0; j < M; j++) paramsU[j] += t[j] / live.length;
     }
     paramsU[0] = 0;
     paramsU[M - 1] = 1;
@@ -1287,6 +1312,8 @@ export function buildWing(project) {
   const rowV = rowY.map(vOf);
   const chordAtV = (v) => placement(span.yOf(v)).chord;
   for (const v of rowV) {
+    // The point of a round tip is no row.
+    if (!(chordAtV(v) > 0)) continue;
     const cross = surfaceRowCrossing(surface, v, Math.min(CROSSING_TOLERANCE * chordAtV(v), CROSSING_LIMIT), placement(span.yOf(v)).roll);
     if (cross) {
       errors.push(

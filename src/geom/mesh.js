@@ -28,38 +28,35 @@ export function tessellateHalf(build, { uRefine = 1, vRefine } = {}) {
   const M = us.length;
   const cols = closed ? M - 1 : M; // distinct vertices per row
   const V = vs.length;
-  const positions = new Float64Array(cols * V * 3);
+  // A round tip (build.tipPole) closes in one point: its last row is a single vertex, the quads next
+  // to it are triangles, and there is no tip cap.
+  const pole = Boolean(build.tipPole);
+  const poleId = cols * (V - 1);
+  const positions = new Float64Array((pole ? poleId + 1 : cols * V) * 3);
   surfacePointGrid(S, us.slice(0, cols), vs, (k, j, P) => {
+    if (pole && k === V - 1 && j > 0) return;
     const o = (k * cols + j) * 3;
     positions[o] = P[0];
     positions[o + 1] = P[1];
     positions[o + 2] = P[2];
   });
-  const id = (j, k) => k * cols + (j % cols);
+  const id = (j, k) => (pole && k === V - 1 ? poleId : k * cols + (j % cols));
+  const quad = (out, a, b, c, d) => {
+    if (c !== b) out.push(a, c, b);
+    if (d !== c) out.push(a, d, c);
+  };
   const surface = [];
   for (let k = 0; k < V - 1; k++) {
-    for (let j = 0; j < M - 1; j++) {
-      const a = id(j, k);
-      const b = id(j + 1, k);
-      const c = id(j + 1, k + 1);
-      const d = id(j, k + 1);
-      surface.push(a, c, b, a, d, c);
-    }
+    for (let j = 0; j < M - 1; j++) quad(surface, id(j, k), id(j + 1, k), id(j + 1, k + 1), id(j, k + 1));
   }
   const trailingEdge = [];
   if (!closed) {
-    for (let k = 0; k < V - 1; k++) {
-      const a = id(M - 1, k);
-      const b = id(0, k);
-      const c = id(0, k + 1);
-      const d = id(M - 1, k + 1);
-      trailingEdge.push(a, c, b, a, d, c);
-    }
+    for (let k = 0; k < V - 1; k++) quad(trailingEdge, id(M - 1, k), id(0, k), id(0, k + 1), id(M - 1, k + 1));
   }
   const loop = (k) => Array.from({ length: cols }, (_, j) => id(j, k));
   const leIndex = build.leIndex * uRefine;
   const rootLoop = loop(0);
-  const tipLoop = loop(V - 1);
+  const tipLoop = pole ? [poleId] : loop(V - 1);
   // Each cap lies in the plane of its end section: x and the in-plane up direction (0, −sin φ, cos φ)
   // of its roll φ (0: the plane y = const, (x, z)).
   const cap = (ring, flip, roll = 0) => {
@@ -75,7 +72,7 @@ export function tessellateHalf(build, { uRefine = 1, vRefine } = {}) {
   };
   // Selig order is counterclockwise in (x, z); a CCW triangle in (x, z) has normal -y.
   const rootCap = cap(rootLoop, false, build.rootRoll ?? 0);
-  const tipCap = cap(tipLoop, true, build.tipRoll ?? 0);
+  const tipCap = pole ? [] : cap(tipLoop, true, build.tipRoll ?? 0);
   return { positions, surface, trailingEdge, rootCap, tipCap, rows: V, cols, rootLoop, tipLoop };
 }
 

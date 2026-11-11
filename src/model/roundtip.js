@@ -1,5 +1,5 @@
 // Rounded wing tip: sections appended beyond a flat wing tip whose chord follows a superellipse and
-// ends in a point (Settings > Wing tip = Pointed). The sections carry the marker roundTip ('tangent'
+// ends in a point of chord 0 (Settings > Wing tip = Round). The sections carry the marker roundTip ('tangent'
 // or 'corner'), with which the loft blends them in the angle of the tip ellipse instead of in y
 // (src/geom/tipblend.js), so that the outline stays smooth with Linear and with Smooth. Otherwise they
 // are ordinary sections: editable, and written to every export like any other.
@@ -23,7 +23,8 @@
 // which gives the chord that slope at the tip section (lastPanel: the secant of the last panel with
 // Linear, the shape-preserving cubic with Smooth). The factor stays positive up to the point only for
 // κ > −1: a wing that would taper to zero chord within the length is refused. The point (k = m)
-// takes the chord of a pointed tip: tip.ratio of the chord before, at least LIMITS.minChord. Airfoil
+// lies on the straight line, where leading and trailing edge meet; the build closes it with chord 0
+// (Wing tip Round), and its section stores LIMITS.minChord, the smallest chord of a section. Airfoil
 // and twist stay those of the tip section; the reference points run on along the last panel in y and z.
 
 import { plain, tr, whole } from '../i18n/index.js';
@@ -158,7 +159,6 @@ export function roundTipSections(project, params) {
   const { tip, angle, slope, x0, c0 } = lastPanel(project, params.line);
   const m = params.sections;
   const f = params.line / 100;
-  const ratio = project.settings.tip?.ratio ?? 0.005;
   const length = roundTipLength(project, params);
   const dy = length * Math.cos(angle * DEG);
   const dz = length * Math.sin(angle * DEG);
@@ -169,8 +169,9 @@ export function roundTipSections(project, params) {
   for (let k = 1; k <= m; k++) {
     const t = k === m ? 1 : Math.sin((Math.PI * k) / (2 * m));
     const shaped = ellipse ? ellipse.chordAt(tip.y + t * dy) : c0 * fullnessShape(t, params.fullness) * (1 + kappa * t);
-    const chord = k === m ? Math.max(ratio * out.at(-1).chord, LIMITS.minChord) : shaped;
-    const q = { airfoil: tip.airfoil, x: r2(xLine + t * dy * slope - f * chord), y: r2(tip.y + t * dy), z: r2(tip.z + t * dz), chord: r2(chord), twist: tip.twist };
+    // The point: x where the edges meet (chord 0); the stored chord is the smallest a section holds.
+    const chord = k === m ? LIMITS.minChord : shaped;
+    const q = { airfoil: tip.airfoil, x: r2(xLine + t * dy * slope - (k === m ? 0 : f * chord)), y: r2(tip.y + t * dy), z: r2(tip.z + t * dz), chord: r2(chord), twist: tip.twist };
     out.push(q);
   }
   return out;
@@ -187,7 +188,7 @@ export function roundTipProblems(project, params) {
   if (Number.isFinite(params.sections) && !Number.isInteger(params.sections)) out.push(tr('Rounded tip: the number of sections must be a whole number.'));
   if (typeof params.tangent !== 'boolean') out.push(tr('Rounded tip: tangent must be on or off.'));
   if (params.ellipse !== undefined && typeof params.ellipse !== 'boolean') out.push(tr('Rounded tip: Continue the ellipse must be on or off.'));
-  if (project.settings.tip?.mode === 'pointed') out.push(tr('The wing already ends in a point (Settings > Wing tip = Pointed): a rounded tip needs a flat tip.'));
+  if (project.settings.tip?.mode !== 'flat') out.push(tr('The wing already ends in a point (Settings > Wing tip = Pointed or Round): a rounded tip needs a flat tip.'));
   if (out.length) return out;
   const { c0, taper, angle } = lastPanel(project, params.line);
   if (params.ellipse) {
@@ -232,7 +233,7 @@ export function roundTipProblems(project, params) {
 }
 
 /**
- * Append the rounded-tip sections to the project (in place) and set the wing tip to Pointed. Returns
+ * Append the rounded-tip sections to the project (in place) and set the wing tip to Round. Returns
  * the new sections, or null when roundTipProblems reports a reason.
  */
 export function addRoundTip(project, params) {
@@ -251,7 +252,7 @@ export function addRoundTip(project, params) {
   }
   project.sections.push(...added);
   project.sections.sort((a, b) => a.y - b.y);
-  project.settings.tip = { ...project.settings.tip, mode: 'pointed' };
+  project.settings.tip = { ...project.settings.tip, mode: 'round' };
   resetDisabledGuides(project);
   syncGuidesToSpan(project);
   return added;

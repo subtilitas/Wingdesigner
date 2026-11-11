@@ -42,3 +42,23 @@ export function sampleProject(overrides = {}) {
     settings: { sectionPlanes: 'vertical', ...overrides.settings },
   });
 }
+
+/**
+ * Synthetic under-cambered airfoil (Selig order, `points` per side, cosine spacing): a NACA 4-digit
+ * mean line of `camber` at 40 % chord with the NACA thickness law of `thickness`, closed trailing
+ * edge. With 9 % camber and 5 % thickness the lower surface rises to 6.6 % of the chord above the
+ * chord line (at 42 % chord): the lower mold half reaches above the parting line there.
+ */
+export function undercamberedAirfoil(id = 'undercambered', { camber = 0.09, thickness = 0.05, points = 61 } = {}) {
+  const p = 0.4;
+  const upper = [];
+  const lower = [];
+  for (let i = 0; i < points; i++) {
+    const x = (1 - Math.cos((Math.PI * i) / (points - 1))) / 2;
+    const yc = x < p ? (camber / p ** 2) * (2 * p * x - x * x) : (camber / (1 - p) ** 2) * (1 - 2 * p + 2 * p * x - x * x);
+    const half = 5 * thickness * (0.2969 * Math.sqrt(x) - 0.126 * x - 0.3516 * x ** 2 + 0.2843 * x ** 3 - 0.1036 * x ** 4);
+    upper.push([x, yc + half]);
+    lower.push([x, yc - half]);
+  }
+  return { id, name: 'Under-cambered 9 % / 5 %', points: upper.reverse().concat(lower.slice(1)), source: { kind: 'file' } };
+}
