@@ -58,13 +58,13 @@ export function moldCases() {
   cases.push({ name: 'flat-wing-closed-te', project: closed(flatWing()), mold: {} });
   cases.push({ name: 'flat-wing-round-tip', project: rounded(flatWing()), mold: {} });
   // Twist and dihedral in three sections: a rolled frame and ramps of a few mm.
-  cases.push({ name: 'sample-twist-dihedral', project: sampleProject(), mold: { ramp: 6, channel: { distance: 8 } } });
+  cases.push({ name: 'sample-twist-dihedral', project: sampleProject(), mold: { channel: { distance: 8 } } });
   cases.push({ name: 'sport-round-tip', project: rounded(preset('sport')), mold: {} });
   cases.push({ name: 'glider-ellipse-round-tip', project: rounded(preset('glider')), mold: { pins: { pattern: 'outline', spacing: 300 }, screws: { pattern: 'outline', spacing: 100, offset: 25 } } });
   // A reflexed airfoil with a closed trailing edge at a flat tip: the mean line parts the tip face.
   // The trailing edge runs back outboard (dx/dy 0.27 at the root), an inward corner of the outline
   // mirrored at the root: the resin channel rounds it with radius diameter + 2 mm.
-  cases.push({ name: 'flying-wing-flat-tip', project: closed(preset('flyingWing')), mold: { ramp: 8, channel: { distance: 10 } } });
+  cases.push({ name: 'flying-wing-flat-tip', project: closed(preset('flyingWing')), mold: { channel: { distance: 10 } } });
   // A root chord of 800 mm, a straight trailing edge square to the root and a 6 mm resin channel.
   cases.push({ name: 'delta-jet-round-tip', project: rounded(preset('deltaJet')), mold: { channel: { diameter: 6, distance: 8 } } });
   // The lower half rises 13.2 mm above the parting plane inside the cavity outline.

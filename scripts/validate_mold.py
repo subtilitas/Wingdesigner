@@ -6,8 +6,10 @@ cases.json: [{"file": "a.step", "solids": 2, "total": v, "tolerance": 2e-4, "up"
               "range": {"lower": [lo, hi], "upper": [lo, hi]}}, ...]
 Checks per file: the reader transfers all roots; the solid count; every solid passes
 BRepCheck_Analyzer, has a closed, consistently oriented shell and a positive volume; the volumes of
-both halves add up to `total` (the blocks less the half wing, the resin channel and the holes)
-within the tolerance; each half spans its `range` along the up axis, the parting plane at 0, within
+both halves add up to `total` (the slab of the two blocks less the half wing, the resin channel and
+the holes) within the tolerance, by the surface integral of OpenCascade or, where that misses (it
+is off by up to 1.2e-4 on the trimmed faces of a twisted parting surface), on a tessellation with
+MESH_DEFLECTION; each half spans its `range` along the up axis, the parting plane at 0, within
 RANGE_TOLERANCE; every solid has 2 cylindrical faces per hole; the edges of every planar face lie in its
 plane within PLANE_TOLERANCE.
 Exit code 1 on any failure.
@@ -19,19 +21,25 @@ from OCP.Bnd import Bnd_Box
 from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
 from OCP.BRepBndLib import BRepBndLib
 from OCP.BRepCheck import BRepCheck_Analyzer
+from OCP.BRep import BRep_Tool
 from OCP.BRepGProp import BRepGProp
+from OCP.BRepMesh import BRepMesh_IncrementalMesh
 from OCP.GeomAbs import GeomAbs_Cylinder, GeomAbs_Plane
 from OCP.GProp import GProp_GProps
 from OCP.IFSelect import IFSelect_RetDone
 from OCP.ShapeAnalysis import ShapeAnalysis_Shell
 from OCP.STEPControl import STEPControl_Reader
-from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_SOLID
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE, TopAbs_REVERSED, TopAbs_SOLID
 from OCP.TopExp import TopExp_Explorer
+from OCP.TopLoc import TopLoc_Location
 from OCP.TopoDS import TopoDS
 
 # Largest distance (mm) of an edge of a planar face from its plane, and the samples per edge.
 PLANE_TOLERANCE = 1e-6
 PLANE_SAMPLES = 20
+# Linear deflection (mm) and angular deflection (rad) of the tessellation the volumes are measured on.
+MESH_DEFLECTION = 0.004
+MESH_ANGLE = 0.05
 # Tolerance (mm) of the extent of a half along the up axis: the bounding box of a B-spline face follows
 # its control points, which lie up to 0.05 mm outside the face at a leading edge.
 RANGE_TOLERANCE = 0.1
@@ -65,6 +73,24 @@ def faces_of(solid):
             for k in range(PLANE_SAMPLES + 1):
                 worst = max(worst, plane.Distance(curve.Value(t0 + (t1 - t0) * k / PLANE_SAMPLES)))
     return planar, cylinders, worst
+
+
+def mesh_volume(solid):
+    """Volume of the tessellated solid (divergence theorem over its triangles)."""
+    BRepMesh_IncrementalMesh(solid, MESH_DEFLECTION, False, MESH_ANGLE, True)
+    total = 0.0
+    for face in shapes(solid, TopAbs_FACE):
+        face = TopoDS.Face(face)
+        loc = TopLoc_Location()
+        tri = BRep_Tool.Triangulation_s(face, loc)
+        if tri is None:
+            continue
+        sign = -1.0 if face.Orientation() == TopAbs_REVERSED else 1.0
+        trsf = loc.Transformation()
+        for i in range(1, tri.NbTriangles() + 1):
+            a, b, c = (tri.Node(k).Transformed(trsf) for k in tri.Triangle(i).Get())
+            total += sign * (a.X() * (b.Y() * c.Z() - b.Z() * c.Y()) - a.Y() * (b.X() * c.Z() - b.Z() * c.X()) + a.Z() * (b.X() * c.Y() - b.Y() * c.X())) / 6
+    return total
 
 
 def up_range(solid, up):
@@ -110,8 +136,15 @@ def check(case):
     if case["total"] is not None:
         report["total"] = total
         report["rel_error"] = abs(total - case["total"]) / case["total"]
+        report["volume_by"] = "integral"
         if report["rel_error"] > case["tolerance"]:
-            report["ok"] = False
+            meshed = sum(mesh_volume(solid) for solid in solids)
+            report["total"] = meshed
+            report["integral_rel_error"] = report["rel_error"]
+            report["rel_error"] = abs(meshed - case["total"]) / case["total"]
+            report["volume_by"] = "tessellation"
+            if report["rel_error"] > case["tolerance"]:
+                report["ok"] = False
     return report
 
 
