@@ -943,4 +943,18 @@ describe('mold checks against crossing faces', () => {
     expect(ok.errors).toEqual([]);
     expect(() => moldToStep(ok)).not.toThrow();
   });
+
+  it('builds the mold of a loft with 385,000 control points', { timeout: 60000 }, () => {
+    // 25 sections, 200 chord samples and 40 stations per panel: a 401 × 961 surface, more control
+    // points than a function call takes arguments.
+    const sections = Array.from({ length: 25 }, (_, k) => ({ airfoil: '0010', x: 0, y: k * 40, z: 0, chord: 200 - k * 3, twist: 0 }));
+    const fine = createProject({ name: 'Fine', airfoils: [naca('0010')], sections, settings: { chordSamples: 200, panelStations: 40, spanwise: 'smooth' } });
+    const b = built(fine);
+    expect([b.surface.points.length, b.surface.points[0].length]).toEqual([401, 961]);
+    const g = moldGeometry(b, { channel: { on: false }, pins: { on: false }, screws: { on: false } });
+    expect(g.errors).toEqual([]);
+    // NACA 0010 at 200 mm chord: 10 mm above and below the chord line, plus the 12 mm floor.
+    expect(g.summary.lower).toBeCloseTo(22, 1);
+    expect(g.summary.upper).toBeCloseTo(22, 1);
+  });
 });

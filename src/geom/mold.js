@@ -620,11 +620,17 @@ export function moldGeometry(build, input) {
       }),
     );
   }
-  const xs = half.map((P) => P[0]);
   // The margin (at least 5 mm) holds the reach of at most MOLD_OVERHANG.
-  const xMin = Math.min(...xs);
-  const xMax = Math.max(...xs);
-  const block = { x0: xMin - p.margin, x1: xMax + p.margin, y0: yR, y1: Math.max(...half.map((P) => P[1])) + p.margin };
+  // Loops, not Math.min(...list): a long outline has more points than a call takes arguments.
+  let xMin = Infinity;
+  let xMax = -Infinity;
+  let yMax = -Infinity;
+  for (const P of half) {
+    xMin = Math.min(xMin, P[0]);
+    xMax = Math.max(xMax, P[0]);
+    yMax = Math.max(yMax, P[1]);
+  }
+  const block = { x0: xMin - p.margin, x1: xMax + p.margin, y0: yR, y1: yMax + p.margin };
   const grid = new SegmentGrid(poly, 2);
 
   // Resin channel.
@@ -655,8 +661,11 @@ export function moldGeometry(build, input) {
   }
 
   // Block heights: the floor below the deepest point of each cavity.
-  const zMinL = Math.min(zp, ...SL.points.flat().map((P) => P[2]));
-  const zMaxU = Math.max(zp, ...SU.points.flat().map((P) => P[2]));
+  // Over the control points, which bound the surface; a loop, as a fine loft has several 100,000 of them.
+  let zMinL = zp;
+  let zMaxU = zp;
+  for (const row of SL.points) for (const P of row) zMinL = Math.min(zMinL, P[2]);
+  for (const row of SU.points) for (const P of row) zMaxU = Math.max(zMaxU, P[2]);
   // The floor lies below the deepest point of the half: its cavity or, where that is shallower, the groove.
   const groove = p.channel.on ? r : 0;
   const thickness = { lower: Math.max(zp - zMinL, groove) + p.floor, upper: Math.max(zMaxU - zp, groove) + p.floor };
