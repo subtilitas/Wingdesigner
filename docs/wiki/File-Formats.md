@@ -476,7 +476,7 @@ Sample wing `Sport wing 1500`, shortened; `"..."` marks omitted entries:
 {
  "format": "wingdesigner-project",
  "version": 3,
- "generator": { "name": "Wingdesigner", "version": "0.9.0" },
+ "generator": { "name": "Wingdesigner", "version": "0.10.0" },
  "exportedAt": "2026-09-30T12:00:00.000Z",
  "name": "Sport wing 1500",
  "units": "mm",

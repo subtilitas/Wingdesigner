@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-11
+
 ### Added
 
 - **Export** > **Mold halves…** writes a lower and an upper mold half of the right half wing as exact STEP solids in one
