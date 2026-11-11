@@ -1,21 +1,23 @@
 // Mold halves (src/geom/mold.js, src/export/moldstep.js): the checks of the parameters, the offset of
-// the outline, the half-round groove, the geometry of the halves (frame, block, parting, ramp, resin
-// channel, holes), the under-cambered airfoil whose lower surface lies above the parting plane, and
-// the STEP solids.
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+// the outline, the half-round groove, the geometry of the halves (frame, block, the parting surface that
+// is level in flight direction, resin channel, holes), the under-cambered airfoil whose lower surface
+// lies above the parting surface, and the STEP solids.
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { buildWing } from '../src/geom/wing.js';
 import { curvePoint, surfacePoint } from '../src/geom/nurbs.js';
-import { HOLE_PATTERNS, MOLD_CLEARANCE, MOLD_OVERHANG, MOLD_DEFAULTS, MOLD_HALVES, MOLD_RANGES, grooveSurface, moldGeometry, moldProblems, offsetOutline, resolveMold } from '../src/geom/mold.js';
+import { roundTipStart } from '../src/geom/tipblend.js';
+import { HOLE_PATTERNS, MOLD_CLEARANCE, MOLD_OVERHANG, MOLD_DEFAULTS, MOLD_HALVES, MOLD_RANGES, grooveSurface, moldGeometry, moldProblems, offsetOutline, partingSurface, resolveMold } from '../src/geom/mold.js';
 import { Brep, moldToStep } from '../src/export/moldstep.js';
 import { StepWriter } from '../src/export/step.js';
 import { addRoundTip, defaultRoundTip } from '../src/model/roundtip.js';
 import { PRESETS, wizardProject } from '../src/model/wizard.js';
 import { setLanguage } from '../src/i18n/index.js';
 import { createProject } from '../src/model/project.js';
-import { flatWing, moldCases, undercamberedWing } from './mold-cases.js';
-import { naca } from './helpers.js';
+import { flatWing, moldCases, sweptTwistedWing, undercamberedWing } from './mold-cases.js';
+import { naca, sampleProject } from './helpers.js';
 
 const DEG = Math.PI / 180;
+const STAMP = { timestamp: '2026-01-01T00:00:00' };
 
 afterEach(() => setLanguage('en'));
 
@@ -93,9 +95,76 @@ function zAt(S, x, v) {
   return surfacePoint(S, (lo + hi) / 2, v)[2];
 }
 
+/** The largest distance of two points. */
+const gap = (P, Q) => Math.max(...P.slice(0, 3).map((c, i) => Math.abs(c - Q[i])));
+
+/** The surfaces of the parting surface of a half: one with a flat tip, front and back with a pole tip. */
+const partingSurfaces = (half) => (half.parting.kind === 'flat' ? [half.parting.surface] : [half.parting.front, half.parting.back]);
+
+/**
+ * Height of a parting surface above (x, y), found on the surfaces themselves and not with the code of
+ * src/geom/mold.js: each surface is of degree 1 along u, so between two neighbouring rows A(v) and B(v)
+ * every line v = const is the straight segment from A(v) to B(v). The station v whose segment passes
+ * through (x, y) is bracketed on a table of 500 steps and refined by 50 bisections; z follows along
+ * the segment. Returns null where (x, y) lies on no segment.
+ */
+function heightOn(surfaces) {
+  const N = 500;
+  const pairs = [];
+  for (const S of surfaces) {
+    for (let i = 0; i + 1 < S.points.length; i++) {
+      const A = { degree: S.degreeV, knots: S.knotsV, points: S.points[i] };
+      const B = { degree: S.degreeV, knots: S.knotsV, points: S.points[i + 1] };
+      pairs.push({ A, B, table: Array.from({ length: N + 1 }, (_, k) => [curvePoint(A, k / N), curvePoint(B, k / N)]) });
+    }
+  }
+  const cross = (a, b, x, y) => (b[0] - a[0]) * (y - a[1]) - (b[1] - a[1]) * (x - a[0]);
+  const along = (a, b, x, y) => {
+    const l2 = (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2;
+    return l2 > 0 ? ((x - a[0]) * (b[0] - a[0]) + (y - a[1]) * (b[1] - a[1])) / l2 : 0;
+  };
+  return (x, y) => {
+    for (const { A, B, table } of pairs) {
+      let prev = cross(table[0][0], table[0][1], x, y);
+      for (let k = 1; k <= N; k++) {
+        const cur = cross(table[k][0], table[k][1], x, y);
+        if (prev === 0 || prev < 0 !== cur < 0 || cur === 0) {
+          let lo = (k - 1) / N;
+          let hi = k / N;
+          const sLo = prev < 0;
+          for (let it = 0; it < 50; it++) {
+            const m = (lo + hi) / 2;
+            if (cross(curvePoint(A, m), curvePoint(B, m), x, y) < 0 === sLo) lo = m;
+            else hi = m;
+          }
+          const v = (lo + hi) / 2;
+          const a = curvePoint(A, v);
+          const b = curvePoint(B, v);
+          const t = along(a, b, x, y);
+          if (t >= -1e-9 && t <= 1 + 1e-9 && Math.hypot(a[0] + t * (b[0] - a[0]) - x, a[1] + t * (b[1] - a[1]) - y) < 1e-7) return a[2] + t * (b[2] - a[2]);
+        }
+        prev = cur;
+      }
+    }
+    return null;
+  };
+}
+
 /** Coordinates of every CARTESIAN_POINT of a STEP text. */
 const stepPoints = (text) => [...text.matchAll(/CARTESIAN_POINT\('',\(([^)]*)\)\)/g)].map((m) => m[1].split(',').map(Number));
 const countOf = (text, entity) => text.split(`=${entity}(`).length - 1;
+
+/** STEP text of a mold and the number of faces written on its parting surfaces. */
+function stepWithFaces(g, options = {}) {
+  const spy = vi.spyOn(Brep.prototype, 'surfaceFace');
+  try {
+    const text = moldToStep(g, { ...STAMP, ...options });
+    const surfaces = new Set(['lower', 'upper'].flatMap((key) => partingSurfaces(g.halves[key])));
+    return { text, partingFaces: spy.mock.calls.filter(([S]) => surfaces.has(S)).length };
+  } finally {
+    spy.mockRestore();
+  }
+}
 
 describe('mold parameters', () => {
   it('fill every missing key with its default, also inside the channel, pin and screw groups', () => {
@@ -106,6 +175,7 @@ describe('mold parameters', () => {
     // A group that is no object falls back to its defaults.
     expect(p.channel).toEqual(MOLD_DEFAULTS.channel);
     expect([HOLE_PATTERNS, MOLD_HALVES, MOLD_CLEARANCE]).toEqual([['corners', 'frame', 'outline'], ['both', 'lower', 'upper'], 1]);
+    expect(Object.keys(MOLD_DEFAULTS)).toEqual(['margin', 'floor', 'channel', 'pins', 'screws', 'halves', 'left']);
     expect(moldProblems({})).toEqual([]);
   });
 
@@ -113,7 +183,6 @@ describe('mold parameters', () => {
     const names = {
       margin: 'block margin',
       floor: 'floor thickness',
-      ramp: 'ramp width',
       'channel.diameter': 'resin channel diameter',
       'channel.distance': 'resin channel distance',
       'pins.diameter': 'pin diameter',
@@ -132,7 +201,7 @@ describe('mold parameters', () => {
       return b ? { [a]: { [b]: value } } : { [a]: value };
     };
     // The values at the ends of each range pass when no other check takes them up.
-    const quiet = { ramp: 0.5, channel: { distance: 500 }, pins: { pattern: 'frame' }, screws: { pattern: 'frame' } };
+    const quiet = { channel: { distance: 500 }, pins: { pattern: 'frame' }, screws: { pattern: 'frame' } };
     for (const [key, [lo, hi]] of Object.entries(MOLD_RANGES)) {
       const message = [`Mold: ${names[key]} must be between ${lo} and ${hi} mm.`];
       for (const bad of [lo - 0.01, hi + 0.01, Number.NaN, String(lo)]) expect(moldProblems(set(key, bad)), `${key} ${bad}`).toEqual(message);
@@ -150,14 +219,12 @@ describe('mold parameters', () => {
     expect(moldProblems({ pins: { pattern: 'ring' } })).toEqual(['Mold: the hole pattern must be "corners", "frame" or "outline".']);
     expect(moldProblems({ pins: { on: false, pattern: 'ring' } })).toEqual([]);
     expect(moldProblems({ halves: 'left' })).toEqual(['Mold: halves must be "both", "lower" or "upper".']);
-    expect(moldProblems({ halves: 'left', ramp: 10 })).toEqual(['Mold: halves must be "both", "lower" or "upper".']);
+    expect(moldProblems({ halves: 'left', pins: { pattern: 'outline', offset: 1 } })).toEqual(['Mold: halves must be "both", "lower" or "upper".']);
   });
 
-  it('keep the resin channel at least the ramp width plus 0.5 mm from the wing', () => {
-    // Ramp 10 mm: the channel distance must be at least 10.5 mm.
-    expect(moldProblems({ ramp: 10 })).toEqual(['Mold: the distance of the resin channel must be at least 10.5 mm, the ramp width plus 0.5 mm.']);
-    expect(moldProblems({ ramp: 10, channel: { distance: 10.5 } })).toEqual([]);
-    expect(moldProblems({ ramp: 10, channel: { on: false } })).toEqual([]);
+  it('accept a stored ramp width of any value without a problem', () => {
+    for (const ramp of [10, 0, -1, 1e6, 'wide', null]) expect(moldProblems({ ramp }), String(ramp)).toEqual([]);
+    expect(moldProblems({ ramp: 10, channel: { distance: 1 } })).toEqual([]);
   });
 
   it('keep the holes of the outline pattern and the edge distance at least the hole radius plus 1 mm', () => {
@@ -177,11 +244,9 @@ describe('mold parameters', () => {
   it('report the same problems in German', () => {
     setLanguage('de');
     expect(moldProblems({ margin: 4 })).toEqual(['Form: Rand des Formblocks muss zwischen 5 und 1000 mm liegen.']);
-    expect(moldProblems({ ramp: 0.4 })).toEqual(['Form: Breite der Rampe muss zwischen 0,5 und 100 mm liegen.']);
     expect(moldProblems({ screws: { diameter: 51 } })).toEqual(['Form: Durchmesser der Schraubenbohrungen muss zwischen 1 und 50 mm liegen.']);
     expect(moldProblems({ pins: { pattern: 'ring' } })).toEqual(['Form: Das Bohrmuster muss "corners", "frame" oder "outline" sein.']);
     expect(moldProblems({ halves: 'left' })).toEqual(['Form: halves muss "both", "lower" oder "upper" sein.']);
-    expect(moldProblems({ ramp: 10 })).toEqual(['Form: Der Abstand der Blutrinne muss mindestens 10,5 mm betragen, die Breite der Rampe plus 0,5 mm.']);
     expect(moldProblems({ pins: { pattern: 'outline', offset: 3.9 }, screws: { edge: 4.2 } })).toEqual([
       'Form: Der Abstand der Zentrierbohrungen von der Blutrinne muss mindestens 4 mm betragen, der Bohrungsradius plus 1 mm.',
       'Form: Der Abstand der Schraubenbohrungen von der Blockkante muss mindestens 4,25 mm betragen, der Bohrungsradius plus 1 mm.',
@@ -259,13 +324,16 @@ describe('groove of the resin channel', () => {
   for (let k = 1; k <= 100; k++) path.push([60, 50 - k / 2]);
   const zp = 5;
   const r = 2;
+  /** A plane parting surface z = zp + a · x + b · y with its root line at y = 0, the root plane leaning by `slope`. */
+  const plane = (slope = 0, a = 0, b = 0) => ({ height: (x, y) => zp + a * x + b * y, root: (x) => [x, 0, zp + a * x], creases: [], zp, yR: 0, slope });
 
-  it('keeps both rims in the parting plane and both ends in the root plane, also when the root plane leans', () => {
+  it('keeps both rims on a level parting surface and both ends in the root plane, also when the root plane leans', () => {
     for (const slope of [0, 0.1, -0.1]) {
-      const g = grooveSurface(path, r, zp, 0, slope);
+      const g = grooveSurface(path, r, plane(slope));
       // 100 mm up and down, 40 mm across, two quarter circles of 60 chords each (31.4150 mm); the
       // groove follows the path resampled every 0.5 mm, which cuts the chords by 0.0042 mm in all.
       expect(Math.abs(g.length - (140 + 240 * 10 * Math.sin(Math.PI / 240)))).toBeLessThan(0.01);
+      expect(g.seam).toBeNull();
       for (let j = 0; j <= 200; j++) {
         for (const u of [0, 1]) expect(surfacePoint(g.surface, u, j / 200)[2], `slope ${slope}`).toBeCloseTo(zp, 12);
       }
@@ -276,18 +344,37 @@ describe('groove of the resin channel', () => {
           expect(P[2]).toBeLessThanOrEqual(zp + 1e-12);
         }
       }
-      // The bottom of each end lies r below the plane, moved along y by the lean.
+      // The bottom of each end lies r below the surface, moved along y by the lean.
       expect(surfacePoint(g.surface, 0.5, 0)[1]).toBeCloseTo(-slope * r, 3);
       expect([g.rimInner.points[0][0], g.rimOuter.points[0][0], g.endStart.points.at(-1)[0]]).toEqual([2, -2, -2]);
     }
   });
 
+  it('keeps both rims on a parting surface that rises along x and y within 1e-9 mm', () => {
+    // The plane z = 5 + 0.05 x − 0.08 y: the rims are fitted through points of it, and a spline through
+    // points of a plane stays in the plane.
+    const side = plane(0, 0.05, -0.08);
+    const g = grooveSurface(path, r, side);
+    let worst = 0;
+    for (const rim of [g.rimInner, g.rimOuter]) {
+      for (let k = 0; k <= 2000; k++) {
+        const P = curvePoint(rim, k / 2000);
+        worst = Math.max(worst, Math.abs(P[2] - side.height(P[0], P[1])));
+      }
+    }
+    expect(worst).toBeLessThan(1e-9);
+    // Each station hangs below the surface: the bottom of the groove lies r below it.
+    for (let j = 1; j < 100; j++) {
+      const P = surfacePoint(g.surface, 0.5, j / 100);
+      expect(side.height(P[0], P[1]) - P[2]).toBeGreaterThan(r - 0.01);
+      expect(side.height(P[0], P[1]) - P[2]).toBeLessThan(r + 0.01);
+    }
+  });
+
   it('has a half-round cross-section of the radius along the whole path within 0.005 mm', () => {
-    const g = grooveSurface(path, r, zp, 0);
+    const g = grooveSurface(path, r, plane());
     // Distance of each surface point from the centre line in the parting plane. The stations close
     // up before the bends; with stations every 8 mm up to a bend the spline overshot by 0.15 mm.
-    // Measured on 2026-11-11: 0.0038 mm at most, at the outer rim where an arc meets a straight piece,
-    // with 71 stations.
     let worst = 0;
     for (let j = 0; j <= 600; j++) {
       for (let i = 0; i <= 16; i++) {
@@ -306,18 +393,19 @@ describe('mold of a flat wing', () => {
   // trailing edge in the plane z = 0.
   let build;
   let g;
+  let round;
   let outline;
   beforeAll(() => {
     build = built(flatWing());
     g = geometry(build);
+    round = geometry(built(rounded(flatWing())));
     outline = outlineOf(g);
   });
 
-  it('has no roll, the parting plane at z = 0, and the block from the outline and the margin', () => {
+  it('has no roll, and the block from the outline and the margin', () => {
     expect(g.warnings).toEqual([]);
     expect(g.common.roll).toBe(0);
     expect(Math.abs(g.common.zp)).toBeLessThan(1e-12);
-    expect(g.summary.rampHeight).toBeLessThan(1e-9);
     // x from the leading edge at the root (0) to its trailing edge (200 mm), 40 mm margin; y from the
     // root to the tip (500 mm) plus the margin.
     expect(g.common.block).toEqual({ x0: -40, x1: 240, y0: 0, y1: 540 });
@@ -325,9 +413,20 @@ describe('mold of a flat wing', () => {
     expect(g.halves.lower.slope).toBe(0);
   });
 
+  it('parts on the plane z = 0 with a flat tip and with a tip that closes in a point', () => {
+    for (const [m, kind] of [
+      [g, 'flat'],
+      [round, 'pole'],
+    ]) {
+      expect(m.halves.lower.parting.kind).toBe(kind);
+      for (const v of m.summary.partingRange) expect(Math.abs(v), kind).toBeLessThan(1e-9);
+      for (const S of partingSurfaces(m.halves.lower)) for (const row of S.points) for (const P of row) expect(Math.abs(P[2] - m.common.zp), kind).toBeLessThan(1e-9);
+    }
+  });
+
   it('makes each half as thick as its cavity is deep plus the floor', () => {
     // NACA 0010: 10 mm half thickness at the 200 mm root. The block holds the control points of the
-    // cavity, 0.0098 mm beyond the surface.
+    // cavity, 0.0098 mm beyond the surface; the 2 mm groove is less deep.
     for (const key of ['lower', 'upper']) {
       const S = g.halves[key].cavity;
       let deepest = 0;
@@ -362,7 +461,7 @@ describe('mold of a flat wing', () => {
     // Both ends of the groove lie in the root plane y = 0.
     for (const end of [g.halves.lower.channel.endStart, g.halves.lower.channel.endEnd]) for (const P of end.points) expect(Math.abs(P[1])).toBeLessThan(1e-12);
     expect(g.summary.channelLength).toBeCloseTo(g.halves.lower.channel.length, 9);
-    expect(g.halves.upper.channel).toBe(g.halves.lower.channel);
+    expect(g.halves.upper.channel.length).toBeCloseTo(g.halves.lower.channel.length, 9);
   });
 
   it('holds the default holes: pins at the 4 block corners, screws along the edges between them', () => {
@@ -414,77 +513,309 @@ describe('mold of a wing with dihedral', () => {
       }
       expect(off, key).toBeLessThan(1e-9);
     }
-    // In the rolled frame leading edge and trailing edge lie within 0.004 mm of the parting plane.
-    expect(g.summary.rampHeight).toBeLessThan(0.004);
+    // In the rolled frame leading edge and trailing edge lie within 0.004 mm of z = zp.
+    for (const v of g.summary.edgeRange) expect(Math.abs(v)).toBeLessThan(0.004);
     // The block volume counts the lean of the root face: a prism of the lean, (y1 − yR) · t +
-    // slope · (tL² − tU²) / 2 per unit of x.
+    // slope · (tL² − tU²) / 2 per unit of x. A pin hole runs from its bottom in the lower half to its
+    // bottom in the upper half, which is stored mirrored at z = zp.
     const s = g.summary;
-    const holes = g.common.holes.reduce((v, h) => v + Math.PI * h.radius ** 2 * (h.depth === null ? s.lower + s.upper : 2 * h.depth), 0);
+    const holes = g.common.holes.reduce((v, h, i) => v + Math.PI * h.radius ** 2 * (h.depth === null ? s.lower + s.upper : 2 * zp - g.halves.lower.holes[i].bottom - g.halves.upper.holes[i].bottom), 0);
     expect(s.blockVolume).toBeCloseTo(s.length * (s.width * (s.lower + s.upper) + (slope * (s.lower ** 2 - s.upper ** 2)) / 2) - Math.PI * 4 * s.channelLength - holes, 3);
   });
 });
 
-describe('mold of a twisted wing', () => {
-  // The flat wing with −6° twist at the tip: leading edge and trailing edge leave the plane z = 0.
-  const twisted = () => {
-    const p = flatWing();
-    p.sections[1].twist = -6;
-    return built(p);
-  };
-  let build;
+describe('parting surface level in flight direction', () => {
+  // The swept wing with 8° washout (flat tip and round tip), and the sample wing of three sections with
+  // twist and dihedral (a crease at the middle section).
+  let flat;
+  let round;
+  let sample;
+  let roundBuild;
   beforeAll(() => {
-    build = twisted();
+    flat = geometry(built(sweptTwistedWing()));
+    roundBuild = built(rounded(sweptTwistedWing()));
+    round = geometry(roundBuild);
+    sample = geometry(built(sampleProject()), { channel: { distance: 8 } });
   });
+  const flatCases = () => [
+    ['swept twisted', flat],
+    ['sample', sample],
+  ];
 
-  it('measures the ramp height from the parting plane and warns when the ramp rises more than 45°', () => {
-    const g = geometry(build, { ramp: 0.5, channel: { distance: 1 } });
-    const s = g.summary;
-    // Tip chord 120 mm turned by 6°: leading edge and trailing edge 120 · sin 6° = 12.54 mm apart in z.
-    expect(s.edgeRange[1] - s.edgeRange[0]).toBeCloseTo(120 * Math.sin(6 * DEG), 1);
-    expect(s.rampHeight).toBe(Math.max(-s.edgeRange[0], s.edgeRange[1]));
-    expect(s.rampHeight).toBeCloseTo(7.58, 2);
-    // The rulings run along x; the edges run at dx/dy = ±0.08 (40 mm over 500 mm), so the ramp is
-    // 0.5 · cos(atan 0.08) wide square to the outline at the tip: 86.24°.
-    expect(s.rampSlope).toBeCloseTo(Math.atan(s.rampHeight / (0.5 * Math.cos(Math.atan(0.08)))) / DEG, 2);
-    expect(g.warnings).toEqual([
-      'Mold: leading edge and trailing edge lie up to 7.58 mm off the parting plane (twist, a change of dihedral or the airfoil), so the ramp rises up to 86°. A wider ramp, or a wing with less twist and one dihedral angle, keeps the parting surface flatter.',
-    ]);
-    // A 20 mm ramp rises 20.8°: no warning.
-    const wide = geometry(build, { ramp: 20, channel: { distance: 20.5 }, margin: 60 });
-    expect(wide.summary.rampSlope).toBeCloseTo(Math.atan(7.58 / (20 * Math.cos(Math.atan(0.08)))) / DEG, 1);
-    expect(wide.warnings.filter((w) => /ramp rises/.test(w))).toEqual([]);
-  });
-
-  it('runs the ramp from each edge to the parting plane, the ramp width along x', () => {
-    const g = geometry(build, { ramp: 4, channel: { distance: 5 } });
-    const { aLE, aTE } = g.common.ramp;
-    const { le, mid } = g.halves.lower;
-    for (let k = 0; k <= 50; k++) {
-      const v = k / 50;
-      expect(curvePoint(aLE, v)[2]).toBeCloseTo(g.common.zp, 12);
-      // The curve in the plane interpolates the ends of the rulings at its Greville points: within
-      // 0.01 mm between them.
-      expect(curvePoint(aLE, v)[0] - curvePoint(le, v)[0]).toBeCloseTo(-4, 2);
-      expect(curvePoint(aTE, v)[0] - curvePoint(mid, v)[0]).toBeCloseTo(4, 2);
+  it('stores one surface for a flat tip, the surface of partingSurface over the block, mirrored at z = zp for the upper half', () => {
+    for (const [name, g] of flatCases()) {
+      const { le, mid, parting } = g.halves.lower;
+      expect(parting.kind, name).toBe('flat');
+      const ps = partingSurface(le, mid, g.common.block, true);
+      expect(parting.surface, name).toEqual(ps.surface);
+      // Degree 1 along x with the 4 rows front face, leading edge, trailing edge, back face.
+      expect([parting.surface.degreeU, parting.surface.knotsU, parting.surface.points.length], name).toEqual([1, [0, 0, 1 / 3, 2 / 3, 1, 1], 4]);
+      const up = g.halves.upper.parting.surface;
+      up.points.forEach((row, i) => row.forEach((P, j) => expect(P, name).toEqual([parting.surface.points[i][j][0], parting.surface.points[i][j][1], 2 * g.common.zp - parting.surface.points[i][j][2]])));
     }
+  });
+
+  it('holds the leading edge and the middle of the trailing edge of a flat tip within 1e-9 mm', () => {
+    for (const [name, g] of flatCases()) {
+      const { le, mid, parting } = g.halves.lower;
+      const S = parting.surface;
+      const { at } = partingSurface(le, mid, g.common.block, true);
+      for (let k = 0; k <= 400; k++) {
+        const v = k / 400;
+        const L = curvePoint(le, v);
+        const T = curvePoint(mid, v);
+        // The edges are the rows u = 1/3 and u = 2/3 of the surface. Along the span the surface runs
+        // over [0, 1/2] with the knots of the wing halved, the part beyond the tip over [1/2, 1].
+        expect(gap(surfacePoint(S, 1 / 3, v / 2), L), `${name} v ${v}`).toBeLessThan(1e-9);
+        expect(gap(surfacePoint(S, 2 / 3, v / 2), T), `${name} v ${v}`).toBeLessThan(1e-9);
+        expect(Math.abs(at(L[0], L[1])[2] - L[2]), `${name} v ${v}`).toBeLessThan(1e-9);
+        expect(Math.abs(at(T[0], T[1])[2] - T[2]), `${name} v ${v}`).toBeLessThan(1e-9);
+      }
+    }
+  });
+
+  it('lies at the height of the leading edge ahead of a flat-tip wing and of the trailing edge behind it, and keeps the tip heights beyond the tip', () => {
+    for (const [name, g] of flatCases()) {
+      const { le, mid, parting } = g.halves.lower;
+      const { block } = g.common;
+      const S = parting.surface;
+      const { at } = partingSurface(le, mid, block, true);
+      // The rows in the front and the back face have the y and z of the edge rows: every line v = const
+      // runs along x at one height.
+      for (const [a, b] of [
+        [0, 1],
+        [3, 2],
+      ]) {
+        S.points[a].forEach((P, j) => {
+          expect(P[1]).toBe(S.points[b][j][1]);
+          expect(P[2]).toBe(S.points[b][j][2]);
+        });
+      }
+      expect(S.points[0].every((P) => P[0] === block.x0)).toBe(true);
+      expect(S.points[3].every((P) => P[0] === block.x1)).toBe(true);
+      // Span stations inboard of the tip: z at every x ahead of the leading edge and behind the
+      // trailing edge, on the line of the station.
+      for (let k = 0; k < 100; k++) {
+        const v = k / 100;
+        const L = curvePoint(le, v);
+        const T = curvePoint(mid, v);
+        for (let j = 0; j <= 20; j++) {
+          const xa = block.x0 + ((L[0] - block.x0) * j) / 20;
+          const xb = T[0] + ((block.x1 - T[0]) * j) / 20;
+          expect(Math.abs(at(xa, L[1])[2] - L[2]), `${name} v ${v} x ${xa}`).toBeLessThan(1e-9);
+          expect(Math.abs(at(xb, T[1])[2] - T[2]), `${name} v ${v} x ${xb}`).toBeLessThan(1e-9);
+        }
+      }
+      // Beyond the tip: at every x the height at the tip.
+      const yTip = curvePoint(le, 1)[1];
+      expect(curvePoint(mid, 1)[1]).toBe(yTip);
+      for (let i = 0; i <= 40; i++) {
+        const x = block.x0 + ((block.x1 - block.x0) * i) / 40;
+        const z = at(x, yTip)[2];
+        for (let j = 1; j <= 10; j++) {
+          const y = yTip + ((block.y1 - yTip) * j) / 10;
+          expect(Math.abs(at(x, y)[2] - z), `${name} x ${x} y ${y}`).toBeLessThan(1e-9);
+        }
+      }
+    }
+  });
+
+  it('turns the level lines of a pole tip from x inboard of the rounded tip to y at the point, each at the height of its edge point', () => {
+    const g = round;
+    const { le, mid, parting } = g.halves.lower;
+    const { block } = g.common;
+    expect(parting.kind).toBe('pole');
+    const { front, back } = parting;
+    const tipStart = roundTipStart(roundBuild.sections, roundBuild.settings);
+    expect(tipStart).toBeGreaterThan(0);
+    const vF = roundBuild.vAt(roundBuild.sections[tipStart].y);
+    // The rounded tip starts at 72.6 % of the span parameter of the swept wing.
+    expect(vF).toBeGreaterThan(0.7);
+    expect(vF).toBeLessThan(0.75);
+    // Leading edge and middle of the trailing edge are the rows of the two surfaces next to the wing:
+    // the knot inserted at the corner of the block moves them by round-off. Measured on 2026-11-11:
+    // 2.3e-13 mm at most; the level lines keep the height within 4e-15 mm and, inboard of the rounded
+    // tip, the y of the edge point within 1.7e-13 mm.
+    let edgeMiss = 0;
+    let inboardMiss = 0;
+    let levelMiss = 0;
+    for (let k = 0; k <= 600; k++) {
+      const v = k / 600;
+      const L = curvePoint(le, v);
+      const T = curvePoint(mid, v);
+      edgeMiss = Math.max(edgeMiss, gap(surfacePoint(front, 1, v), L), gap(surfacePoint(back, 0, v), T));
+      for (let j = 0; j <= 10; j++) {
+        const F = surfacePoint(front, j / 10, v);
+        const B = surfacePoint(back, j / 10, v);
+        // Each level line keeps the height of its edge point.
+        levelMiss = Math.max(levelMiss, Math.abs(F[2] - L[2]), Math.abs(B[2] - T[2]));
+        // Inboard of the rounded tip the level lines run along x: the y of the edge point.
+        if (v <= vF) inboardMiss = Math.max(inboardMiss, Math.abs(F[1] - L[1]), Math.abs(B[1] - T[1]));
+      }
+      if (v <= vF) {
+        expect(surfacePoint(front, 0, v)[0], `v ${v}`).toBeCloseTo(block.x0, 9);
+        expect(surfacePoint(back, 1, v)[0], `v ${v}`).toBeCloseTo(block.x1, 9);
+      }
+    }
+    expect(edgeMiss).toBeLessThan(1e-9);
+    expect(levelMiss).toBeLessThan(1e-9);
+    expect(inboardMiss).toBeLessThan(1e-9);
+    // Around the rounded tip the lines turn: past the start, the line of the front surface leaves the
+    // direction of x; at the point both run along y to the tip-side face.
+    const tip = curvePoint(le, 1);
+    expect(gap(surfacePoint(front, 0, 1), [tip[0], block.y1, tip[2]])).toBeLessThan(1e-9);
+    expect(gap(surfacePoint(back, 1, 1), [tip[0], block.y1, tip[2]])).toBeLessThan(1e-9);
+    const v = (vF + 1) / 2;
+    const d = [0, 1].map((i) => surfacePoint(front, 0, v)[i] - surfacePoint(front, 1, v)[i]);
+    expect(Math.abs(Math.atan2(d[1], -d[0]))).toBeGreaterThan(10 * DEG);
+  });
+
+  it('joins the two surfaces of a pole tip along the seam from the point to the tip-side face', () => {
+    const { front, back } = round.halves.lower.parting;
+    // Along v = 1 the front surface runs from the tip-side face (u = 0) to the point, the back surface
+    // from the point (u = 0) to the face.
+    for (let j = 0; j <= 50; j++) expect(gap(surfacePoint(front, j / 50, 1), surfacePoint(back, 1 - j / 50, 1)), `u ${j / 50}`).toBeLessThan(1e-9);
+    // The outer edges lie in the block faces: the front face x = x0, then the tip-side face y = y1 from
+    // the corner on.
+    const { block } = round.common;
+    const { frontCorner, backCorner } = round.halves.lower.parting;
+    for (let k = 0; k <= 200; k++) {
+      const t = k / 200;
+      const F = surfacePoint(front, 0, t);
+      const B = surfacePoint(back, 1, t);
+      if (t <= frontCorner) expect(F[0]).toBeCloseTo(block.x0, 9);
+      else expect(F[1]).toBeCloseTo(block.y1, 9);
+      if (t <= backCorner) expect(B[0]).toBeCloseTo(block.x1, 9);
+      else expect(B[1]).toBeCloseTo(block.y1, 9);
+    }
+  });
+
+  it('reports a summary without ramp keys, with the parting range and the half thicknesses from the surface', () => {
+    for (const [name, g] of [...flatCases(), ['swept round tip', round]]) {
+      const s = g.summary;
+      expect(Object.keys(s).sort(), name).toEqual(['blockVolume', 'channelLength', 'edgeRange', 'extent', 'fit', 'length', 'lower', 'partingRange', 'pins', 'roll', 'screws', 'upper', 'width']);
+      // Lowest and highest control point of the parting surfaces about z = zp.
+      const zs = partingSurfaces(g.halves.lower).flatMap((S) => S.points.flat().map((P) => P[2] - g.common.zp));
+      expect(s.partingRange[0], name).toBeCloseTo(Math.min(...zs), 12);
+      expect(s.partingRange[1], name).toBeCloseTo(Math.max(...zs), 12);
+      // Floor + the deepest of the cavity and the parting surface with the 2 mm groove.
+      const { zp } = g.common;
+      const cavityL = zp - Math.min(...g.halves.lower.cavity.points.flat().map((P) => P[2]));
+      const cavityU = zp - Math.min(...g.halves.upper.cavity.points.flat().map((P) => P[2]));
+      expect(s.lower, name).toBeCloseTo(12 + Math.max(cavityL, -s.partingRange[0] + 2), 9);
+      expect(s.upper, name).toBeCloseTo(12 + Math.max(cavityU, s.partingRange[1] + 2), 9);
+    }
+    // A flat tip: the parting range is the range of the heights of leading edge and trailing edge (the
+    // edge range samples each edge at 401 points; both wings have their extremes at the root or the tip).
+    expect(flat.summary.partingRange).toEqual(flat.summary.edgeRange);
+    expect(sample.summary.partingRange).toEqual(sample.summary.edgeRange);
+    // Tip chord 120 mm turned by 8°: leading edge and trailing edge 16.7 mm apart in height.
+    expect(flat.summary.edgeRange[1] - flat.summary.edgeRange[0]).toBeCloseTo(120 * Math.sin(8 * DEG), 1);
+  });
+
+  it('fits the rims of the resin channel and the hole mouths to the parting surface within summary.fit, at most 1e-4 mm', () => {
+    // Measured on 2026-11-11: fit 1.4e-14 mm for the swept wing with a flat tip, 2.3e-14 mm for the
+    // sample wing, 3.0e-5 mm for the swept wing with the round tip, whose hole mouths miss by up to
+    // 1.7e-6 mm.
+    expect(flat.summary.fit).toBeLessThan(1e-9);
+    for (const [name, g] of [...flatCases(), ['swept round tip', round]]) {
+      const { fit } = g.summary;
+      expect(fit, name).toBeLessThan(1e-4);
+      expect(g.common.holes.length, name).toBeGreaterThan(10);
+      for (const key of ['lower', 'upper']) {
+        const half = g.halves[key];
+        const height = heightOn(partingSurfaces(half));
+        let rims = 0;
+        for (const rim of [half.channel.rimInner, half.channel.rimOuter]) {
+          const n = 4 * half.channel.stations;
+          for (let k = 1; k < n; k++) {
+            const P = curvePoint(rim, k / n);
+            const z = height(P[0], P[1]);
+            expect(z, `${name} ${key} rim ${k}`).not.toBeNull();
+            rims = Math.max(rims, Math.abs(P[2] - z));
+          }
+        }
+        let mouths = 0;
+        for (const h of half.holes) {
+          for (const arc of h.arcs) {
+            for (let k = 0; k <= 128; k++) {
+              const P = curvePoint(arc, k / 128);
+              expect(Math.hypot(P[0] - h.centre[0], P[1] - h.centre[1]) - h.radius, `${name} ${key} mouth`).toBeCloseTo(0, 6);
+              const z = height(P[0], P[1]);
+              expect(z, `${name} ${key} mouth ${h.centre}`).not.toBeNull();
+              mouths = Math.max(mouths, Math.abs(P[2] - z));
+            }
+          }
+        }
+        // The height of the test bisects to 1e-9 mm and less.
+        expect(rims, `${name} ${key} rims`).toBeLessThanOrEqual(fit + 1e-9);
+        expect(mouths, `${name} ${key} mouths`).toBeLessThanOrEqual(fit + 1e-9);
+      }
+    }
+  });
+
+  it('counts the hole mouths in summary.fit without the resin channel', () => {
+    // The swept wing with the round tip: the hole mouths miss the parting surface by up to 1.7e-6 mm
+    // (measured on 2026-11-11), with or without the channel.
+    const g = geometry(roundBuild, { channel: { on: false } });
+    expect(g.halves.lower.channel).toBeNull();
+    let mouths = 0;
+    for (const key of ['lower', 'upper']) {
+      const half = g.halves[key];
+      const height = heightOn(partingSurfaces(half));
+      for (const h of half.holes) {
+        for (const arc of h.arcs) {
+          for (let k = 0; k <= 128; k++) {
+            const P = curvePoint(arc, k / 128);
+            mouths = Math.max(mouths, Math.abs(P[2] - height(P[0], P[1])));
+          }
+        }
+      }
+    }
+    expect(mouths).toBeGreaterThan(1e-7);
+    expect(mouths).toBeLessThanOrEqual(g.summary.fit + 1e-9);
+  });
+
+  it('puts the bottom of each pin hole the depth below the lowest point of its mouth', () => {
+    for (const [name, g] of [...flatCases(), ['swept round tip', round]]) {
+      for (const key of ['lower', 'upper']) {
+        for (const h of g.halves[key].holes) {
+          if (h.kind !== 'pins') {
+            expect(h.bottom).toBeNull();
+            continue;
+          }
+          let low = Infinity;
+          for (const arc of h.arcs) for (let k = 0; k <= 256; k++) low = Math.min(low, curvePoint(arc, k / 256)[2]);
+          // The code takes the lowest of 65 points per half turn; 256 samples of the fitted mouth find
+          // a point up to 2.2e-5 mm lower around the round tip (measured on 2026-11-11).
+          expect(h.bottom + 10 - low, `${name} ${key}`).toBeGreaterThanOrEqual(-1e-9);
+          expect(h.bottom + 10 - low, `${name} ${key}`).toBeLessThan(1e-4);
+        }
+      }
+    }
+  });
+
+  it('ignores a stored ramp width', () => {
+    const build = built(sweptTwistedWing());
+    const plain = geometry(build);
+    for (const ramp of [4, 'wide']) {
+      const g = geometry(build, { ramp });
+      expect(g.warnings).toEqual(plain.warnings);
+      expect(g.summary).toEqual(plain.summary);
+      expect(g.halves).toEqual(plain.halves);
+      expect(moldToStep(g, { name: 'Swept', ...STAMP })).toBe(moldToStep(plain, { name: 'Swept', ...STAMP }));
+    }
+    expect(resolveMold({ ramp: 4 }).channel).toEqual(MOLD_DEFAULTS.channel);
   });
 });
 
 describe('mold of a tip that closes in a point', () => {
-  it('ends both ramp curves in one point beyond the tip, the rulings turned to y', () => {
+  it('has no mean line, and the block to the tip point plus the margin', () => {
     const g = geometry(built(rounded(flatWing())));
     expect(g.common.pole).toBe(true);
-    const { aLE, aTE } = g.common.ramp;
-    expect(aLE.points.at(-1)).toEqual(aTE.points.at(-1));
-    expect(curvePoint(aLE, 1)).toEqual(curvePoint(aTE, 1));
-    // The point lies the ramp width (3 mm) beyond the tip point along y, in the parting plane.
-    const tip = curvePoint(g.halves.lower.le, 1);
-    const end = curvePoint(aLE, 1);
-    expect(end[0]).toBeCloseTo(tip[0], 9);
-    expect(end[1]).toBeCloseTo(tip[1] + 3, 9);
-    expect(end[2]).toBe(g.common.zp);
     expect(g.halves.lower.meanLine).toBeNull();
-    // Block to the tip point plus the 40 mm margin.
+    expect(g.halves.lower.strip).toBeNull();
+    const tip = curvePoint(g.halves.lower.le, 1);
     expect(g.common.block.y1).toBeCloseTo(tip[1] + 40, 6);
   });
 });
@@ -540,7 +871,7 @@ describe('holes', () => {
     { channel: { on: false }, pins: { pattern: 'outline', spacing: 80, offset: 4 }, screws: { pattern: 'frame', spacing: 5 } },
   ];
 
-  it('keep every hole clear of the cavity keep-out, the resin channel, the block edges and each other by 1 mm', () => {
+  it('keep every hole clear of the cavity, the resin channel, the block edges and each other by 1 mm', () => {
     for (const input of configs) {
       const g = mold(input);
       expect(g.errors).toEqual([]);
@@ -548,8 +879,8 @@ describe('holes', () => {
       const { block, holes } = g.common;
       expect(holes.length, JSON.stringify(input)).toBeGreaterThan(3);
       const channel = g.preview.channel;
-      // The cavity keep-out: the outer rim of the resin channel, else the outer edge of the ramp.
-      const keepOut = p.channel.on ? p.channel.distance + p.channel.diameter : p.ramp;
+      // The cavity keep-out: the outer rim of the resin channel, else the outline itself.
+      const keepOut = p.channel.on ? p.channel.distance + p.channel.diameter : 0;
       // The root face leans by the roll; the flat wing has none.
       const rootY = block.y0 + Math.abs(g.halves.lower.slope) * Math.max(g.summary.lower, g.summary.upper);
       holes.forEach((h, i) => {
@@ -636,20 +967,37 @@ describe('holes', () => {
     ]);
   });
 
-  it('refuse pin holes deeper than the thinner half less 1 mm, and a margin too small for the resin channel or the ramp', () => {
-    // Both halves 22.01 mm thick: 21 mm deep pin holes fit, 21.5 mm do not.
+  it('refuse pin holes that reach within 1 mm of the outer face, and a margin too small for the resin channel', () => {
+    // Both halves 22.01 mm thick, the mouths at z = 0: 21 mm deep pin holes fit, 21.5 mm do not.
     expect(moldGeometry(build, { pins: { depth: 21 } }).errors).toEqual([]);
-    expect(moldGeometry(build, { pins: { depth: 21.5 } }).errors).toEqual(['Mold: the pin holes are 21.5 mm deep, but the thinner half is 22.0 mm thick; reduce the depth or increase the floor thickness.']);
+    expect(moldGeometry(build, { pins: { depth: 21.5 } }).errors).toEqual(['Mold: the pin holes are 21.5 mm deep and reach within 1 mm of the outer face of a half; reduce the depth or increase the floor thickness.']);
     expect(moldGeometry(build, { pins: { depth: 21.5, on: false } }).errors).toEqual([]);
     // Channel at 6 mm, 4 mm wide, 1 mm to the block edge: at least 11 mm.
     expect(moldGeometry(build, { margin: 10.9 }).errors).toEqual(['Mold: the block margin must be at least 11 mm for the resin channel (distance, diameter and 1 mm to the block edge).']);
-    expect(moldGeometry(build, { margin: 5, ramp: 4.5, channel: { on: false }, pins: { on: false }, screws: { on: false } }).errors).toEqual(['Mold: the block margin must be at least 5.5 mm, the ramp width plus 1 mm.']);
     expect(moldGeometry(build, { margin: 11, pins: { on: false }, screws: { on: false } }).errors).toEqual([]);
+    // Without the channel the smallest margin builds.
+    expect(moldGeometry(build, { margin: 5, channel: { on: false }, pins: { on: false }, screws: { on: false } }).errors).toEqual([]);
     expect(moldGeometry(build, { margin: 3 }).errors).toEqual(['Mold: block margin must be between 5 and 1000 mm.']);
     expect(moldGeometry({ errors: ['x'] }, {}).errors).toEqual(['The wing has no surface; fix the reported errors first.']);
     setLanguage('de');
-    expect(moldGeometry(build, { pins: { depth: 21.5 } }).errors).toEqual(['Form: Die Zentrierbohrungen sind 21,5 mm tief, die dünnere Hälfte ist aber nur 22,0 mm dick; die Tiefe verringern oder die Bodendicke vergrößern.']);
+    expect(moldGeometry(build, { pins: { depth: 21.5 } }).errors).toEqual(['Form: Die Zentrierbohrungen sind 21,5 mm tief und reichen bis auf 1 mm an die Außenfläche einer Hälfte; die Tiefe verringern oder die Bodendicke vergrößern.']);
     expect(moldGeometry(build, { margin: 10.9 }).errors).toEqual(['Form: Der Rand des Formblocks muss für die Blutrinne mindestens 11 mm betragen (Abstand, Durchmesser und 1 mm bis zur Blockkante).']);
+  });
+
+  it('refuse pin holes on a twisted wing by the lowest point of their mouth', () => {
+    // Swept wing with 8° washout: the parting surface reaches 6.70 mm below z = zp at the front face,
+    // the lower half is 24.54 mm thick. The pin at the front corner near the tip has its mouth lower than
+    // the others; its bottom sets the limit.
+    const twisted = built(sweptTwistedWing());
+    const g = geometry(twisted);
+    // The largest depth that keeps 1 mm to the outer face of both halves (the upper half is stored
+    // mirrored at z = zp).
+    const limit = Math.min(
+      ...['lower', 'upper'].flatMap((key) => g.halves[key].holes.filter((h) => h.kind === 'pins').map((h) => h.bottom + 10 - (g.common.zp - g.summary[key] + 1))),
+    );
+    expect(moldGeometry(twisted, { pins: { depth: Math.floor(limit * 10) / 10 } }).errors).toEqual([]);
+    const deep = Math.ceil(limit * 10 + 1e-9) / 10;
+    expect(moldGeometry(twisted, { pins: { depth: deep } }).errors).toEqual([`Mold: the pin holes are ${deep} mm deep and reach within 1 mm of the outer face of a half; reduce the depth or increase the floor thickness.`]);
   });
 });
 
@@ -665,7 +1013,7 @@ describe('mold of an under-cambered wing', () => {
   const chordAt = (y) => 200 - (60 * y) / 500;
   const xLE = (y) => (30 * y) / 500;
 
-  it('raises the lower cavity up to 13.2 mm above the parting plane at the root and in proportion to the chord along the span', () => {
+  it('raises the lower cavity up to 13.2 mm above z = zp at the root and in proportion to the chord along the span', () => {
     const g = flat;
     expect(g.warnings).toEqual([]);
     const { zp } = g.common;
@@ -690,7 +1038,7 @@ describe('mold of an under-cambered wing', () => {
     const g = flat;
     const { zp } = g.common;
     const L = g.halves.lower.cavity;
-    // The upper cavity is stored mirrored at the parting plane.
+    // The upper cavity is stored mirrored at z = zp.
     const U = g.halves.upper.cavity;
     const half = (t) => 5 * 0.05 * (0.2969 * Math.sqrt(t) - 0.126 * t - 0.3516 * t ** 2 + 0.2843 * t ** 3 - 0.1036 * t ** 4);
     let worst = 0;
@@ -700,38 +1048,43 @@ describe('mold of an under-cambered wing', () => {
       for (let k = 1; k < 100; k++) {
         const t = k / 100;
         const x = xLE(y) + t * c;
-        const gap = 2 * zp - zAt(U, x, v) - zAt(L, x, v);
-        expect(gap, `v ${v} x/c ${t}`).toBeGreaterThan(0);
+        const gapZ = 2 * zp - zAt(U, x, v) - zAt(L, x, v);
+        expect(gapZ, `v ${v} x/c ${t}`).toBeGreaterThan(0);
         // The build closes the 0.1 mm trailing-edge gap of the airfoil over the aft part.
-        if (t <= 0.9) worst = Math.max(worst, Math.abs(gap - 2 * half(t) * c));
+        if (t <= 0.9) worst = Math.max(worst, Math.abs(gapZ - 2 * half(t) * c));
       }
     }
     // Measured on 2026-11-11: 0.0001 mm at most up to 90 % chord.
     expect(worst).toBeLessThan(0.001);
   });
 
-  it('keeps leading edge and trailing edge within 0.01 mm of the parting plane: a flat ramp', () => {
+  it('holds leading edge and trailing edge on the parting surface, which stays within 0.01 mm of z = zp', () => {
     for (const g of [flat, round]) {
-      const { zp } = g.common;
+      const { le, mid } = g.halves.lower;
+      const height = heightOn(partingSurfaces(g.halves.lower));
       for (let k = 0; k <= 200; k++) {
-        for (const c of [g.halves.lower.le, g.halves.lower.mid, g.common.ramp.aLE, g.common.ramp.aTE]) expect(Math.abs(curvePoint(c, k / 200)[2] - zp)).toBeLessThan(0.01);
+        for (const c of [le, mid]) {
+          const P = curvePoint(c, k / 200);
+          expect(Math.abs(P[2] - g.common.zp)).toBeLessThan(0.01);
+          expect(Math.abs(height(P[0], P[1]) - P[2])).toBeLessThan(1e-9);
+        }
       }
-      expect(g.summary.rampHeight).toBeLessThan(0.01);
-      expect(g.summary.rampSlope).toBeLessThan(1);
+      for (const v of g.summary.partingRange) expect(Math.abs(v)).toBeLessThan(0.01);
     }
   });
 
-  it('makes the lower half floor + deepest point below the plane thick: the hump adds no thickness', () => {
+  it('makes the lower half floor + groove + the lowest point of the parting surface thick: the hump adds no thickness', () => {
     for (const g of [flat, round]) {
       const { zp } = g.common;
       const S = g.halves.lower.cavity;
       let deepest = 0;
       for (let i = 0; i <= 800; i++) for (let j = 0; j <= 20; j++) deepest = Math.max(deepest, zp - surfacePoint(S, i / 800, j / 20)[2]);
       // The lower surface dips 0.6 mm below the chord line behind the nose, less than the 2 mm groove of
-      // the resin channel: the groove is the deepest point, and the half is 2 + 12 mm thick.
+      // the resin channel below the parting surface, whose lowest point lies 0.008 mm below z = zp.
       expect(deepest).toBeCloseTo(0.6, 1);
-      expect(g.summary.lower).toBeCloseTo(14, 9);
-      // The upper half: 22.8 mm from the plane to the top of the upper surface, plus the floor.
+      expect(g.summary.lower).toBeCloseTo(14 - g.summary.partingRange[0], 9);
+      expect(g.summary.lower).toBeLessThan(14.01);
+      // The upper half: 22.8 mm from z = zp to the top of the upper surface, plus the floor.
       expect(g.summary.upper).toBeCloseTo(34.86, 1);
     }
   });
@@ -750,14 +1103,24 @@ describe('mold of an under-cambered wing', () => {
       // The mean line rises with the camber: 9 % of 140 mm = 12.6 mm at 40 % chord (12.597 mm).
       if (k === 40) expect(P[2] - zp).toBeCloseTo(12.6, 1);
     }
+    // The strip beyond the tip: 3 mm wide, its outer edge on the straight line of the parting surface
+    // from the height of the leading edge to the height of the trailing edge.
+    const strip = g.halves.lower.strip;
+    const L = mean.points[0];
+    const T = mean.points.at(-1);
+    strip.points.forEach((P, i) => {
+      expect(P[0]).toBe(mean.points[i][0]);
+      expect(P[1]).toBe(L[1] + 3);
+      expect(P[2]).toBeCloseTo(L[2] + ((P[0] - L[0]) / (T[0] - L[0])) * (T[2] - L[2]), 12);
+    });
   });
 
   it('writes closed STEP solids with a flat tip and with a rounded tip', () => {
     for (const g of [flat, round]) {
-      const text = moldToStep(g, { name: 'Under-cambered mold', timestamp: '2026-01-01T00:00:00' });
+      const text = moldToStep(g, { name: 'Under-cambered mold', ...STAMP });
       expect(countOf(text, 'MANIFOLD_SOLID_BREP')).toBe(2);
-      // In the file the lower half reaches 13.2 mm above the parting plane z = 0: the highest control
-      // point of the cavity lies at 13.23 mm, 0.01 mm above the surface.
+      // In the file the lower half reaches 13.2 mm above z = 0: the highest control point of the
+      // cavity lies at 13.23 mm, 0.01 mm above the surface.
       const lowerOnly = moldToStep({ ...g, params: { ...g.params, halves: 'lower' } });
       const top = Math.max(...stepPoints(lowerOnly).map((P) => P[2]));
       expect(top).toBeGreaterThan(13.22);
@@ -769,14 +1132,41 @@ describe('mold of an under-cambered wing', () => {
 });
 
 describe('mold STEP file', () => {
-  it('writes every mold case with closed shells, the solids of the chosen halves and 2 cylinders per hole and half', { timeout: 60000 }, () => {
+  it('writes every mold case with closed shells, the solids of the chosen halves, the faces of the parting surface and 2 cylinders per hole and half', { timeout: 60000 }, () => {
+    const names = [];
     for (const c of moldCases()) {
+      names.push(c.name);
       const g = geometry(built(c.project), c.mold);
-      const text = moldToStep(g, { name: c.name, timestamp: '2026-01-01T00:00:00', up: c.up });
+      // Brep.solid throws unless every edge is used once in each direction.
+      const { text, partingFaces } = stepWithFaces(g, { name: c.name, up: c.up });
       const solids = c.solids ?? 2;
       expect(countOf(text, 'MANIFOLD_SOLID_BREP'), c.name).toBe(solids);
       expect(countOf(text, 'CLOSED_SHELL'), c.name).toBe(solids);
       expect(countOf(text, 'CYLINDRICAL_SURFACE'), c.name).toBe(2 * g.common.holes.length * solids);
+      // Per half: with a flat tip 1 face, split by the resin channel into 2; with a pole tip 2, and 4
+      // with the channel.
+      expect(partingFaces, c.name).toBe(solids * (g.common.pole ? 2 : 1) * (g.params.channel.on ? 2 : 1));
+      expect(text, c.name).not.toMatch(/ramp/i);
+    }
+    expect(names).toContain('swept-twist-flat-tip');
+    expect(names).toContain('swept-twist-round-tip');
+    expect(names).toHaveLength(18);
+  });
+
+  it('writes 2, 4, 1 and 2 faces of the parting surface per half for flat and pole tips with and without the channel', () => {
+    for (const [project, pole] of [
+      [sweptTwistedWing(), false],
+      [rounded(sweptTwistedWing()), true],
+    ]) {
+      const b = built(project);
+      for (const on of [true, false]) {
+        const g = geometry(b, { channel: { on } });
+        expect(g.common.pole).toBe(pole);
+        const { text, partingFaces } = stepWithFaces(g, { name: 'Swept' });
+        expect(partingFaces, `pole ${pole} channel ${on}`).toBe(2 * (pole ? (on ? 4 : 2) : on ? 2 : 1));
+        expect(countOf(text, 'CYLINDRICAL_SURFACE')).toBe(4 * g.common.holes.length);
+        expect(text).toContain('B_SPLINE_SURFACE_WITH_KNOTS');
+      }
     }
   });
 
@@ -784,9 +1174,9 @@ describe('mold STEP file', () => {
   let both;
   beforeAll(() => {
     g = geometry(built(flatWing()));
-    both = moldToStep(g, { name: 'Flat wing mold', timestamp: '2026-01-01T00:00:00' });
+    both = moldToStep(g, { name: 'Flat wing mold', ...STAMP });
   });
-  const variant = (params, options = {}) => moldToStep({ ...g, params: { ...g.params, ...params } }, { name: 'Flat wing mold', timestamp: '2026-01-01T00:00:00', ...options });
+  const variant = (params, options = {}) => moldToStep({ ...g, params: { ...g.params, ...params } }, { name: 'Flat wing mold', ...STAMP, ...options });
 
   it('names the solids after the mold and the half, the lower half first', () => {
     const names = [...both.matchAll(/MANIFOLD_SOLID_BREP\('([^']*)'/g)].map((m) => m[1]);
@@ -796,10 +1186,10 @@ describe('mold STEP file', () => {
     expect(both).toContain("FILE_DESCRIPTION(('Wingdesigner mold'),'2;1');");
   });
 
-  it('puts the parting plane at z = 0: the lower half below it, the upper half above', () => {
-    // Leading edge and trailing edge of the flat wing lie in the plane: every point of the lower-only
-    // file between the block bottom and z = 0, every point of the upper-only file between z = 0 and
-    // the block top (control points of the cavity included, which lie within the block).
+  it('puts z = zp at z = 0: the lower half below the parting surface of the flat wing, the upper half above', () => {
+    // Leading edge and trailing edge of the flat wing lie in the plane z = 0: every point of the
+    // lower-only file between the block bottom and z = 0, every point of the upper-only file between
+    // z = 0 and the block top (control points of the cavity included, which lie within the block).
     const s = g.summary;
     const lower = stepPoints(variant({ halves: 'lower' })).map((P) => P[2]);
     const upper = stepPoints(variant({ halves: 'upper' })).map((P) => P[2]);
@@ -807,6 +1197,20 @@ describe('mold STEP file', () => {
     expect(Math.min(...lower)).toBeCloseTo(-s.lower, 9);
     expect(Math.min(...upper)).toBeGreaterThan(-1e-9);
     expect(Math.max(...upper)).toBeCloseTo(s.upper, 9);
+  });
+
+  it('puts the extent of each half of a twisted wing in the file', () => {
+    // Swept wing with 8° washout: the lower half reaches up to the highest point of the parting surface,
+    // the upper half down to its lowest point.
+    const t = geometry(built(sweptTwistedWing()));
+    const file = (halves) => stepPoints(moldToStep({ ...t, params: { ...t.params, halves } })).map((P) => P[2]);
+    const lower = file('lower');
+    const upper = file('upper');
+    expect(Math.min(...lower)).toBeCloseTo(t.summary.extent.lower[0], 9);
+    expect(Math.max(...lower)).toBeCloseTo(t.summary.extent.lower[1], 6);
+    expect(Math.min(...upper)).toBeCloseTo(t.summary.extent.upper[0], 6);
+    expect(Math.max(...upper)).toBeCloseTo(t.summary.extent.upper[1], 9);
+    expect(t.summary.extent.lower[1]).toBeCloseTo(t.summary.partingRange[1], 12);
   });
 
   it('turns the file to Y up and mirrors the molds of the left wing in y', () => {
@@ -888,7 +1292,7 @@ describe('mold checks against crossing faces', () => {
 
   it('keeps the floor below the groove where the resin channel is deeper than the cavity', () => {
     // NACA 0010 at 100 mm chord: the cavity is 5.0 mm deep. A 20 mm channel reaches 10 mm below the
-    // parting plane, so each half is 10 + 1 mm thick, not 5 + 1 mm.
+    // parting surface, so each half is 10 + 1 mm thick, not 5 + 1 mm.
     const off = { pins: { on: false }, screws: { on: false } };
     const g = moldGeometry(built(wing(100, 60)), { floor: 1, channel: { diameter: 20, distance: 6 }, ...off });
     expect(g.errors).toEqual([]);

@@ -721,12 +721,18 @@ export function moldGeometry(build, input) {
       const curve = fitInPieces(at, from, from + Math.PI, cuts, HOLE_POINTS);
       let low = Infinity;
       for (let k = 0; k <= HOLE_POINTS; k++) low = Math.min(low, at(from + (Math.PI * k) / HOLE_POINTS)[2]);
-      return { curve, low };
+      // The largest miss of the fitted mouth from the surface, measured between the fitted points.
+      let miss = 0;
+      for (let k = 0; k <= 8 * HOLE_POINTS; k++) {
+        const q = curvePoint(curve, k / (8 * HOLE_POINTS));
+        miss = Math.max(miss, Math.abs(q[2] - side.height(q[0], q[1])));
+      }
+      return { curve, low, miss };
     };
     const a1 = arc(0);
     const a2 = arc(Math.PI);
     const low = Math.min(a1.low, a2.low);
-    return { kind: h.kind, patch: h.patch, centre: h.centre, radius: h.radius, arcs: [a1.curve, a2.curve], bottom: h.depth === null ? null : low - h.depth, centreZ: side.height(h.centre[0], h.centre[1]) };
+    return { kind: h.kind, patch: h.patch, centre: h.centre, radius: h.radius, arcs: [a1.curve, a2.curve], fit: Math.max(a1.miss, a2.miss), bottom: h.depth === null ? null : low - h.depth, centreZ: side.height(h.centre[0], h.centre[1]) };
   };
   const lowerHoles = holes.map((h) => holeOn(h, lowerSide));
   const upperHoles = holes.map((h) => holeOn(h, upperSide));
@@ -803,7 +809,7 @@ export function moldGeometry(build, input) {
     extent: { lower: [-thickness.lower, top - zp], upper: [bottom - zp, thickness.upper] },
     // Largest height (mm) by which the rims of the groove miss the parting surface (leading edge and
     // trailing edge are lines of the surface).
-    fit: channel ? Math.max(channel.lower.fit, channel.upper.fit) : 0,
+    fit: Math.max(0, ...(channel ? [channel.lower.fit, channel.upper.fit] : []), ...lowerHoles.map((h) => h.fit), ...upperHoles.map((h) => h.fit)),
     pins: holes.filter((h) => h.kind === 'pins').length,
     screws: holes.filter((h) => h.kind === 'screws').length,
     channelLength: channel ? channel.length : 0,
