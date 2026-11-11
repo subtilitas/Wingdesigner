@@ -1,17 +1,19 @@
-// Mold dialog (Export > Mold halves…): the button and the dialog, the defaults of every field, the
-// summary, the fields that a switched-off group or a hole pattern does not use, the range and margin
-// checks, the warning for holes left out, the values kept in browser storage, the STEP download
-// (halves, names, Y up after the Fusion 360 fix), the German texts and the dialog on the phone.
+// Mold dialog (Export > Mold halves…): the button and the dialog, the defaults of every field (there is no
+// ramp field), the summary, the fields that a switched-off group or a hole pattern does not use, the range
+// and margin checks, the warning for holes left out, the values kept in browser storage, the STEP download
+// (halves, names, parting faces as B-spline surfaces, Y up after the Fusion 360 fix), the parting range of a
+// twisted wing, the German texts and the dialog on the phone.
 //
 // Sport (src/model/wizard.js): 2 sections, root chord 240 mm at x = 0, tip chord 144 mm, half span
 // 600 mm, dihedral 1.5°, flat mitred tip (its lower surface reaches y = 600.2 mm). With the defaults of
-// src/geom/mold.js (margin 40 mm, floor 12 mm, ramp 3 mm, channel 4 mm at 6 mm, pins at the 4 block
-// corners 12 mm from the edges, screws along the block edges at most 120 mm apart):
+// src/geom/mold.js (margin 40 mm, floor 12 mm, channel 4 mm at 6 mm, pins at the 4 block corners 12 mm
+// from the edges, screws along the block edges at most 120 mm apart):
 //   block length = chord extent + 2 · margin = 240 + 2 · 40 = 320.0 mm
 //   block width  = largest y of the outline + margin − y of the root line = 600.2 + 40 − 0.0 = 640.2 mm
 //   roll         = roll of the flat tip section = the 1.5° dihedral: 1.50°
-//   thicknesses  = cavity depth + floor: lower 6.0 + 12 = 18.0 mm, upper 15.3 + 12 = 27.3 mm (measured)
-//   ramp height  = 1.50 mm (measured: leading and trailing edge off the parting plane)
+//   lower, upper = floor + the deepest of cavity and lowest parting surface + groove radius: 18.0 mm
+//                  below and 27.3 mm above z = 0 (measured)
+//   parting range = lowest and highest height of the parting surface about z = 0: −1.0 to 1.5 mm (measured)
 //   channel      = 1374 mm (measured: around the half wing and its mirror image at the root)
 //   holes        = the hole rectangle runs 12 mm inside the block: front and back edge 615.5 mm,
 //                  ceil(615.5 / 120) = 6 gaps each, tip side 296 mm, 3 gaps: 7 + 3 + 6 = 16 positions;
@@ -20,8 +22,8 @@
 // Pins 30 mm from the block edge: the two root corners lie 10 mm from leading and trailing edge, inside
 // the 14 mm keep-out (channel distance 6 + diameter 4 + 1 mm + pin radius 3), so 2 pin holes are
 // left out and the screws take the 4 corner positions: 2 pin holes, 16 screw holes.
-// Block corner of the lower half at the tip side and the trailing edge, Z up: (280, 640.2, −18.0) mm
-// (parting plane at z = 0); with Y up the same corner is (x, z, −y) = (280, −18.0, −640.2) mm.
+// Block corner of the lower half at the tip side and the trailing edge, Z up: (280, 640.2, −18.0) mm;
+// with Y up the same corner is (x, z, −y) = (280, −18.0, −640.2) mm.
 import {
   FUSION_FIX,
   commit,
@@ -33,14 +35,19 @@ import {
   frames,
   openExport,
   openTab,
+  sectionField,
   statusOf,
   test,
 } from './helpers.js';
 
 const MOLD_KEY = 'wingdesigner.mold';
-const SPORT_SUMMARY =
-  'Block 320.0 × 640.2 mm; lower half 18.0 mm thick, upper half 27.3 mm. Parting plane rolled 1.50° with the wing; leading and trailing edge up to 1.50 mm off it. Resin channel 1374 mm long. 4 pin holes, 12 screw holes.';
+const BLOCK_SENTENCE = 'Block 320.0 × 640.2 mm; lower half down to −18.0 mm, upper half up to +27.3 mm.';
+const PARTING_SENTENCE =
+  'Parting surface at the height of leading edge and trailing edge, level in flight direction: from -1.0 to 1.5 mm; frame rolled 1.50° with the wing.';
+const SPORT_SUMMARY = `${BLOCK_SENTENCE} ${PARTING_SENTENCE} Resin channel 1374 mm long. 4 pin holes, 12 screw holes.`;
 const MARGIN_ERROR = 'Mold: the block margin must be at least 11 mm for the resin channel (distance, diameter and 1 mm to the block edge).';
+
+const PARTING_PATTERN = /level in flight direction: from (-?[\d.]+) to (-?[\d.]+) mm/;
 
 const summaryOf = (dlg) => dlg.locator('p[aria-live]').nth(0);
 const notesOf = (dlg) => dlg.locator('p[aria-live]').nth(1);
@@ -83,7 +90,8 @@ test.describe('mold dialog', () => {
     await expect(dialogOf(page)).toHaveCount(1);
     await expect(field(dlg, 'Margin around the wing (mm)')).toHaveValue('40');
     await expect(field(dlg, 'Floor below the cavity (mm)')).toHaveValue('12');
-    await expect(field(dlg, 'Ramp width (mm)')).toHaveValue('3');
+    await expect(dlg.getByLabel('Ramp width', { exact: false })).toHaveCount(0);
+    await expect(dlg.getByText('Ramp width')).toHaveCount(0);
     const channel = group(dlg, 'channel');
     await expect(field(channel, 'Resin channel')).toBeChecked();
     await expect(field(channel, 'Diameter (mm)')).toHaveValue('4');
@@ -109,10 +117,12 @@ test.describe('mold dialog', () => {
     await expect(field(dlg, 'Molds of the left wing (mirror image)')).not.toBeChecked();
 
     await expect(summaryOf(dlg)).toHaveText(SPORT_SUMMARY);
+    await expect(summaryOf(dlg)).toContainText(/Parting surface at the height of leading edge and trailing edge, level in flight direction/);
+    await expect(summaryOf(dlg)).not.toContainText(/ramp/i);
     await expect(summaryOf(dlg)).not.toHaveClass(/sev-error/);
     await expect(notesOf(dlg)).toHaveText('');
     await expect(download(dlg)).toBeEnabled();
-    const box = await dlg.getByRole('img', { name: 'Top view of the parting plane of the mold' }).boundingBox();
+    const box = await dlg.getByRole('img', { name: 'Top view of the parting surface of the mold' }).boundingBox();
     expect(box.width).toBeGreaterThan(100);
     expect(box.height).toBeGreaterThan(100);
     await dlg.getByRole('button', { name: 'Close', exact: true }).click();
@@ -144,7 +154,7 @@ test.describe('mold dialog', () => {
     await field(channel, 'Resin channel').uncheck();
     await expect(field(channel, 'Diameter (mm)')).toBeDisabled();
     await expect(field(channel, 'Distance from the wing (mm)')).toBeDisabled();
-    await expect(summaryOf(dlg)).toHaveText('Block 320.0 × 640.2 mm; lower half 18.0 mm thick, upper half 27.3 mm. Parting plane rolled 1.50° with the wing; leading and trailing edge up to 1.50 mm off it. 4 pin holes, 12 screw holes.');
+    await expect(summaryOf(dlg)).toHaveText(`${BLOCK_SENTENCE} ${PARTING_SENTENCE} 4 pin holes, 12 screw holes.`);
     await expect(summaryOf(dlg)).not.toContainText('Resin channel');
     await field(channel, 'Resin channel').check();
     await expect(field(channel, 'Diameter (mm)')).toBeEnabled();
@@ -256,9 +266,11 @@ test.describe('mold dialog', () => {
     expect(b.text).toContain("FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));");
     expect(b.text.trimEnd().endsWith('END-ISO-10303-21;')).toBe(true);
     expect(b.names).toEqual(['Sport mold lower', 'Sport mold upper']);
-    // Z up: the lower half below the parting plane, the upper half above it.
+    // Z up: the lower half below z = 0, the upper half above it.
     expect(near(b.points, [280, 640.2, -18.0])).toBe(true);
     expect(near(b.points, [280, 640.2, 27.3])).toBe(true);
+    // The parting surface is B-spline surfaces, no plane at z = 0 is a face of the parting surface.
+    expect(b.text).toContain('B_SPLINE_SURFACE_WITH_KNOTS');
     // The dialog stays open after a download and says so in a notice.
     await expect(dialogOf(page)).toHaveCount(1);
     await expect(page.locator('.toast')).toHaveText('Mold exported as STEP.');
@@ -281,7 +293,7 @@ test.describe('mold dialog', () => {
     const dlg = await openMold(page);
     const f = stepOf((await downloadOf(page, () => download(dlg).click())).bytes);
     expect(f.names).toEqual(['Sport mold lower', 'Sport mold upper']);
-    // (x, y, z) becomes (x, z, −y): the span runs along −Z, the parting plane is y = 0.
+    // (x, y, z) becomes (x, z, −y): the span runs along −Z, z = 0 becomes y = 0.
     expect(near(f.points, [280, -18.0, -640.2])).toBe(true);
     expect(near(f.points, [280, 640.2, -18.0])).toBe(false);
     expect(Math.min(...f.points.map((p) => p[2]))).toBeCloseTo(-640.2, 1);
@@ -301,9 +313,24 @@ test.describe('mold dialog', () => {
     await expect(field(group(dlg, 'channel'), 'Blutrinne')).toBeChecked();
     await expect(field(group(dlg, 'screws'), 'Durchmesser (mm)')).toHaveValue('6,5');
     await expect(summaryOf(dlg)).toHaveText(
-      'Formblock 320,0 × 640,2 mm; Unterform 18,0 mm dick, Oberform 27,3 mm. Trennebene mit dem Flügel um 1,50° gerollt; Nasenleiste und Endleiste liegen bis zu 1,50 mm daneben. Blutrinne 1.374 mm lang. 4 Zentrierbohrungen, 12 Bohrungen für Spannschrauben.',
+      'Formblock 320,0 × 640,2 mm; Unterform bis −18,0 mm, Oberform bis +27,3 mm. Trennfläche auf der Höhe von Nasenleiste und Endleiste, in Flugrichtung eben: von -1,0 bis 1,5 mm; Formrahmen mit dem Flügel um 1,50° gerollt. Blutrinne 1.374 mm lang. 4 Zentrierbohrungen, 12 Bohrungen für Spannschrauben.',
     );
     await expect(dlg.getByRole('button', { name: 'STEP herunterladen', exact: true })).toBeEnabled();
+  });
+
+  test('a wing with tip twist shows a parting range that is not 0 to 0', async ({ page }) => {
+    await createDesign(page, 'Sport');
+    await openTab(page, 'Sections');
+    await commit(sectionField(page, -1, 'twist'), -3);
+    const dlg = await openMold(page);
+    const text = await summaryOf(dlg).innerText();
+    expect(text).toMatch(PARTING_PATTERN);
+    const [, low, high] = text.match(PARTING_PATTERN);
+    expect(Number(low)).toBeLessThan(Number(high));
+    expect(`${low} to ${high}`).not.toBe('0.0 to 0.0');
+    expect(`${low} to ${high}`, 'the Sport range without twist').not.toBe('-1.0 to 1.5');
+    await expect(summaryOf(dlg)).not.toHaveClass(/sev-error/);
+    await expect(download(dlg)).toBeEnabled();
   });
 
   test('phone: the dialog fits the screen, scrolls, and Download STEP works', async ({ page }, testInfo) => {
@@ -335,7 +362,7 @@ test.describe('mold dialog', () => {
     expect(box.pageWidth, 'page scroll width vs. viewport width').toBeLessThanOrEqual(box.innerWidth);
     expect(box.outside, 'fields, canvas and buttons outside the dialog').toBe(0);
     expect(box.scrollHeight, 'content taller than the dialog').toBeGreaterThan(box.clientHeight);
-    const canvas = await dlg.getByRole('img', { name: 'Top view of the parting plane of the mold' }).boundingBox();
+    const canvas = await dlg.getByRole('img', { name: 'Top view of the parting surface of the mold' }).boundingBox();
     expect(canvas.height).toBeGreaterThan(100);
     expect(canvas.width).toBeGreaterThan(200);
 
