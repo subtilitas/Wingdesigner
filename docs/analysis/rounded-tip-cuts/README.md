@@ -6,7 +6,9 @@ are planes y = const, 1 mm apart, over the outer 5 % of the half span: 56 cuts f
 y = 1119 mm. The point is at y = 1119.830 mm; the ellipse c² = k · (1 − m · y²) through chord and
 taper at the old tip section (y = 1000 mm) closes at y = 1119.825 mm. Straight line at 25 % chord,
 x = 50 mm. Trailing edge 0.4 mm thick (Settings > Trailing edge, Fixed thickness), Linear spanwise
-interpolation, Wing tip Pointed (1 mm chord at the point).
+interpolation, Wing tip Round (the tip closes in one point, chord 0). The last section stores a
+chord of 1 mm, the smallest chord a section holds; the build uses chord 0 there. The two diamonds
+at the point in the top views mark that stored chord.
 
 ## Files
 
@@ -25,14 +27,17 @@ interpolation, Wing tip Pointed (1 mm chord at the point).
 
 | Range | Leading edge − ellipse | Trailing edge − ellipse | Chord − ellipse |
 | --- | --- | --- | --- |
-| Cuts 1 to 53, y = 1064 to 1116 mm | +0.00 to +0.02 mm | −0.05 to −0.02 mm | −0.07 to −0.01 mm |
-| Cut 54, 2.8 mm before the point | −0.01 mm | +0.04 mm | +0.04 mm |
-| Cut 55, 1.8 mm before the point | −0.03 mm | +0.11 mm | +0.14 mm |
-| Cut 56, 0.8 mm before the point | −0.08 mm | +0.26 mm | +0.34 mm |
+| Cuts 1 to 53, y = 1064 to 1116 mm | 0.00 to +0.01 mm | −0.04 to −0.01 mm | −0.05 to −0.02 mm |
+| Cut 54, 2.8 mm before the point | 0.00 mm | −0.01 mm | −0.01 mm |
+| Cut 55, 1.8 mm before the point | 0.00 mm | +0.01 mm | 0.00 mm |
+| Cut 56, 0.8 mm before the point | 0.00 mm | +0.02 mm | +0.02 mm |
 
-The deviation of the last 3 mm is the 1 mm chord of the pointed tip, where the ellipse reaches 0 mm.
-The height falls from 6.12 mm (cut 1) to 0.86 mm (cut 56). Other designs, fullness settings and
-pointed-tip ratios are not measured.
+Over all 56 cuts the chord lies within −0.05 to +0.02 mm of the ellipse, the leading edge within
+0.01 mm, the trailing edge within −0.04 to +0.02 mm. The blend of the edges ends at the point with
+the curvature of the ellipse about the straight line (`src/geom/tipblend.js`, header). With Wing tip
+Pointed (1 mm chord at the point) the chord of the same wing deviates +0.04, +0.14 and +0.34 mm at cuts 54, 55 and
+56. The height falls from 6.12 mm (cut 1) to 0.83 mm (cut 56). Other designs, fullness settings and
+Smooth spanwise interpolation are not measured.
 
 ## Regenerate
 

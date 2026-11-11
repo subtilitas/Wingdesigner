@@ -6,6 +6,40 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), ver
 
 ## [Unreleased]
 
+### Added
+
+- **Export** > **Mold halves…** writes a lower and an upper mold half of the right half wing as exact STEP solids in one
+  file, `<project name>_mold.step`, in the closed position with the parting plane at z = 0. The halves part along the
+  leading and the trailing edge; a ramp, 3 mm wide by default, joins the two edges to the parting plane, whose frame is
+  rolled with the dihedral of the wing. Each half holds the wing surface of its side as cavity, open at the root face.
+  A half-round resin channel in each half, 4 mm in diameter and 6 mm from the wing by default, runs around the wing and
+  ends in the root face. Alignment pin holes (blind, 6 mm, 10 mm deep in each half) and clamping screw holes (through,
+  6.5 mm) take one of 3 patterns each: the block corners, along the block edges, or around the wing; by default the pins
+  sit at the 4 corners and the screws along the edges, at most 120 mm apart. A top-view preview shows block, resin
+  channel, ramp, wing and holes, with the block size, the thickness of each half and the hole counts below. **Halves**
+  writes both or one; **Molds of the left wing (mirror image)** writes the mirror image. The axes follow the last export
+  (**Fusion 360 fix**). The values are kept in the browser, not in the project. German: **Formhälften …**, resin channel
+  **Blutrinne**. The mold ignores **Part tilt** and **Part roll**, has no draft angle, and is not tested in computer-aided
+  design (CAD) or manufacturing (CAM) programs or as a milled mold.
+- **Settings** > **Wing tip** has the value **Round (closes in a point, needs a rounded tip)**: the chord of the last
+  section is 0, and the wing closes in one point without a tip face. STEP files end the faces of each half in that point
+  (3 faces per half with a closed trailing edge, 4 with an open one, no tip cap); STL and 3MF meshes end in one vertex.
+  The **Sections** table shows `tip: 0 (round)` under the tip chord. Round without a rounded tip is an error.
+
+### Changed
+
+- **Rounded tip…** sets **Wing tip** to Round instead of Pointed: the tip closes in a point, and the outline follows the
+  ellipse to its end. The last added section stores a chord of 1 mm, the smallest a section holds; the wing uses chord 0
+  there. On the Glider preset with **Continue the ellipse of the wing**, the chord lies within −0.05 to +0.02 mm of the
+  ellipse over the outer 56 mm of the half span, +0.02 mm at 0.8 mm before the point; with the 1 mm profile of Pointed it
+  was +0.34 mm there. A rounded tip of an earlier project keeps Wing tip Pointed and its 1 mm profile; set to Round it
+  closes in the point. **Settings** > **Wing tip** Pointed gives the 1 mm profile back.
+- A project with **Wing tip** Round is saved as format version 6, which Wingdesigner 0.9.0 and earlier refuse. Projects
+  with another wing tip are saved as before.
+- With **Wing tip** Round the foam cores end at the last section before the point; the templates and `README.txt` name
+  the part of the tip beyond it, which is not part of a core.
+- The **Winglet…** and **Rounded tip…** dialogs refuse a wing with **Wing tip** Pointed or Round.
+
 ## [0.9.0] - 2026-11-09
 
 ### Changed

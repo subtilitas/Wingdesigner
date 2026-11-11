@@ -570,7 +570,7 @@ With a guide curve on, the wing uses the guide value instead of the typed one. T
 | nose line or end line | x |
 | nose line and end line | x and Chord |
 
-With **Settings** > **Wing tip** = Pointed, the wing does not use the typed tip chord. The Chord cell of the tip row shows the tip chord in use with 2 decimals, e.g. `tip: 1.25`. `(min.)` follows when the 1 mm floor applies, e.g. `tip: 1.00 (min.)`.
+With **Settings** > **Wing tip** = Pointed, the wing does not use the typed tip chord. The Chord cell of the tip row shows the tip chord in use with 2 decimals, e.g. `tip: 1.25`. `(min.)` follows when the 1 mm floor applies, e.g. `tip: 1.00 (min.)`. With **Wing tip** = Round the Chord cell of the tip row shows `tip: 0 (round)`: the wing closes in a point there, and the typed chord is not used.
 
 ### Winglet
 
@@ -594,7 +594,7 @@ With **Settings** > **Wing tip** = Pointed, the wing does not use the typed tip 
 
 - a field lies outside its limit or the airfoil is not in the project;
 - a guide curve is on (`Switch the guide curves off first: …`);
-- **Settings** > **Wing tip** = Pointed (`… a winglet needs a flat tip.`);
+- **Settings** > **Wing tip** = Pointed or Round (`… a winglet needs a flat tip.`);
 - **Settings** > **Section planes** is not Mitred;
 - the blend arc is not shorter than the height (`Winglet: the blend arc is … mm long, …`);
 - a winglet panel spans less than 1 mm in y (`Winglet panel … spans … mm in y, …`), which happens near ±89° without a blend radius;
@@ -604,7 +604,7 @@ Construction: [[Geometry|Geometry]], section 9.
 
 ### Rounded tip
 
-**Rounded tip…** below the table opens a dialog that appends a rounded tip beyond the tip section and sets **Settings** > **Wing tip** to Pointed. The chord follows a superellipse from the tip chord to the point: a quarter ellipse at **Fullness** 2, fuller towards the point and closing in a shorter, blunter turn up to 3. With **Tangent to the last panel** the superellipse is scaled so that the chord starts with the taper of the last panel: leading and trailing edge run on without a corner at the tip section. Leading and trailing edge curve towards a straight line at a chosen share of the chord and meet on it. The sections run on along the last panel in y and z and keep the airfoil and twist of the tip section. **Add rounded tip** adds them as one undo step; **Undo** also restores the wing tip mode.
+**Rounded tip…** below the table opens a dialog that appends a rounded tip beyond the tip section and sets **Settings** > **Wing tip** to Round: the tip closes in one point, chord 0. The chord follows a superellipse from the tip chord to the point: a quarter ellipse at **Fullness** 2, fuller towards the point and closing in a shorter, blunter turn up to 3. With **Tangent to the last panel** the superellipse is scaled so that the chord starts with the taper of the last panel: leading and trailing edge run on without a corner at the tip section. Leading and trailing edge curve towards a straight line at a chosen share of the chord and meet on it. The sections run on along the last panel in y and z and keep the airfoil and twist of the tip section. **Add rounded tip** adds them as one undo step; **Undo** also restores the wing tip mode.
 
 | Field | Unit | Step | Limit | Default | Effect |
 | --- | --- | --- | --- | --- | --- |
@@ -615,9 +615,13 @@ Construction: [[Geometry|Geometry]], section 9.
 | Continue the ellipse of the wing | – | – | on, off | on with a guide curve on, else off | On: the chord follows the ellipse c(y) = A · sqrt(1 − (y − y_root)² / B²) through the chord and taper of the wing at the tip section, centred at the root, to where it closes. That sets the length; Length, Fullness and Tangent do not apply. The Glider preset (half span 1,000 mm, taper 0.45) gets 120.1 mm, a span of 2,240 mm |
 | Tangent to the last panel | – | – | on, off | on | On: the chord starts with the taper of the last panel, no corner in the planform at the tip section. Off: the chord starts with slope 0, which leaves a corner where the last panel tapers |
 
-- The point takes the chord of a pointed tip: 1/200 of the section before (**Settings** > **Wing tip**, scale), at least 1 mm. **Sport** with the defaults (taper of the last panel −0.16 mm per mm): 6 sections, chords 136.14, 122.57, 102.68, 76.85 and 44.99 mm, point at y = 743.95 mm with 1 mm chord. With Fullness 2: 133.34, 114.73, 90.31, 62.03 and 31.51 mm.
+- The last added section is the point. It lies on the straight line, where leading and trailing edge meet, and stores a chord of 1 mm, the smallest chord a section holds. The build uses chord 0 there: every surface point of the tip row is one point. The **Sections** table shows `tip: 0 (round)` below its chord. **Sport** with the defaults (taper of the last panel −0.16 mm per mm): 6 sections, chords 136.14, 122.57, 102.68, 76.85 and 44.99 mm, point at y = 743.95 mm. With Fullness 2: 133.34, 114.73, 90.31, 62.03 and 31.51 mm.
+- The dialog summary reads `Adds … sections and sets Settings > Wing tip to Round: the tip closes in a point. Point at y = … mm, … mm beyond the tip section.` After **Add rounded tip** the notice reads `Rounded tip added: … sections, wing tip set to Round. Undo removes it.`
+- At the point both edges meet with the curvature of an ellipse about the straight line ([[Geometry|Geometry]], section 10.1). **Glider** with **Continue the ellipse of the wing** and the dialog defaults: the chord lies within −0.05 to +0.02 mm of the ellipse over the outer 56 mm, +0.02 mm at 0.8 mm before the point.
+- A profile of 1 mm at the point instead of the point: **Settings** > **Wing tip** = Pointed. The tip then ends in the scaled tip profile, 1/200 of the section before, at least 1 mm (Glider: the chord 0.34 mm above the ellipse at 0.8 mm before the point). Projects of format version 5 with a rounded tip, saved by Wingdesigner 0.9.0 with Wing tip Pointed, open with Pointed and build as before; set to Round they close in the point.
+- **Wing tip** = Round without a rounded tip is a build error: `Settings > Wing tip Round closes the tip in a point and needs a rounded tip: add one with Sections > Rounded tip…, or set the wing tip to Flat or Pointed.`
 - The thickness falls with the chord, as the airfoil keeps its thickness ratio. Seen from the front, the tip outline follows the chord.
-- The added sections are marked as a rounded tip (`roundTip` in the project file). The wing then builds the tip outline along the tip ellipse, as one piece from the tip section to the point, with **Spanwise interpolation** Linear and Smooth alike: without waves, and tangent to the wing at the tip section with **Tangent to the last panel**. The rest of the wing keeps its interpolation. Guide curves (nose line, end line) end at the tip section, the last section not marked as a rounded tip; the rounded tip leaves them with their slope. With **Straight panels** the tip is built from its sections as any panel: a polygon of 6 straight panels with the defaults. The projects are saved as format version 5, which Wingdesigner 0.8.0 and earlier refuse.
+- The added sections are marked as a rounded tip (`roundTip` in the project file). The wing then builds the tip outline along the tip ellipse, as one piece from the tip section to the point, with **Spanwise interpolation** Linear and Smooth alike: without waves, and tangent to the wing at the tip section with **Tangent to the last panel**. The rest of the wing keeps its interpolation. Guide curves (nose line, end line) end at the tip section, the last section not marked as a rounded tip; the rounded tip leaves them with their slope. With **Straight panels** the tip is built from its sections as any panel: a polygon of 6 straight panels with the defaults. A project with **Wing tip** = Round is saved as format version 6, which Wingdesigner 0.9.0 and earlier refuse; with the markers and another wing tip, as version 5.
 - With **Trailing edge** Fixed thickness in mm, the gap is limited to 5 % of the chord below a chord of 20 times the thickness (8 mm at 0.4 mm). With **Smooth transition to the 5 % limit** (default) the tip has no wave from it. Switched off, the corner of the limit can leave a small wave in the trailing edge within 1 mm of the point (with the defaults in 7 of 368 tested preset variants, 1 of them above 0.05 mm).
 - With tangent, a fixed trailing-edge thickness (**Settings** > **Trailing edge**) can exceed 5 % of the chord at a station before the last panel, where the chord falls faster than the superellipse. The build limits it there and reports a warning; with the defaults on the preset **Delta jet** (1.6 mm).
 - The preview draws the outer 40 % of the span from above, the rounded tip in the accent colour, and states the number of sections and the position of the point. A build error of the preview shows instead and disables **Add rounded tip**.
@@ -625,7 +629,7 @@ Construction: [[Geometry|Geometry]], section 9.
 **Add rounded tip** is disabled, with the reason below the preview, when:
 
 - a field lies outside its limit, or the number of sections is not a whole number;
-- **Settings** > **Wing tip** = Pointed (`… a rounded tip needs a flat tip.`);
+- **Settings** > **Wing tip** = Pointed or Round (`… a rounded tip needs a flat tip.`);
 - **Continue the ellipse of the wing** is on and the wing does not narrow at the tip section (`Continue the ellipse: the wing does not narrow …`);
 - with tangent, the last panel would taper to zero chord within 1/0.95 of the length (`Rounded tip: the last panel tapers to zero chord within … mm, …`); **Sport**: at most 855.29 mm;
 - the last section before the point would fall below 1 mm chord (`Rounded tip: with … sections the tip chord must be at least … mm; …`);
@@ -648,14 +652,14 @@ The planform editor shows the half wing from above: span y to the right, chord x
 
 | Handle | Visible when | Drag effect |
 | --- | --- | --- |
-| Blue square at a section leading edge | nose line off; not at a **Pointed** tip section while the end line is on | Moves x and y of the section; x stays within ±1,000,000 mm. The trailing edge stays in place (end line on: the end line at the changed y); the chord changes within 1 to 100,000 mm. y stays 1 mm away from the neighbouring sections (neighbours closer than 4 mm: a quarter of the gap). The root section keeps its y. The tip section y stays at or below 1,000,000 mm. A y whose span fraction would not stay apart from a neighbour's (4 units in the last place, 2^-1021) is not taken; the section keeps its y. |
-| Blue circle at a section trailing edge | end line off; not at a **Pointed** tip section | Sets the chord (1 to 100,000 mm) |
+| Blue square at a section leading edge | nose line off; not at a **Pointed** or **Round** tip section while the end line is on | Moves x and y of the section; x stays within ±1,000,000 mm. The trailing edge stays in place (end line on: the end line at the changed y); the chord changes within 1 to 100,000 mm. y stays 1 mm away from the neighbouring sections (neighbours closer than 4 mm: a quarter of the gap). The root section keeps its y. The tip section y stays at or below 1,000,000 mm. A y whose span fraction would not stay apart from a neighbour's (4 units in the last place, 2^-1021) is not taken; the section keeps its y. |
+| Blue circle at a section trailing edge | end line off; not at a **Pointed** or **Round** tip section | Sets the chord (1 to 100,000 mm) |
 | Diamond on a guide curve (green: nose line, brown: end line) | guide curve on | Moves the point; x stays within ±1,100,000 mm. Root and tip points move in x only. Interior points stay 0.5 mm away from their neighbours in y (neighbours closer than 2 mm: a quarter of the gap). A y whose normalized value would not stay apart from a neighbour's keeps the point's y; the point table applies the same rule. |
 
 - Dragged values are rounded to 0.1 mm.
 - The line below the canvas shows the values during a drag.
 - The selected section and the selected guide point are drawn in red. A click on the background, **Reset to sections** and switching the guide curve on or off clear the guide point selection.
-- A **Pointed** tip section has no trailing-edge handle: its chord is the scaled chord of the section before. With the end line on it has no leading-edge handle either: its leading-edge x is the end line x minus the chord.
+- A **Pointed** tip section has no trailing-edge handle: its chord is the scaled chord of the section before. A **Round** tip section has none either: its chord is 0. With the end line on it has no leading-edge handle either: its leading-edge x is the end line x minus the chord.
 - A section drag moves guide curves that are off and not edited to the new section edges, as an edit in the **Sections** table does. After a reload, switching such a guide curve on starts at the dragged edges.
 
 ### Guide curves
@@ -866,7 +870,7 @@ The box **More airfoils (external sites)** links to 3 collections. The app bundl
 | Geometry | **Section planes** | **Mitred (square to the panels, as XFLR5)**, **Vertical (y = const)** | Mitred; project files of format version 1: Vertical; XFLR5 import: see section [Import, Cancel and Undo](#import-cancel-and-undo) | Plane in which each section lies. See the list below. |
 | Geometry | **Twist pivot (fraction of chord)** | 0 to 1, step 0.05 | 0.25 | Chord point the twist rotates about |
 | Geometry | **Trailing edge** | **As in the airfoil files**, **Closed (sharp)**, **Fixed thickness in mm** | Fixed thickness (wizard, sample wing); As in the airfoil files for project files without this setting | Trailing-edge gap of every station |
-| Geometry | **Wing tip** | **Flat (cut at the tip section)**, **Pointed (tip profile scaled down)** | Flat; wizard: its **Tip** field | Flat: the wing ends at the tip section. Pointed: see the list below. |
+| Geometry | **Wing tip** | **Flat (cut at the tip section)**, **Pointed (tip profile scaled down)**, **Round (closes in a point, needs a rounded tip)** | Flat; wizard: its **Tip** field; **Rounded tip…**: Round | Flat: the wing ends at the tip section. Pointed and Round: see the lists below. |
 | Geometry | **Tip profile scale 1 : N of the previous section chord** | N = 100 to 1000, step 50 | 200 | Shown only with **Pointed** |
 | Geometry | **Trailing-edge thickness (mm)** | ≥ 0, step 0.1 | wizard: 0.2 % of the root chord, at least 0.3; sample wing: 0.5; project file without the value: 0.4 | Shown only with **Fixed thickness in mm** |
 | Geometry | **Smooth transition to the 5 % limit** | on, off | on | Shown only with **Fixed thickness in mm**. The gap is limited to 5 % of the chord; the limit sets in at the chord c* = 20 × thickness (8 mm at 0.4 mm). On: the gap keeps the thickness down to 1.5 c*, blends into 5 % of the chord without a corner by 0.5 c*, and stays below both in between. Off: the gap switches at c* with a corner, which can leave a wave in the trailing edge near a pointed tip ([[Geometry]], section 3.7) |
@@ -929,6 +933,13 @@ Pointed tip (**Wing tip** = Pointed):
 - With both guide curves on, their gap at the tip sets the tip chord when it is wider than the scaled tip chord. A gap more than 0.5 mm wider gives a warning.
 - Glider preset with **Tip** = Pointed: tip chord 1.00 mm (1 mm floor), 22 stations (17 + 5 added), largest deviation at the checked span positions 0.263 mm, no warning. The other wizard presets with **Tip** = Pointed also build without a warning.
 - Within 2 mm of a pointed elliptic tip (wizard presets) the leading and trailing edge x of the loft deviate at most 0.044 mm from the intended planform (**Swept flying wing**; 2,001 span samples); the other profile points there are not measured. The deviation warning does not cover these positions.
+
+Round tip (**Wing tip** = Round):
+
+- The chord of the last section is 0: the wing closes in one point, without a tip face. The typed tip chord is not used; the **Sections** table shows `tip: 0 (round)`.
+- Needs a rounded tip, the sections that **Rounded tip…** adds (section [Rounded tip](#rounded-tip)). Without one the build stops with `Settings > Wing tip Round closes the tip in a point and needs a rounded tip: …`.
+- Meshes end in one vertex at the point; STEP faces end in one vertex with 3 edges ([[Geometry|Geometry]], section 6).
+- A project with Round is saved as format version 6.
 
 Trailing-edge rules:
 
@@ -1090,7 +1101,7 @@ Measured per chord edit in the browser: Chromium 141 headless, software renderin
 
 ## Export
 
-![Export dialog: format, wing halves, mesh density, Fusion 360 fix](images/export-dialog.png)
+![Export dialog: format, wing halves, mesh density, Fusion 360 fix, group Mold with the button Mold halves…](images/export-dialog.png)
 
 | Format | Meaning | Content |
 | --- | --- | --- |
@@ -1147,6 +1158,7 @@ For STEP, the note gives the surface control points in the file and the file siz
 | --- | --- |
 | **Download** | Writes the file with the selected options. |
 | **Cancel** | Closes the dialog without a file. |
+| **Mold halves…** (group **Mold**) | Closes the dialog and opens the mold dialog (section [Mold halves](#mold-halves)). Disabled while the wing has errors. |
 
 | Format | Both halves | Full wing | Right half |
 | --- | --- | --- | --- |
@@ -1167,6 +1179,101 @@ For STEP, the note gives the surface control points in the file and the file siz
 - When the first damaged triangle still collapses or turns over with its x and z moved next to 0 and the root moved to y = 0 (both halves of a mirrored wing), its distance from the root alone is too coarse: sections or stations lie closer together than the 32-bit spacing, and moving the wing does not help. The last sentence then reads `Sections or stations near y = … mm lie closer together than the spacing there (… mm); move them apart, or export STEP.` Example: 4 sections, 2 of them at y = 300 mm and y = 300.00001 mm: `STL stores 32-bit coordinates: at 300 mm their spacing is 0.000031 mm, and 484 of 1928 triangles collapse or turn over. Sections or stations near y = 300 mm lie closer together than the spacing there (0.000031 mm); move them apart, or export STEP.`
 - File contents: [[File Formats|File-Formats]].
 
+## Mold halves
+
+![Mold dialog for the Sport preset with a rounded tip: groups Block, Resin channel, Alignment pin holes, Clamping screw holes and File; top view of the parting plane with block outline, resin channel around the wing, 4 pin holes at the corners and 14 screw holes along the edges; summary below the view](images/mold-dialog.png)
+
+**Export** > **Mold halves…** opens the dialog **Mold**. It builds a lower and an upper mold half of the right half wing as exact STEP solids (AP214) and writes them to one file: `<project name>_mold.step`, with the file name rule of section [Export](#export). The halves stand in the closed position, the parting plane at z = 0, the lower half below it, the upper half above it. Solid names: `<project name> mold lower` and `<project name> mold upper`. Units: mm. The axes follow the last export: with **Fusion 360 fix: Y up** on at the last STEP, STL or 3MF export, the file has Y as the up axis.
+
+| Part | Built as |
+| --- | --- |
+| Block | One box per half. Length: wing from leading to trailing edge plus **Margin around the wing** at front and back. Width: root face to the tip plus the margin. Thickness of a half: depth of its cavity below the parting plane plus **Floor below the cavity**. |
+| Root face | The face of the block at the root. The root section lies in it; the cavity is open there. With dihedral the face leans by the roll of the mold frame (below). |
+| Cavity | The wing surface of the half: lower surface in the lower half, upper surface in the upper half; the half of a blunt trailing edge; at a flat tip the half of the tip face. |
+| Parting line | Leading edge and trailing edge of the wing; the middle of a blunt trailing edge. |
+| Ramp | A ruled surface, **Ramp width** wide, from leading edge and trailing edge down or up to the parting plane. Leading edge and trailing edge lie off the plane with twist, a change of dihedral or an airfoil whose leading edge lies off its chord line; the ramp joins them to it. Inboard its rulings run along x; around a tip that closes in a point they turn with the tip; a flat tip face is parted along the mean line of the tip section. |
+| Resin channel | A half-round groove in each half, so that the closed mold has a round channel of **Diameter**. It runs around leading edge, tip and trailing edge, at **Distance from the wing** from the wing outline to its near rim, and ends in the root face. Inward corners of its path are rounded with a radius of diameter + 2 mm. |
+| Alignment pin holes | Blind holes from the parting plane, **Depth in each half** deep, in both halves at the same positions. |
+| Clamping screw holes | Through holes in both halves, from the parting plane to the bottom face, at the same positions. |
+
+Mold frame: the frame the half wing is built in, before **Part tilt** and **Part roll** (the mold ignores both), rolled about x by the dihedral of the wing: the roll of a flat tip section, else the slope of the line fitted to leading edge and trailing edge. The parting plane lies at the mean height of leading edge and trailing edge in that frame. Construction: [[Geometry|Geometry]], section 11.
+
+### Fields
+
+| Group | Field | Unit | Step | Limit | Default |
+| --- | --- | --- | --- | --- | --- |
+| Block | **Margin around the wing** | mm | 5 | 5 to 1000 | 40 |
+| Block | **Floor below the cavity** | mm | 1 | 1 to 1000 | 12 |
+| Block | **Ramp width** | mm | 0.5 | 0.5 to 100 | 3 |
+| **Resin channel** (checkbox, on) | **Diameter** | mm | 0.5 | 1 to 20 | 4 |
+| Resin channel | **Distance from the wing** | mm | 1 | 1 to 500, at least ramp width + 0.5 | 6 |
+| **Alignment pin holes** (checkbox, on) | **Diameter** | mm | 0.5 | 1 to 50 | 6 |
+| Alignment pin holes | **Depth in each half** | mm | 1 | 1 to 500 | 10 |
+| Alignment pin holes | **Pattern** | – | – | see below | Block corners |
+| Alignment pin holes | **Largest spacing** | mm | 10 | 5 to 10,000 | 150 |
+| Alignment pin holes | **Distance from the block edge** | mm | 1 | 2 to 500, at least hole radius + 1 | 12 |
+| Alignment pin holes | **Distance beyond the resin channel** | mm | 1 | 1 to 500, at least hole radius + 1 | 10 |
+| **Clamping screw holes** (checkbox, on) | **Diameter** | mm | 0.5 | 1 to 50 | 6.5 |
+| Clamping screw holes | **Pattern** | – | – | see below | Along the block edges |
+| Clamping screw holes | **Largest spacing** | mm | 10 | 5 to 10,000 | 120 |
+| Clamping screw holes | **Distance from the block edge** | mm | 1 | 2 to 500, at least hole radius + 1 | 12 |
+| Clamping screw holes | **Distance beyond the resin channel** | mm | 1 | 1 to 500, at least hole radius + 1 | 10 |
+| File | **Halves** | – | – | **Lower and upper**, **Lower only**, **Upper only** | Lower and upper |
+| File | **Molds of the left wing (mirror image)** | – | – | on, off | off |
+
+- A value outside its limit is not taken: the field returns to the last valid value.
+- Fields that the chosen pattern or a switched-off group does not use are disabled: **Largest spacing** with Block corners, **Distance from the block edge** with Around the wing, **Distance beyond the resin channel** with the two other patterns.
+- **Molds of the left wing** writes the mirror image at y = 0. A left and a right mold are two files.
+- The values are stored in the browser under `wingdesigner.mold`, not in the project. Without browser storage the dialog starts with the defaults.
+
+| Pattern | Hole positions |
+| --- | --- |
+| **Block corners** | 4 holes, one per corner, at **Distance from the block edge** from both edges |
+| **Along the block edges** | Along the front edge, the tip side and the back edge (not the root face), from corner to corner, in equal steps of at most **Largest spacing**; the corners included |
+| **Around the wing** | Along a path around the wing at **Distance beyond the resin channel** from the outer rim of the channel (without a channel: from the ramp), in equal steps of about **Largest spacing**, at least 1 hole |
+
+- On the root side the holes keep their edge distance from the leaning root face over the height of both halves.
+- A hole closer than 1 mm to the keep-out around the cavity (the ramp, or the resin channel when it is on), to a block edge or to another hole is left out, with a warning that counts the left-out holes. A position that a hole of the other set already holds is left out without a warning.
+- Defaults: pins at the 4 corners, screws along the edges between them. Glider preset with a rounded tip (**Rounded tip…**, **Continue the ellipse of the wing**): 4 pin holes, 20 screw holes.
+
+### Preview and summary
+
+The preview draws the parting plane from above, y to the right and x aft downward, as the other previews: the block outline, the resin channel at its width in the accent colour, the outer edge of the ramp in grey, the wing outline filled, pin holes as filled circles and screw holes as open circles. Pan and zoom as in section [Controls](#controls).
+
+Summary below the preview, e.g. **Sport** preset with the default rounded tip and the default mold values (the screenshot above):
+
+`Block 320.0 × 784.2 mm; lower half 17.7 mm thick, upper half 27.6 mm. Parting plane rolled 1.54° with the wing; leading and trailing edge up to 1.36 mm off it. Resin channel 1586 mm long. 4 pin holes, 14 screw holes.`
+
+| Message | Kind | Condition |
+| --- | --- | --- |
+| `Mold: leading edge and trailing edge lie up to … mm off the parting plane (twist, a change of dihedral or the airfoil), so the ramp rises up to …°. …` | warning | The ramp rises more than 45° |
+| `Mold: … pin hole(s) left out: …`, `Mold: … screw hole(s) left out: …` | warning | Holes left out (above) |
+| `Mold: … must be between … and … mm.` | error | A value outside its limit |
+| `Mold: the distance of the resin channel must be at least … mm, the ramp width plus 0.5 mm.` | error | Channel distance below ramp width + 0.5 mm |
+| `Mold: the block margin must be at least … mm for the resin channel (…)` | error | Margin below distance + diameter + 1 mm (without channel: ramp width + 1 mm) |
+| `Mold: the resin channel leaves the block; …` | error | The channel path comes closer than 1 mm to a block edge |
+| `Mold: the pin holes are … mm deep, but the thinner half is … mm thick; …` | error | Pin depth above the thickness of the thinner half − 1 mm |
+| `Mold: the ramp folds over itself at the wing outline; reduce the ramp width.` | error | The ramp folds in the top view, e.g. at a tight curve of the outline |
+| `Mold: the ramp along the wing outline could not be fitted; …` | error | Sections very close together |
+| `The wing has errors; fix them before building a mold.` | error | The wing does not build |
+
+An error disables **Download STEP**. **Close** closes the dialog.
+
+### Under-cambered airfoils
+
+The halves part at the leading edge and the trailing edge. An under-cambered airfoil has its lower surface above that line: the lower half then rises above z = 0 inside the cavity outline, and the upper half is recessed there. Example: an airfoil of 9 % camber and 5 % thickness at 200 mm chord, untwisted, without dihedral: the lower half reaches 13.2 mm above the parting plane; lower half 12.6 mm thick, upper half 34.9 mm.
+
+### Limitations and tests
+
+- The mold ignores **Part tilt** and **Part roll**.
+- One parting plane per half wing. A wing with several dihedral angles gets high ramps: **Sailplane** preset 85.8 mm, ramp up to 88°, with the warning.
+- The nose is parted at the leading-edge point of the airfoil. At a twisted section the cavity overhangs there by r · (1 − cos twist), r the nose radius: 0.004 mm for 3 mm and 3°.
+- No draft angle.
+- Left and right molds are separate files; no one-piece mold of the full wing.
+- The resin channel is one B-spline surface fitted through stations along the path, not an exact torus or cylinder. Its cross-section lies within 0.02 mm of a half circle on the presets measured (Sport 0.018 mm, flat test wing 0.0073 mm, Delta jet 0.0031 mm); not measured against a CAD model.
+- Holes are cylinders, 2 half-cylinder faces each.
+- Tested: 16 mold files read with OpenCascade (valid, closed solids; the volumes of both halves add up to block − half wing − channel − holes within 2e-4). Not tested: the file in a CAD (computer-aided design) or CAM (computer-aided manufacturing) program other than OpenCascade; a milled mold.
+
 ## Foam cutting
 
 ![Foam-cutting wizard for the Glider preset after Split segments over the limit: settings, cuts, planform with the cuts, segment table, downloads](images/foam-dialog.png)
@@ -1185,6 +1292,8 @@ For STEP, the note gives the surface control points in the file and the file siz
 | Kerf | width of the cut that the hot wire melts (mm) |
 
 Geometry, formulas and examples: [[Geometry|Geometry]], section 8 "Foam cores".
+
+With **Settings** > **Wing tip** = Round the tip closes in a point of chord 0, which no core end can hold. The outermost core ends at the last section before the point (chord at least 1 mm), and no cut lies beyond it; a cut closer than 5 mm to that end is dropped. **Sport** with the default rounded tip: the cores end at y = 739.05 mm, the tip to 743.95 mm is in no core. `README.txt` and the templates name the span position where the cores end and the point: `The tip beyond y = … mm is not part of a core: it closes in a point at y = … mm (Settings > Wing tip Round) and is shaped separately.`
 
 ### Settings
 

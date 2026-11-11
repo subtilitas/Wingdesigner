@@ -42,7 +42,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/geom/linalg.js` | Band-LU-Zerlegung (Lower-Upper, untere und obere Dreiecksmatrix) ohne Pivotsuche (B-Spline-Interpolation, verwendet von `src/geom/nurbs.js`); LU-Zerlegung dichter Matrizen mit Spaltenpivotsuche (nur Unit-Tests) |
 | `src/geom/profile.js` | Profil als NURBS-Kurve; Neuabtastung in Profiltiefenrichtung; `fitProfile` (Kurvenanpassung und Formprüfung eines Profils, verwendet von der Profilvorschau und vom XFLR5-Import) |
 | `src/geom/spanwise.js` | Interpolation der Schnittwerte in Spannweitenrichtung (`linear`, `smooth`) |
-| `src/geom/tipblend.js` | Randbogen im Loft: `roundTipStart` (die gekennzeichnete Folge), `guideEndIndex` (wo Leitkurven enden), `roundTipBlender` (Umriss entlang der Randellipse, wahlweise an Leitkurven angesetzt), `spanParameter` (Spannweitenparameter v entlang des Ellipsenbogens) |
+| `src/geom/tipblend.js` | Randbogen im Loft: `roundTipStart` (die gekennzeichnete Folge), `guideEndIndex` (wo Leitkurven enden), `roundTipBlender` (Umriss entlang der Randellipse, wahlweise an Leitkurven angesetzt), `spanParameter` (Spannweitenparameter v entlang des Ellipsenbogens); mit **Flügelende** Rund (`closed`) enden die Kanten mit der Krümmung der geraden Linie durch den Punkt |
 | `src/geom/guide.js` | Leitkurven (Nasenlinie, Endlinie) |
 | `src/geom/planes.js` | Schnittebenen: Neigung und Dickenstreckung jedes Schnitts (`sectionPlanes`), Grenze der Dickenstreckung, Ausdehnung eines platzierten Profils (`upExtent`) und Faltungstest zweier benachbarter Ebenen (`planeFold`, `firstFold`) |
 | `src/geom/wing.js` | Flügel-Loft: `buildWing`; `mitredPlaneProblem` (Prüfungen auf Dickenstreckung und Faltung ohne den Loft, für den XFLR5-Import); Profil-Cache |
@@ -51,6 +51,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/geom/stats.js` | Grundrisskennwerte; bei einem gedrehten Teil Lage der MAC, 25 % MAC und Spannweite in den Achsen des Flugzeugs |
 | `src/geom/part.js` | Starre Lage des Teils (**Einstellwinkel des Teils**, **Rollwinkel des Teils**): `partPivot` (gespeicherter Drehpunkt, sonst die Nasenleiste des Wurzelschnitts), `partTransform` (Rollwinkel um x, dann Einstellwinkel um y, durch den Drehpunkt: `point`, `vector`, `matrix`), `transformPositions` (Eckpunkte der Dreiecksnetze) |
 | `src/geom/foam.js` | Schaumkerne: vorgeschlagene Schnitte (`proposeCuts`), Regeln der Schnittliste (`normalizeCuts`), Segmente mit Endprofilen, Keilen und Abweichung (`foamSegments`), Teilen über einer Grenze der Abweichung (`splitOverTolerance`); Grenzen `FOAM_LIMITS` |
+| `src/geom/mold.js` | Formhälften: `moldGeometry` (Bezugssystem mit der V-Form gerollt, Trennebene, Rampen, Umriss, Blutrinne, Formblock, Bohrungen, Vorschau und Zusammenfassung), `moldProblems` (Prüfung der Wertebereiche und Kombinationen), `offsetOutline` (Versatz mit gerundeten Innenecken), `grooveSurface` (halbrunde Rille als eine B-Spline-Fläche), `resolveMold`, `MOLD_DEFAULTS`, `MOLD_RANGES`, `HOLE_PATTERNS`, `MOLD_CLEARANCE` (1 mm) |
 | `src/geom/sampling.js` | Stützstellen in Spannweitenrichtung zum Zeichnen, gemeinsam für die 3D-Ansicht und den Grundriss: `refine`, `thinParams`, `edgeParams`, `MAX_EDGE_SAMPLES` (20.000) |
 | `src/airfoil/parse.js` | Parser für Profildateien; `cleanPoints` bereinigt eine Punktliste aus einem anderen Format (die Profile eines XFLR5-Projekts) nach den Regeln einer eingelesenen Datei |
 | `src/airfoil/geometry.js` | Polyliniengeometrie |
@@ -58,6 +59,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/airfoil/naca.js` | Generator für 4- und 5-stellige NACA-Profile; `leadingNacaCode` findet den Code, mit dem ein Name beginnt (`NACA0014_Flap`) |
 | `src/airfoil/library.js` | 17 NACA-Vorlagen, mitgelieferte Bibliothek, externe Quellen; `librarySource` (Quellenangabe eines mitgelieferten Eintrags) |
 | `src/export/step.js` | STEP-Export; Dateiformat nach International Organization for Standardization (ISO) 10303-21 |
+| `src/export/moldstep.js` | STEP-Schreiber der Formhälften: `moldToStep` (ein `MANIFOLD_SOLID_BREP` je Hälfte, Trennebene bei z = 0), `Brep` (Knoten, Kanten, B-Spline-, Ebenen- und Zylinderflächen, Prüfung der geschlossenen Hülle) |
 | `src/export/axes.js` | Hochachse der exportierten Dateien (die Fusion-360-Korrektur des Exportdialogs): `UP_AXES`, `upAxisMap` (unverändert für Z nach oben, (x, z, −y) für Y nach oben), `meshToUpAxis` |
 | `src/export/stl.js` | Export als binäres STL (Stereolithografie) |
 | `src/export/threemf.js` | 3MF-Export |
@@ -76,7 +78,7 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/model/edit.js` | Bearbeitungsoperationen |
 | `src/model/wizard.js` | Entwurfstypen und Wertebereiche des Assistenten (`RANGES`) und der Felder (`PANEL_RANGES`, höchstens `MAX_PANELS` = 24 Felder); `wizardProject` erzeugt die Schnitte des geraden, des elliptischen und des Feld-Grundrisses und des elliptischen Flügelendes (`ELLIPTIC_TIP_SECTIONS` = 6); `panelsFromParams` macht aus dem geraden Grundriss 1 Feld |
 | `src/model/winglet.js` | Integriertes Winglet: `wingletSections` (Übergangsbogen in Schritten von höchstens `WINGLET_STEP` = 15°, dann das gerade Stück), `wingletProblems`, `addWinglet`, `defaultWinglet`, Wertebereiche `WINGLET_RANGES` |
-| `src/model/roundtip.js` | Randbogen: `roundTipSections` (Viertelellipse der Profiltiefen bei t = sin(π k / (2m)), mal 1 + κ t), `roundTipKappa` (κ von **Tangential zum letzten Feld**), `roundTipProblems`, `addRoundTip` (setzt auch das Flügelende auf Spitz), `defaultRoundTip`, `wingEllipse` und `roundTipLength` (Ellipse fortsetzen), Wertebereiche `ROUND_TIP_RANGES` |
+| `src/model/roundtip.js` | Randbogen: `roundTipSections` (Viertelellipse der Profiltiefen bei t = sin(π k / (2m)), mal 1 + κ t), `roundTipKappa` (κ von **Tangential zum letzten Feld**), `roundTipProblems`, `addRoundTip` (setzt auch das Flügelende auf Rund), `defaultRoundTip`, `wingEllipse` und `roundTipLength` (Ellipse fortsetzen), Wertebereiche `ROUND_TIP_RANGES` |
 | `src/model/defaults.js` | Projekt beim ersten Laden |
 | `src/ui/store.js` | Store mit Rückgängig und Wiederholen |
 | `src/ui/viewer3d.js` | 3D-Ansicht |
@@ -87,14 +89,15 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `src/ui/settings.js` | Registerkarte **Einstellungen** (Settings) |
 | `src/ui/wizard.js` | Dialog des Assistenten mit der Feldtabelle; `drawPlanform` (zeichnet den Grundriss auch im Importdialog) |
 | `src/ui/xflr5.js` | Importdialog für XFLR5-Dateien: `openXflr5Dialog` |
-| `src/ui/exportui.js` | Dialog **Exportieren** (Export) |
+| `src/ui/exportui.js` | Dialog **Exportieren** (Export); `storedUpAxis` (die Hochachse des letzten Exports, auch vom Dialog der Form verwendet); die Schaltfläche **Formhälften …** |
+| `src/ui/mold.js` | Dialog der Form: `moldDialog` (Felder, Draufsicht auf die Trennebene, Zusammenfassung, **STEP herunterladen**); gespeicherte Werte (`storedMoldSettings`, Schlüssel `wingdesigner.mold`) |
 | `src/ui/foam.js` | Schaumschnitt-Assistent: `foamDialog`; gespeicherte Einstellungen (`storedFoamSettings`, Schlüssel `wingdesigner.foam`) |
 | `src/ui/winglet.js` | Winglet-Dialog der Registerkarte **Schnitte**: `wingletDialog` |
 | `src/ui/roundtip.js` | Randbogen-Dialog der Registerkarte **Schnitte**: `roundTipDialog` |
 | `src/ui/dom.js` | DOM-Hilfsfunktionen |
 | `src/ui/styles.css` | Stile |
 | `src/i18n/index.js` | Sprache (`language`, `setLanguage`, `initialLanguage`), `tr()` und die Zahlenformate `fixed`, `count`, `whole`, `plain` |
-| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `roundtip`, `flow5`; `index.js` fasst sie zusammen |
+| `src/i18n/de/*.js` | Deutsche Texte, eine Datei je Bereich: `shell`, `panels`, `editors`, `model`, `geom`, `airfoil`, `xfl`, `xflxml`, `xflr5`, `foam`, `winglet`, `roundtip`, `flow5`, `mold`; `index.js` fasst sie zusammen |
 
 ### Skripte
 
@@ -107,6 +110,8 @@ Erzeugt und nicht eingecheckt (`.gitignore`): `dist/`, `coverage/`, `step-check/
 | `scripts/validate_3mf.py` | 3MF-Validierung (lib3mf) |
 | `scripts/export-foam-cases.mjs` | Export der Schaumschnitt-Dateien der Testflügel |
 | `scripts/validate_foam.py` | Validierung der Schaumschnitt-Dateien (ezdxf, pypdf) |
+| `scripts/export-mold-cases.mjs` | Export der STEP-Testfälle der Form |
+| `scripts/validate_mold.py` | STEP-Validierung der Form (OpenCascade) |
 | `scripts/screenshots.mjs` | Screenshots für das Wiki, englisch und deutsch |
 | `scripts/check-docs.mjs` | Dokumentationsprüfung |
 | `scripts/check-test-counts.mjs` | Prüfung der Testanzahlen |
@@ -301,8 +306,9 @@ Einen Text hinzufügen:
 | `foam.js` | `src/ui/foam.js`, `src/export/foam.js` sowie Beschriftung und Titel von **Schaum** (Foam) in `src/main.js` |
 | `winglet.js` | `src/ui/winglet.js`, `src/model/winglet.js` und die Schaltfläche **Winglet …** in `src/ui/sections.js` |
 | `roundtip.js` | `src/ui/roundtip.js`, `src/model/roundtip.js` und die Schaltfläche **Randbogen …** in `src/ui/sections.js` |
+| `mold.js` | `src/ui/mold.js`, `src/geom/mold.js`, `src/export/moldstep.js` und die Schaltfläche **Formhälften …** mit ihrer Gruppe in `src/ui/exportui.js` |
 
-`src/i18n/de/index.js` fasst die dreizehn Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 34 und 146 Texte, die Datei des flow5-Imports 44.
+`src/i18n/de/index.js` fasst die vierzehn Dateien zu `DE` zusammen und exportiert sie unter ihren Namen als `AREAS`. Die drei Dateien des XFLR5-Imports enthalten 25, 34 und 146 Texte, die Datei des flow5-Imports 44.
 
 Eine Sprache hinzufügen:
 
@@ -434,16 +440,17 @@ Browsertests und Screenshots brauchen zusätzlich Chromium: `npx playwright inst
 | `npm run build` | `vite build` | Statische Website in `dist/` |
 | `npm run preview` | `vite preview` | Liefert `dist/` unter `http://localhost:4173` aus (nächster freier Port, wenn 4173 belegt ist) |
 | `npm run lint` | `eslint .` | Lint-Fehler; Exit-Code 1 bei Fehlern |
-| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 690 Tests in 27 Dateien |
+| `npm test` | `vitest run` | Unit-Tests `test/**/*.test.js` in Node.js: 747 Tests in 28 Dateien |
 | `npm run test:watch` | `vitest` | Unit-Tests, erneuter Lauf bei Dateiänderung |
 | `npm run coverage` | `vitest run --coverage` | Tabelle im Terminal, `coverage/coverage-summary.json`, Bericht im Format HyperText Markup Language (HTML) in `coverage/`. Erfasst `src/**/*.js` ohne `src/ui/` und `src/main.js`. |
 | `npm run coverage:readme` | `node scripts/coverage-readme.mjs` | Schreibt die Tabelle der Testabdeckung in `README.md` und `README.de.md` zwischen `<!-- coverage:start -->` und `<!-- coverage:end -->` |
 | `npm run coverage:check` | `node scripts/coverage-readme.mjs --check` | Exit-Code 1, wenn eine README-Tabelle von `coverage/coverage-summary.json` abweicht; Exit-Code 2, wenn diese Datei oder eine Markierung fehlt |
 | `npm run airfoils:check` | `node scripts/check-airfoils.mjs` | Prüfungen unter [Prüfung der Profilbibliothek](#prüfung-der-profilbibliothek); Exit-Code 1 bei einem Problem |
 | `npm run e2e` | `npm run build && playwright test` | Browsertests in `e2e/` gegen `vite preview` auf Port 4173 |
-| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 16 STEP-Dateien, 16 3MF-Dateien und `cases.json` in `step-check/` |
-| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profil-ZIP, SVG, DXF und PDF von 14 Testflügeln und `cases.json` in `foam-check/` |
-| `npm run screenshots` | `node scripts/screenshots.mjs` | 28 Dateien im Format Portable Network Graphics (PNG): 14 in `docs/wiki/images/` (Englisch) und 14 in `docs/wiki/images/de/` (Deutsch) |
+| `npm run step:cases` | `node scripts/export-step-cases.mjs step-check` | 18 STEP-Dateien, 18 3MF-Dateien und `cases.json` in `step-check/` |
+| `npm run mold:cases` | `node scripts/export-mold-cases.mjs mold-check` | 16 STEP-Dateien der Form und `cases.json` in `mold-check/` |
+| `npm run foam:cases` | `node scripts/export-foam-cases.mjs foam-check` | Profil-ZIP, SVG, DXF und PDF von 16 Testflügeln und `cases.json` in `foam-check/` |
+| `npm run screenshots` | `node scripts/screenshots.mjs` | 30 Dateien im Format Portable Network Graphics (PNG): 15 in `docs/wiki/images/` (Englisch) und 15 in `docs/wiki/images/de/` (Deutsch) |
 | `npm run docs:check` | `node scripts/check-docs.mjs` | Dokumentationsprüfung; Exit-Code 1 bei einem Problem |
 | `npm run counts:check` | `node scripts/check-test-counts.mjs` | Prüfungen unter [Prüfung der Testanzahlen](#prüfung-der-testanzahlen); Exit-Code 1 bei einer Abweichung |
 | `npm run i18n:check` | `node scripts/check-i18n.mjs` | Prüfungen unter [Übersetzungen](#übersetzungen); Exit-Code 1 bei einem Problem |
@@ -481,9 +488,9 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | Sprache des Browsers | `en-US` für alle Specs (auf einem deutschen Browser startet die App auf Deutsch, die Specs prüfen englische Texte); `e2e/language.spec.js` und `e2e/xflr5.spec.js` setzen `de-DE` in ihren Blöcken `German browser` und `XFLR5 import in German` |
 | Reporter | `list` im Terminal; `json` nach `playwright-report/results.json`, Eingabe der [Prüfung der Testanzahlen](#prüfung-der-testanzahlen) |
 
-205 Tests in 16 Spec-Dateien, 410 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
+216 Tests in 17 Spec-Dateien, 432 Läufe (beide Projekte). Das Objekt `test` aus `e2e/helpers.js` lässt einen Test bei jedem nicht abgefangenen Seitenfehler und jedem Konsolenfehler fehlschlagen.
 
-31 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
+32 Tests laufen nur in einem Projekt (`test.skip` im anderen Projekt):
 
 | Spec-Datei | nur `desktop` | nur `mobile` |
 | --- | --- | --- |
@@ -492,6 +499,7 @@ Das Skript gibt jedes Problem aus und endet mit Exit-Code 1, wenn mindestens 1 P
 | `e2e/planform.spec.js` | 1: Zoom-Schaltflächen, Mausrad, Doppelklick zum Einpassen | 2: Ziehen eines Leitkurvenpunkts mit einem Finger, Pinch-Zoom mit zwei Fingern |
 | `e2e/sections.spec.js` | 2: Strg+Z und Strg+Umschalt+Z, Strg+Y | 0 |
 | `e2e/xflr5.spec.js` | 0 | 1: der Importdialog passt auf ein 360 px breites Smartphone |
+| `e2e/mold.spec.js` | 0 | 1: Smartphone: der Formdialog (Mold) passt auf den Bildschirm, scrollt, und Download STEP funktioniert |
 
 Kein Test ist mit `test.fail` markiert.
 `npm run e2e` baut `dist/` vorher neu; vor einem direkten `npx playwright test` `npm run build` ausführen.
@@ -557,7 +565,37 @@ x und z: Lage der Profilnase.
 | `mitred-gull-smooth` | Wie `mitred-gull-15-5`, mit glatter Interpolation: Neigungen von der kubischen Kurve überblendet, Dickenstreckung aus der Steigung der überblendeten Bezugslinie | 2 |
 | `mitred-switch-short-panel` | Nicht der Basisflügel: NACA 2412 bei y 0 und 299,5 mm (Profiltiefen 200 und 180 mm), NACA 0012 bei y 300 und 600 mm (Profiltiefen 180 und 120 mm, Rand-z 52,8981 mm, Schränkung −2°); **Gerade Felder**, Schnittebenen **Auf Gehrung**: Das 0,5 mm breite Feld gilt als keines, beide Schnitte des Profilwechsels sind um 5,25° geneigt; das äußere Feld speichert einen Feldwinkel von 10,5° (Neigung am Rand 10,5°) | 2 |
 | `part-tilt-roll` | Wie `mitred-gull-15-5`, mit **Einstellwinkel des Teils** 8° und **Rollwinkel des Teils** 12° um den Drehpunkt (50, 0, −20) mm: gedrehte Flächen, Randkurven, Ebenen der Abschlussflächen und die Spiegelung eines gedrehten Teils | 2 |
-| `rounded-tip-smooth` | Wie `mitred-gull-smooth`, mit dem Randbogen der Vorgaben (`src/model/roundtip.js`): 6 Schnitte außerhalb des Randes auf einer Viertelellipse der Profiltiefen bis zu einer Spitze von 1 mm, gerade Linie bei 25 %; Flügelende **Spitz** | 2 |
+| `rounded-tip-smooth` | Wie `mitred-gull-smooth`, mit dem Randbogen der Vorgaben (`src/model/roundtip.js`): 6 Schnitte außerhalb des Randes auf einer Viertelellipse der Profiltiefen bis zu einem Punkt der Profiltiefe 0, gerade Linie bei 25 %; Flügelende **Rund**; offene Endleiste wie im Profil, 4 Flächen je Hälfte, keine Abschlussfläche am Rand | 2 |
+| `rounded-tip-open-te` | Der Grundflügel mit fester Endleistendicke 0,4 mm und dem Randbogen der Vorgaben, Flügelende **Rund**: 4 Flächen je Hälfte | 2 |
+| `rounded-tip-closed-te` | Der Grundflügel mit geschlossener Endleiste, Schnittebenen **Auf Gehrung** und dem Randbogen der Vorgaben, Flügelende **Rund**: 3 Flächen je Hälfte (Oberseite, Unterseite, Wurzelfläche) | 2 |
+
+### Validierung der Form
+
+Python und Pakete wie in [STEP- und 3MF-Validierung](#step--und-3mf-validierung) (nur `cadquery-ocp`).
+
+```bash
+npm run mold:cases
+python scripts/validate_mold.py mold-check/cases.json
+```
+
+`scripts/export-mold-cases.mjs` baut die Flügel und Parameter der Form aus `moldCases()` in `test/mold-cases.js` und schreibt je Testfall eine STEP-Datei nach `mold-check/`. `cases.json` enthält je Datei: die erwartete Anzahl der Volumenkörper, das erwartete Gesamtvolumen (Formblöcke abzüglich Flügelhälfte, Blutrinne und Bohrungen; die Flügelhälfte aus ihrem Dreiecksnetz bei u × 4 und v × 8), die Toleranz `2e-4`, die Hochachse, die Hälften, die Anzahl der Bohrungen und die Ausdehnung jeder Hälfte entlang der Hochachse (von ihrer Blockfläche bis zum höchsten Punkt der Trennebene, von Nasenleiste und Endleiste und der Formnestfläche, abgetastet 400 × 200).
+
+| Prüfung je Datei (`validate_mold.py`) | Bestanden, wenn |
+| --- | --- |
+| Lesen | Der Reader überträgt alle Wurzeln (`IFSelect_RetDone`) |
+| Anzahl Volumenkörper | Gleich der erwarteten Anzahl: 2, oder 1 mit **Hälften** Nur Unterform oder Nur Oberform |
+| Gültigkeit | Jeder Volumenkörper besteht `BRepCheck_Analyzer` |
+| Hülle | Geschlossen und einheitlich orientiert (`ShapeAnalysis_Shell`), Volumen > 0 |
+| Volumen | Die Volumen beider Hälften ergeben das erwartete Gesamtvolumen innerhalb von `2e-4` (relativ) |
+| Ausdehnung | Jede Hälfte reicht entlang der Hochachse über ihren erwarteten Bereich, die Trennebene bei 0, innerhalb von 0,1 mm |
+| Bohrungen | Jeder Volumenkörper hat 2 Zylinderflächen je Bohrung |
+| Ebene Flächen | Jede Kante einer ebenen Fläche liegt innerhalb von `1e-6` mm in ihrer Ebene, 20 Abtastungen je Kante |
+
+Exit-Code 1, wenn eine Prüfung fehlschlägt. Am 11.11.2026 (lokal, `cadquery-ocp` 8.0.1): Die 16 Dateien bestanden, größte Volumenabweichung 8,9e-6; 36 weitere Dateien (9 Entwurfstypen mit rundem und mit dem Flügelende des Entwurfstyps, offene und geschlossene Endleiste) bestanden dieselben Prüfungen in einem lokalen Lauf, nicht im Repository.
+
+Testfälle (`test/mold-cases.js`): ein flacher ungeschränkter Flügel mit offener und geschlossener Endleiste und mit rundem Flügelende; der Beispielflügel mit Schränkung und V-Form; **Sport**, **Segelflugmodell** (beide Bohrungsarten **Um den Flügel**) und **Delta-Jet** mit rundem Flügelende; **Pfeilnurflügel** mit geschlossener Endleiste bei flachem Flügelende (die Skelettlinie teilt die Endfläche eines S-Schlag-Profils); ein Flügel mit hohler Unterseite mit flachem und mit rundem Flügelende (die Unterform steigt über die Trennebene); **Batwing**; **Leitwerk** ohne Blutrinne und ohne Bohrungen; **Sport** mit nur einer Hälfte (Unterform, Oberform) und die Formen des linken Flügels mit Y nach oben.
+
+Unit-Tests: `test/mold.test.js` (Geometrie, Prüfungen, Lage der Bohrungen, STEP-Topologie der Hälften, deutsche Meldungen). Browsertest: `e2e/mold.spec.js` (der Dialog aus **Exportieren** mit den Vorgaben und der Zusammenfassung des Flügels **Sport**; **Formhälften …** gesperrt bei einem Flügel mit Fehlern; Felder je nach Gruppe und Muster freigegeben; ein Wert außerhalb der Grenze, ein Fehler des Rands und die Warnung für weggelassene Bohrungen; die Werte nach einem Neuladen erhalten; **STEP herunterladen** mit beiden Hälften und mit einer; Y nach oben nach einem Export mit **Fusion-360-Korrektur**; der deutsche Dialog; die Darstellung auf dem Telefon).
 
 ### Validierung der Schaumschnitt-Dateien
 
@@ -569,7 +607,7 @@ npm run foam:cases
 python scripts/validate_foam.py foam-check/cases.json
 ```
 
-`scripts/export-foam-cases.mjs` nimmt die Flügel aus `test/step-cases.js` ohne `mitred-vtail-35-y-up` und `part-tilt-roll` (14 Testfälle): Der erste unterscheidet sich von seinem Testfall nur in den STEP-Achsen, die Kerne des zweiten liegen im Koordinatensystem des Teils, wie die von `mitred-gull-15-5`. Schnitte: der Vorschlag für einen längsten Kern von 300 mm. Schnittbreite 1 mm für `guided-elliptic`, Papier A3 für `pointed-tip` und Letter für `mitred-gull-15-5`, sonst keine Schnittbreite und A4. `cases.json` enthält je Testfall den Namen, die 4 Dateien, die Anzahl der Segmente, die Punkte je Profil, die Schnittbreite, die Anzahl der Eckpunkte jeder Profil-Polylinie, die Seitenzahl, die Seitengröße und die Papiergröße.
+`scripts/export-foam-cases.mjs` nimmt die Flügel aus `test/step-cases.js` ohne `mitred-vtail-35-y-up` und `part-tilt-roll` (16 Testfälle): Der erste unterscheidet sich von seinem Testfall nur in den STEP-Achsen, die Kerne des zweiten liegen im Koordinatensystem des Teils, wie die von `mitred-gull-15-5`. Schnitte: der Vorschlag für einen längsten Kern von 300 mm. Schnittbreite 1 mm für `guided-elliptic`, Papier A3 für `pointed-tip` und Letter für `mitred-gull-15-5`, sonst keine Schnittbreite und A4. `cases.json` enthält je Testfall den Namen, die 4 Dateien, die Anzahl der Segmente, die Punkte je Profil, die Schnittbreite, die Anzahl der Eckpunkte jeder Profil-Polylinie, die Seitenzahl, die Seitengröße und die Papiergröße.
 
 | Prüfung je Testfall (`validate_foam.py`) | Bestanden, wenn |
 | --- | --- |
@@ -612,7 +650,7 @@ Beim nächsten Lauf werden im Wiki bearbeitete Seiten überschrieben und dort an
 | `docs/wiki/images/` | Englisch | `en-US` |
 | `docs/wiki/images/de/` | Deutsch | `de-DE` |
 
-Beide Ordner enthalten 14 Dateien mit denselben Namen und denselben Zuständen. Die englischen Wiki-Seiten binden `images/<name>.png` ein, die deutschen Seiten `images/de/<name>.png`.
+Beide Ordner enthalten 15 Dateien mit denselben Namen und denselben Zuständen. Die englischen Wiki-Seiten binden `images/<name>.png` ein, die deutschen Seiten `images/de/<name>.png`.
 
 Die beiden Sprachen durchlaufen dieselben Schritte. Die Schritte benennen jedes Bedienelement mit seiner englischen Beschriftung. Der deutsche Durchlauf ordnet diese Beschriftung ihrem deutschen Eintrag in `DE` (`src/i18n/de/index.js`) zu und bricht ab, wenn es keinen Texteintrag gibt. Beide Durchläufe brechen ab, wenn die App in einer anderen Sprache startet, als die Sprache des Browsers verlangt (Attribut `lang` des Elements `html`). Der Text `Sample 4412 table` in `upload-preview.png` ist die erste Zeile der erzeugten Datei und lautet in beiden Sprachen gleich.
 
@@ -626,7 +664,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | `planform.png` | Registerkarte **Grundriss** (Planform), **Segelflugmodell**, Nasenlinie und Endlinie eingeschaltet | 600 x 730 | 600 x 730 |
 | `airfoils.png` | Registerkarte **Profile** (Airfoils), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `upload-preview.png` | Vorschau beim Hochladen einer synthetischen X/Yo/Yu-Prozenttabelle mit Dezimalkomma, geöffnet über dem Entwurfstyp **Segelflugmodell** | 640 x 646 | 640 x 710 |
-| `export-dialog.png` | Dialog **Exportieren** (Export), **Segelflugmodell** | 640 x 548 | 640 x 594 |
+| `export-dialog.png` | Dialog **Exportieren** (Export), **Segelflugmodell** | 640 x 678 | 640 x 694 |
 | `settings.png` | Registerkarte **Einstellungen** (Settings), **Segelflugmodell** | 650 x 730 | 650 x 730 |
 | `checks.png` | Registerkarte **Prüfungen** (Checks), **Segelflugmodell** | 600 x 730 | 600 x 730 |
 | `flying-wing-control-net.png` | 3D-Ansicht, **Pfeilnurflügel** (Swept flying wing), **NURBS-Kontrollnetz zeigen** (Show NURBS control net) an | 680 x 730 | 680 x 730 |
@@ -634,6 +672,7 @@ Desktop: 1280 x 800 CSS-Pixel, Geräteskalierung 1. Smartphone: Pixel 7, Geräte
 | `mobile-planform.png` | Smartphone, **Grundriss**, **Sportmodell**, Endlinie eingeschaltet | 1082 x 2202 | 1082 x 2202 |
 | `foam-dialog.png` | Schaumschnitt-Assistent, **Segelflugmodell**, nach **Segmente über der Grenze teilen** (Split segments over the limit), Fenster 1280 x 1400 CSS-Pixel | 960 x 1344 | 960 x 1384 |
 | `xflr5-import.png` | Dialog **Aus XFLR5 importieren** (Import from XFLR5) für `test/fixtures/xflr5/fixtures_v662.xfl`, mit **Öffnen** (Open) über dem Entwurfstyp **Sportmodell** geöffnet, Fenster 1280 x 1200 CSS-Pixel | 960 x 966 | 960 x 1062 |
+| `mold-dialog.png` | Dialog der Form (**Exportieren** > **Formhälften …**), **Sport** mit dem Randbogen der Vorgaben, Vorgaben der Form, Fenster 1280 x 1400 CSS-px | 960 x 1260 | 960 x 1260 |
 
 ### Dokumentationsprüfung
 
@@ -689,7 +728,7 @@ Der Job `wiki` in `docs.yml` checkt nur aus.
 | Job in `ci.yml` | Name | Schritte | Berechtigungen | Läuft bei |
 | --- | --- | --- | --- | --- |
 | `test` | Lint, unit tests, coverage | `lint`, `coverage`, `coverage:check`, `airfoils:check`, `docs:check`, `counts:check`, `i18n:check`; lädt Artefakt `coverage` hoch | `contents: read` | Jedem Auslöser |
-| `step` | STEP and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`; lädt Artefakt `step-files` hoch (STEP, 3MF, `cases.json`) | `contents: read` | Jedem Auslöser |
+| `step` | STEP, mold and 3MF validation (OpenCascade, lib3mf) | Python 3.12, `pip install cadquery-ocp==8.0.1.0.0 lib3mf==2.5.0`, `step:cases`, `validate_step.py`, `validate_3mf.py`, `mold:cases`, `validate_mold.py`; lädt Artefakt `step-files` hoch (`step-check/` und `mold-check/`: STEP, 3MF, `cases.json`) | `contents: read` | Jedem Auslöser |
 | `foam` | Foam-cutting files (ezdxf, pypdf) | Python 3.12, `pip install ezdxf==1.4.4 pypdf==6.19.0`, `foam:cases`, `validate_foam.py`; lädt Artefakt `foam-files` hoch (ZIP, SVG, DXF, PDF, `cases.json`) | `contents: read` | Jedem Auslöser |
 | `e2e` | Browser tests (Playwright) | `npx playwright install --with-deps chromium`, `npm run e2e` (Build, dann alle Specs in `e2e/`, beide Projekte), `counts:check -- --e2e-report playwright-report/results.json`; bei einem Fehlschlag Upload des Artefakts `playwright-results` (`test-results/`) | `contents: read` | Jedem Auslöser |
 | `build` | Build site | `build`; bei Push auf `main` zusätzlich `configure-pages` und `upload-pages-artifact` mit `dist/` | `contents: read`, `pages: read` | Jedem Auslöser |

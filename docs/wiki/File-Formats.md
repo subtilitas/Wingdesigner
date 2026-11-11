@@ -9,6 +9,7 @@ Deutsch: [[Dateiformate|Dateiformate]]
 | Import | One wing or horizontal stabilizer from XFLR5 | XFLR5 project, XFLR5 plane or wing XML | `.xfl` `.xml` | **Open** |
 | Export | Project | JSON | `.json` | **Save**, **Export** |
 | Export | Wing, exact NURBS surfaces | STEP, AP214 | `.step` | **Export** |
+| Export | Mold halves of the right half wing, exact solids | STEP, AP214 | `.step` | **Export** > **Mold halves…** |
 | Export | Wing, triangle mesh | binary STL | `.stl` | **Export** |
 | Export | Wing, triangle mesh | 3MF | `.3mf` | **Export** |
 | Export | One airfoil | Selig | `.dat` | **Airfoils** > **.dat** |
@@ -65,7 +66,7 @@ Name inside STEP, STL and 3MF files, written `<name>` below: project name; empty
 | STL | header `Wingdesigner <name>` |
 | 3MF | metadata `Title`. Object names are fixed: table "Bodies per file". |
 
-The foam-cutting wizard applies the same rule to the project name and appends a suffix: `<name>_foam_profiles.zip`, `<name>_foam_templates.svg`, `<name>_foam_templates.pdf`, `<name>_foam_templates.dxf` (section "Foam-cutting files"). Empty result: `wing_foam_profiles.zip`.
+The foam-cutting wizard applies the same rule to the project name and appends a suffix: `<name>_foam_profiles.zip`, `<name>_foam_templates.svg`, `<name>_foam_templates.pdf`, `<name>_foam_templates.dxf` (section "Foam-cutting files"). Empty result: `wing_foam_profiles.zip`. The mold dialog applies it to `<name> mold`: `<name>_mold.step`, empty name `wing_mold.step` (section "Mold STEP file").
 
 ## Airfoil files (import)
 
@@ -267,7 +268,7 @@ The checks run:
 | Key | Type | Written | On **Open** |
 | --- | --- | --- | --- |
 | `format` | `"wingdesigner-project"` | always | required, must match |
-| `version` | integer `3`; `4` when `settings.leftHalf` is `"turned"`; `5` when a section has `roundTip` | always | required, 1 to 5. A version 1 file opens with `settings.sectionPlanes` `"vertical"`, the section planes it was designed with. A version 2 file with `foldedTilt` is upgraded (section "Upgrade of version 2 files"). A version 1 or 2 file opens with `partTilt` and `partRoll` 0 and `partPivot` null unless the upgrade of its `foldedTilt` sets them: `partTilt`, `partRoll` and `partPivot` in its settings are unknown keys of that version and are dropped, as the apps of that version drop them. An app that reads version 1 only refuses a version 2 file (`Unsupported project version 2.`) instead of dropping `sectionPlanes` and `foldedTilt`; Wingdesigner 0.3.0 and earlier refuse a version 3 file (`Unsupported project version 3.`) instead of dropping `partTilt`, `partRoll` and `partPivot`. A file of version 1 to 3 opens with `settings.leftHalf` `"mirror"`; a `leftHalf` key in it is dropped. Wingdesigner 0.4.0 and earlier refuse a version 4 file (`Unsupported project version 4.`), Wingdesigner 0.8.0 and earlier a version 5 file (`Unsupported project version 5.`) instead of dropping `roundTip`. |
+| `version` | integer `3`; `4` when `settings.leftHalf` is `"turned"`; `5` when a section has `roundTip`; `6` when `settings.tip.mode` is `"round"` | always | required, 1 to 6. A version 1 file opens with `settings.sectionPlanes` `"vertical"`, the section planes it was designed with. A version 2 file with `foldedTilt` is upgraded (section "Upgrade of version 2 files"). A version 1 or 2 file opens with `partTilt` and `partRoll` 0 and `partPivot` null unless the upgrade of its `foldedTilt` sets them: `partTilt`, `partRoll` and `partPivot` in its settings are unknown keys of that version and are dropped, as the apps of that version drop them. An app that reads version 1 only refuses a version 2 file (`Unsupported project version 2.`) instead of dropping `sectionPlanes` and `foldedTilt`; Wingdesigner 0.3.0 and earlier refuse a version 3 file (`Unsupported project version 3.`) instead of dropping `partTilt`, `partRoll` and `partPivot`. A file of version 1 to 3 opens with `settings.leftHalf` `"mirror"`; a `leftHalf` key in it is dropped. Wingdesigner 0.4.0 and earlier refuse a version 4 file (`Unsupported project version 4.`), Wingdesigner 0.8.0 and earlier a version 5 file (`Unsupported project version 5.`) instead of dropping `roundTip`, Wingdesigner 0.9.0 and earlier a version 6 file (`Unsupported project version 6.`). |
 | `generator` | `{ "name": "Wingdesigner", "version": "<app version>" }` | always | ignored |
 | `exportedAt` | ISO 8601 time, UTC | always | ignored |
 | `name` | string | always | not a string: `Imported wing` (German interface: `Importierter Flügel`); at most 10,000 characters |
@@ -356,7 +357,7 @@ Ids made by the app:
 | `trailingEdge.mode` | `"asis"`, `"closed"`, `"thickness"` | `"asis"` | **Trailing edge** |
 | `trailingEdge.thickness` | ≥ 0 mm; used with `"thickness"`; limited to 5 % of the local chord | `0.4` | **Trailing-edge thickness (mm)** |
 | `trailingEdge.smooth` | `true`, `false`; used with `"thickness"` | `true` | **Smooth transition to the 5 % limit**: `true` blends the thickness into the 5 % limit without a corner ([[Geometry]], section 3.7). A project file without the key, also one of an earlier version, builds with `true`; Wingdesigner 0.8.0 and earlier drop the key and build with the corner. |
-| `tip.mode` | `"flat"`, `"pointed"` | `"flat"` | **Wing tip** |
+| `tip.mode` | `"flat"`, `"pointed"`, `"round"` | `"flat"`; **Rounded tip…** sets `"round"` | **Wing tip**. `"round"`: **Round (closes in a point, needs a rounded tip)**, the chord of the last section is 0 and the tip one point ([[Geometry]], section 3.5); needs `roundTip` on the last section, else a build error. A project with `"round"` is saved as format version 6. Other values: `settings.tip.mode must be "flat", "pointed" or "round".` |
 | `tip.ratio` | `0.001`–`0.01` (tip profile 1/1000 to 1/100 of the previous section chord); tip chord at least 1 mm (`LIMITS.minChord`) | `0.005` (1/200) | **Tip profile scale 1 : N of the previous section chord** |
 | `chordSamples` | integer `16`–`200` | `60` | **Chordwise stations per surface** |
 | `panelStations` | integer `3`–`40`; the build uses fewer only when the loft grid would exceed 5,000,000 points ([[Geometry]], section 3.2) | `8` | **Spanwise stations per panel with guides, smooth mode or mitred linear panels** |
@@ -532,7 +533,7 @@ Counts in this file: 1 airfoil with 117 points, 121 profile knots, 17 stations (
 | Property | Value |
 | --- | --- |
 | Key | `wingdesigner.project.v1` |
-| Stored keys | same as the project JSON, without `generator`, `exportedAt`, `coordinateSystem` and `derived`; `version` as a saved file has it (3, or 4 with `settings.leftHalf` `"turned"`) |
+| Stored keys | same as the project JSON, without `generator`, `exportedAt`, `coordinateSystem` and `derived`; `version` as a saved file has it (3; 4 with `settings.leftHalf` `"turned"`; 5 with `roundTip`; 6 with `settings.tip.mode` `"round"`) |
 
 | Event | Behaviour |
 | --- | --- |
@@ -1107,7 +1108,7 @@ With **Left half** set to mirror, the left half of "Vee" lies up to 61.3 mm from
 - **Mesh density (STL, 3MF)**: **Normal** or **Fine (4x triangles)**. **Fine** splits every u interval (chordwise) and every v interval (spanwise) of the **Normal** mesh into 2. Measured triangle count: 3.0 to 3.9 times **Normal** (table "File sizes").
 - Mesh construction and triangle counts: [[Geometry|Geometry]], section 5 "Meshes".
 
-![Export dialog: format, wing halves, mesh density, Fusion 360 fix](images/export-dialog.png)
+![Export dialog: format, wing halves, mesh density, Fusion 360 fix, group Mold with the button Mold halves…](images/export-dialog.png)
 
 ## STEP
 
@@ -1128,12 +1129,45 @@ With **Left half** set to mirror, the left half of "Vee" lies up to 61.3 mm from
 | Solid names | `<name> right` (y ≥ 0; with **Fusion 360 fix**: Z ≤ 0), `<name> left` (mirrored, y ≤ 0; with **Fusion 360 fix**: Z ≥ 0) |
 | Axes | as the app, the part turned by **Part tilt** and **Part roll**; with **Fusion 360 fix**: (x, z, −y) (section "Bodies per file") |
 | Shape representation | 1 `ADVANCED_BREP_SHAPE_REPRESENTATION` named `<name>` holds all solids |
-| Surfaces | `B_SPLINE_SURFACE_WITH_KNOTS`, non-rational: upper surface, lower surface, open TE. `PLANE`: root and tip. |
+| Surfaces | `B_SPLINE_SURFACE_WITH_KNOTS`, non-rational: upper surface, lower surface, open TE. `PLANE`: root and tip; with **Wing tip** Round root only. |
+| Faces per half | closed TE 4, open TE 5; with **Wing tip** Round (the tip closes in one vertex, no tip cap) 3 and 4 |
 | Edge curves | `B_SPLINE_CURVE_WITH_KNOTS` |
 | Numbers | shortest decimal that reproduces the 64-bit float value, always with a decimal point, exponent `E` |
 | Strings | `'` and `\` doubled. Characters outside U+0020–U+007E as `\X2\hhhh\X0\` or `\X4\hhhhhhhh\X0\`. A lone UTF-16 surrogate (U+D800–U+DFFF) is written as U+FFFD (replacement character). |
 
 Faces, edges, orientation flags and the OpenCascade validation: [[Geometry|Geometry]], section 6 "STEP topology".
+
+## Mold STEP file
+
+Written by **Export** > **Mold halves…** ([[User Guide|User-Guide]], section Mold halves). Header, units, numbers and strings as in section "STEP"; the differences:
+
+| Property | Value |
+| --- | --- |
+| File name | `<project name>_mold.step` (rule of section "Export file names", applied to `<project name> mold`) |
+| `FILE_DESCRIPTION` | `(('Wingdesigner mold'),'2;1')` |
+| `FILE_NAME` name, `PRODUCT`, shape representation | `<project name> mold` |
+| Solids | **Halves** Lower and upper: 2 `MANIFOLD_SOLID_BREP`, `<project name> mold lower` and `<project name> mold upper`; Lower only or Upper only: 1 |
+| Position | closed mold: parting plane at z = 0, lower half at z ≤ 0, upper half at z ≥ 0 (with **Fusion 360 fix** at the last export: parting plane at Y = 0, the upper half at Y ≥ 0) |
+| Axes | x chordwise towards the TE, y spanwise towards the right tip (left tip with **Molds of the left wing**), z up, in the mold frame: the build frame rolled about x by the dihedral, without **Part tilt** and **Part roll** ([[Geometry]], section 11.1). With **Fusion 360 fix** at the last export: (x, z, −y) |
+| Units | millimetre |
+| Surfaces | `B_SPLINE_SURFACE_WITH_KNOTS` (cavity, ramps, resin channel), `PLANE` (block faces, parting plane, ramp triangles, half of a flat tip face, pin hole bottoms), `CYLINDRICAL_SURFACE` (holes) |
+| Edge curves | `B_SPLINE_CURVE_WITH_KNOTS`, `CIRCLE` (hole rims) |
+| Browser storage | the dialog values under `wingdesigner.mold`, JSON; not in the project file |
+
+Faces of one half (the upper half is the mirror image at the parting plane; the molds of the left wing the mirror image at y = 0, with the bound flags and the sense of the B-spline faces reversed):
+
+| Face group | Faces |
+| --- | --- |
+| Block | bottom, front (leading-edge side), back, tip side: planes; the root face: a plane, leaning by the roll of the mold frame, with the root section and the ends of the resin channel in its outline |
+| Parting | the plane z = 0 outside the ramp, split by the resin channel into two faces (one face without channel); the hole rims are inner loops of the outer face |
+| Ramp | two ruled B-spline surfaces (degree 1 across) from leading edge and trailing edge to the plane; at a flat tip also a ruled surface from the mean line of the tip section and a planar triangle at each corner |
+| Cavity | the wing surface of the side (the B-spline surface of the wing export), the half of a blunt trailing edge, at a flat tip the half of the tip face up to its mean line |
+| Resin channel | one B-spline surface of half-round cross-section |
+| Holes | two half cylinders each; a pin hole ends in a planar bottom, a screw hole in the bottom face of the block |
+
+- A loop is listed counter-clockwise seen from outside the solid. Every edge is used once in each direction (closed shell); the writer refuses a half otherwise.
+- With a round tip the cavity and both ramps end in one vertex.
+- Validation: `scripts/validate_mold.py` with OpenCascade ([[Development]], section Mold validation).
 
 ## STL
 

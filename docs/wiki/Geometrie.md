@@ -49,6 +49,7 @@ Bezeichner (x_LE, x_norm).
 | 6. STEP-Topologie (STEP: Standard for the Exchange of Product model data) | `src/export/step.js` | A5.1 |
 | 7. Grundrisskennwerte | `src/geom/stats.js`, `src/geom/wing.js` (`planformAt`) | – |
 | 8. Schaumkerne | `src/geom/foam.js` | A3.5 (je Spaltenkurve) |
+| 11. Formhälften | `src/geom/mold.js`, `src/export/moldstep.js` | A9.1 (Rampenkanten, Rille), A5.1 (Teilung an der Nasenleiste) |
 
 Die starre Lage des Teils (Abschnitt 3.9, `src/geom/part.js`) dreht das Ergebnis der Schritte 3 und 4 für die Schritte 5 bis 7.
 
@@ -460,6 +461,7 @@ z und Schränkung werden immer interpoliert.
 | --- | --- |
 | **Flach (am Randschnitt abgeschnitten)** (Flat (cut at the tip section)) | der Flügel endet am Randschnitt mit einer ebenen Abschlussfläche |
 | **Spitz (Randprofil verkleinert)** (Pointed (tip profile scaled down)) | der Randschnitt erhält die Profiltiefe c_tip (Vorgabe 1/200 von c(y_prev), mindestens 1 mm); der Flügel endet mit einer ebenen Abschlussfläche der Profiltiefe c_tip; mit beiden Leitkurven ist die Randtiefe der Abstand der Leitkurven bei y_tip, mindestens c_tip |
+| **Rund (schließt in einem Punkt, braucht einen Randbogen)** (Round (closes in a point, needs a rounded tip)) | der Randschnitt erhält die Profiltiefe 0; alle Flächenpunkte der Randzeile sind ein Punkt (der Pol), und der Flügel hat keine Abschlussfläche am Rand; braucht einen Randbogen (Abschnitt 10), sonst ein Baufehler |
 
 Spitzes Flügelende:
 
@@ -479,6 +481,17 @@ c_tip = max(r · c(y_prev), 1 mm)
 Beispiel: Entwurfstyp **Segelflugmodell** (Leitkurven enden 90 mm voneinander entfernt) mit **Flügelende** =
 **Spitz** (Pointed): c_tip = 1 mm, Randtiefe 90 mm, Warnung „Spitzes Flügelende: Nasenlinie und Endlinie enden
 90,0 mm voneinander entfernt, daher beträgt die Randtiefe 90,0 mm statt 1,00 mm“.
+
+Rundes Flügelende:
+
+| Größe | Wert |
+| --- | --- |
+| Profiltiefe der letzten Station | 0, unabhängig vom gespeicherten Wert des Schnitts (der Punkt von **Randbogen …** speichert 1 mm, `LIMITS.minChord`) |
+| Letztes Feld | eine Profiltiefe unter 0 und über −0,01 mm neben dem Punkt wird auf 0 gesetzt |
+| Randzeile der Fläche | alle Kontrollpunkte der letzten Zeile gleich: ein Punkt; `build.tipPole` wahr, `build.stations.at(-1).chord` 0 |
+| Prüfung der Profiltiefe | der Punkt ist von der Untergrenze 1 mm ausgenommen; die Stationen davor behalten eine Profiltiefe über 0. Wo die Profiltiefe unter 1 mm liegt, zählt die angepasste Profiltiefe nach ihrem Anteil an der vorgesehenen, und die Toleranz der Abweichung bleibt bei 0,01 mm |
+| Parameter in Profiltiefenrichtung | die Zeile des Punkts (ohne Länge) geht nicht in den Mittelwert aus Abschnitt 4 ein |
+| Bedingung | der letzte Schnitt trägt die Markierung `roundTip`; sonst der Baufehler `Einstellungen > Flügelende Rund schließt das Flügelende in einem Punkt und braucht einen Randbogen: …` |
 
 ### 3.6 Prüfungen beim Aufbau
 
@@ -799,6 +812,7 @@ Anzahlen je Halbflügel (n_u = 2N · d, V = Anzahl der Abtastwerte in v):
 Beispiel: Entwurfstyp **Sportmodell** (Sport), N = 60, d = 1, offene Endleiste: Schnittebenen **Auf Gehrung** (9 Stationen, Grad 3 entlang v, V = 25): 3025 Eckpunkte, 6046 Dreiecke je Halbflügel; **Senkrecht** (2 Stationen, Grad 1, V = 2): 242 Eckpunkte, 480 Dreiecke.
 
 - Orientierung: Jedes Dreieck zeigt nach außen (Normale S_v × S_u).
+- Rundes Flügelende (`build.tipPole`): Die letzte Abtastung in v ist ein Eckpunkt, der Pol. Die Vierecke daneben sind Dreiecke, und es gibt keine Abschlussfläche am Rand. Je Hälfte: 2 n_u (V − 1) − n_u Flächendreiecke, 2 (V − 1) − 1 Dreiecke des Endleistenstreifens (offene Endleiste), 1 Abschlussfläche.
 - Abschlussflächen: Die Konturen an Wurzel und Rand werden in der Ebene ihres Schnitts trianguliert (x
   und die Aufwärtsrichtung seiner Neigung φ; die x-z-Ebene bei φ = 0). Oberer Punkt k bildet ein Paar
   mit unterem Punkt k (dieselbe Tiefenstation): 2 Dreiecke je Stationsintervall, lineare Laufzeit.
@@ -865,6 +879,10 @@ Flächen (Topologie) des rechten Halbflügels; (+) = Kante in eigener Richtung, 
 | --- | --- | --- | --- |
 | Geschlossen | 4 | 6 | 4 |
 | Offen | 5 | 9 | 6 |
+| Geschlossen, rundes Flügelende | 3 | 4 | 3 |
+| Offen, rundes Flügelende | 4 | 6 | 4 |
+
+- Rundes Flügelende (**Flügelende** = **Rund**): Die Flächen enden in einem Knoten, dem Pol, mit je 3 Kanten: Oberseite (obere Endleiste, Nasenleiste, Wurzel oben), Unterseite (Nasenleiste, untere Endleiste, Wurzel unten), Endleistenfläche (untere Endleiste, obere Endleiste, Wurzellinie). Es gibt keine Randkanten und keine Abschlussfläche am Rand. Der Pol ist eine entartete Seite jeder B-Spline-Fläche: Ihre letzte Kontrollpunktzeile ist ein Punkt.
 
 - Geschlossene Endleiste: Obere und untere Endleiste sind eine Kante mit 2 gemeinsamen Knoten (Topologie).
 - Kanten einer B-Spline-Fläche: die exakte Rand-Isokurve dieser Fläche (erste oder letzte
@@ -885,7 +903,7 @@ mit S ∘ T oder T ∘ S (**Linke Hälfte**, Abschnitt 3.9). Die Flags bleiben w
 Spiegelung kehrt die Orientierung um, die Drehung erhält sie.
 
 Prüfung: `scripts/validate_step.py` liest die von `scripts/export-step-cases.mjs` geschriebenen Dateien
-mit OpenCascade. Fälle: die 16 Fälle aus `test/step-cases.js`, 1 davon mit Randbogen (`rounded-tip-smooth`, Abschnitt 10), 1 davon mit geschlossener, spitz
+mit OpenCascade. Fälle: die 18 Fälle aus `test/step-cases.js`, 1 davon mit Randbogen (`rounded-tip-smooth`, Abschnitt 10), 1 davon mit geschlossener, spitz
 auslaufender Endleiste (`cusped-closed`, Abschnitt 4), 6 davon mit Schnittebenen **Auf Gehrung**
 (ein 35°-V-Leitwerk mit **Gerade Felder**, einmal ohne und einmal mit **Fusion-360-Korrektur** (Y nach
 oben) geschrieben, ein Möwenflügel mit 15°/−5° mit **Linear** und mit **Glatt**, ein Profilwechsel mit **Gerade
@@ -1173,7 +1191,7 @@ bei Länge s:   x = x_T + s · tan Λ,   Tiefe = c_T + (k · c_T − c_T) · s /
 
 ## 10. Randbogen
 
-`src/model/roundtip.js` fügt den Randbogen als mit `roundTip` gekennzeichnete Schnitte an und setzt das Flügelende auf **Spitz** (Abschnitt 3.5); der Loft interpoliert die gekennzeichneten Schnitte entlang der Randellipse (Abschnitt 10.1). Eingang: der Randschnitt T (y_T, z_T, x_T, Tiefe c_T, Schränkung t_T), der Schnitt P davor, der Winkel a0 des letzten Feldes (sein gespeicherter **Feldwinkel**, sonst atan2(z_T − z_P, y_T − y_P)), das Randverhältnis ρ aus **Einstellungen** > **Flügelende** und die Parameter Länge L, gerade Linie f (Anteil der Tiefe, 0 … 1), Schnittzahl m, Fülle n (2 … 3) und Tangential (ein oder aus).
+`src/model/roundtip.js` fügt den Randbogen als mit `roundTip` gekennzeichnete Schnitte an und setzt das Flügelende auf **Rund** (Abschnitt 3.5): Der Aufbau schließt das Flügelende in einem Punkt, Tiefe 0; der Loft interpoliert die gekennzeichneten Schnitte entlang der Randellipse (Abschnitt 10.1). Eingang: der Randschnitt T (y_T, z_T, x_T, Tiefe c_T, Schränkung t_T), der Schnitt P davor, der Winkel a0 des letzten Feldes (sein gespeicherter **Feldwinkel**, sonst atan2(z_T − z_P, y_T − y_P)), und die Parameter Länge L, gerade Linie f (Anteil der Tiefe, 0 … 1), Schnittzahl m, Fülle n (2 … 3) und Tangential (ein oder aus).
 
 ```
 slope = dx/dy + f · c'  bei T                             dx/dy der geraden Linie entlang des Flügels
@@ -1186,8 +1204,9 @@ Schnitt k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
   y_k     = y_T + t_k · L · cos a0
   z_k     = z_T + t_k · L · sin a0
   c_k     = c_T · (1 − t_k^n)^(1/n) · (1 + κ t_k)           k < m   (n = 2: c_T · sqrt(1 − t_k²) · …)
-  c_m     = max(ρ · c_(m−1), 1 mm)
-  x_k     = x_T + f · c_T + (y_k − y_T) · slope − f · c_k
+  c_m     = 1 mm gespeichert (LIMITS.minChord); der Aufbau verwendet die Tiefe 0 (Flügelende Rund)
+  x_k     = x_T + f · c_T + (y_k − y_T) · slope − f · c_k        k < m
+  x_m     = x_T + f · c_T + (y_m − y_T) · slope                  auf der geraden Linie
   Profil und Schränkung = die von T
 ```
 
@@ -1199,7 +1218,7 @@ Schnitt k = 1 … m:   t_k = sin(π k / (2m))   (t_m = 1)
 - c_(m−1) muss die kleinste Tiefe von 1 mm erreichen: c_T ≥ 1 mm / ((1 − sin^n θ)^(1/n) · (1 + κ sin θ)), θ = π (m − 1) / (2m); 3,87 mm bei m = 6 und n = 2 ohne Tangential.
 - Die Werte werden auf 0,01 mm gerundet. Ein gespeicherter **Feldwinkel** des letzten Feldes wird auf T und auf die angefügten Schnitte außer der Spitze übertragen, damit die Rundung ihre Ebenen **Auf Gehrung** nicht neigt; ohne ihn folgen die Ebenen den Bezugspunkten.
 - Die Dicke folgt der Tiefe (das Profil behält seine relative Dicke), daher hat die Vorderansicht des Randbogens die Form von c(s).
-- Leitkurven bleiben eingeschaltet: Sie enden am Randschnitt T (Abschnitt 10.1), und der Randbogen beginnt mit ihrer Nasenleiste, Profiltiefe und Steigung dort. Ein Flügel mit spitzem Flügelende endet schon in einer Spitze und wird abgelehnt.
+- Leitkurven bleiben eingeschaltet: Sie enden am Randschnitt T (Abschnitt 10.1), und der Randbogen beginnt mit ihrer Nasenleiste, Profiltiefe und Steigung dort. Ein Flügel mit **Flügelende** **Spitz** oder **Rund** endet schon in einer Spitze und wird abgelehnt.
 - Geprüft (`test/roundtip.test.js`): Jeder Entwurfstyp mit flachem Flügelende und ausgeschalteten Leitkurven außer **Batwing** (Tiefe unter 1 mm bei flachem Flügelende) baut mit dem Randbogen der Vorgaben einen geschlossenen Flügel, mit **Linear** und **Glatt**, mit Ebenen **Auf Gehrung** und **Senkrecht** und mit und ohne Tangential, ohne Fehler. Warnungen, mit der Vorgabe Fülle 2,5: keine, außer mit Tangential bei **Delta-Jet** (feste Endleiste 1,6 mm), wo die Endleistendicke an 1 Station vor dem letzten Feld 5 % der Tiefe überschreitet und dort begrenzt wird. Der Flügel **Sport** baut mit der geraden Linie bei 0, 25, 50, 75 und 100 % und 2, 4 und 8 Schnitten. Der STEP-Fall `rounded-tip-smooth` (Abschnitt 6) besteht die Prüfung mit OpenCascade.
 
 ### 10.1 Interpolation entlang der Randellipse
@@ -1211,10 +1230,22 @@ Der Loft interpoliert den Umriss eines Randbogens deshalb im Winkel θ der Rande
 ```
 θ(y)  = asin((y − y_T) / L)                                0 bei T, π/2 an der Spitze
 r_k   = f_k − f_T − s_f · (y_k − y_T)                      Rest jedes Randbogenschnitts
-r(θ)  = kubischer Spline in θ durch (θ_k, r_k)              natürlich an der Spitze;
+r(θ)  = kubischer Spline in θ durch (θ_k, r_k)
         bei T: r′(0) = 0 für "tangent", natürlich für "corner"
+        an der Spitze: r″(π/2) = (s_f − σ) · L
 f(y)  = f_T + s_f · (y − y_T) + r(θ(y))                     y > y_T
 ```
+
+Endbedingung an der Spitze. Nasenleiste und Endleiste treffen sich auf einer geraden Linie x = x_P − σ · (y_P − y), um die sich die Profiltiefe wie eine Ellipse schließt. Dort haben beide Kanten die zweite Ableitung −σ L in θ, also r″ = (s_f − σ) · L. σ folgt aus dem Punkt und den Steigungen bei T, mit der Linie beim Anteil a der Profiltiefe:
+
+```
+σ     = s_LE + a · (s_TE − s_LE)
+σ · L = x_P − x_LE,T − a · c_T                              (pointEnd)
+```
+
+- Ein natürliches Ende (r″ = 0) gilt nur für σ = s_f; es lässt den Umriss des **Segelflugmodells** 1 mm vor der Spitze 0,1 mm zu schmal.
+- Mit **Flügelende** **Spitz** (ein Randbogen eines Projekts der Version 5, 1 mm Profiltiefe am Ende) bleibt das Ende natürlich, ebenso wo die Daten kein σ ergeben (eine Profiltiefe, die sich nicht schließen würde, eine Linie außerhalb des Flügels: a außerhalb von −0,5 bis 1,5).
+- Gemessen (**Segelflugmodell**, **Randbogen …** mit **Ellipse des Flügels fortsetzen**, Vorgaben des Dialogs, 56 Schnitte y = konstant im Abstand 1 mm über die äußeren 5 % der Halbspannweite; `docs/analysis/rounded-tip-cuts/`): Punkt bei y = 1119,830 mm, Ende der Ellipse 1119,825 mm; Profiltiefe − Ellipse −0,05 bis +0,02 mm über alle Schnitte, −0,01, 0,00 und +0,02 mm bei 2,8, 1,8 und 0,8 mm vor dem Punkt; Nasenleiste innerhalb von 0,01 mm, Endleiste −0,04 bis +0,02 mm. Mit **Flügelende** **Spitz** (1 mm Profiltiefe am Ende) ergeben dieselben Schnitte +0,04, +0,14 und +0,34 mm.
 
 - Reste, die alle innerhalb von 0,01 mm liegen, der Rundung der Schnittwerte, gelten als null: Eine gerade Kante (gerade Linie bei 0 % oder 100 %) bleibt gerade, statt um ±0,005 mm zu wellen.
 - Interpoliert werden Nasenleiste und Endleiste, nicht x und Tiefe, damit bei 0 % und 100 % eine von beiden genau gerade ist. Die Tiefe ist ihre Differenz.
@@ -1267,3 +1298,87 @@ c_k   = c(y_T + t_k · (Ende − y_T))             k < m, t_k wie in Abschnitt 1
 
 Der Spalt einer festen Endleistendicke ist auf 5 % der Tiefe begrenzt (Abschnitt 3.7): Unter einer Tiefe von Dicke / 0,05 (8,4 mm bei 0,42 mm) folgt der Spalt der Tiefe, statt konstant zu bleiben. Ohne weichen Übergang verschiebt dieser Knick der Spaltfunktion die Endleistenecke der Fläche und zeigt sich nahe der Spitze als Welle, an jedem spitzen Flügelende. Der weiche Übergang verbindet beide mit gleichem Wert und gleicher Steigung.
 
+
+## 11. Formhälften
+
+`src/geom/mold.js` baut die Geometrie einer Unterform und einer Oberform der rechten Flügelhälfte, `src/export/moldstep.js` schreibt sie als STEP-Körper ([[Dateiformate|Dateiformate]], Abschnitt STEP-Datei der Form). Eingang: ein Aufbau ohne Fehler und die Parameter der Form (Benutzerhandbuch, Abschnitt Formhälften). Längen in mm.
+
+### 11.1 Bezugssystem und Rollwinkel
+
+Die Flügelhälfte in ihrem Aufbausystem (x nach hinten, y Spannweite, z nach oben), vor der starren Lage aus Abschnitt 3.9: Die Form beachtet **Einstellwinkel des Teils** und **Rollwinkel des Teils** nicht. Das System wird um x um den Rollwinkel ω gerollt, sodass der Flügel flach liegt:
+
+| Flügelende | ω |
+| --- | --- |
+| Flach oder Spitz | der Rollwinkel der Ebene des Randschnitts (`build.tipRoll`), sodass die Endfläche senkrecht auf der Trennebene steht |
+| Rund (Pol) | atan der Steigung der Ausgleichsgeraden z(y) durch Nasenleiste, untere und obere Endleiste, je 201 Punkte |
+
+```
+P_Form = (x, y_0 + (y − y_0) · cos ω + z · sin ω, −(y − y_0) · sin ω + z · cos ω)       y_0: y der Wurzel
+```
+
+- Trennebene: z = z_p, die mittlere Höhe der Nasenleiste und der Endleistenmitte (Mittel aus unterer und oberer Endleiste; bei geschlossener Endleiste die Endleiste selbst), je 401 Punkte. Die Datei legt sie auf z = 0.
+- Wurzelebene: y = y_R + tan ω · (z − z_p), y_R = y_0 + tan ω · z_p. Die Wurzelzeile der Fläche wird in sie gelegt, das Formnest ist dort offen, und die Wurzelfläche des Formblocks ist um ω geneigt.
+- Nasenleiste und Endleiste liegen nur bei einem ungeschränkten Flügel aus einem Profil mit einem V-Form-Winkel in einer Ebene. Gemessen: flacher ungeschränkter Flügel 0,007 mm neben der Ebene, **Segelflugmodell** mit Randbogen 1,67 mm (ω = 4,03°), **Sport** mit Randbogen 1,36 mm (ω = 1,54°), **Hochleistungssegler** (V-Form 2°, 6° und 10°) 85,76 mm.
+
+### 11.2 Rampe
+
+Eine Regelfläche verbindet jede Kante (Nasenleiste, Endleistenmitte) mit einer Kurve in der Trennebene im Abstand der Rampenbreite w:
+
+```
+Q(v) = (x_E + Seite · w · cos ψ(v),  y_E + w · sin ψ(v) + cos ψ(v) · tan ω · (z_p − z_E),  z_p)
+Seite = −1 Nasenleiste, +1 Endleiste
+ψ(v) = 0                                   flaches Flügelende, oder v ≤ v_F
+ψ(v) = θ − sin(2θ) / 2,  θ = (v − v_F) / (1 − v_F) · π/2       rundes Flügelende, v > v_F
+```
+
+- Innen laufen die Erzeugenden entlang x, in Ebenen parallel zur Wurzelebene. Um ein rundes Flügelende drehen sie sich von x am Beginn des Randbogens (v_F: Schnitt T aus Abschnitt 10) bis y am Punkt, wo sich beide Kurven in einem Punkt treffen.
+- Die äußere Kurve wird an den Greville-Abszissen der Kantenkurve mit deren Knoten interpoliert, sodass Erzeugende k den Kontrollpunkt k beider Kurven verbindet.
+- Flache Endfläche: entlang der Skelettlinie des Randschnitts geteilt. 49 Punkte von der Nasenleiste bis zur Endleistenmitte bei kosinusverteiltem x, z das Mittel von Unter- und Oberseite bei diesem x, mit Grad 3 interpoliert. Außerhalb davon ein Regelstreifen der Breite w entlang y und an jeder Ecke ein ebenes Dreieck. Die Profilsehne wird nicht verwendet: Sie verlässt ein S-Schlag-Profil mit geschlossener Endleiste.
+- Faltprüfung: Benachbarte Erzeugende, an 401 Stellen in v abgetastet, müssen auf derselben Seite fortschreiten; sonst der Fehler `Form: Die Rampe faltet sich am Flügelumriss über sich selbst; …`.
+- Steigung: atan(h / w⊥), h die Höhe der Kante über oder unter z_p, w⊥ die Breite der Rampe senkrecht zum Umriss. Über 45° nennt eine Warnung das größte h und die Steigung.
+
+### 11.3 Umriss und Blutrinne
+
+- Umriss: Nasenleiste und Endleistenmitte in der Draufsicht, je 4000 Abtastungen, auf 0,25 mm neu verteilt; bei flachem Flügelende die Kante der Endfläche. Der Umriss wird an der Wurzellinie y = y_R zu einem geschlossenen Polygon gespiegelt, von +z gesehen im Uhrzeigersinn.
+- Versatz mit gerundeten Innenecken (`offsetOutline`): Das Polygon wird um d + ρ nach außen versetzt (eine Normale je Punkt, ein Fächer von Normalen an einer Außenecke, Schritte von 0,04 rad); versetzte Punkte, die näher als d + ρ − 0,02 mm am Polygon liegen, entfallen; der Rest wird um ρ zurückgesetzt, mit einem Bogen vom Radius ρ um die Ecke, an der jede entfallene Folge endet.
+- Mittellinie der Blutrinne: d = Abstand + r, ρ = 2r + 2 mm (r = Durchmesser / 2), die Hälfte auf der Seite y ≥ y_R. An der Wurzel gespiegelt kreuzt der Verlauf die Wurzellinie senkrecht.
+- Fläche der Rille (`grooveSurface`): eine bikubische B-Spline-Fläche, interpoliert durch 9 Punkte eines Halbkreises vom Radius r unter z_p (u, vom Rand am Flügel über den Grund zum äußeren Rand) an Stationen entlang des Verlaufs (v). Abstand der Stationen min(8 mm, sqrt(8 · 0,002 mm · R)), mindestens 0,5 mm, R der örtliche Radius des Verlaufs: ein Sehnenfehler von 0,002 mm auf der Mittellinie. Der Abstand wächst von einer Biegung weg um höchstens 0,25 mm je mm des Verlaufs, sodass die Stationen vor ihr dichter werden (lange Schritte neben einer Biegung ließen den interpolierenden Spline über den Halbkreis hinausschwingen). Die Ränder (u = 0 und u = 1) sind Isokurven, deren Kontrollpunkte alle bei z = z_p liegen, sodass sie in der Trennebene liegen; die Endzeilen liegen in der Wurzelebene. Querschnitt an den gemessenen Entwurfstypen innerhalb von 0,02 mm an einem Halbkreis: Sport 0,018 mm, flacher Testflügel 0,0073 mm, Delta-Jet 0,0031 mm (nicht gegen ein CAD-Modell gemessen).
+- Die Oberform erhält die Rille an z_p gespiegelt, mit ihren Endzeilen in ihrer eigenen Wurzelebene (die Neigung der Wurzelfläche ist gespiegelt).
+
+### 11.4 Formblock
+
+```
+x_0 = x_min − Rand          x_1 = x_max + Rand          x des Umrisses
+y von y_R bis y_max + Rand
+t_unten = z_p − z_min(Formnest der Unterform) + Boden
+t_oben  = z_max(Formnest der Oberform) − z_p + Boden
+```
+
+z_min und z_max gelten über die Kontrollpunkte der Formnestfläche. Ein Profil mit hohler Unterseite (9 % Wölbung, 5 % Dicke, 200 mm Profiltiefe, ungeschränkt) legt die Unterseite bis 13,2 mm über z_p: Die Unterform steigt innerhalb des Formnestumrisses an, t_unten = 12,6 mm, t_oben = 34,9 mm.
+
+| Prüfung | Bedingung für einen Fehler |
+| --- | --- |
+| Abstand der Blutrinne | Abstand < w + 0,5 mm |
+| Rand | Rand < Abstand + Durchmesser + 1 mm (ohne Blutrinne: w + 1 mm) |
+| Blutrinne im Formblock | ein Punkt des Verlaufs innerhalb von r + 1 mm an der vorderen, hinteren oder randseitigen Kante |
+| Tiefe der Zentrierbohrungen | Tiefe > min(t_unten, t_oben) − 1 mm |
+
+### 11.5 Bohrungen
+
+| Muster | Mittelpunkte |
+| --- | --- |
+| Ecken des Formblocks | (x_0 + e, y_h + e), (x_0 + e, y_1 − e), (x_1 − e, y_1 − e), (x_1 − e, y_h + e); e = Abstand von der Blockkante |
+| Entlang der Blockkanten | der Linienzug durch diese 4 Punkte entlang vorderer Kante, Randseite und hinterer Kante, jede Seite in ceil(Länge / Abstand) gleiche Teile geteilt |
+| Um den Flügel | `offsetOutline` bei Sperrzone − 1 mm + Abstand außerhalb der Blutrinne mit ρ = 2 r_h + 2 mm, die Hälfte y ≥ y_R; round(Länge / Abstand) Bohrungen, mindestens 1, bei (k + 0,5) / Anzahl ihrer Länge |
+
+- y_h = y_R + |tan ω| · max(t_unten, t_oben): die geneigte Wurzelfläche über die Höhe beider Hälften.
+- Sperrzone um das Formnest: Abstand + Durchmesser der Blutrinne (ihr äußerer Rand), ohne Blutrinne die Rampenbreite w, plus der Abstand von 1 mm.
+- Eine Bohrung vom Radius r_h bleibt, wenn ihr Abstand vom Umriss mindestens Sperrzone + r_h beträgt, ihr Kreis mit 1 mm Abstand innerhalb von x_0 … x_1 und y_h … y_1 liegt und sie von jeder vorher behaltenen Bohrung mindestens r_h + r_andere + 1 mm entfernt ist. Zuerst werden die Zentrierbohrungen gesetzt, dann die Bohrungen für Spannschrauben. Eine Schraubenbohrung im Mittelpunkt einer Zentrierbohrung entfällt ohne Warnung; jede andere weggelassene Bohrung zählt in der Warnung.
+- Zentrierbohrungen sind Sacklöcher, Tiefe p in jeder Hälfte, mit ebenem Grund. Bohrungen für Spannschrauben gehen durch beide Hälften.
+- Jede Bohrung ist ein Zylinder aus 2 Halbzylinderflächen (`CYLINDRICAL_SURFACE`), verbunden durch 2 Mantellinien; ihre Ränder sind je 2 Halbkreise (`CIRCLE`).
+
+### 11.6 Beide Hälften
+
+Die Geometrie beider Hälften entsteht im Bezugssystem der Unterform: Die Oberform ist ihr Spiegelbild an z = z_p (Formnest: die Oberseite mit umgekehrtem u, gespiegelt), sodass eine Konstruktion beide schreibt. Die Datei bildet einen Punkt auf (x, ±y, ±(z − z_p)) ab: + für die Unterform und den rechten Flügel, − für die Oberform und für die Formen des linken Flügels.
+
+Prüfung: `scripts/validate_mold.py` liest die 16 Dateien aus `test/mold-cases.js` mit OpenCascade ([[Entwicklung|Entwicklung]], Abschnitt Validierung der Form).

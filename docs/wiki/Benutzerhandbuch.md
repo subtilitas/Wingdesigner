@@ -570,7 +570,7 @@ Mit eingeschalteter Leitkurve verwendet der Flügel den Wert der Leitkurve statt
 | Nasenlinie oder Endlinie | x |
 | Nasenlinie und Endlinie | x und **Tiefe** |
 
-Mit **Einstellungen** > **Flügelende** (Wing tip) = **Spitz** (Pointed) verwendet der Flügel die eingegebene Randtiefe nicht. Die Zelle **Tiefe** der Randzeile zeigt die verwendete Randtiefe mit 2 Nachkommastellen, z. B. `Randtiefe: 1,25`. `(min.)` folgt, wenn die Untergrenze von 1 mm greift, z. B. `Randtiefe: 1,00 (min.)`.
+Mit **Einstellungen** > **Flügelende** (Wing tip) = **Spitz** (Pointed) verwendet der Flügel die eingegebene Randtiefe nicht. Die Zelle **Tiefe** der Randzeile zeigt die verwendete Randtiefe mit 2 Nachkommastellen, z. B. `Randtiefe: 1,25`. `(min.)` folgt, wenn die Untergrenze von 1 mm greift, z. B. `Randtiefe: 1,00 (min.)`. Mit **Flügelende** = **Rund** (Round) zeigt die Zelle **Tiefe** der Randzeile `Randtiefe: 0 (rund)`: Der Flügel schließt sich dort in einem Punkt, und die eingegebene Profiltiefe wird nicht verwendet.
 
 ### Winglet
 
@@ -594,7 +594,7 @@ Mit **Einstellungen** > **Flügelende** (Wing tip) = **Spitz** (Pointed) verwend
 
 - ein Feld außerhalb seiner Grenze liegt oder das Profil nicht im Projekt ist;
 - eine Leitkurve eingeschaltet ist (`Zuerst die Leitkurven ausschalten: …`);
-- **Einstellungen** > **Flügelende** = **Spitz** (`… Ein Winglet braucht ein flaches Flügelende.`);
+- **Einstellungen** > **Flügelende** = **Spitz** oder **Rund** (`… Ein Winglet braucht ein flaches Flügelende.`);
 - **Einstellungen** > **Schnittebenen** nicht **Auf Gehrung** ist;
 - der Übergangsbogen nicht kürzer als die Höhe ist (`Winglet: Der Übergangsbogen ist … mm lang, …`);
 - ein Wingletfeld in y weniger als 1 mm reicht (`Wingletfeld … reicht … mm in y, …`), so bei ±89° ohne Übergangsradius;
@@ -604,7 +604,7 @@ Konstruktion: [[Geometrie|Geometrie]], Abschnitt 9.
 
 ### Randbogen
 
-**Randbogen …** unter der Tabelle öffnet einen Dialog, der außen am Randschnitt einen Randbogen anfügt und **Einstellungen** > **Flügelende** auf **Spitz** setzt. Die Profiltiefe folgt einer Superellipse von der Randtiefe bis zur Spitze: bei **Fülle** (Fullness) 2 einer Viertelellipse, bis 3 zur Spitze hin voller und mit einer kürzeren, stumpferen Rundung schließend. Mit **Tangential zum letzten Feld** (Tangent to the last panel) wird die Superellipse so skaliert, dass die Profiltiefe mit der Zuspitzung des letzten Feldes beginnt: Nasenleiste und Endleiste laufen ohne Knick über den Randschnitt. Nasenleiste und Endleiste laufen auf eine gerade Linie bei einem gewählten Anteil der Profiltiefe zu und treffen sich auf ihr. Die Schnitte setzen das letzte Feld in y und z fort und behalten Profil und Schränkung des Randschnitts. **Randbogen anfügen** (Add rounded tip) fügt sie als ein Rückgängig-Schritt an; **Rückgängig** stellt auch das Flügelende wieder her.
+**Randbogen …** unter der Tabelle öffnet einen Dialog, der außen am Randschnitt einen Randbogen anfügt und **Einstellungen** > **Flügelende** auf **Rund** (Round) setzt: Das Flügelende schließt sich in einem Punkt, Profiltiefe 0. Die Profiltiefe folgt einer Superellipse von der Randtiefe bis zur Spitze: bei **Fülle** (Fullness) 2 einer Viertelellipse, bis 3 zur Spitze hin voller und mit einer kürzeren, stumpferen Rundung schließend. Mit **Tangential zum letzten Feld** (Tangent to the last panel) wird die Superellipse so skaliert, dass die Profiltiefe mit der Zuspitzung des letzten Feldes beginnt: Nasenleiste und Endleiste laufen ohne Knick über den Randschnitt. Nasenleiste und Endleiste laufen auf eine gerade Linie bei einem gewählten Anteil der Profiltiefe zu und treffen sich auf ihr. Die Schnitte setzen das letzte Feld in y und z fort und behalten Profil und Schränkung des Randschnitts. **Randbogen anfügen** (Add rounded tip) fügt sie als ein Rückgängig-Schritt an; **Rückgängig** stellt auch das Flügelende wieder her.
 
 | Feld | Einheit | Schritt | Grenze | Vorgabe | Wirkung |
 | --- | --- | --- | --- | --- | --- |
@@ -615,9 +615,13 @@ Konstruktion: [[Geometrie|Geometrie]], Abschnitt 9.
 | Ellipse des Flügels fortsetzen | – | – | ein, aus | ein bei eingeschalteter Leitkurve, sonst aus | Ein: Die Profiltiefe folgt der Ellipse c(y) = A · sqrt(1 − (y − y_Wurzel)² / B²) durch Profiltiefe und Zuspitzung des Flügels am Randschnitt, mit der Mitte an der Wurzel, bis zu ihrem Schluss. Das legt die Länge fest; Länge, Fülle und Tangential gelten nicht. Der Entwurfstyp Glider (Halbspannweite 1000 mm, Zuspitzung 0,45) erhält 120,1 mm, eine Spannweite von 2240 mm |
 | Tangential zum letzten Feld | – | – | ein, aus | ein | Ein: Die Profiltiefe beginnt mit der Zuspitzung des letzten Feldes, kein Knick im Grundriss am Randschnitt. Aus: Die Profiltiefe beginnt mit Steigung 0, was einen Knick lässt, wo sich das letzte Feld verjüngt |
 
-- Die Spitze erhält die Profiltiefe eines spitzen Flügelendes: 1/200 des Schnitts davor (**Einstellungen** > **Flügelende**, Maßstab), mindestens 1 mm. **Sport** mit den Vorgaben (Zuspitzung des letzten Feldes −0,16 mm je mm): 6 Schnitte, Profiltiefen 136,14, 122,57, 102,68, 76,85 und 44,99 mm, Spitze bei y = 743,95 mm mit 1 mm Profiltiefe. Mit Fülle 2: 133,34, 114,73, 90,31, 62,03 und 31,51 mm.
+- Der letzte angefügte Schnitt ist der Punkt. Er liegt auf der geraden Linie, wo sich Nasenleiste und Endleiste treffen, und speichert eine Profiltiefe von 1 mm, die kleinste Profiltiefe eines Schnitts. Der Aufbau verwendet dort die Profiltiefe 0: Alle Flächenpunkte der Randzeile sind ein Punkt. Die Tabelle **Schnitte** zeigt unter seiner Profiltiefe `Randtiefe: 0 (rund)`. **Sport** mit den Vorgaben (Zuspitzung des letzten Feldes −0,16 mm je mm): 6 Schnitte, Profiltiefen 136,14, 122,57, 102,68, 76,85 und 44,99 mm, Punkt bei y = 743,95 mm. Mit Fülle 2: 133,34, 114,73, 90,31, 62,03 und 31,51 mm.
+- Die Zusammenfassung des Dialogs lautet `Fügt … Schnitte an und setzt Einstellungen > Flügelende auf Rund: Das Flügelende schließt sich in einem Punkt. Punkt bei y = … mm, … mm außerhalb des Randschnitts.` Nach **Randbogen anfügen** lautet die Meldung `Randbogen angefügt: … Schnitte, Flügelende auf Rund gesetzt. Rückgängig entfernt ihn.`
+- Am Punkt treffen sich beide Kanten mit der Krümmung einer Ellipse um die gerade Linie ([[Geometrie|Geometrie]], Abschnitt 10.1). **Segelflugmodell** mit **Ellipse des Flügels fortsetzen** und den Vorgaben des Dialogs: Die Profiltiefe liegt über die äußeren 56 mm innerhalb von −0,05 bis +0,02 mm an der Ellipse, +0,02 mm bei 0,8 mm vor dem Punkt.
+- Ein Profil von 1 mm am Ende statt des Punkts: **Einstellungen** > **Flügelende** = **Spitz**. Der Randbogen endet dann im verkleinerten Randprofil, 1/200 des Schnitts davor, mindestens 1 mm (Segelflugmodell: Profiltiefe 0,34 mm über der Ellipse bei 0,8 mm vor dem Punkt). Projekte im Format Version 5 mit Randbogen, von Wingdesigner 0.9.0 mit Flügelende **Spitz** gespeichert, öffnen mit **Spitz** und bauen wie bisher; auf **Rund** gesetzt schließen sie sich im Punkt.
+- **Flügelende** = **Rund** ohne Randbogen ist ein Baufehler: `Einstellungen > Flügelende Rund schließt das Flügelende in einem Punkt und braucht einen Randbogen: mit Schnitte > Randbogen … einen anfügen oder das Flügelende auf Flach oder Spitz setzen.`
 - Die Dicke fällt mit der Profiltiefe, da das Profil seine relative Dicke behält. Von vorn gesehen folgt der Umriss des Randbogens der Profiltiefe.
-- Die angefügten Schnitte sind als Randbogen gekennzeichnet (`roundTip` in der Projektdatei). Der Flügel baut den Umriss des Randbogens dann entlang der Randellipse, als ein Stück vom Randschnitt bis zur Spitze, mit **Interpolation in Spannweitenrichtung** **Linear** und **Glatt** gleichermaßen: ohne Wellen und mit **Tangential zum letzten Feld** am Randschnitt tangential zum Flügel. Der übrige Flügel behält seine Interpolation. Leitkurven (Nasenlinie, Endlinie) enden am Randschnitt, dem letzten nicht als Randbogen gekennzeichneten Schnitt; der Randbogen verlässt sie mit ihrer Steigung. Mit **Gerade Felder** wird der Randbogen wie jedes Feld aus seinen Schnitten gebaut: mit den Vorgaben ein Polygon aus 6 geraden Feldern. Die Projekte werden im Format Version 5 gespeichert, das Wingdesigner 0.8.0 und älter ablehnen.
+- Die angefügten Schnitte sind als Randbogen gekennzeichnet (`roundTip` in der Projektdatei). Der Flügel baut den Umriss des Randbogens dann entlang der Randellipse, als ein Stück vom Randschnitt bis zur Spitze, mit **Interpolation in Spannweitenrichtung** **Linear** und **Glatt** gleichermaßen: ohne Wellen und mit **Tangential zum letzten Feld** am Randschnitt tangential zum Flügel. Der übrige Flügel behält seine Interpolation. Leitkurven (Nasenlinie, Endlinie) enden am Randschnitt, dem letzten nicht als Randbogen gekennzeichneten Schnitt; der Randbogen verlässt sie mit ihrer Steigung. Mit **Gerade Felder** wird der Randbogen wie jedes Feld aus seinen Schnitten gebaut: mit den Vorgaben ein Polygon aus 6 geraden Feldern. Ein Projekt mit **Flügelende** = **Rund** wird im Format Version 6 gespeichert, das Wingdesigner 0.9.0 und älter ablehnen; mit den Markierungen und einem anderen Flügelende im Format Version 5.
 - Mit **Endleiste** **Feste Dicke in mm** ist der Spalt unter einer Profiltiefe vom 20-Fachen der Dicke (8 mm bei 0,4 mm) auf 5 % der Profiltiefe begrenzt. Mit **Weicher Übergang zur 5-%-Grenze** (Vorgabe) entsteht daraus keine Welle. Ausgeschaltet kann der Knick der Grenze innerhalb von 1 mm vor der Spitze eine kleine Welle in der Endleiste hinterlassen (mit den Vorgaben in 7 von 368 geprüften Varianten der Entwurfstypen, 1 davon höher als 0,05 mm).
 - Mit Tangential kann eine feste Endleistendicke (**Einstellungen** > **Endleiste**) an einer Station vor dem letzten Feld 5 % der Profiltiefe überschreiten, wo die Tiefe schneller fällt als die Superellipse. Der Aufbau begrenzt sie dort und meldet eine Warnung; mit den Vorgaben beim Entwurfstyp **Delta-Jet** (Delta jet, 1,6 mm).
 - Die Vorschau zeigt die äußeren 40 % der Spannweite von oben, den Randbogen in der Akzentfarbe, und nennt die Zahl der Schnitte und die Lage der Spitze. Ein Baufehler der Vorschau steht stattdessen dort und sperrt **Randbogen anfügen**.
@@ -625,7 +629,7 @@ Konstruktion: [[Geometrie|Geometrie]], Abschnitt 9.
 **Randbogen anfügen** ist gesperrt, mit dem Grund unter der Vorschau, wenn:
 
 - ein Feld außerhalb seiner Grenze liegt oder die Anzahl der Schnitte keine ganze Zahl ist;
-- **Einstellungen** > **Flügelende** = **Spitz** (`… Ein Randbogen braucht ein flaches Flügelende.`);
+- **Einstellungen** > **Flügelende** = **Spitz** oder **Rund** (`… Ein Randbogen braucht ein flaches Flügelende.`);
 - **Ellipse des Flügels fortsetzen** eingeschaltet ist und der Flügel am Randschnitt nicht schmaler wird (`Ellipse fortsetzen: Der Flügel wird zum Randschnitt hin nicht schmaler …`);
 - das letzte Feld mit Tangential innerhalb von 1/0,95 der Länge auf Profiltiefe null zuliefe (`Randbogen: Das letzte Feld liefe innerhalb von … mm auf Profiltiefe null zu, …`); **Sport**: höchstens 855,29 mm;
 - der letzte Schnitt vor der Spitze unter 1 mm Profiltiefe fiele (`Randbogen: Mit … Schnitten muss die Randtiefe mindestens … mm betragen; …`);
@@ -648,14 +652,14 @@ Der Grundriss-Editor zeigt den Halbflügel von oben: Spannweite y nach rechts, P
 
 | Griff | Sichtbar, wenn | Wirkung beim Ziehen |
 | --- | --- | --- |
-| Blaues Quadrat an der Profilnase eines Schnitts | Nasenlinie aus; nicht an einem Randschnitt mit **Spitz** (Pointed), solange die Endlinie an ist | Verschiebt x und y des Schnitts; x bleibt innerhalb von ±1 000 000 mm. Die Endleiste bleibt stehen (Endlinie an: die Endlinie beim geänderten y); die Profiltiefe ändert sich im Bereich 1 bis 100 000 mm. y hält 1 mm Abstand zu den Nachbarschnitten (Nachbarn näher als 4 mm: ein Viertel der Lücke). Der Wurzelschnitt behält sein y. y des Randschnitts bleibt höchstens 1 000 000 mm. Ein y, dessen Spannweitenanteil sich nicht von dem eines Nachbarn unterscheiden würde (4 Einheiten der letzten Stelle, 2^-1021), wird nicht übernommen; der Schnitt behält sein y. |
-| Blauer Kreis an der Endleiste eines Schnitts | Endlinie aus; nicht an einem Randschnitt mit **Spitz** | Setzt die Profiltiefe (1 bis 100 000 mm) |
+| Blaues Quadrat an der Profilnase eines Schnitts | Nasenlinie aus; nicht an einem Randschnitt mit **Spitz** (Pointed) oder **Rund** (Round), solange die Endlinie an ist | Verschiebt x und y des Schnitts; x bleibt innerhalb von ±1 000 000 mm. Die Endleiste bleibt stehen (Endlinie an: die Endlinie beim geänderten y); die Profiltiefe ändert sich im Bereich 1 bis 100 000 mm. y hält 1 mm Abstand zu den Nachbarschnitten (Nachbarn näher als 4 mm: ein Viertel der Lücke). Der Wurzelschnitt behält sein y. y des Randschnitts bleibt höchstens 1 000 000 mm. Ein y, dessen Spannweitenanteil sich nicht von dem eines Nachbarn unterscheiden würde (4 Einheiten der letzten Stelle, 2^-1021), wird nicht übernommen; der Schnitt behält sein y. |
+| Blauer Kreis an der Endleiste eines Schnitts | Endlinie aus; nicht an einem Randschnitt mit **Spitz** oder **Rund** | Setzt die Profiltiefe (1 bis 100 000 mm) |
 | Raute auf einer Leitkurve (grün: Nasenlinie, braun: Endlinie) | Leitkurve an | Verschiebt den Punkt; x bleibt innerhalb von ±1 100 000 mm. Wurzel- und Randpunkt bewegen sich nur in x. Innere Punkte halten in y 0,5 mm Abstand zu ihren Nachbarn (Nachbarn näher als 2 mm: ein Viertel der Lücke). Ein y, dessen normierter Wert sich nicht von dem eines Nachbarn unterscheiden würde, lässt das y des Punkts unverändert; die Punkttabelle wendet dieselbe Regel an. |
 
 - Gezogene Werte werden auf 0,1 mm gerundet.
 - Die Zeile unter der Zeichenfläche zeigt die Werte während des Ziehens.
 - Der ausgewählte Schnitt und der ausgewählte Leitkurvenpunkt sind rot. Ein Klick auf den Hintergrund, **Auf Schnitte zurücksetzen** (Reset to sections) und das Ein- oder Ausschalten der Leitkurve heben die Auswahl des Leitkurvenpunkts auf.
-- Ein Randschnitt mit **Spitz** hat keinen Griff an der Endleiste: Seine Profiltiefe ist die skalierte Profiltiefe des vorigen Schnitts. Bei eingeschalteter Endlinie hat er auch keinen Griff an der Profilnase: Sein x der Profilnase ist x der Endlinie minus Profiltiefe.
+- Ein Randschnitt mit **Spitz** hat keinen Griff an der Endleiste: Seine Profiltiefe ist die skalierte Profiltiefe des vorigen Schnitts. Ein Randschnitt mit **Rund** hat auch keinen: Seine Profiltiefe ist 0. Bei eingeschalteter Endlinie hat er auch keinen Griff an der Profilnase: Sein x der Profilnase ist x der Endlinie minus Profiltiefe.
 - Das Ziehen eines Schnitts setzt ausgeschaltete, nicht bearbeitete Leitkurven auf die neuen Schnittkanten, wie eine Änderung in der Tabelle der Registerkarte **Schnitte** (Sections). Nach einem Neuladen beginnt eine solche Leitkurve beim Einschalten an den gezogenen Kanten.
 
 ### Leitkurven
@@ -870,7 +874,7 @@ Die Registerkarte **Einstellungen** (Settings) hat die Gruppen **Language / Spra
 | **Geometrie** | **Schnittebenen** (Section planes) | **Auf Gehrung (senkrecht zu den Feldern, wie XFLR5)** (Mitred (square to the panels, as XFLR5)), **Senkrecht (y = konstant)** (Vertical (y = const)) | Auf Gehrung; Projektdateien des Formats Version 1: Senkrecht; XFLR5-Import: siehe Abschnitt [Importieren, Abbrechen und Rückgängig](#importieren-abbrechen-und-rückgängig) | Ebene, in der jeder Schnitt liegt. Siehe Liste unten. |
 | **Geometrie** | **Drehpunkt der Schränkung (Anteil der Profiltiefe)** (Twist pivot (fraction of chord)) | 0 bis 1, Schritt 0,05 | 0,25 | Punkt auf der Profilsehne, um den die Schränkung dreht |
 | **Geometrie** | **Endleiste** (Trailing edge) | **Wie in den Profildateien** (As in the airfoil files), **Geschlossen (scharf)** (Closed (sharp)), **Feste Dicke in mm** (Fixed thickness in mm) | Feste Dicke (Assistent, Beispielflügel); Wie in den Profildateien für Projektdateien ohne diese Einstellung | Endleistendicke jeder Station |
-| **Geometrie** | **Flügelende** (Wing tip) | **Flach (am Randschnitt abgeschnitten)** (Flat (cut at the tip section)), **Spitz (Randprofil verkleinert)** (Pointed (tip profile scaled down)) | Flach; Assistent: dessen Eingabefeld **Flügelende** (Tip) | Flach: Der Flügel endet am Randschnitt. Spitz: siehe Liste unten. |
+| **Geometrie** | **Flügelende** (Wing tip) | **Flach (am Randschnitt abgeschnitten)** (Flat (cut at the tip section)), **Spitz (Randprofil verkleinert)** (Pointed (tip profile scaled down)), **Rund (schließt in einem Punkt, braucht einen Randbogen)** (Round (closes in a point, needs a rounded tip)) | Flach; Assistent: dessen Eingabefeld **Flügelende** (Tip); **Randbogen …**: Rund | Flach: Der Flügel endet am Randschnitt. Spitz und Rund: siehe Listen unten. |
 | **Geometrie** | **Maßstab des Randprofils 1 : N der Tiefe des vorherigen Schnitts** (Tip profile scale 1 : N of the previous section chord) | N = 100 bis 1000, Schritt 50 | 200 | Nur sichtbar mit **Spitz** |
 | **Geometrie** | **Endleistendicke (mm)** (Trailing-edge thickness (mm)) | ≥ 0, Schritt 0,1 | Assistent: 0,2 % der Wurzeltiefe, mindestens 0,3; Beispielflügel: 0,5; Projektdatei ohne den Wert: 0,4 | Nur sichtbar mit **Feste Dicke in mm** |
 | **Geometrie** | **Weicher Übergang zur 5-%-Grenze** (Smooth transition to the 5 % limit) | ein, aus | ein | Nur bei **Feste Dicke in mm** angezeigt. Der Spalt ist auf 5 % der Profiltiefe begrenzt; die Grenze setzt bei der Profiltiefe c* = 20 × Dicke ein (8 mm bei 0,4 mm). Ein: Der Spalt behält die Dicke bis 1,5 c*, geht bis 0,5 c* ohne Knick in 5 % der Profiltiefe über und bleibt dazwischen unter beiden. Aus: Der Spalt wechselt bei c* mit einem Knick, der nahe einem spitzen Flügelende eine Welle in der Endleiste hinterlassen kann ([[Geometrie]], Abschnitt 3.7) |
@@ -933,6 +937,13 @@ Spitzes Flügelende (**Flügelende** = **Spitz**):
 - Mit eingeschalteter Nasenlinie und Endlinie legt ihr Abstand am Rand die Randtiefe fest, wenn er größer als die verkleinerte Randtiefe ist. Ist er mehr als 0,5 mm größer, erscheint eine Warnung.
 - Entwurfstyp **Segelflugmodell** mit dem Eingabefeld **Flügelende** = **Spitz**: Randtiefe 1,00 mm (Untergrenze 1 mm), 22 Stationen (17 + 5 hinzugefügt), größte Abweichung an den geprüften Spannweitenpositionen 0,263 mm, keine Warnung. Auch die übrigen Entwurfstypen des Assistenten mit **Flügelende** = **Spitz** ergeben keine Warnung.
 - Innerhalb von 2 mm vor einem spitzen elliptischen Flügelende (Entwurfstypen des Assistenten) weichen x von Nasen- und Endleiste der Fläche höchstens 0,044 mm vom vorgesehenen Grundriss ab (**Pfeilnurflügel**; 2001 Spannweitenpositionen); die übrigen Konturpunkte dort sind nicht gemessen. Die Abweichungswarnung erfasst diese Positionen nicht.
+
+Rundes Flügelende (**Flügelende** = **Rund**):
+
+- Die Profiltiefe des letzten Schnitts ist 0: Der Flügel schließt sich in einem Punkt, ohne Endfläche. Die eingegebene Randtiefe wird nicht verwendet; die Tabelle **Schnitte** zeigt `Randtiefe: 0 (rund)`.
+- Braucht einen Randbogen, die Schnitte, die **Randbogen …** anfügt (Abschnitt [Randbogen](#randbogen)). Ohne ihn stoppt der Aufbau mit `Einstellungen > Flügelende Rund schließt das Flügelende in einem Punkt und braucht einen Randbogen: …`.
+- Dreiecksnetze enden im Punkt in einem Eckpunkt; STEP-Flächen enden in einem Eckpunkt mit 3 Kanten ([[Geometrie|Geometrie]], Abschnitt 6).
+- Ein Projekt mit **Rund** wird im Format Version 6 gespeichert.
 
 Regeln für die Endleiste:
 
@@ -1095,7 +1106,7 @@ Gemessen je Änderung einer Profiltiefe im Browser: Chromium 141 headless, Softw
 
 ## Export
 
-![Exportdialog: Format, Flügelhälften, Netzdichte, Fusion-360-Korrektur](images/de/export-dialog.png)
+![Exportdialog: Format, Flügelhälften, Netzdichte, Fusion-360-Korrektur, Gruppe Form mit der Schaltfläche Formhälften …](images/de/export-dialog.png)
 
 Der Exportdialog trägt den Titel **Exportieren** (Export).
 
@@ -1154,6 +1165,7 @@ Für STEP nennt der Hinweis die Kontrollpunkte der Flächen in der Datei und die
 | --- | --- |
 | **Herunterladen** | Schreibt die Datei mit den gewählten Optionen. |
 | **Abbrechen** (Cancel) | Schließt den Dialog ohne Datei. |
+| **Formhälften …** (Mold halves…, Gruppe **Form**) | Schließt den Dialog und öffnet den Dialog der Form (Abschnitt [Formhälften](#formhälften)). Gesperrt, solange der Flügel Fehler hat. |
 
 | Format | Beide Hälften | Ganzer Flügel | Rechte Hälfte |
 | --- | --- | --- | --- |
@@ -1174,6 +1186,101 @@ Für STEP nennt der Hinweis die Kontrollpunkte der Flächen in der Datei und die
 - Fällt das erste beschädigte Dreieck auch dann zusammen oder kippt um, wenn seine x- und z-Werte neben 0 und die Wurzel auf y = 0 verschoben sind (bei gespiegeltem Flügel beide Hälften), ist schon sein Abstand zur Wurzel zu grob: Schnitte oder Stationen liegen dichter beieinander als der 32-Bit-Abstand, und Verschieben des Flügels hilft nicht. Der letzte Satz lautet dann `Schnitte oder Stationen nahe y = … mm liegen dichter beieinander als der Rasterabstand dort (… mm); sie auseinanderschieben oder als STEP exportieren.` Beispiel: 4 Schnitte, 2 davon bei y = 300 mm und y = 300,00001 mm: `STL speichert 32-Bit-Koordinaten: Bei 300 mm beträgt ihr Rasterabstand 0,000031 mm, und 484 von 1.928 Dreiecken fallen zusammen oder kehren sich um. Schnitte oder Stationen nahe y = 300 mm liegen dichter beieinander als der Rasterabstand dort (0,000031 mm); sie auseinanderschieben oder als STEP exportieren.`
 - Dateiinhalte: [[Dateiformate|Dateiformate]].
 
+## Formhälften
+
+![Dialog Form für den Entwurfstyp Sport mit Randbogen: Gruppen Formblock, Blutrinne, Zentrierbohrungen, Bohrungen für Spannschrauben und Datei; Draufsicht auf die Trennebene mit Umriss des Formblocks, Blutrinne um den Flügel, 4 Zentrierbohrungen an den Ecken und 14 Bohrungen für Spannschrauben entlang der Kanten; darunter die Zusammenfassung](images/de/mold-dialog.png)
+
+**Exportieren** > **Formhälften …** (Mold halves…) öffnet den Dialog **Form** (Mold). Er baut eine Unterform und eine Oberform der rechten Flügelhälfte als exakte STEP-Körper (AP214) und schreibt sie in eine Datei: `<Projektname>_mold.step`, mit der Regel für Dateinamen aus Abschnitt [Export](#export). Die Hälften stehen in geschlossener Lage, die Trennebene bei z = 0, die Unterform darunter, die Oberform darüber. Namen der Körper: `<Projektname> mold lower` und `<Projektname> mold upper`. Einheit: mm. Die Achsen folgen dem letzten Export: War **Fusion-360-Korrektur: Y nach oben** beim letzten Export als STEP, STL oder 3MF eingeschaltet, hat die Datei Y als Hochachse.
+
+| Teil | Aufbau |
+| --- | --- |
+| Formblock | Ein Quader je Hälfte. Länge: Flügel von der Nasenleiste bis zur Endleiste plus **Rand um den Flügel** vorn und hinten. Breite: Wurzelfläche bis zum Flügelende plus Rand. Dicke einer Hälfte: Tiefe ihres Formnests unter der Trennebene plus **Boden unter dem Formnest**. |
+| Wurzelfläche | Die Fläche des Formblocks an der Wurzel. Der Wurzelschnitt liegt in ihr; das Formnest ist dort offen. Mit V-Form ist die Fläche um den Rollwinkel des Bezugssystems der Form geneigt (unten). |
+| Formnest | Die Flügelfläche der Hälfte: Unterseite in der Unterform, Oberseite in der Oberform; die Hälfte einer stumpfen Endleiste; bei flachem Flügelende die Hälfte der Endfläche. |
+| Trennlinie | Nasenleiste und Endleiste des Flügels; die Mitte einer stumpfen Endleiste. |
+| Rampe | Eine Regelfläche, **Breite der Rampe** breit, von Nasenleiste und Endleiste hinab oder hinauf zur Trennebene. Mit Schränkung, einer Änderung der V-Form oder einem Profil, dessen Nase neben seiner Profilsehne liegt, liegen Nasenleiste und Endleiste neben der Ebene; die Rampe verbindet sie mit ihr. Innen laufen ihre Erzeugenden entlang x; um ein Flügelende, das in einem Punkt schließt, drehen sie sich mit; eine flache Endfläche wird entlang der Skelettlinie des Randschnitts geteilt. |
+| Blutrinne | Eine halbrunde Rille in jeder Hälfte, sodass die geschlossene Form einen runden Kanal mit **Durchmesser** hat. Sie läuft um Nasenleiste, Flügelende und Endleiste, mit **Abstand vom Flügel** vom Flügelumriss bis zu ihrem inneren Rand, und endet in der Wurzelfläche. Innenecken ihres Verlaufs sind mit dem Radius Durchmesser + 2 mm gerundet. |
+| Zentrierbohrungen | Sacklöcher von der Trennebene aus, **Tiefe in jeder Hälfte** tief, in beiden Hälften an denselben Stellen. |
+| Bohrungen für Spannschrauben | Durchgangsbohrungen in beiden Hälften, von der Trennebene bis zur Bodenfläche, an denselben Stellen. |
+
+Bezugssystem der Form: das System, in dem die Flügelhälfte gebaut wird, vor **Einstellwinkel des Teils** und **Rollwinkel des Teils** (die Form beachtet beide nicht), um x um die V-Form des Flügels gerollt: um den Rollwinkel eines flachen Randschnitts, sonst um die Steigung der Geraden, die an Nasenleiste und Endleiste angepasst ist. Die Trennebene liegt in der mittleren Höhe von Nasenleiste und Endleiste in diesem System. Konstruktion: [[Geometrie|Geometrie]], Abschnitt 11.
+
+### Felder
+
+| Gruppe | Feld | Einheit | Schritt | Grenze | Vorgabe |
+| --- | --- | --- | --- | --- | --- |
+| **Formblock** (Block) | **Rand um den Flügel** (Margin around the wing) | mm | 5 | 5 bis 1000 | 40 |
+| Formblock | **Boden unter dem Formnest** (Floor below the cavity) | mm | 1 | 1 bis 1000 | 12 |
+| Formblock | **Breite der Rampe** (Ramp width) | mm | 0,5 | 0,5 bis 100 | 3 |
+| **Blutrinne** (Resin channel; Kontrollkästchen, ein) | **Durchmesser** (Diameter) | mm | 0,5 | 1 bis 20 | 4 |
+| Blutrinne | **Abstand vom Flügel** (Distance from the wing) | mm | 1 | 1 bis 500, mindestens Breite der Rampe + 0,5 | 6 |
+| **Zentrierbohrungen** (Alignment pin holes; Kontrollkästchen, ein) | **Durchmesser** | mm | 0,5 | 1 bis 50 | 6 |
+| Zentrierbohrungen | **Tiefe in jeder Hälfte** (Depth in each half) | mm | 1 | 1 bis 500 | 10 |
+| Zentrierbohrungen | **Muster** (Pattern) | – | – | siehe unten | Ecken des Formblocks |
+| Zentrierbohrungen | **Größter Abstand untereinander** (Largest spacing) | mm | 10 | 5 bis 10.000 | 150 |
+| Zentrierbohrungen | **Abstand von der Blockkante** (Distance from the block edge) | mm | 1 | 2 bis 500, mindestens Bohrungsradius + 1 | 12 |
+| Zentrierbohrungen | **Abstand außerhalb der Blutrinne** (Distance beyond the resin channel) | mm | 1 | 1 bis 500, mindestens Bohrungsradius + 1 | 10 |
+| **Bohrungen für Spannschrauben** (Clamping screw holes; Kontrollkästchen, ein) | **Durchmesser** | mm | 0,5 | 1 bis 50 | 6,5 |
+| Bohrungen für Spannschrauben | **Muster** | – | – | siehe unten | Entlang der Blockkanten |
+| Bohrungen für Spannschrauben | **Größter Abstand untereinander** | mm | 10 | 5 bis 10.000 | 120 |
+| Bohrungen für Spannschrauben | **Abstand von der Blockkante** | mm | 1 | 2 bis 500, mindestens Bohrungsradius + 1 | 12 |
+| Bohrungen für Spannschrauben | **Abstand außerhalb der Blutrinne** | mm | 1 | 1 bis 500, mindestens Bohrungsradius + 1 | 10 |
+| **Datei** (File) | **Hälften** (Halves) | – | – | **Unter- und Oberform**, **Nur Unterform**, **Nur Oberform** | Unter- und Oberform |
+| Datei | **Formen des linken Flügels (Spiegelbild)** (Molds of the left wing (mirror image)) | – | – | ein, aus | aus |
+
+- Ein Wert außerhalb seiner Grenze wird nicht übernommen: Das Feld zeigt wieder den letzten gültigen Wert.
+- Felder, die das gewählte Muster oder eine ausgeschaltete Gruppe nicht verwendet, sind gesperrt: **Größter Abstand untereinander** bei Ecken des Formblocks, **Abstand von der Blockkante** bei Um den Flügel, **Abstand außerhalb der Blutrinne** bei den beiden anderen Mustern.
+- **Formen des linken Flügels** schreibt das Spiegelbild an y = 0. Linke und rechte Form sind zwei Dateien.
+- Die Werte werden im Browser unter `wingdesigner.mold` gespeichert, nicht im Projekt. Ohne Browserspeicher beginnt der Dialog mit den Vorgaben.
+
+| Muster | Lage der Bohrungen |
+| --- | --- |
+| **Ecken des Formblocks** (Block corners) | 4 Bohrungen, eine je Ecke, mit **Abstand von der Blockkante** zu beiden Kanten |
+| **Entlang der Blockkanten** (Along the block edges) | Entlang der vorderen Kante, der Seite am Flügelende und der hinteren Kante (nicht an der Wurzelfläche), von Ecke zu Ecke, in gleichen Schritten von höchstens **Größter Abstand untereinander**; die Ecken eingeschlossen |
+| **Um den Flügel** (Around the wing) | Entlang eines Wegs um den Flügel mit **Abstand außerhalb der Blutrinne** vom äußeren Rand der Blutrinne (ohne Blutrinne: von der Rampe), in gleichen Schritten von etwa **Größter Abstand untereinander**, mindestens 1 Bohrung |
+
+- An der Wurzelseite halten die Bohrungen ihren Kantenabstand zur geneigten Wurzelfläche über die Höhe beider Hälften.
+- Eine Bohrung näher als 1 mm an der Sperrzone um das Formnest (die Rampe, oder die Blutrinne, wenn sie eingeschaltet ist), an einer Blockkante oder an einer anderen Bohrung wird weggelassen, mit einer Warnung, die die weggelassenen Bohrungen zählt. Eine Stelle, die schon eine Bohrung der anderen Art belegt, wird ohne Warnung weggelassen.
+- Vorgaben: Zentrierbohrungen an den 4 Ecken, Bohrungen für Spannschrauben entlang der Kanten dazwischen. Entwurfstyp **Segelflugmodell** mit Randbogen (**Randbogen …**, **Ellipse des Flügels fortsetzen**): 4 Zentrierbohrungen, 20 Bohrungen für Spannschrauben.
+
+### Vorschau und Zusammenfassung
+
+Die Vorschau zeigt die Trennebene von oben, y nach rechts und x nach hinten unten, wie die anderen Vorschauen: den Umriss des Formblocks, die Blutrinne in ihrer Breite in der Akzentfarbe, den äußeren Rand der Rampe in Grau, den Flügelumriss gefüllt, Zentrierbohrungen als gefüllte Kreise und Bohrungen für Spannschrauben als offene Kreise. Verschieben und Zoomen wie in Abschnitt [Bedienung](#bedienung).
+
+Zusammenfassung unter der Vorschau, z. B. Entwurfstyp **Sport** mit dem Randbogen der Vorgaben und den Vorgaben der Form (der Screenshot oben):
+
+`Formblock 320,0 × 784,2 mm; Unterform 17,7 mm dick, Oberform 27,6 mm. Trennebene mit dem Flügel um 1,54° gerollt; Nasenleiste und Endleiste liegen bis zu 1,36 mm daneben. Blutrinne 1.586 mm lang. 4 Zentrierbohrungen, 14 Bohrungen für Spannschrauben.`
+
+| Meldung | Art | Bedingung |
+| --- | --- | --- |
+| `Form: Nasenleiste und Endleiste liegen bis zu … mm neben der Trennebene (Schränkung, eine Änderung der V-Form oder das Profil), daher steigt die Rampe bis zu …° an. …` | Warnung | Die Rampe steigt steiler als 45° an |
+| `Form: … Zentrierbohrung(en) weggelassen: …`, `Form: … Schraubenbohrung(en) weggelassen: …` | Warnung | Bohrungen weggelassen (oben) |
+| `Form: … muss zwischen … und … mm liegen.` | Fehler | Ein Wert außerhalb seiner Grenze |
+| `Form: Der Abstand der Blutrinne muss mindestens … mm betragen, die Breite der Rampe plus 0,5 mm.` | Fehler | Abstand der Blutrinne kleiner als Breite der Rampe + 0,5 mm |
+| `Form: Der Rand des Formblocks muss für die Blutrinne mindestens … mm betragen (…)` | Fehler | Rand kleiner als Abstand + Durchmesser + 1 mm (ohne Blutrinne: Breite der Rampe + 1 mm) |
+| `Form: Die Blutrinne verlässt den Formblock; …` | Fehler | Der Verlauf der Blutrinne kommt einer Blockkante näher als 1 mm |
+| `Form: Die Zentrierbohrungen sind … mm tief, die dünnere Hälfte ist aber nur … mm dick; …` | Fehler | Tiefe der Zentrierbohrungen größer als die Dicke der dünneren Hälfte − 1 mm |
+| `Form: Die Rampe faltet sich am Flügelumriss über sich selbst; die Breite der Rampe verringern.` | Fehler | Die Rampe faltet sich in der Draufsicht, z. B. an einer engen Krümmung des Umrisses |
+| `Form: Die Rampe entlang des Flügelumrisses ließ sich nicht anpassen; …` | Fehler | Sehr dicht beieinander liegende Schnitte |
+| `Der Flügel hat Fehler; sie vor dem Bau einer Form beheben.` | Fehler | Der Flügel baut nicht |
+
+Ein Fehler sperrt **STEP herunterladen** (Download STEP). **Schließen** (Close) schließt den Dialog.
+
+### Profile mit hohler Unterseite
+
+Die Hälften trennen sich an Nasenleiste und Endleiste. Ein Profil mit hohler Unterseite hat seine Unterseite über dieser Linie: Die Unterform steigt dann innerhalb des Umrisses des Formnests über z = 0, und die Oberform ist dort vertieft. Beispiel: ein Profil mit 9 % Wölbung und 5 % Dicke bei 200 mm Profiltiefe, ohne Schränkung und ohne V-Form: Die Unterform reicht 13,2 mm über die Trennebene; Unterform 12,6 mm dick, Oberform 34,9 mm.
+
+### Einschränkungen und Tests
+
+- Die Form beachtet **Einstellwinkel des Teils** und **Rollwinkel des Teils** nicht.
+- Eine Trennebene je Flügelhälfte. Ein Flügel mit mehreren V-Form-Winkeln erhält hohe Rampen: Entwurfstyp **Hochleistungssegler** 85,8 mm, Rampe bis 88°, mit der Warnung.
+- Die Nase wird am Nasenpunkt des Profils geteilt. An einem geschränkten Schnitt hat das Formnest dort einen Hinterschnitt von r · (1 − cos Schränkung), r der Nasenradius: 0,004 mm bei 3 mm und 3°.
+- Keine Entformungsschräge.
+- Linke und rechte Form sind getrennte Dateien; keine einteilige Form des ganzen Flügels.
+- Die Blutrinne ist eine B-Spline-Fläche, durch Stationen entlang ihres Verlaufs angepasst, kein exakter Torus oder Zylinder. Ihr Querschnitt liegt an den gemessenen Entwurfstypen innerhalb von 0,02 mm an einem Halbkreis (Sport 0,018 mm, flacher Testflügel 0,0073 mm, Delta-Jet 0,0031 mm); nicht gegen ein CAD-Modell gemessen.
+- Bohrungen sind Zylinder aus je 2 Halbzylinderflächen.
+- Geprüft: 16 Formdateien, mit OpenCascade gelesen (gültige, geschlossene Körper; die Volumen beider Hälften ergeben Formblock − Flügelhälfte − Blutrinne − Bohrungen innerhalb von 2e-4). Nicht geprüft: die Datei in einem CAD-Programm (computer-aided design) oder CAM-Programm (computer-aided manufacturing) außer OpenCascade; eine gefräste Form.
+
 ## Schaumschnitt
 
 ![Schaumschnitt-Assistent für den Entwurfstyp Segelflugmodell nach „Segmente über der Grenze teilen“: Einstellungen, Schnitte, Grundriss mit den Schnitten, Segmenttabelle, Downloads](images/de/foam-dialog.png)
@@ -1192,6 +1299,8 @@ Für STEP nennt der Hinweis die Kontrollpunkte der Flächen in der Datei und die
 | Schnittbreite | Breite der Fuge, die der Heißdraht ausschmilzt (mm) |
 
 Geometrie, Formeln und Beispiele: [[Geometrie|Geometrie]], Abschnitt 8 „Schaumkerne“.
+
+Mit **Einstellungen** > **Flügelende** = **Rund** schließt sich das Flügelende in einem Punkt der Profiltiefe 0, den kein Kernende aufnehmen kann. Der äußerste Kern endet am letzten Schnitt vor dem Punkt (Profiltiefe mindestens 1 mm), und kein Schnitt liegt außerhalb davon; ein Schnitt näher als 5 mm an diesem Ende entfällt. **Sport** mit dem Randbogen der Vorgaben: Die Kerne enden bei y = 739,05 mm, das Flügelende bis 743,95 mm liegt in keinem Kern. `README.txt` und der Kopf der Schablonen sagen: `Das Flügelende jenseits von y = … mm gehört zu keinem Kern: Es schließt sich bei y = … mm in einem Punkt (Einstellungen > Flügelende Rund) und wird separat geformt.`
 
 ### Einstellungen
 
