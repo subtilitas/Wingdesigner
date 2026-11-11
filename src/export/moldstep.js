@@ -1,19 +1,20 @@
 // STEP export of the mold halves (src/geom/mold.js) as exact solids, schema AP214.
 //
 // Each half is one MANIFOLD_SOLID_BREP, built in the frame of the lower half (material below the
-// parting plane); the upper half is the mirror image at the parting plane, the molds of the left wing
+// parting surface); the upper half is the mirror image at the plane z = zp, the molds of the left wing
 // the mirror image at y = 0. Faces of one half:
-//   block      bottom, front (leading-edge side), back, tip side: planes; the root face: a plane with
-//              the root section and the ends of the resin channel in its outline
-//   parting    the plane z = zp outside the ramp, split by the resin channel into two faces
-//   ramp       two ruled B-spline surfaces from leading edge and trailing edge to the plane; at a flat
-//              tip a ruled surface from the mean line of the tip section and a planar triangle at each
-//              corner
+//   block      bottom, tip side: planes; front (leading-edge side) and back: planes whose top edge is
+//              the edge of the parting surface; the root face: a plane with the root section and the
+//              ends of the resin channel in its outline
+//   parting    the ruled parting surface over the whole block, split by the resin channel into two
+//              faces; at a flat tip a ruled strip from the mean line of the tip section to it
 //   cavity     the wing surface of the side (the B-spline surface of the wing export), the half of a
 //              blunt trailing edge, at a flat tip the half of the tip face up to its mean line
 //   channel    one B-spline surface of half-round cross-section
 //   holes      two half cylinders each; a pin hole ends in a planar bottom, a screw hole in the
 //              bottom face of the block
+// The edges of the wing, the rims of the channel and the mouths of the holes lie on the fitted parting
+// surface within the fit of the geometry (summary.fit, below 1e-6 mm).
 // A loop is listed counter-clockwise seen from outside the solid; a reflection keeps the lists and
 // flips the bound flag and the sense of the B-spline faces, as the left half of the wing export does.
 
@@ -118,29 +119,30 @@ export class Brep {
   }
 }
 
-/** The mean line of a flat tip section moved out by the ramp width, in the parting plane. */
-const meanOuter = (c, w, zp) => ({ ...c, points: c.points.map((P) => [P[0], P[1] + w, zp]) });
-
 /** One mold half (geometry.halves.lower or .upper with geometry.common) into `b`. */
 function writeHalf(b, common, half) {
-  const { zp, block, pole, closed, ramp, holes } = common;
-  const { channel, slope } = half;
-  const { x0, x1, y0, y1 } = block;
+  const { zp, block, pole, closed } = common;
+  const { channel, slope, parting: S, holes } = half;
+  const { x0, x1, y1 } = block;
   const zb = zp - half.thickness;
-  // The root face leans by the roll of the mold frame: y = y0 + slope · (z − zp).
-  const yb = y0 + slope * (zb - zp);
-  const S = half.cavity;
+  const C = half.cavity;
   const X = [1, 0, 0];
   const Z = [0, 0, 1];
   const last = (c) => c.points[c.points.length - 1];
+  // Edges of the parting surface in the front face (x = x0) and the back face (x = x1) of the block.
+  const front = { degree: S.degreeV, knots: S.knotsV, points: S.points[0] };
+  const back = { degree: S.degreeV, knots: S.knotsV, points: S.points[1] };
+  // The root face leans by the roll of the mold frame: y = yR + slope · (z − zp), through the root
+  // ruling of the parting surface.
+  const yb = front.points[0][1] + slope * (zb - front.points[0][2]);
 
-  // Block.
-  const T = { fr: b.vertex([x0, y0, zp]), ft: b.vertex([x0, y1, zp]), bt: b.vertex([x1, y1, zp]), br: b.vertex([x1, y0, zp]) };
+  // Block: the top corners are the corners of the parting surface.
+  const T = { fr: b.vertex(front.points[0]), ft: b.vertex(last(front)), bt: b.vertex(last(back)), br: b.vertex(back.points[0]) };
   const B = { fr: b.vertex([x0, yb, zb]), ft: b.vertex([x0, y1, zb]), bt: b.vertex([x1, y1, zb]), br: b.vertex([x1, yb, zb]) };
   const E = {
-    frontTop: b.line(T.fr, T.ft),
+    frontTop: b.curve(T.fr, T.ft, front),
     tipTop: b.line(T.ft, T.bt),
-    backTop: b.line(T.bt, T.br),
+    backTop: b.curve(T.br, T.bt, back),
     frontBot: b.line(B.fr, B.ft),
     tipBot: b.line(B.ft, B.bt),
     backBot: b.line(B.bt, B.br),
@@ -159,50 +161,34 @@ function writeHalf(b, common, half) {
   E.le = b.curve(V.le0, V.le1, half.le);
   E.teL = b.curve(V.teL0, V.teL1, half.te);
   E.mid = closed ? E.teL : b.curve(V.tm0, V.tm1, half.mid);
-  E.rootL = b.curve(V.le0, V.teL0, surfaceBoundaryV(S, false));
+  E.rootL = b.curve(V.le0, V.teL0, surfaceBoundaryV(C, false));
   if (!closed) E.rootTE = b.line(V.teL0, V.tm0);
-  if (!pole) {
-    E.tipL = b.curve(V.le1, V.teL1, surfaceBoundaryV(S, true));
-    if (!closed) E.tipTE = b.line(V.teL1, V.tm1);
-    E.mean = b.curve(V.le1, V.tm1, half.meanLine);
-  }
-
-  // Ramp.
-  V.aL0 = b.vertex(ramp.aLE.points[0]);
-  V.aT0 = b.vertex(ramp.aTE.points[0]);
-  V.aL1 = b.vertex(last(ramp.aLE));
-  V.aT1 = pole ? V.aL1 : b.vertex(last(ramp.aTE));
-  E.aLE = b.curve(V.aL0, V.aL1, ramp.aLE);
-  E.aTE = b.curve(V.aT0, V.aT1, ramp.aTE);
-  E.rL0 = b.line(V.le0, V.aL0);
-  E.rT0 = b.line(V.tm0, V.aT0);
-  E.rL1 = b.line(V.le1, V.aL1);
-  E.rT1 = pole ? E.rL1 : b.line(V.tm1, V.aT1);
-  // Outer edge of the ramp in the parting plane, from the leading-edge side to the trailing-edge side.
-  let rampLoop = [
-    [E.aLE, true],
-    [E.aTE, false],
+  // Edge of the cavity opening on the parting surface, from the leading edge at the root around the
+  // tip to the trailing edge at the root.
+  let opening = [
+    [E.le, true],
+    [E.mid, false],
   ];
   if (!pole) {
-    const w = ramp.width;
-    V.bL = b.vertex([V.le1.P[0], V.le1.P[1] + w, zp]);
-    V.bT = b.vertex([V.tm1.P[0], V.tm1.P[1] + w, zp]);
+    E.tipL = b.curve(V.le1, V.teL1, surfaceBoundaryV(C, true));
+    if (!closed) E.tipTE = b.line(V.teL1, V.tm1);
+    E.mean = b.curve(V.le1, V.tm1, half.meanLine);
+    // The strip beyond the flat tip face: from the mean line to a straight line of the parting surface.
+    V.bL = b.vertex(half.strip.points[0]);
+    V.bT = b.vertex(last(half.strip));
     E.eLb = b.line(V.le1, V.bL);
     E.eTb = b.line(V.tm1, V.bT);
-    E.cL = b.line(V.bL, V.aL1);
-    E.cT = b.line(V.aT1, V.bT);
-    // The mean line moved out by the ramp width, in the parting plane.
-    E.oT = b.curve(V.bL, V.bT, meanOuter(half.meanLine, w, zp));
-    rampLoop = [
-      [E.aLE, true],
-      [E.cL, false],
+    E.oT = b.curve(V.bL, V.bT, half.strip);
+    opening = [
+      [E.le, true],
+      [E.eLb, true],
       [E.oT, true],
-      [E.cT, false],
-      [E.aTE, false],
+      [E.eTb, false],
+      [E.mid, false],
     ];
   }
 
-  // Resin channel and the root line of the parting plane.
+  // Resin channel and the root line of the parting surface.
   if (channel) {
     V.c1i = b.vertex(channel.rimInner.points[0]);
     V.c1o = b.vertex(channel.rimOuter.points[0]);
@@ -213,29 +199,28 @@ function writeHalf(b, common, half) {
     E.end1 = b.curve(V.c1i, V.c1o, channel.endStart);
     E.end2 = b.curve(V.c2i, V.c2o, channel.endEnd);
     E.s1 = b.line(T.fr, V.c1o);
-    E.s2 = b.line(V.c1i, V.aL0);
-    E.s3 = b.line(V.aT0, V.c2i);
+    E.s2 = b.line(V.c1i, V.le0);
+    E.s3 = b.line(V.tm0, V.c2i);
     E.s4 = b.line(V.c2o, T.br);
   } else {
-    E.s1 = b.line(T.fr, V.aL0);
-    E.s4 = b.line(V.aT0, T.br);
+    E.s1 = b.line(T.fr, V.le0);
+    E.s4 = b.line(V.tm0, T.br);
   }
 
-  // Holes: loops in the parting face and in the bottom face.
+  // Holes: the mouth on the parting surface, the wall, and the bottom or the loop in the block face.
   const topHoles = [];
   const bottomHoles = [];
   for (const h of holes) {
     const [hx, hy] = h.centre;
     const rh = h.radius;
-    const zh = h.depth === null ? zb : zp - h.depth;
-    const tA = b.vertex([hx + rh, hy, zp]);
-    const tB = b.vertex([hx - rh, hy, zp]);
+    const zh = h.bottom === null ? zb : h.bottom;
+    const tA = b.vertex(h.arcs[0].points[0]);
+    const tB = b.vertex(h.arcs[1].points[0]);
     const bA = b.vertex([hx + rh, hy, zh]);
     const bB = b.vertex([hx - rh, hy, zh]);
-    const top = [hx, hy, zp];
     const bot = [hx, hy, zh];
-    const tArc1 = b.arc(tA, tB, top, Z, X, rh);
-    const tArc2 = b.arc(tB, tA, top, Z, X, rh);
+    const tArc1 = b.curve(tA, tB, h.arcs[0]);
+    const tArc2 = b.curve(tB, tA, h.arcs[1]);
     const bArc1 = b.arc(bA, bB, bot, Z, X, rh);
     const bArc2 = b.arc(bB, bA, bot, Z, X, rh);
     const lA = b.line(bA, tA);
@@ -264,7 +249,7 @@ function writeHalf(b, common, half) {
       [bArc1, true],
       [bArc2, true],
     ];
-    if (h.depth === null) bottomHoles.push(ring);
+    if (h.bottom === null) bottomHoles.push(ring);
     else b.planeFace(bot, Z, X, [ring]);
   }
 
@@ -298,33 +283,33 @@ function writeHalf(b, common, half) {
     [
       [E.backBot, false],
       [E.vBt, true],
-      [E.backTop, true],
+      [E.backTop, false],
       [E.vBr, false],
     ],
   ]);
-  // Root face: the bottom edge, up the back, then along the parting line to the front.
+  // Root face: the bottom edge, up the back, then along the root ruling of the parting surface, around
+  // the ends of the groove and the root section, to the front.
   const rootLoop = [
     [E.rootBot, true],
     [E.vBr, true],
     [E.s4, false],
   ];
   if (channel) rootLoop.push([E.end2, false], [E.s3, false]);
-  rootLoop.push([E.rT0, false]);
   if (!closed) rootLoop.push([E.rootTE, false]);
-  rootLoop.push([E.rootL, false], [E.rL0, true]);
+  rootLoop.push([E.rootL, false]);
   if (channel) rootLoop.push([E.s2, false], [E.end1, true]);
   rootLoop.push([E.s1, false], [E.vFr, false]);
   b.planeFace([x0, yb, zb], norm([0, -1, slope]), X, [rootLoop]);
 
-  // Parting plane.
+  // Parting surface: u along x, v along the span, the normal up.
   const frame = [
-    [E.backTop, false],
+    [E.backTop, true],
     [E.tipTop, false],
     [E.frontTop, false],
   ];
   if (channel) {
-    b.planeFace([x0, y0, zp], Z, X, [[[E.s1, true], [E.rimO, true], [E.s4, true], ...frame], ...topHoles]);
-    b.planeFace([x0, y0, zp], Z, X, [[[E.s2, true], ...rampLoop, [E.s3, true], [E.rimI, false]]]);
+    b.surfaceFace(S, true, [[[E.s1, true], [E.rimO, true], [E.s4, true], ...frame], ...topHoles]);
+    b.surfaceFace(S, true, [[[E.s2, true], ...opening, [E.s3, true], [E.rimI, false]]]);
     b.surfaceFace(channel.surface, false, [
       [
         [E.rimI, true],
@@ -334,48 +319,17 @@ function writeHalf(b, common, half) {
       ],
     ]);
   } else {
-    b.planeFace([x0, y0, zp], Z, X, [[[E.s1, true], ...rampLoop, [E.s4, true], ...frame], ...topHoles]);
+    b.surfaceFace(S, true, [[[E.s1, true], ...opening, [E.s4, true], ...frame], ...topHoles]);
   }
 
-  // Ramp: ruled from the wing edge (u = 0) to the curve in the plane (u = 1).
   const ruled = (inner, outer) => ({ degreeU: 1, degreeV: inner.degree, knotsU: [0, 0, 1, 1], knotsV: inner.knots.slice(), points: [inner.points, outer.points] });
-  b.surfaceFace(ruled(half.le, ramp.aLE), false, [
-    [
-      [E.le, true],
-      [E.rL1, true],
-      [E.aLE, false],
-      [E.rL0, false],
-    ],
-  ]);
-  b.surfaceFace(ruled(half.mid, ramp.aTE), true, [
-    [
-      [E.rT0, true],
-      [E.aTE, true],
-      [E.rT1, false],
-      [E.mid, false],
-    ],
-  ]);
   if (!pole) {
-    b.triangleFace(V.aL1, V.le1, V.bL, [
-      [
-        [E.rL1, false],
-        [E.eLb, true],
-        [E.cL, true],
-      ],
-    ]);
-    b.surfaceFace(ruled(half.meanLine, meanOuter(half.meanLine, ramp.width, zp)), false, [
+    b.surfaceFace(ruled(half.meanLine, half.strip), false, [
       [
         [E.mean, true],
         [E.eTb, true],
         [E.oT, false],
         [E.eLb, false],
-      ],
-    ]);
-    b.triangleFace(V.tm1, V.aT1, V.bT, [
-      [
-        [E.rT1, true],
-        [E.cT, true],
-        [E.eTb, false],
       ],
     ]);
     // The half of the flat tip face below the mean line.
@@ -392,7 +346,7 @@ function writeHalf(b, common, half) {
   ];
   if (!pole) cavity.push([E.tipL, false]);
   cavity.push([E.le, false]);
-  b.surfaceFace(S, true, [cavity]);
+  b.surfaceFace(C, true, [cavity]);
   if (!closed) {
     const teFace = [
       [E.rootTE, true],
@@ -419,7 +373,7 @@ export function moldToStep(geometry, { name = 'Mold', timestamp, author = '', up
     for (const key of ['lower', 'upper']) {
       if (params.halves !== 'both' && params.halves !== key) continue;
       const upper = key === 'upper';
-      // The parting plane at z = 0: the lower half below it, the upper half above.
+      // The reference height zp at z = 0: the lower half below the parting surface, the upper half above.
       const sz = upper ? -1 : 1;
       const sy = params.left ? -1 : 1;
       const map = (P) => turn([P[0], sy * P[1], sz * (P[2] - common.zp)]);
