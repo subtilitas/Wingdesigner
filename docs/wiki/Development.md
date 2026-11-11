@@ -586,12 +586,12 @@ python scripts/validate_mold.py mold-check/cases.json
 | Solid count | Equals the expected count: 2, or 1 with **Halves** Lower only or Upper only |
 | Validity | Every solid passes `BRepCheck_Analyzer` |
 | Shell | Closed and consistently oriented (`ShapeAnalysis_Shell`), volume > 0 |
-| Volume | The volumes of both halves add up to the expected total within `5e-5` (relative): by the surface integral of OpenCascade (`BRepGProp`) or, where that misses the tolerance (trimmed faces of a twisted parting surface), on a tessellation with 0.004 mm linear and 0.05 rad angular deflection |
+| Volume | The volumes of both halves add up to the expected total within `5e-5` (relative): by the adaptive Gauss-Kronrod surface integral of OpenCascade (`BRepGProp.VolumePropertiesGK`, relative error bound `1e-7`, split at the spans of the surfaces) |
 | Extent | Each half spans its expected range along the up axis about z = 0, within 0.1 mm |
 | Holes | Every solid has 2 cylindrical faces per hole |
 | Planar faces | Every edge of a planar face lies in its plane within `1e-6` mm, 20 samples per edge |
 
-Exit code 1 when a check fails. The 18 files: result not recorded here. On 2026-11-11 (local, `cadquery-ocp` 8.0.1) 36 further files (9 presets with a round and with the preset tip, open and closed trailing edge) were valid and closed in OpenCascade in a local run, not in the repository.
+Exit code 1 when a check fails. On 2026-11-11 (local, `cadquery-ocp` 8.0.1) the 18 files passed, largest volume deviation 1.57e-5 (`swept-twist-round-tip`), check 31 s. On 2026-11-11 (local, `cadquery-ocp` 8.0.1) 36 further files (9 presets with a round and with the preset tip, open and closed trailing edge) were valid and closed in OpenCascade in a local run, not in the repository.
 
 Cases (`test/mold-cases.js`): a flat untwisted wing with open and closed trailing edge and with a round tip; the sample wing with twist and dihedral; **Sport**, **Glider** (both hole sets **Around the wing**) and **Delta jet** with a round tip; **Swept flying wing** with a closed trailing edge at a flat tip (the mean line parts the tip face of a reflexed airfoil); an under-cambered wing with a flat and with a round tip (the lower half rises above z = 0 inside the cavity outline); a swept wing (leading edge of the tip 125 mm aft over 500 mm span) with 8° washout, with a flat tip (`swept-twist-flat-tip`) and with a round tip (`swept-twist-round-tip`): leading edge and trailing edge of the tip differ in height, the parting surface changes height along the span; **Batwing**; **Tail surface** without resin channel and without holes; **Sport** with one half only (lower, upper) and the molds of the left wing with Y up.
 

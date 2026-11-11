@@ -9,13 +9,13 @@ how the owner works with contributors, and what the repository does not hold.
 
 | Item | State on 2026-11-11 |
 | --- | --- |
-| Version | `package.json` holds 0.10.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), `v0.7.0` on 1347f03 (2026-10-03), `v0.8.0` on 1618c89 (2026-11-06), `v0.9.0` on a14c830 (2026-11-09), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
-| Next release | 0.10.0: `CHANGELOG.md` section 0.10.0 (**Mold halves…**, **Wing tip** Round, the closed rounded tip, project format version 6). The tag `v0.10.0` goes on the merge commit of its release pull request (section Working with the owner). |
+| Version | `package.json` holds 0.10.0. Released: `v0.1.0` on 9faa12b and `v0.2.0` on 3b9a67c (2026-09-30), `v0.3.0` on 6580092 and `v0.4.0` on 3dd88cd (2026-10-01), `v0.5.0` on 5c0b5e7 and `v0.6.0` on cf2d2ae (2026-10-02), `v0.7.0` on 1347f03 (2026-10-03), `v0.8.0` on 1618c89 (2026-11-06), `v0.9.0` on a14c830 (2026-11-09), `v0.10.0` on 0c4f67b (2026-11-11), each with `wingdesigner-v<version>-site.zip` built by `release.yml`; `RECORD.md`, row CI, lists the runs and sizes. |
+| Next release | Not numbered. `CHANGELOG.md` section Unreleased: the mold halves part on a surface level in flight direction; **Ramp width** removed. |
 | Release texts | The notes of `v0.2.0`, `v0.3.0`, `v0.5.0`, `v0.6.0`, `v0.7.0`, `v0.8.0` and `v0.9.0` on GitHub equal their `CHANGELOG.md` sections followed by the use paragraph of `release.yml`. `v0.1.0` links an attached file, because the release form on GitHub stored only the first 20,000 of its 33,729 characters (`RECORD.md`, row CI). The content of that file is not verified (`RECORD.md`, Open items). |
-| `main` | Release 0.9.0 (a14c830, pull request #36); the mold halves export, **Wing tip** Round and version 0.10.0 (release pull request of 0.10.0). |
+| `main` | Release 0.10.0 (0c4f67b, pull request #39): the mold halves export, **Wing tip** Round. |
 | Unit tests | `RECORD.md`, row Unit tests. |
 | Browser tests | Chromium at 1280 x 720 px and in the Pixel 7 profile (Playwright); counts in `RECORD.md`, row UI. |
-| Export validation | 18 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0; 3 of them with **Wing tip** Round. 16 mold STEP files, checked with OpenCascade (`scripts/validate_mold.py`; all passed on 2026-11-11, largest volume deviation 8.85e-6, about 26 s). Foam-cutting files of 16 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
+| Export validation | 18 STEP (Standard for the Exchange of Product model data) and 3MF (3D Manufacturing Format) cases, checked with OpenCascade (`cadquery-ocp` 8.0.1) and lib3mf 2.5.0; 3 of them with **Wing tip** Round. 18 mold STEP files, checked with OpenCascade (`scripts/validate_mold.py`; all passed on 2026-11-11, largest volume deviation 1.57e-5, check 31 s). Foam-cutting files of 16 test wings, checked with ezdxf 1.4.4 and pypdf 6.19.0. |
 | Documentation | `README.md`, `README.de.md`, wiki pages in English and German in `docs/wiki/` (mirrored to the GitHub wiki by `docs.yml`), `RECORD.md`, `CHANGELOG.md`, `docs/Flow5upgrade.md`, this page. |
 
 `npm run counts:check` keeps the counts of the READMEs, `RECORD.md` and the wiki pages equal to the
@@ -48,7 +48,7 @@ suites; it does not read this page. Current counts: `RECORD.md`, rows Unit tests
 4. Mold halves and **Wing tip** Round, not tested (`RECORD.md`, Open items): the mold STEP file and the
    3-edge faces of a round tip in a CAD or CAM (computer-aided manufacturing) program other than OpenCascade,
    Fusion 360 included; a milled mold. Current limitations of the mold: no **Part tilt** and **Part roll**,
-   one parting plane per half wing, no draft angle, separate files for the left and the right mold.
+   tall blocks for a wing with several dihedral angles (the parting surface follows them), no draft angle, separate files for the left and the right mold.
 5. Known failures (`RECORD.md`, Open items):
    - Projects of the XFLR5 import in project format version 1, set to **Mitred**, carry the error of
      the folded tilt; the angle is not stored, **Open** shows a note and **Checks** a warning without a distance.
