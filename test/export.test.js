@@ -93,7 +93,8 @@ describe('STL', () => {
     expect(() => meshesTo3mf([{ name: 'w', mesh: small }])).not.toThrow();
   });
 
-  it('counts export triangles before meshing, for the Fine density limit', () => {
+  // Meshes at Fine density of 3 wings: 18 s with coverage in a cloud container, above the 20 s default on the CI runner.
+  it('counts export triangles before meshing, for the Fine density limit', { timeout: 90000 }, () => {
     const build = buildWing(sampleProject());
     for (const mode of ['right', 'halves']) {
       for (const [uRefine, vRefine] of [[1, 3], [2, 6]]) {
